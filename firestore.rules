@@ -1,0 +1,208 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isMainAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.lower() in [
+          'kmabarikiyafoods@gmail.com',
+          'hcrsindia@gmail.com',
+          'admin@hcrs.society',
+          '9645934571@hcrs.society',
+          'mabarikiyafoods@gmail.com'
+        ]
+      );
+    }
+
+    function isSecondAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.lower() in [
+          'hcrskerala@gmail.com',
+          'hcrskasaragod@hcrs.society',
+          'hcrskannur@hcrs.society',
+          'hcrswayanad@hcrs.society',
+          'hcrskozhikode@hcrs.society',
+          'hcrsmalappuram@hcrs.society',
+          'hcrspalakkad@hcrs.society',
+          'hcrsthrissur@hcrs.society',
+          'hcrsernakulam@hcrs.society',
+          'hcrsidukki@hcrs.society',
+          'hcrskottayam@hcrs.society',
+          'hcrsalappuzha@hcrs.society',
+          'hcrspathanamthitta@hcrs.society',
+          'hcrskollam@hcrs.society',
+          'hcrsthiruvananthapuram@hcrs.society'
+        ]
+      );
+    }
+
+    function isAdmin() {
+      return isMainAdmin() || isSecondAdmin() || (
+        isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') in ['admin', 'operator'])
+      );
+    }
+
+    function isOperator() {
+      // Operators include admins and those explicitly assigned the operator role
+      return isAdmin() || (
+        isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'operator'
+        )
+      );
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isRole(role) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().get('role', 'member') == role;
+    }
+
+    function isBootstrappedAdmin(data) {
+      return data.email in [
+        'kmabarikiyafoods@gmail.com',
+        'hcrsindia@gmail.com',
+        'hcrskerala@gmail.com',
+        'admin@hcrs.society',
+        '9645934571@hcrs.society'
+      ] || data.mobile == '9645934571';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function hasField(map, field) { return map.get(field, null) != null; }
+
+    // 2. Validation Blueprints (User Entity)
+    function isValidUser(data) {
+      return (!hasField(data, 'name') || data.name is string) &&
+             (!hasField(data, 'mobile') || data.mobile is string) &&
+             (!hasField(data, 'email') || data.email is string) &&
+             (!hasField(data, 'isAdmin') || data.isAdmin is bool) &&
+             (!hasField(data, 'quota') || data.quota is int) &&
+             (!hasField(data, 'quotaUsed') || data.quotaUsed is int) &&
+             (!hasField(data, 'status') || data.status in ['pending', 'active', 'offline', 'disabled', 'deleted']);
+    }
+
+    function isValidSettings(data) {
+      return (data.get('fullName', '') is string && data.get('fullName', '').size() <= 200) &&
+             (data.get('shortName', '') is string && data.get('shortName', '').size() <= 50) &&
+             (data.get('aboutUs', '') is string && data.get('aboutUs', '').size() <= 5000) &&
+             (data.get('mission', '') is string && data.get('mission', '').size() <= 2000) &&
+             (data.get('vision', '') is string && data.get('vision', '').size() <= 2000) &&
+             (data.get('address', '') is string && data.get('address', '').size() <= 500) &&
+             (data.get('phone', '') is string && data.get('phone', '').size() <= 50) &&
+             (data.get('email', '') is string && data.get('email', '').size() <= 100) &&
+             (data.get('website', '') is string && data.get('website', '').size() <= 100) &&
+             (data.get('districtDetails', '') is string && data.get('districtDetails', '').size() <= 500);
+    }
+
+    function isValidGallery(data) {
+      return (data.url is string && data.url.size() <= 1000) &&
+             (data.category is string && data.category.size() <= 100) &&
+             (data.title is string && data.title.size() <= 200) &&
+             (!hasField(data, 'description') || (data.description is string && data.description.size() <= 1000));
+    }
+
+    // --- Collection: users ---
+    match /users/{userId} {
+      // allow get if owner, operator, or if it's an active member (for magic links)
+      allow get: if isOwner(userId) || isOperator() || resource.data.status == 'active' || resource.data.status == 'pending';
+      
+      // Allow limited list queries for registration duplicate checks and renewal lookups
+      // This is necessary because these operations happen before authentication or for non-auth lookups
+      allow list: if isOperator() || (request.query.limit <= 2);
+      
+      allow create: if ((isSignedIn() && isOwner(userId) && isValidId(userId)) || isOperator()) && 
+                    isValidUser(incoming()) &&
+                    (isOperator() || (incoming().get('isAdmin', false) == false && incoming().get('role', 'member') == 'member'));
+
+      allow update: if isSignedIn() && isValidUser(incoming()) && (
+        // Action 1: Admin/Operator Update
+        (isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'photoUrl', 'details']) || isAdmin())) ||
+        
+        // Action 2: User Profile Edit (Self) - restricted fields
+        (isOwner(userId) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId']))
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // --- Collection: settings ---
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(incoming());
+    }
+
+    // --- Collection: gallery ---
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidGallery(incoming());
+    }
+
+    // --- Collection: admins ---
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via console or super admin
+    }
+    
+    // --- Collection: metadata ---
+    match /system/totals {
+       allow read, write: if isSignedIn();
+    }
+
+    match /system/ping {
+       allow read: if true;
+    }
+
+    // --- Collection: districtQuotas ---
+    match /districtQuotas/{districtCode} {
+      allow read: if true;
+      allow write: if isAdmin();
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (incoming().used == existing().used + 1 && 
+         incoming().total == existing().total &&
+         incoming().id == existing().id)
+      );
+    }
+
+    // --- Collection: claims ---
+    match /claims/{claimId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isOperator());
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.uid == request.auth.uid || isOperator());
+      allow delete: if isAdmin();
+    }
+  }
+}
