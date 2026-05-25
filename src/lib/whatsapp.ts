@@ -2,10 +2,15 @@ import { UserProfile } from '../types';
 import { SHARED_URL } from '../constants';
 
 export const getWAMessage = (member: { name: string, mobile: string, uid: string, pin?: string, membershipId?: string }) => {
-  const STABLE_URL = SHARED_URL;
-  const baseUrl = typeof window !== 'undefined' && !window.location.origin.includes('ais-dev') && !window.location.origin.includes('google.com')
-    ? window.location.origin 
-    : STABLE_URL;
+  const VERCEL_URL = 'https://hcrs-kappa.vercel.app';
+  const baseUrl = typeof window !== 'undefined' && 
+    !window.location.origin.includes('ais-dev') && 
+    !window.location.origin.includes('ais-pre') && 
+    !window.location.origin.includes('localhost') && 
+    !window.location.origin.includes('127.0.0.1') && 
+    !window.location.origin.includes('google.com')
+      ? window.location.origin 
+      : VERCEL_URL;
   
   const magicLink = `${baseUrl}/?memberId=${member.uid}`;
   

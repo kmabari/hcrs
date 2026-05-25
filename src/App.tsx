@@ -192,15 +192,24 @@ export default function App() {
   const [isMagicLink, setIsMagicLink] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return params.has('memberId') || params.has('distLogin');
+      const hasPathVerify = window.location.pathname.startsWith('/verify/');
+      return params.has('memberId') || params.has('distLogin') || hasPathVerify;
     }
     return false;
   });
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const memberId = params.get('memberId');
+    let memberId = params.get('memberId');
     const distLogin = params.get('distLogin');
+    
+    // Automatically support route path verification /verify/MEMBER_ID
+    if (!memberId && typeof window !== 'undefined' && window.location.pathname.startsWith('/verify/')) {
+      const pathParts = window.location.pathname.split('/verify/');
+      if (pathParts[1] && pathParts[1].trim()) {
+        memberId = pathParts[1].trim();
+      }
+    }
     
     if (distLogin) {
       console.log("District login intent detected:", distLogin);
@@ -213,7 +222,7 @@ export default function App() {
     }
 
     if (memberId) {
-      console.log("Found memberId in URL:", memberId);
+      console.log("Found memberId in URL/Path:", memberId);
       const fetchMemberForPreview = async () => {
         try {
           const docRef = doc(db, 'users', memberId);
@@ -224,8 +233,8 @@ export default function App() {
             setView('card');
             toast.success(`Viewing card for ${memberData.name}`);
             
-            // Clean up the URL so the ID doesn't stay in the address bar
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // Clean up the URL so the ID/route doesn't stay in the address bar
+            window.history.replaceState({}, document.title, '/');
           } else {
             console.log("Member not found for magic link");
             setIsMagicLink(false);

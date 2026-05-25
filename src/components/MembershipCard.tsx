@@ -134,8 +134,18 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
+  const VERCEL_URL = 'https://hcrs-kappa.vercel.app';
+  const baseUrl = typeof window !== 'undefined' && 
+    !window.location.origin.includes('ais-dev') && 
+    !window.location.origin.includes('ais-pre') && 
+    !window.location.origin.includes('localhost') && 
+    !window.location.origin.includes('127.0.0.1') && 
+    !window.location.origin.includes('google.com')
+      ? window.location.origin 
+      : VERCEL_URL;
+
   // Public QR Generator API pointing to verification profile URL
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://www.hcrs-society.org/verify/${member.uid || 'guest'}`)}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`${baseUrl}/verify/${member.uid || 'guest'}`)}`;
 
   const cardDetails = [
     { label: 'Phone', value: member.mobile || 'N/A', icon: Phone },
