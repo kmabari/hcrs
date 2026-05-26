@@ -90,7 +90,7 @@ export default function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
 
-  const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && (
+  const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && (
     user.renewalPending ||
     !user.expiryDate ||
     (() => {
@@ -784,11 +784,16 @@ export default function App() {
           const assemblyCode = getAssemblyCode(values.assemblyConstituency);
           const membershipId = `KL/${memberDistCode}/${assemblyCode}/${nextSerial}`;
 
+          const now = new Date();
+          const expiry = new Date();
+          expiry.setFullYear(now.getFullYear() + 1);
+
           const newMemberData = {
             uid,
             ...values,
             photoUrl: '',
             registrationDate: serverTimestamp(),
+            expiryDate: expiry,
             membershipId,
             status: 'pending',
             isPaid: true,

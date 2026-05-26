@@ -122,7 +122,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
-  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && (
+  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && (
     member.renewalPending ||
     !member.expiryDate ||
     (() => {
