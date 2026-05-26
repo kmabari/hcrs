@@ -24,9 +24,15 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [state, setState] = useState('Kerala');
-  const [district, setDistrict] = useState('');
+  const [district, setDistrict] = useState(adminUser?.district || '');
   const [mandalam, setMandalam] = useState('');
   
+  React.useEffect(() => {
+    if (adminUser?.district) {
+      setDistrict(adminUser.district);
+    }
+  }, [adminUser?.district]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdMember, setCreatedMember] = useState<{
     name: string;
@@ -410,8 +416,9 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
                 setDistrict(val);
                 setMandalam(''); // reset mandalam when district changes
               }}
+              disabled={!!adminUser?.district}
             >
-              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-extrabold bg-white">
+              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-extrabold bg-white disabled:opacity-50">
                 <SelectValue placeholder="Select district" />
               </SelectTrigger>
               <SelectContent className="max-h-60">

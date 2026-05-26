@@ -51,6 +51,32 @@ const SECOND_ADMINS = [
   'hcrsthiruvananthapuram@hcrs.society'
 ];
 
+const getStrictDistrictFromEmail = (email: string): string | null => {
+  const cleanEmail = email.toLowerCase().trim();
+  const username = cleanEmail.split('@')[0];
+  if (!username.startsWith('hcrs')) return null;
+  
+  const suffix = username.substring(4); // remove 'hcrs'
+  if (!suffix) return null;
+  
+  if (suffix === 'kasaragod' || suffix === 'kasargod' || suffix === 'ksd') return 'KSD';
+  if (suffix === 'kannur' || suffix === 'knr') return 'KNR';
+  if (suffix === 'wayanad' || suffix === 'wyd') return 'WYD';
+  if (suffix === 'kozhikode' || suffix === 'kozicode' || suffix === 'kozikhode' || suffix === 'koz') return 'KOZ';
+  if (suffix === 'malappuram' || suffix === 'malapuram' || suffix === 'mlp') return 'MLP';
+  if (suffix === 'palakkad' || suffix === 'palakad' || suffix === 'pkd') return 'PKD';
+  if (suffix === 'thrissur' || suffix === 'trichur' || suffix === 'tcr') return 'TCR';
+  if (suffix === 'ernakulam' || suffix === 'cochin' || suffix === 'ekm') return 'EKM';
+  if (suffix === 'idukki' || suffix === 'idk') return 'IDK';
+  if (suffix === 'kottayam' || suffix === 'ktm') return 'KTM';
+  if (suffix === 'alappuzha' || suffix === 'alapuzha' || suffix === 'alp') return 'ALP';
+  if (suffix === 'pathanamthitta' || suffix === 'pathanamthita' || suffix === 'pta') return 'PTA';
+  if (suffix === 'kollam' || suffix === 'quilon' || suffix === 'klm') return 'KLM';
+  if (suffix === 'thiruvananthapuram' || suffix === 'trivandrum' || suffix === 'tvm') return 'TVM';
+  
+  return null;
+};
+
 export default function App() {
   const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery'>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -328,13 +354,15 @@ export default function App() {
       // This prevents the 20s timeout from kicking in if Firestore is slow or doc is large.
       if (isAdminEmail) {
         console.log("Admin detected, prepping immediate view transition...");
+        const strictDistrict = getStrictDistrictFromEmail(currentEmail);
         const placeholderAdmin: any = {
            uid: authUser.uid,
            name: isSuperAdminEmail ? 'Main Admin' : 'Admin',
            email: authUser.email || '',
-           role: 'admin',
+           role: isSuperAdminEmail ? 'admin' : 'operator',
            isAdmin: isSuperAdminEmail,
-           status: 'active'
+           status: 'active',
+           district: strictDistrict || ''
         };
         setUser(placeholderAdmin);
         if (view !== 'register') {
@@ -356,9 +384,14 @@ export default function App() {
           setLoadingStatus('Finalizing Access...');
           const freshData = { uid: authUser.uid, ...docSnap.data() } as UserProfile;
           if (isAdminEmail) {
-            freshData.role = 'admin';
-            freshData.isAdmin = true;
+            freshData.role = isSuperAdminEmail ? 'admin' : 'operator';
+            freshData.isAdmin = isSuperAdminEmail;
             freshData.status = 'active';
+          }
+          
+          const strictDistrict = getStrictDistrictFromEmail(currentEmail);
+          if (isSecondAdminEmail && strictDistrict) {
+            freshData.district = strictDistrict;
           }
           
           // Backport missing district to Firestore if missing on the document
@@ -385,8 +418,9 @@ export default function App() {
           userData = freshData;
         } else if (isAdminEmail) {
           // Auto-detect district from email for district admins
-          let autoDistrict = '';
-          if (currentEmail.startsWith('hcrs')) {
+          const strictDistrict = getStrictDistrictFromEmail(currentEmail);
+          let autoDistrict = strictDistrict || '';
+          if (!autoDistrict && currentEmail.startsWith('hcrs')) {
             const prefix = currentEmail.split('@')[0].replace('hcrs', '').toLowerCase();
             const district = DISTRICTS.find(d => d.name.toLowerCase() === prefix);
             if (district) autoDistrict = district.code;
@@ -415,12 +449,23 @@ export default function App() {
         }
 
         if (userData) {
-          // Resolve stored district intent to fix district dashboard access
-          const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
-          if (storedIntent) {
-            const resolvedCode = getDistrictCode(storedIntent);
-            if (resolvedCode && resolvedCode !== 'OTH') {
-              userData.district = resolvedCode;
+          // Force restrict second admin emails to their strict district and block session overrides
+          const checkEmail = (userData.email || '').toLowerCase().trim();
+          const checkSecond = SECOND_ADMINS.some(email => email.toLowerCase() === checkEmail);
+          const strictDistrict = getStrictDistrictFromEmail(checkEmail);
+
+          if (checkSecond && strictDistrict) {
+            userData.district = strictDistrict;
+            userData.role = 'operator';
+            userData.isAdmin = false;
+          } else {
+            // Resolve stored district intent ONLY for non-second-admin users to fix district dashboard access
+            const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
+            if (storedIntent) {
+              const resolvedCode = getDistrictCode(storedIntent);
+              if (resolvedCode && resolvedCode !== 'OTH') {
+                userData.district = resolvedCode;
+              }
             }
           }
 

@@ -848,8 +848,9 @@ export default function OperatorDashboard({
                           <Select 
                             value={formData.district} 
                             onValueChange={val => setFormData({...formData, district: val, assemblyConstituency: CONSTITUENCIES[val]?.[0] || ''})}
+                            disabled={!!user.district}
                           >
-                            <SelectTrigger className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold">
+                            <SelectTrigger className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold disabled:opacity-50">
                               <SelectValue placeholder="Select District" />
                             </SelectTrigger>
                             <SelectContent className="max-h-60 overflow-y-auto">
@@ -1106,8 +1107,9 @@ export default function OperatorDashboard({
                               <Select 
                                 value={formData.district} 
                                 onValueChange={val => setFormData({...formData, district: val, assemblyConstituency: CONSTITUENCIES[val]?.[0] || ''})}
+                                disabled={!!user.district}
                               >
-                                <SelectTrigger className="h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold px-6">
+                                <SelectTrigger className="h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold px-6 disabled:opacity-50">
                                   <SelectValue placeholder="Select District" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60 overflow-y-auto">
