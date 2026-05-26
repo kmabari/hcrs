@@ -217,14 +217,13 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           gender: '',
           dob: '',
           membershipId: generatedMembershipId,
-          status: 'active', // "User becomes an active member immediately."
+          status: 'pending', // "User is pending until approved"
           isPaid: true,
-          isApproved: true,
+          isApproved: false,
           isAdmin: false,
           role: 'member',
           serialNo: nextSerial,
           registrationDate: serverTimestamp(),
-          issueDate: serverTimestamp(),
           registeredBy: adminUser?.uid || 'district_admin',
           registeredByName: adminUser?.name || 'District Admin',
           waStatus: 'Pending'
@@ -266,14 +265,14 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
   if (createdMember) {
     return (
-      <div className="bg-white rounded-3xl border border-emerald-100 shadow-xl p-8 max-w-xl mx-auto space-y-6 text-slate-800 animate-in fade-in zoom-in duration-300">
+      <div className="bg-white rounded-3xl border border-amber-100 shadow-xl p-8 max-w-xl mx-auto space-y-6 text-slate-800 animate-in fade-in zoom-in duration-300">
         <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner">
+          <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
             <CheckCircle2 className="w-10 h-10 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Active Member Joined!</h3>
-            <p className="text-sm font-semibold text-emerald-600">അംഗ അക്കൗണ്ട് വിജയകരമായി ആക്റ്റീവ് ആക്കി</p>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Member Registered!</h3>
+            <p className="text-sm font-semibold text-amber-600">അംഗ അക്കൗണ്ട് വിജയകരമായി രജിസ്റ്റർ ചെയ്തു (Pending Approval)</p>
           </div>
         </div>
 

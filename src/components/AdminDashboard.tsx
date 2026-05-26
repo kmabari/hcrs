@@ -26,6 +26,7 @@ import {
   Trash2,
   ShieldCheck,
   Lock,
+  KeyRound,
   MessageCircle,
   LogOut,
   RefreshCw,
@@ -263,11 +264,63 @@ export default function AdminDashboard({
   };
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [districtFilter, setDistrictFilter] = useState('all');
+  const [districtFilter, setDistrictFilter] = useState(() => {
+    if (user?.district && !isSuperAdmin) {
+      return user.district;
+    }
+    return 'all';
+  });
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [selectedProof, setSelectedProof] = useState<string | null>(null);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  
+  // Custom domain key variables
+  const [isDomainKeyModalOpen, setIsDomainKeyModalOpen] = useState(false);
+  const [newDomainKey, setNewDomainKey] = useState('');
+  const [isUpdatingKey, setIsUpdatingKey] = useState(false);
+
+  const handleUpdateDomainKey = async () => {
+    if (!newDomainKey || newDomainKey.trim().length < 4) {
+      toast.error('PIN/Password must be at least 4 characters long.');
+      return;
+    }
+    setIsUpdatingKey(true);
+    const loadingToast = toast.loading('Setting secure domain PIN...');
+    try {
+      const { updatePassword: authUpdatePassword } = await import('firebase/auth');
+      const { auth: firebaseAuth, db: firestoreDb } = await import('../lib/firebase');
+      const { doc: fireDoc, updateDoc: fireUpdateDoc } = await import('firebase/firestore');
+
+      if (!firebaseAuth.currentUser) {
+        throw new Error('No user is currently authenticated.');
+      }
+
+      // Update in Firebase Auth
+      await authUpdatePassword(firebaseAuth.currentUser, newDomainKey.trim());
+
+      // Update in Firestore
+      const userRef = fireDoc(firestoreDb, 'users', firebaseAuth.currentUser.uid);
+      await fireUpdateDoc(userRef, {
+        pin: newDomainKey.trim()
+      });
+
+      toast.success('Secure Domain PIN configured! You can now use your Email and PIN to log in on www.hcrs.in.', { id: loadingToast, duration: 6000 });
+      setIsDomainKeyModalOpen(false);
+      setNewDomainKey('');
+    } catch (error: any) {
+      console.error('Error updating domain key:', error);
+      let errMsg = 'Failed to set password. PIN/Password could not be configured.';
+      if (error?.code === 'auth/requires-recent-login' || error?.message?.includes('recent-login')) {
+         errMsg = 'Security rule: Please log out and log in again via Vercel, then retry resetting PIN immediately.';
+      } else if (error?.message) {
+         errMsg = error.message;
+      }
+      toast.error(errMsg, { id: loadingToast, duration: 8000 });
+    } finally {
+      setIsUpdatingKey(false);
+    }
+  };
   
   // Custom sidebar active tab and pagination states
   const [activeTab, setActiveTab2] = useState('list');
@@ -625,13 +678,16 @@ export default function AdminDashboard({
     let renewals = 0;
     
     for (const m of members) {
+      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      if (!matchesDistrict) continue;
+
       if (m.status === 'active') active++;
       else if (m.status === 'pending' && !m.renewalPending) pending++;
       else if (m.renewalPending) renewals++;
     }
 
     return { active, pending, renewals };
-  }, [members]);
+  }, [members, districtFilter]);
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -650,7 +706,7 @@ export default function AdminDashboard({
                            (m.email && m.email.toLowerCase().includes(term)) ||
                            (m.district && districtMap.get(m.district)?.includes(term));
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
-      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted') : m.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted' && m.status !== 'pending') : m.status === statusFilter;
       
       let matchesSource = true;
       if (sourceFilter === 'online') {
@@ -1026,6 +1082,14 @@ export default function AdminDashboard({
                 Add Member
               </Button>
             )}
+            <Button 
+              onClick={() => setIsDomainKeyModalOpen(true)}
+              variant="outline"
+              className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
+            >
+              <KeyRound className="w-4 h-4 text-brand-blue" />
+              Set Domain PIN (പാസ്‌വേഡ്)
+            </Button>
             <Button onClick={handleLogout} variant="outline" className="flex-1 md:flex-none h-10 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider">
               <LogOut className="w-4 h-4 mr-1 text-red-400" />
               Logout
@@ -1437,8 +1501,8 @@ export default function AdminDashboard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Select value={districtFilter} onValueChange={setDistrictFilter}>
-                      <SelectTrigger className="flex-1 sm:w-[130px] h-10 bg-white border-slate-200 rounded-xl text-xs font-bold">
+                    <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
+                      <SelectTrigger className="flex-1 sm:w-[130px] h-10 bg-white border-slate-200 rounded-xl text-xs font-bold disabled:opacity-75">
                         <SelectValue placeholder="District" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3230,6 +3294,59 @@ export default function AdminDashboard({
           </DialogContent>
         </Dialog>
 
+        <Dialog open={isDomainKeyModalOpen} onOpenChange={setIsDomainKeyModalOpen}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-[32px] border-none shadow-2xl">
+            <DialogHeader className="p-8 bg-slate-50 border-b">
+              <DialogTitle className="flex items-center gap-2 font-black text-2xl tracking-tight text-slate-900 uppercase">
+                <KeyRound className="w-6 h-6 text-brand-blue" />
+                SET DOMAIN LOGIN PIN
+              </DialogTitle>
+              <DialogDescription asChild>
+                <div className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">
+                  Set a custom password/PIN to log in on www.hcrs.in directly with your email.
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="domain-pin" className="font-black text-slate-700 uppercase mb-2">Secure Code (PIN / Password)</Label>
+                <Input 
+                  id="domain-pin" 
+                  type="password"
+                  required 
+                  maxLength={12}
+                  className="h-12 rounded-xl focus:ring-brand-blue font-bold text-slate-800 text-base"
+                  placeholder="Min 4 characters (e.g. 123456)" 
+                  value={newDomainKey} 
+                  onChange={e => setNewDomainKey(e.target.value)}
+                />
+                <p className="text-[10px] font-bold text-slate-400 uppercase leading-normal">
+                  നിങ്ങളുടെ ഗൂഗിൾ അക്കൗണ്ട് ലോഗിൻ ചെയ്ത ശേഷം ഈ പിൻ നിർബന്ധമായും ക്രമീകരിക്കുക. ഇതിലൂടെ www.hcrs.in എന്ന വെബ്സൈറ്റിൽ നേരിട്ട് ലോഗിൻ ചെയ്യാൻ കഴിയും.
+                </p>
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setIsDomainKeyModalOpen(false)}
+                  className="flex-1 h-12 font-black rounded-xl uppercase tracking-wider text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button"
+                  disabled={isUpdatingKey}
+                  onClick={handleUpdateDomainKey}
+                  className="flex-1 h-12 font-black rounded-xl uppercase tracking-wider text-xs bg-brand-blue text-white hover:bg-brand-blue/90"
+                >
+                  {isUpdatingKey ? 'Updating PIN...' : 'Save PIN (പാസ്‌വേഡ്)'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isManualEntryOpen} onOpenChange={setIsManualEntryOpen}>
           <DialogContent 
             className="sm:max-w-lg p-0 overflow-hidden rounded-[32px] border-none shadow-2xl"
@@ -3268,122 +3385,9 @@ export default function AdminDashboard({
                       className="h-12 rounded-xl focus:ring-brand-blue"
                       placeholder="10-digit number" 
                       value={manualFormData.mobile} 
-                      onChange={e => setManualFormData({...manualFormData, mobile: e.target.value})}
+                      onChange={e => setManualFormData({...manualFormData, mobile: e.target.value.replace(/\D/g, '')})}
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="m-email" className="font-black text-slate-700 uppercase mb-2">Email ID</Label>
-                  <Input 
-                    id="m-email" 
-                    type="email"
-                    required 
-                    className="h-12 rounded-xl focus:ring-brand-blue"
-                    placeholder="example@mail.com" 
-                    value={manualFormData.email} 
-                    onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="m-address" className="font-black text-slate-700 uppercase mb-2">Full Address</Label>
-                  <Input 
-                    id="m-address" 
-                    required 
-                    className="h-12 rounded-xl focus:ring-brand-blue"
-                    placeholder="House Name, Street, etc." 
-                    value={manualFormData.address} 
-                    onChange={e => setManualFormData({...manualFormData, address: e.target.value})}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="m-post" className="font-black text-slate-700 uppercase mb-2">Post Office</Label>
-                    <Input 
-                      id="m-post" 
-                      required 
-                      className="h-12 rounded-xl focus:ring-brand-blue"
-                      placeholder="Post Office" 
-                      value={manualFormData.postOffice} 
-                      onChange={e => setManualFormData({...manualFormData, postOffice: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="m-pincode" className="font-black text-slate-700 uppercase mb-2">Pincode</Label>
-                    <Input 
-                      id="m-pincode" 
-                      required 
-                      maxLength={6}
-                      className="h-12 rounded-xl focus:ring-brand-blue"
-                      placeholder="6-digit PIN" 
-                      value={manualFormData.pincode} 
-                      onChange={e => setManualFormData({...manualFormData, pincode: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                    <Label htmlFor="blood" className="font-black text-slate-700 uppercase mb-2">Blood Group</Label>
-                    <div key={`manual-blood-${manualFormData.role}`}>
-                      <Select 
-                        value={manualFormData.bloodGroup || BLOOD_GROUPS[0]} 
-                        onValueChange={val => setManualFormData({...manualFormData, bloodGroup: val})}
-                      >
-                        <SelectTrigger className="h-12 rounded-xl focus:ring-brand-blue font-bold">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BLOOD_GROUPS.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="s-role" className="font-black text-slate-700 uppercase mb-2">Account Role</Label>
-                    <Select 
-                      value={manualFormData.role || 'member'} 
-                      onValueChange={val => setManualFormData({...manualFormData, role: val as any})}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl focus:ring-brand-blue font-bold">
-                        <SelectValue placeholder="Role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="operator">Operator</SelectItem>
-                        <SelectItem value="admin">Second Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="m-pin" className="font-black text-slate-700 uppercase mb-2">Login Password</Label>
-                    <Input 
-                      id="m-pin" 
-                      className="h-12 rounded-xl focus:ring-brand-blue font-mono"
-                      value={manualFormData.pin} 
-                      onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
-                      maxLength={12}
-                    />
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">Default is 123456 (4-12 digits)</p>
-                  </div>
-                  {(manualFormData.role === 'operator' || manualFormData.role === 'admin') && (
-                    <div className="space-y-2">
-                      <Label htmlFor="m-quota" className="font-black text-slate-700 uppercase mb-2">Entry Quota</Label>
-                      <Input 
-                        id="m-quota" 
-                        type="number"
-                        className="h-12 rounded-xl focus:ring-brand-blue"
-                        value={manualFormData.quota} 
-                        onChange={e => setManualFormData({...manualFormData, quota: parseInt(e.target.value) || 0})}
-                      />
-                      <p className="text-[10px] text-indigo-500 font-bold uppercase">Allowed entries for this admin</p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
@@ -3402,7 +3406,7 @@ export default function AdminDashboard({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-black text-slate-700 uppercase mb-2">Assembly Constituency</Label>
+                    <Label className="font-black text-slate-700 uppercase mb-2">Assembly Constituency (മണ്ഡലം)</Label>
                     <Select 
                       value={manualFormData.assemblyConstituency || ""} 
                       onValueChange={val => setManualFormData({...manualFormData, assemblyConstituency: val})}
@@ -3418,6 +3422,103 @@ export default function AdminDashboard({
                     </Select>
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="s-role" className="font-black text-slate-700 uppercase mb-2">Account Role</Label>
+                  <Select 
+                    value={manualFormData.role || 'member'} 
+                    onValueChange={val => setManualFormData({...manualFormData, role: val as any})}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl focus:ring-brand-blue font-bold">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Member (അംഗം)</SelectItem>
+                      <SelectItem value="operator">Operator (ജില്ലാ അഡ്മിൻ)</SelectItem>
+                      <SelectItem value="admin">Second Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {manualFormData.role !== 'member' && (
+                  <>
+                    <div className="space-y-2 animate-in fade-in duration-300">
+                      <Label htmlFor="m-email" className="font-black text-slate-700 uppercase mb-2">Email ID</Label>
+                      <Input 
+                        id="m-email" 
+                        type="email"
+                        required 
+                        className="h-12 rounded-xl focus:ring-brand-blue"
+                        placeholder="example@mail.com" 
+                        value={manualFormData.email} 
+                        onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2 animate-in fade-in duration-300">
+                      <Label htmlFor="m-address" className="font-black text-slate-700 uppercase mb-2">Full Address</Label>
+                      <Input 
+                        id="m-address" 
+                        required 
+                        className="h-12 rounded-xl focus:ring-brand-blue"
+                        placeholder="House Name, Street, etc." 
+                        value={manualFormData.address} 
+                        onChange={e => setManualFormData({...manualFormData, address: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 animate-in fade-in duration-300">
+                      <div className="space-y-2">
+                        <Label htmlFor="m-post" className="font-black text-slate-700 uppercase mb-2">Post Office</Label>
+                        <Input 
+                          id="m-post" 
+                          required 
+                          className="h-12 rounded-xl focus:ring-brand-blue"
+                          placeholder="Post Office" 
+                          value={manualFormData.postOffice} 
+                          onChange={e => setManualFormData({...manualFormData, postOffice: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="m-pincode" className="font-black text-slate-700 uppercase mb-2">Pincode</Label>
+                        <Input 
+                          id="m-pincode" 
+                          required 
+                          maxLength={6}
+                          className="h-12 rounded-xl focus:ring-brand-blue"
+                          placeholder="6-digit PIN" 
+                          value={manualFormData.pincode} 
+                          onChange={e => setManualFormData({...manualFormData, pincode: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 animate-in fade-in duration-300">
+                      <div className="space-y-2">
+                        <Label htmlFor="m-pin" className="font-black text-slate-700 uppercase mb-2">Login Password</Label>
+                        <Input 
+                          id="m-pin" 
+                          className="h-12 rounded-xl focus:ring-brand-blue font-mono"
+                          value={manualFormData.pin} 
+                          onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
+                          maxLength={12}
+                        />
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Default is 123456</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="m-quota" className="font-black text-slate-700 uppercase mb-2">Entry Quota</Label>
+                        <Input 
+                          id="m-quota" 
+                          type="number"
+                          className="h-12 rounded-xl focus:ring-brand-blue"
+                          value={manualFormData.quota} 
+                          onChange={e => setManualFormData({...manualFormData, quota: parseInt(e.target.value) || 0})}
+                        />
+                        <p className="text-[10px] text-indigo-500 font-bold uppercase">Allowed entries</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="p-8 bg-slate-50 border-t flex gap-4">

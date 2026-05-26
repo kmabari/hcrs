@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Search, ArrowRight, ArrowLeft, ShieldCheck, Heart, CreditCard, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,22 +6,45 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db, handleFirestoreError, OperationType } from './lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { UserProfile } from './types';
 import Logo from './Logo';
 
 interface RenewalFormProps {
   onBack: () => void;
   onSuccess: (member: UserProfile) => void;
+  initialMobile?: string;
 }
 
-export default function RenewalForm({ onBack, onSuccess }: RenewalFormProps) {
+export default function RenewalForm({ onBack, onSuccess, initialMobile }: RenewalFormProps) {
   const [step, setStep] = useState<'search' | 'confirm' | 'payment'>('search');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialMobile || '');
   const [searching, setSearching] = useState(false);
   const [foundMember, setFoundMember] = useState<UserProfile | null>(null);
   const [transactionId, setTransactionId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (initialMobile) {
+      const runAutoSearch = async () => {
+        setSearching(true);
+        try {
+          const qMob = query(collection(db, 'users'), where('mobile', '==', initialMobile), limit(1));
+          const snapMob = await getDocs(qMob);
+          const docSnap = snapMob.docs[0];
+          if (docSnap) {
+            setFoundMember({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+            setStep('confirm');
+          }
+        } catch (e) {
+          console.error("Auto search from landing page failed", e);
+        } finally {
+          setSearching(false);
+        }
+      };
+      runAutoSearch();
+    }
+  }, [initialMobile]);
 
   const handleSearch = async () => {
     if (!searchQuery) {
@@ -32,8 +55,8 @@ export default function RenewalForm({ onBack, onSuccess }: RenewalFormProps) {
     setSearching(true);
     try {
       // Search by membershipId OR mobile
-      const qId = query(collection(db, 'users'), where('membershipId', '==', searchQuery.toUpperCase()));
-      const qMob = query(collection(db, 'users'), where('mobile', '==', searchQuery));
+      const qId = query(collection(db, 'users'), where('membershipId', '==', searchQuery.toUpperCase()), limit(1));
+      const qMob = query(collection(db, 'users'), where('mobile', '==', searchQuery), limit(1));
       
       const [snapId, snapMob] = await Promise.all([getDocs(qId), getDocs(qMob)]);
       

@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
-import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2 } from 'lucide-react';
+import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
@@ -62,6 +62,17 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [prefilledMobile, setPrefilledMobile] = useState('');
+
+  const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && (
+    user.renewalPending ||
+    !user.expiryDate ||
+    (() => {
+      const exp = user.expiryDate;
+      const d = exp?.toDate ? exp.toDate() : (exp?.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+      return isNaN(d.getTime()) ? true : d.getTime() < Date.now();
+    })()
+  );
 
   useEffect(() => {
     const unsub = subscribeToOrgSettings((settings) => {
@@ -130,7 +141,28 @@ export default function App() {
     } catch (error: any) {
       console.error("Google login error:", error);
       setView('login');
-      toast.error('Google sign-in failed. Please try again.', { id: loadingToast });
+      const isCustomDomain = typeof window !== 'undefined' && 
+        !window.location.origin.includes('vercel.app') && 
+        !window.location.origin.includes('localhost') && 
+        !window.location.origin.includes('127.0.0.1') && 
+        !window.location.origin.includes('ais-');
+
+      if (error?.code === 'auth/unauthorized-domain' || isCustomDomain) {
+        toast.error(
+          'ഗൂഗിൾ വൈരിഫൈഡ് ലോഗിൻ നേരിട്ട് പ്രവർത്തിക്കില്ല! കസ്റ്റം ഡൊമൈൻ ആയതു കൊണ്ട് ഗൂഗിൾ സുരക്ഷാ നിയമങ്ങൾ ഇതിനെ തടയുന്നു.', 
+          { 
+            id: loadingToast,
+            duration: 15000, 
+            description: 'പരിഹാരം: ദയവായി https://hcrs-kappa.vercel.app ഓപ്പൺ ചെയ്ത് ഗൂഗിൾ ലോഗിൻ വഴി കയറി മുകളിൽ കാണുന്ന "Set Domain PIN" വഴി നിങ്ങളുടെ പാസ്‌വേഡ് സെറ്റ് ചെയ്യുക. ശേഷം നിങ്ങളുടെ ഇമെയിലും ആ പാസ്‌വേഡും ഉപയോഗിച്ച് നേരിട്ട് www.hcrs.in ലോഗിൻ ചെയ്യുക!',
+            action: {
+              label: 'Vercel fallback വഴി തുറക്കുക',
+              onClick: () => window.open('https://hcrs-kappa.vercel.app', '_blank')
+            }
+          }
+        );
+      } else {
+        toast.error('Google sign-in failed. Please try again.', { id: loadingToast });
+      }
     }
   };
   useEffect(() => {
@@ -328,6 +360,28 @@ export default function App() {
             freshData.isAdmin = true;
             freshData.status = 'active';
           }
+          
+          // Backport missing district to Firestore if missing on the document
+          if (!freshData.district) {
+            let detectedDist = '';
+            if (currentEmail.startsWith('hcrs')) {
+              const prefix = currentEmail.split('@')[0].replace('hcrs', '').toLowerCase();
+              const district = DISTRICTS.find(d => d.name.toLowerCase() === prefix);
+              if (district) detectedDist = district.code;
+            }
+            if (!detectedDist) {
+              const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
+              if (storedIntent) {
+                const resolvedCode = getDistrictCode(storedIntent);
+                if (resolvedCode && resolvedCode !== 'OTH') detectedDist = resolvedCode;
+              }
+            }
+            if (detectedDist) {
+              freshData.district = detectedDist;
+              updateDoc(doc(db, 'users', authUser.uid), { district: detectedDist })
+                .catch(e => console.error("Failed to backport missing district:", e));
+            }
+          }
           userData = freshData;
         } else if (isAdminEmail) {
           // Auto-detect district from email for district admins
@@ -336,6 +390,13 @@ export default function App() {
             const prefix = currentEmail.split('@')[0].replace('hcrs', '').toLowerCase();
             const district = DISTRICTS.find(d => d.name.toLowerCase() === prefix);
             if (district) autoDistrict = district.code;
+          }
+          if (!autoDistrict) {
+            const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
+            if (storedIntent) {
+              const resolvedCode = getDistrictCode(storedIntent);
+              if (resolvedCode && resolvedCode !== 'OTH') autoDistrict = resolvedCode;
+            }
           }
 
           userData = {
@@ -354,6 +415,15 @@ export default function App() {
         }
 
         if (userData) {
+          // Resolve stored district intent to fix district dashboard access
+          const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
+          if (storedIntent) {
+            const resolvedCode = getDistrictCode(storedIntent);
+            if (resolvedCode && resolvedCode !== 'OTH') {
+              userData.district = resolvedCode;
+            }
+          }
+
           setUser(prev => {
             if (JSON.stringify(prev) === JSON.stringify(userData)) return prev;
             return userData;
@@ -369,7 +439,13 @@ export default function App() {
           } else if (isOperator) {
             setView('operator');
           } else {
-            if (view !== 'register' && view !== 'renewal') setView('card');
+            const claimRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_claim_redirect') === 'true' : false;
+            if (claimRedirect) {
+              if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_claim_redirect');
+              setView('support');
+            } else if (view !== 'register' && view !== 'renewal') {
+              setView('card');
+            }
           }
 
           if (isAdmin || isOperator) {
@@ -427,10 +503,12 @@ export default function App() {
 
 
   const handleAcceptTerms = () => {
+    setPrefilledMobile('');
     setView('register');
   };
 
   const handleRenewClick = () => {
+    setPrefilledMobile('');
     setView('renewal');
   };
 
@@ -448,7 +526,7 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (values: { email: string, pin: string }) => {
+  const handleLogin = async (values: { email: string, pin: string }, originView: 'login' | 'landing' = 'login'): Promise<boolean> => {
     const loadingToast = toast.loading('Logging you in...');
     let targetEmail = (values.email || '').trim().toLowerCase();
     const trimmedPin = (values.pin || '').trim();
@@ -477,10 +555,11 @@ export default function App() {
       console.log("Auth sign-in successful for:", authResult.user.uid);
       
       toast.success('Login Successful! (ലോഗിൻ വിജയിച്ചു)', { id: loadingToast });
+      return true;
     } catch (error: any) {
       console.error("Login error details:", error.code, error.message);
       setIsLoggingIn(false);
-      setView('login'); 
+      setView(originView); 
       
       let errorMessage = 'Login failed. Please check your credentials.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
@@ -491,6 +570,7 @@ export default function App() {
         errorMessage = 'Too many attempts. Try again later. (പലതവണ ശ്രമിച്ചു, പിന്നീട് ശ്രമിക്കുക)';
       }
       toast.error(errorMessage, { id: loadingToast });
+      return false;
     } finally {
       setIsLoggingIn(false);
     }
@@ -832,10 +912,10 @@ export default function App() {
           email: finalEmail, // USE SANITIZED EMAIL
           registrationDate: serverTimestamp(),
           membershipId: finalId,
-          status: 'active',
+          status: isAdminAccount ? 'active' : 'pending',
           isPaid: true,
-          isApproved: true,
-          issueDate: serverTimestamp(), // Explicitly set issueDate for manual entries
+          isApproved: isAdminAccount ? true : false,
+          issueDate: isAdminAccount ? serverTimestamp() : null, // Explicitly set issueDate for manual entries if admin/op
           isAdmin: isAdminAccount,
           role: values.role || 'member',
           quota: values.quota || 0,
@@ -1140,6 +1220,15 @@ export default function App() {
           onRenew={handleRenewClick}
           onLoginClick={() => setView('login')} 
           onGalleryClick={() => setView('gallery')}
+          onRenewWithMobile={(mobile) => {
+            setPrefilledMobile(mobile);
+            setView('renewal');
+          }}
+          onRegisterWithMobile={(mobile) => {
+            setPrefilledMobile(mobile);
+            setView('register');
+          }}
+          onLoginDirect={(mobile, pin) => handleLogin({ email: mobile, pin }, 'landing')}
         />
       )}
 
@@ -1156,6 +1245,7 @@ export default function App() {
              onSubmit={handleRegistration} 
              districtQuotas={districtQuotas}
              districtQuotasUsed={districtQuotasUsed}
+             initialMobile={prefilledMobile}
            />
            <div className="text-center pb-12">
               <Button variant="ghost" onClick={() => setView('landing')} className="text-foreground/30 font-black uppercase text-[10px] tracking-widest hover:text-brand-blue transition-colors">
@@ -1173,6 +1263,7 @@ export default function App() {
                setUser(member);
                setView('card');
              }} 
+             initialMobile={prefilledMobile}
            />
         </div>
       )}
@@ -1222,24 +1313,89 @@ export default function App() {
             <>
               <div className="w-full flex flex-col items-center">
                 {/* URGENT ACTIONS - MOVED TO TOP */}
-                <div className="w-full max-w-xs mb-10">
-                  <Button 
-                    onClick={() => setView('support')}
-                    className="w-full h-18 rounded-[28px] font-black bg-brand-magenta text-white shadow-2xl shadow-brand-magenta/30 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-brand-magenta/40"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
-                       <ShieldAlert className="w-5 h-5" />
+                <div className="w-full max-w-sm mb-10">
+                  {user.renewalPending ? (
+                    <div className="w-full bg-amber-50 rounded-[28px] border-2 border-amber-200/50 p-6 text-center shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
+                      <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-4 text-amber-500">
+                        <Clock className="w-6 h-6 animate-pulse" />
+                      </div>
+                      <h3 className="text-lg font-black text-slate-850 uppercase tracking-tight leading-tight">
+                        പുതുക്കൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                      </h3>
+                      <p className="text-[10px] font-black tracking-widest text-amber-500 uppercase mt-2">RENEWAL PENDING APPROVAL</p>
+                      
+                      <p className="text-slate-600 font-semibold text-[11px] leading-relaxed mt-4">
+                        താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ഉടൻ ക്ലൈം ഫോം ലഭ്യമാകും.
+                        <br/>
+                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Our admin team is verifying your ₹100 renewal receipt. The claim form unlocks once completed.</span>
+                      </p>
                     </div>
-                    Support & Claim Form
-                  </Button>
-                  <div className="flex flex-col items-center mt-4 space-y-1">
-                    <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.2em] animate-pulse">Action Required</p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">ക്ലൈം ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
-                  </div>
+                  ) : isExpired ? (
+                    <div className="w-full bg-rose-50 border-2 border-brand-magenta/30 p-6 rounded-[28px] text-center shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/5 blur-xl pointer-events-none" />
+                      <div className="h-12 w-12 rounded-full bg-brand-magenta/15 border border-brand-magenta/20 flex items-center justify-center mx-auto mb-4 text-brand-magenta">
+                        <AlertTriangle className="w-6 h-6 animate-bounce" />
+                      </div>
+                      
+                      <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight leading-none">
+                        അംഗത്വ കാലാവധി കഴിഞ്ഞിരിക്കുന്നു!
+                      </h3>
+                      <p className="text-[10px] font-black tracking-widest text-brand-magenta uppercase mt-2">MEMBERSHIP EXPIRED / RENEWAL REQUIRED</p>
+                      
+                      <p className="text-slate-500 font-semibold text-xs leading-relaxed mt-4">
+                        താങ്കളുടെ അംഗത്വം കാലാവധി കഴിഞ്ഞിരിക്കുന്നു. ക്ലൈം ഫോം ഉപയോഗിക്കുന്നതിനും ഐഡി കാർഡ് പുതുക്കുന്നതിനും ₹100 അടയ്ക്കുക.
+                        <br/>
+                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Your membership validity has expired. To lock active card features and support claims, please renew now.</span>
+                      </p>
+
+                      <Button 
+                        onClick={() => {
+                          setPrefilledMobile(user.mobile);
+                          setView('renewal');
+                        }}
+                        className="w-full h-14 rounded-2xl font-black bg-brand-magenta text-white shadow-xl shadow-brand-magenta/30 hover:scale-[1.01] active:scale-95 transition-all mt-6 text-xs uppercase tracking-widest cursor-pointer"
+                      >
+                        അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button 
+                        onClick={() => setView('support')}
+                        className="w-full h-18 rounded-[28px] font-black bg-brand-magenta text-white shadow-2xl shadow-brand-magenta/30 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-brand-magenta/40"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
+                           <ShieldAlert className="w-5 h-5" />
+                        </div>
+                        Support & Claim Form
+                      </Button>
+                      <div className="flex flex-col items-center mt-4 space-y-1">
+                        <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.2em] animate-pulse">Action Required</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">ക്ലൈം ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="text-center mb-10 max-w-md">
-                  {user.status === 'active' ? (
+                  {user.renewalPending ? (
+                    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
+                      <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-8 py-3 rounded-full text-[10px] font-black shadow-lg mb-6 tracking-[0.2em] uppercase flex items-center gap-1.5">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Verification Pending
+                      </div>
+                      <h2 className="text-3xl font-black text-brand-magenta tracking-tight leading-none mb-2">Renewal <span className="text-brand-blue italic">Pending</span></h2>
+                      <p className="text-foreground/40 text-[10px] font-black tracking-widest uppercase">Verification in Progress</p>
+                    </div>
+                  ) : isExpired ? (
+                    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
+                      <div className="bg-rose-500/10 text-rose-500 border border-rose-500/20 px-8 py-3 rounded-full text-[10px] font-black shadow-lg mb-6 tracking-[0.2em] uppercase flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 animate-pulse" /> Expired (കാലാവധി കഴിഞ്ഞു)
+                      </div>
+                      <h2 className="text-3xl font-black text-brand-magenta tracking-tight leading-none mb-2">Renewal <span className="text-brand-blue italic">Required</span></h2>
+                      <p className="text-foreground/40 text-[10px] font-black tracking-widest uppercase">Highrich Community Revival Society</p>
+                    </div>
+                  ) : user.status === 'active' ? (
                     <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
                       {showCelebration && (
                         <div className="mb-4 animate-bounce">

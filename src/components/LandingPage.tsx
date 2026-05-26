@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../lib/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
 import { 
   ShieldCheck, 
   ChevronRight, 
@@ -15,6 +19,7 @@ import {
   Mail, 
   Globe, 
   LayoutGrid, 
+  AlertTriangle,
   Image as ImageIcon 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,14 +36,24 @@ interface LandingPageProps {
   onRenew: () => void;
   onLoginClick: () => void;
   onGalleryClick: () => void;
+  onRenewWithMobile?: (mobile: string) => void;
+  onRegisterWithMobile?: (mobile: string) => void;
+  onLoginDirect?: (mobile: string, pin: string) => Promise<boolean>;
 }
 
-export default function LandingPage({ onAccept, onRenew, onLoginClick, onGalleryClick }: LandingPageProps) {
-  const [stage, setStage] = useState<'landing' | 'guidelines'>('landing');
+export default function LandingPage({ onAccept, onRenew, onLoginClick, onGalleryClick, onRenewWithMobile, onRegisterWithMobile, onLoginDirect }: LandingPageProps) {
+  const [stage, setStage] = useState<'landing' | 'guidelines' | 'claim_check'>('landing');
   const [agreed, setAgreed] = useState(false);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // States for claim lookup system
+  const [claimMobile, setClaimMobile] = useState('');
+  const [claimPin, setClaimPin] = useState('');
+  const [checkingClaim, setCheckingClaim] = useState(false);
+  const [loggingInClaim, setLoggingInClaim] = useState(false);
+  const [claimResult, setClaimResult] = useState<'found' | 'not_found' | 'registered' | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -157,7 +172,7 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-20 z-10 relative"
           >
             {/* Primary Action Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <motion.button 
                 whileHover={{ y: -3 }}
                 onClick={() => setStage('guidelines')}
@@ -192,6 +207,29 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                   </p>
                   <p className="text-slate-400 font-medium text-[10px] mt-3 block leading-relaxed max-w-[280px]">
                     Renew your existing membership card easily with quick online processing.
+                  </p>
+                </div>
+              </motion.button>
+
+              <motion.button 
+                whileHover={{ y: -3 }}
+                onClick={() => {
+                  setClaimMobile('');
+                  setClaimResult(null);
+                  setStage('claim_check');
+                }}
+                className="group relative bg-white/80 p-8 rounded-[28px] border border-slate-200/50 hover:border-brand-magenta/20 shadow-sm hover:shadow-md transition-all text-center flex flex-col items-center gap-6"
+              >
+                <div className="bg-brand-magenta/5 p-6 rounded-2xl group-hover:bg-brand-magenta group-hover:text-white transition-colors text-brand-magenta">
+                  <ShieldCheck className="w-10 h-10" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Support Claim</h2>
+                  <p className="text-brand-magenta font-black uppercase text-[9px] tracking-widest mt-2.5 bg-brand-magenta/5 px-3 py-1 rounded-full inline-block">
+                    ക്ലയിം ഫോം - ക്ലിക്ക് ചെയ്യുക
+                  </p>
+                  <p className="text-slate-400 font-medium text-[10px] mt-3 block leading-relaxed max-w-[280px]">
+                    Enter your mobile number to check eligibility and proceed to your claim.
                   </p>
                 </div>
               </motion.button>
@@ -393,12 +431,11 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                   <div className="flex gap-4 font-bold uppercase tracking-wider text-[9px]">
                     <a href="#" className="hover:text-slate-600 transition-colors">Privacy</a>
                     <a href="#" className="hover:text-slate-600 transition-colors">Terms</a>
-                    <a href="#" className="hover:text-slate-600 transition-colors">Charter</a>
                   </div>
                </div>
             </footer>
           </motion.div>
-        ) : (
+        ) : stage === 'guidelines' ? (
           <motion.div
             key="guidelines"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -467,6 +504,224 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                   Proceed to registry form
                 </Button>
               </CardFooter>
+            </Card>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="claim_check"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="max-w-2xl mx-auto px-4 pb-24 pt-4"
+          >
+            <Card className="border border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-premium overflow-hidden rounded-[24px]">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 pb-6 pt-8 px-8">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-xl font-black flex items-center gap-2.5 text-slate-800 uppercase tracking-tight">
+                    <ShieldCheck className="w-6 h-6 text-brand-magenta" />
+                    യൂസർ വേരിഫിക്കേഷൻ (Support Claim)
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setStage('landing');
+                      setClaimResult(null);
+                    }} 
+                    className="rounded-full w-9 h-9 p-0 hover:bg-slate-150 border border-slate-200/60 text-slate-500"
+                  >
+                     <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-8 pb-6 px-8">
+                {!claimResult ? (
+                  <div className="space-y-6">
+                    <div className="bg-brand-magenta/5 border border-brand-magenta/10 p-5 rounded-2xl">
+                      <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                        ക്ലൈം ഫോം ആക്സസ് ചെയ്യുന്നതിനായി ദയവായി നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകി വേരിഫൈ ചെയ്യുക.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 block mt-1 uppercase font-bold tracking-wider">Please enter your registered mobile number to check eligibility and proceed to your claim.</span>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Mobile Number (മൊബൈൽ നമ്പർ)</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+                        <Input 
+                          type="tel"
+                          maxLength={10}
+                          value={claimMobile}
+                          onChange={(e) => setClaimMobile(e.target.value.replace(/\D/g, ''))}
+                          placeholder="e.g. 9645934571"
+                          className="pl-12 h-12 bg-white border border-slate-200 focus:border-brand-magenta/50 transition-all rounded-xl font-bold font-mono text-lg"
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={async () => {
+                        if (!claimMobile || !/^\d{10}$/.test(claimMobile)) {
+                          toast.error('സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക / Please enter a valid 10-digit mobile number');
+                          return;
+                        }
+                        setCheckingClaim(true);
+                        setClaimResult(null);
+                        try {
+                          const q = query(collection(db, 'users'), where('mobile', '==', claimMobile.trim()), limit(1));
+                          const querySnapshot = await getDocs(q);
+                          if (!querySnapshot.empty) {
+                            toast.success('മൊബൈൽ നമ്പർ കണ്ടെത്തി! നിങ്ങളുടെ Password (PIN) അടിക്കുക.');
+                            setClaimResult('registered');
+                          } else {
+                            toast.info('രജിസ്റ്റർ ചെയ്യാത്ത മൊബൈൽ നമ്പർ! പുതിയ മെമ്പർഷിപ്പിനായി ₹200 പെയ്മെന്റിലേക്ക് ഓട്ടോമാറ്റിക് ആയി മാറുന്നു...');
+                            setClaimResult('not_found');
+                            setTimeout(() => {
+                              onRegisterWithMobile?.(claimMobile);
+                            }, 1500);
+                          }
+                        } catch (e) {
+                          console.error(e);
+                          toast.error('വേരിഫിക്കേഷൻ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.');
+                        } finally {
+                          setCheckingClaim(false);
+                        }
+                      }}
+                      disabled={checkingClaim}
+                      className="w-full h-12 font-black rounded-xl transition-all shadow-md uppercase tracking-widest text-xs bg-brand-magenta text-white hover:bg-brand-magenta/95"
+                    >
+                      {checkingClaim ? 'പരിശോധിക്കുന്നു (Checking...)' : 'മൊബൈൽ നമ്പർ വേരിഫൈ ചെയ്യുക (Verify Mobile)'}
+                    </Button>
+                  </div>
+                ) : claimResult === 'registered' ? (
+                  <div className="space-y-6 text-left py-4">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-brand-magenta/10 rounded-full flex items-center justify-center mx-auto border border-brand-magenta/20 text-brand-magenta mb-4">
+                        <ShieldCheck className="w-8 h-8 animate-pulse" />
+                      </div>
+                      <h3 className="text-xl font-black text-brand-magenta uppercase tracking-tight leading-none text-slate-900">
+                        നിലവിലുള്ള ഒഫീഷ്യൽ മെമ്പർ!
+                      </h3>
+                      <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider mt-1">Please enter Security PIN to access your ID Card and Claim Form.</p>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Registered Number</p>
+                        <p className="text-base font-black text-slate-700 tracking-tight font-mono mt-1">{claimMobile}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setClaimResult(null);
+                          setClaimMobile('');
+                          setClaimPin('');
+                        }}
+                        className="text-[10px] text-brand-magenta font-black uppercase tracking-wider hover:bg-slate-100"
+                      >
+                        Change Number
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Security PIN (പാസ്‌വേഡ് അടിക്കുക)</Label>
+                      <Input 
+                        type="password"
+                        maxLength={12}
+                        value={claimPin}
+                        onChange={(e) => setClaimPin(e.target.value)}
+                        placeholder="••••"
+                        className="h-12 bg-white border border-slate-200 focus:border-brand-magenta/50 transition-all rounded-xl font-bold text-center text-lg tracking-widest font-mono text-slate-800"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex flex-col gap-3">
+                      <Button 
+                        onClick={async () => {
+                          if (!claimPin || claimPin.length < 4) {
+                            toast.error('സാധുവായ PIN നൽകുക / Please enter your secure PIN');
+                            return;
+                          }
+                          setLoggingInClaim(true);
+                          try {
+                            if (typeof window !== 'undefined') {
+                              sessionStorage.setItem('hcrs_claim_redirect', 'true');
+                            }
+                            const success = await onLoginDirect?.(claimMobile, claimPin);
+                            if (success === false) {
+                              if (typeof window !== 'undefined') {
+                                sessionStorage.removeItem('hcrs_claim_redirect');
+                              }
+                              toast.error('PIN തെറ്റാണ്. ദയവായി വീണ്ടും ശ്രമിക്കുക. (Invalid security PIN. Please try again.)');
+                            }
+                          } catch (err) {
+                            if (typeof window !== 'undefined') {
+                              sessionStorage.removeItem('hcrs_claim_redirect');
+                            }
+                            console.error(err);
+                          } finally {
+                            setLoggingInClaim(false);
+                          }
+                        }}
+                        disabled={loggingInClaim}
+                        className="w-full h-12 bg-brand-magenta text-white hover:bg-brand-magenta/90 font-black uppercase text-[11px] tracking-wider rounded-xl shadow-lg shadow-brand-magenta/10 flex items-center justify-center gap-2"
+                      >
+                        {loggingInClaim ? 'ലോഗിൻ ചെയ്യുന്നു (Logging inside...)' : 'ലോഗിൻ ചെയ്യുക (Secure Login)'}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          setClaimResult(null);
+                          setClaimMobile('');
+                          setClaimPin('');
+                        }}
+                        className="w-full h-11 border border-slate-200 text-slate-500 font-black uppercase text-[10px]"
+                      >
+                        Return Home
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 text-center py-4">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto border border-slate-200 text-slate-500">
+                      <UserPlus className="w-8 h-8" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-black text-brand-magenta uppercase tracking-tight leading-none text-slate-900">
+                        രജിസ്റ്റർ ചെയ്യാത്ത മൊബൈൽ നമ്പർ!
+                      </h3>
+                      <p className="text-brand-magenta font-bold text-xs uppercase tracking-wider">Unregistered Mobile Number</p>
+                    </div>
+
+                    <p className="text-slate-500 font-semibold text-xs leading-relaxed max-w-md mx-auto">
+                      ഈ മൊബൈൽ നമ്പർ നിലവിൽ ഇതിൽ രജിസ്റ്റർ ചെയ്തിട്ടില്ല. രജിസ്റ്റർ ചെയ്ത മെമ്പർമാർക്ക് മാത്രമേ ക്ലൈം ഫയൽ ചെയ്യാൻ സാധിക്കുകയുള്ളൂ. ദയവായി പുതിയ മെമ്പർഷിപ്പ് എടുത്ത് ₹200 പെയ്മെന്റിലേക്ക് മാറുക.
+                      <br/>
+                      <span className="text-[10px] text-slate-400 font-bold block mt-2 uppercase">This mobile number is not registered. To apply for a claim form, please register as a new member with a payment of ₹200 first.</span>
+                    </p>
+
+                    <div className="pt-4 flex flex-col sm:flex-row gap-3">
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          setClaimResult(null);
+                          setClaimMobile('');
+                        }}
+                        className="flex-1 h-11 border border-slate-200 text-slate-500 font-black uppercase text-[10px]"
+                      >
+                        വീണ്ടും നോക്കുക (Search Again)
+                      </Button>
+                      <Button 
+                        onClick={() => onRegisterWithMobile?.(claimMobile)}
+                        className="flex-1 h-11 bg-brand-magenta text-white hover:bg-brand-magenta/90 font-black uppercase text-[10px] tracking-wider"
+                      >
+                         പുതിയ അംഗത്വം എടുക്കുക ₹200 (Register Now)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </motion.div>
         )}

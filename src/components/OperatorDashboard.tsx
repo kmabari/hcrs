@@ -130,11 +130,12 @@ export default function OperatorDashboard({
     return {
       name: '',
       mobile: '',
+      state: 'Kerala',
       district: user?.district || DISTRICTS[0].code,
       assemblyConstituency: CONSTITUENCIES[user?.district || DISTRICTS[0].code]?.[0] || '',
       address: '',
       details: '',
-      entryBy: '', // Added as requested
+      entryBy: user?.name || 'Operator', // Added as requested
       transactionId: 'CASH/OFFLINE',
       email: '',
       pin: '123456',
@@ -238,6 +239,7 @@ export default function OperatorDashboard({
         setFormData({
           name: '',
           mobile: '',
+          state: 'Kerala',
           email: '',
           address: '',
           pincode: '',
@@ -246,7 +248,7 @@ export default function OperatorDashboard({
           assemblyConstituency: user.district ? (CONSTITUENCIES[user.district]?.[0] || '') : '',
           bloodGroup: BLOOD_GROUPS[0],
           details: '',
-          entryBy: user.name || '',
+          entryBy: user.name || 'Operator',
           transactionId: 'CASH/OFFLINE',
           pin: '123456',
         });
@@ -419,7 +421,12 @@ export default function OperatorDashboard({
                           <TableRow key={member.uid} className="hover:bg-slate-50/40 transition-colors border-slate-100">
                             <TableCell className="py-4 font-sans">
                               <div>
-                                <p className="font-black text-slate-800 leading-tight text-sm">{member.name}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-black text-slate-800 leading-tight text-sm">{member.name}</p>
+                                  {member.status === 'pending' && (
+                                    <span className="text-[9px] font-black bg-orange-50 text-orange-600 border border-orange-100 rounded px-1.5 py-0.5 uppercase tracking-wide">Pending</span>
+                                  )}
+                                </div>
                                 <p className="text-[11px] text-slate-450 font-black font-mono mt-1 flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> {member.mobile}</p>
                               </div>
                             </TableCell>
@@ -460,8 +467,9 @@ export default function OperatorDashboard({
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
+                                  disabled={member.status === 'pending'}
                                   onClick={() => handleShareCard(member)}
-                                  className="h-9 px-2 text-brand-blue hover:bg-brand-blue/5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1"
+                                  className="h-9 px-2 text-brand-blue hover:bg-brand-blue/5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 disabled:opacity-40"
                                 >
                                   <Share2 className="w-3.5 h-3.5" />
                                   Share
@@ -867,24 +875,17 @@ export default function OperatorDashboard({
                           maxLength={10}
                         />
                       </div>
+                      {/* State (സംസ്ഥാനം) Selection */}
                       <div className="space-y-2">
-                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Details (വിവരങ്ങൾ)</Label>
-                         <Input 
-                          value={formData.details || ""}
-                          onChange={(e) => setFormData({...formData, details: e.target.value})}
-                          className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold focus:border-brand-blue/20" 
-                          placeholder="Address or other details"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Entry By (പേരും മെയിൽ ഐഡിയും)</Label>
-                         <Input 
-                          required
-                          value={formData.entryBy}
-                          onChange={(e) => setFormData({...formData, entryBy: e.target.value})}
-                          className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold focus:border-brand-blue/20" 
-                          placeholder="Your Name / Email"
-                        />
+                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">State (സംസ്ഥാനം)</Label>
+                         <Select value={formData.state || "Kerala"} onValueChange={(val) => setFormData({...formData, state: val})}>
+                           <SelectTrigger className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 font-sans">
+                             <SelectValue placeholder="Select State" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="Kerala">Kerala</SelectItem>
+                           </SelectContent>
+                         </Select>
                       </div>
                     </div>
 
@@ -1131,24 +1132,17 @@ export default function OperatorDashboard({
                               maxLength={10}
                            />
                         </div>
+                        {/* State (സംസ്ഥാനം) Selection */}
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Details (വിവരങ്ങൾ)</Label>
-                           <Input 
-                              value={formData.details}
-                              onChange={(e) => setFormData({...formData, details: e.target.value})}
-                              className="h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold focus:border-brand-blue/20 px-6" 
-                              placeholder="Address or other details"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Entry By (പേരും മെയിൽ ഐഡിയും)</Label>
-                           <Input 
-                              required
-                              value={formData.entryBy}
-                              onChange={(e) => setFormData({...formData, entryBy: e.target.value})}
-                              className="h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold focus:border-brand-blue/20 px-6" 
-                              placeholder="Your Name / Email"
-                           />
+                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">State (സംസ്ഥാനം)</Label>
+                           <Select value={formData.state || "Kerala"} onValueChange={(val) => setFormData({...formData, state: val})}>
+                             <SelectTrigger className="h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold px-6 text-slate-700">
+                               <SelectValue placeholder="Select State" />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="Kerala">Kerala</SelectItem>
+                             </SelectContent>
+                           </Select>
                         </div>
                       </div>
 

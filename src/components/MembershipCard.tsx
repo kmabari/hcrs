@@ -122,13 +122,39 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
+  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && (
+    member.renewalPending ||
+    !member.expiryDate ||
+    (() => {
+      const exp = member.expiryDate;
+      const d = exp?.toDate ? exp.toDate() : (exp?.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+      return isNaN(d.getTime()) ? true : d.getTime() < Date.now();
+    })()
+  );
+
   const getRenewalDate = (date: any) => {
+    // If we have an explicit expiry date, use that!
+    const exp = member.expiryDate;
+    if (exp) {
+      try {
+        const d = exp?.toDate ? exp.toDate() : (exp?.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+        if (!isNaN(d.getTime())) {
+          const isPast = d.getTime() < Date.now();
+          return `${d.toLocaleDateString('en-IN')}${isPast ? ' (EXPIRED)' : ''}`;
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
+    
+    // Fallback if no expiry date on user profile
     if (!date) return '---';
     try {
       const d = date?.toDate ? date.toDate() : (date?.seconds ? new Date(date.seconds * 1000) : new Date(date));
       if (isNaN(d.getTime())) return '---';
       d.setFullYear(d.getFullYear() + 1);
-      return d.toLocaleDateString('en-IN');
+      const isPast = d.getTime() < Date.now();
+      return `${d.toLocaleDateString('en-IN')}${isPast ? ' (EXPIRED)' : ''}`;
     } catch (e) {
       return '---';
     }
@@ -178,6 +204,13 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
           ref={cardRef} 
           className="w-[345px] h-[610px] bg-white rounded-[24px] text-slate-800 relative shadow-[0_24px_50px_rgba(0,0,0,0.12)] overflow-hidden font-sans border border-slate-200 flex flex-col justify-between shrink-0 select-none"
         >
+          {isExpired && (
+            <div className="absolute inset-0 bg-red-650/15 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
+              <div className="bg-red-600/90 text-white font-black uppercase text-[10px] tracking-[0.2em] px-5 py-2.5 rounded-xl shadow-2xl -rotate-12 border border-red-500/30 flex items-center gap-2 select-none scale-110">
+                <Clock className="w-4 h-4 animate-pulse text-white" /> EXPIRED (കാലാവധി കഴിഞ്ഞു)
+              </div>
+            </div>
+          )}
           {/* Top Premium Card Margin Strip */}
           <div className="bg-brand-magenta h-1.5 w-full absolute top-0 left-0 z-30" />
           
