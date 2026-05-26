@@ -978,16 +978,20 @@ export default function App() {
 
         const isBulk = orgSettings?.registrationMode === 'bulk';
         const isAdminAccount = values.role === 'admin' || values.role === 'operator';
+        const expiry = new Date();
+        expiry.setFullYear(expiry.getFullYear() + 1);
+
         const offlineMemberData = {
           uid,
           ...values,
           email: finalEmail, // USE SANITIZED EMAIL
           registrationDate: serverTimestamp(),
           membershipId: finalId,
-          status: isAdminAccount ? 'active' : 'pending',
+          status: 'active', // Auto-approved
           isPaid: true,
-          isApproved: isAdminAccount ? true : false,
-          issueDate: isAdminAccount ? serverTimestamp() : null, // Explicitly set issueDate for manual entries if admin/op
+          isApproved: true,
+          issueDate: serverTimestamp(),
+          expiryDate: expiry,
           isAdmin: isAdminAccount,
           role: values.role || 'member',
           quota: values.quota || 0,

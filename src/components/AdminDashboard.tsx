@@ -171,9 +171,33 @@ export default function AdminDashboard({
     return byName ? byName.code : normalized;
   };
 
+  const getAssemblyCode = (name: string) => {
+    if (!name) return 'OTH';
+    const clean = name.trim().toUpperCase().replace(/\s/g, '');
+    
+    if (clean === 'THALASSERY') return 'TSY';
+    if (clean === 'KANNUR') return 'KNR';
+    if (clean === 'TALIPARAMBA') return 'TBA';
+    if (clean === 'IRITTY') return 'IRY';
+    if (clean === 'PAYYANUR') return 'PNR';
+    
+    if (clean === 'KOTTAKKAL') return 'KTK';
+    if (clean === 'MALAPPURAM') return 'MPM';
+    if (clean === 'PERINTHALMANNA') return 'PMN';
+    if (clean === 'NILAMBUR') return 'NBR';
+    
+    if (clean === 'KOCHI') return 'KOC';
+    if (clean === 'ALUVA') return 'ALV';
+    if (clean === 'MUVATTUPUZHA') return 'MVP';
+    if (clean === 'ANGAMALY') return 'AMY';
+    
+    return clean.substring(0, 3);
+  };
+
   const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
   
   const isSecondary = !isSuperAdmin && (user?.role === 'admin' || user?.role === 'operator');
+  const autoApprovedRun = useRef(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [promoSearchTerm, setPromoSearchTerm] = useState('');
@@ -770,6 +794,46 @@ export default function AdminDashboard({
       return matchesSearch && matchesDistrict && matchesSource;
     });
   }, [members, searchTerm, districtFilter, sourceFilter]);
+
+  useEffect(() => {
+    if (autoApprovedRun.current || pendingRequests.length === 0) return;
+    autoApprovedRun.current = true;
+    
+    const runAutoApprovals = async () => {
+      console.log(`Auto-approving ${pendingRequests.length} pending members...`);
+      let autoCount = 0;
+      for (const m of pendingRequests) {
+        try {
+          const paddedSerial = String(m.serialNo || 1000).padStart(3, '0');
+          const distCode = (m.district || 'MLP').toUpperCase();
+          const assemblyCode = getAssemblyCode(m.assemblyConstituency || '');
+          const finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+          
+          const expiry = new Date();
+          expiry.setFullYear(expiry.getFullYear() + 1);
+
+          await updateDoc(doc(db, 'users', m.uid), {
+            status: 'active',
+            isApproved: true,
+            membershipId: finalId,
+            issueDate: serverTimestamp(),
+            expiryDate: expiry,
+            waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent'
+          });
+          autoCount++;
+        } catch (e) {
+          console.error("Auto approval error:", m.uid, e);
+        }
+      }
+      if (autoCount > 0) {
+        toast.success(`നിലവിലെ പെൻഡിങ് എല്ലാ അംഗങ്ങളെയും സിസ്റ്റം സ്വയം അപ്രൂവ് ചെയ്തു കഴിഞ്ഞു! (${autoCount} currently pending members auto-approved and moved to list!)`, {
+          duration: 7000
+        });
+      }
+    };
+    
+    runAutoApprovals();
+  }, [pendingRequests.length]);
 
   const filteredClaims = useMemo(() => {
     const term = claimSearchTerm.toLowerCase().trim();
@@ -1940,6 +2004,50 @@ export default function AdminDashboard({
           <TabsContent value="requests">
              <Card className="border-none shadow-sm overflow-hidden">
                 <div className="bg-white">
+                  {pendingRequests.length > 0 && (
+                    <div className="bg-slate-50 border-b border-slate-100 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="text-left">
+                        <h4 className="font-extrabold text-slate-800 text-sm">Pending Membership Approval (അപ്പ്രൂവൽ ചെയ്യാൻ ബാക്കിയുള്ളവർ)</h4>
+                        <p className="text-xs text-slate-500">{pendingRequests.length} members are currently waiting for approval.</p>
+                      </div>
+                      <Button 
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to approve all ${pendingRequests.length} pending members now? (തീർച്ചയായും ഈ ${pendingRequests.length} അംഗങ്ങളെയും അപ്പ്രൂവ് ചെയ്യണമെന്നുണ്ടോ?)`)) {
+                            const loadToast = toast.loading('Approving all pending members...');
+                            try {
+                              let count = 0;
+                              for (const m of pendingRequests) {
+                                const paddedSerial = String(m.serialNo || 1000).padStart(3, '0');
+                                const distCode = (m.district || 'MLP').toUpperCase();
+                                const assemblyCode = getAssemblyCode(m.assemblyConstituency || '');
+                                const finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+                                
+                                const expiry = new Date();
+                                expiry.setFullYear(expiry.getFullYear() + 1);
+
+                                await updateDoc(doc(db, 'users', m.uid), {
+                                  status: 'active',
+                                  isApproved: true,
+                                  membershipId: finalId,
+                                  issueDate: serverTimestamp(),
+                                  expiryDate: expiry,
+                                  waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent'
+                                });
+                                count++;
+                              }
+                              toast.success(`Successfully approved ${count} pending members!`, { id: loadToast });
+                            } catch (error) {
+                              console.error("Bulk approval error:", error);
+                              toast.error("Bulk approval failed.", { id: loadToast });
+                            }
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 font-bold px-5 h-10 rounded-xl text-white text-xs uppercase tracking-wider shrink-0 flex items-center gap-2 shadow-sm transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> Approve All Pending / പെന്റിങ് എല്ലാം അപ്രൂവ് ചെയ്യുക
+                      </Button>
+                    </div>
+                  )}
                   {pendingRequests.length === 0 ? (
                     <div className="py-20 text-center">
                       <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
