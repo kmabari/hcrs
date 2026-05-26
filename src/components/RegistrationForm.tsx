@@ -117,6 +117,10 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                           <Input 
                             {...field} 
                             maxLength={10}
+                            onChange={(e) => {
+                              const cleaned = e.target.value.replace(/\D/g, '');
+                              field.onChange(cleaned);
+                            }}
                             placeholder="10-digit number" 
                             className={`pl-11 h-12 bg-white/60 border border-slate-200/80 focus:border-brand-blue focus:ring-0 focus:bg-white transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                           />

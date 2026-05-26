@@ -200,12 +200,19 @@ export default function OperatorDashboard({
       return;
     }
 
+    const cleanMobile = formData.mobile.trim().replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits. Please check.)');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const email = `${formData.mobile}@hcrs.society`;
+      const email = `${cleanMobile}@hcrs.society`;
       
       const resultUid = await (onAddMember({
         ...formData,
+        mobile: cleanMobile,
         email,
         registeredByName: formData.entryBy,
         certAdminName: formData.entryBy,
@@ -220,7 +227,7 @@ export default function OperatorDashboard({
         if (orgSettings?.registrationMode !== 'bulk') {
           sendWAMessage({
             name: formData.name,
-            mobile: formData.mobile,
+            mobile: cleanMobile,
             uid: resultUid,
             pin: '123456'
           });
@@ -230,7 +237,7 @@ export default function OperatorDashboard({
           id: resultUid,
           email,
           pin: '123456',
-          mobile: formData.mobile,
+          mobile: cleanMobile,
           name: formData.name
         });
         setShowSuccessModal(true);
@@ -264,7 +271,13 @@ export default function OperatorDashboard({
   const handleEditSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!editingMember) return;
-    onUpdate(editingMember.uid, editingMember);
+    const cleanMobile = (editingMember.mobile || '').replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
+      return;
+    }
+    const updatedMember = { ...editingMember, mobile: cleanMobile };
+    onUpdate(updatedMember.uid, updatedMember);
     setEditingMember(null);
   };
 
@@ -519,7 +532,8 @@ export default function OperatorDashboard({
                       id="edit-mobile" 
                       value={editingMember.mobile || ""} 
                       className="h-12 bg-slate-50 border-slate-200 rounded-xl font-bold font-mono text-sm"
-                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value})}
+                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value.replace(/\D/g, '')})}
+                      maxLength={10}
                     />
                   </div>
                 </div>
@@ -869,7 +883,7 @@ export default function OperatorDashboard({
                           required
                           type="tel"
                           value={formData.mobile || ""}
-                          onChange={(e) => setFormData({...formData, mobile: e.target.value})}
+                          onChange={(e) => setFormData({...formData, mobile: e.target.value.replace(/\D/g, '')})}
                           className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold focus:border-brand-blue/20" 
                           placeholder="10 Digit Number"
                           maxLength={10}
@@ -945,7 +959,8 @@ export default function OperatorDashboard({
                       id="edit-mobile" 
                       value={editingMember.mobile || ""} 
                       className="h-12 bg-slate-50 border-slate-200 rounded-xl font-bold"
-                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value})}
+                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value.replace(/\D/g, '')})}
+                      maxLength={10}
                     />
                   </div>
                 </div>
@@ -1126,7 +1141,7 @@ export default function OperatorDashboard({
                               required
                               type="tel"
                               value={formData.mobile}
-                              onChange={(e) => setFormData({...formData, mobile: e.target.value})}
+                              onChange={(e) => setFormData({...formData, mobile: e.target.value.replace(/\D/g, '')})}
                               className="h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold focus:border-brand-blue/20 px-6" 
                               placeholder="10 Digit Number"
                               maxLength={10}

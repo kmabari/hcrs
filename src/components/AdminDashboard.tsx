@@ -198,6 +198,12 @@ export default function AdminDashboard({
   // Custom submit for secondary admins to clarify expectations
   const handleSecondarySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const cleanMobile = (manualFormData.mobile || '').trim().replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits. Please check.)');
+      return;
+    }
     
     // Final check for quota
     const used = districtQuotasUsed[manualFormData.district] || 0;
@@ -210,8 +216,8 @@ export default function AdminDashboard({
     setIsSubmitting(true);
     try {
       const emailSuffix = Math.floor(1000 + Math.random() * 9000);
-      const finalEmail = manualFormData.email || `${manualFormData.mobile}@hcrs.society`;
-      const finalData = { ...manualFormData, email: finalEmail };
+      const finalEmail = manualFormData.email || `${cleanMobile}@hcrs.society`;
+      const finalData = { ...manualFormData, mobile: cleanMobile, email: finalEmail };
 
       const resultUid = await (onAddOffline(finalData) as unknown as Promise<string | null>);
       
@@ -220,7 +226,7 @@ export default function AdminDashboard({
         if (orgSettings?.registrationMode !== 'bulk') {
           sendWAMessage({
             name: manualFormData.name,
-            mobile: manualFormData.mobile,
+            mobile: cleanMobile,
             uid: resultUid,
             pin: manualFormData.pin
           });
@@ -230,7 +236,7 @@ export default function AdminDashboard({
           id: resultUid,
           email: finalEmail,
           pin: manualFormData.pin,
-          mobile: manualFormData.mobile
+          mobile: cleanMobile
         });
         setShowSuccessModal(true);
         
@@ -609,28 +615,37 @@ export default function AdminDashboard({
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    const cleanMobile = (manualFormData.mobile || '').trim().replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits. Please check.)');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
-      if ((manualFormData as any).uid) {
+      const finalEmail = (manualFormData as any).uid ? manualFormData.email : (manualFormData.email || `${cleanMobile}@hcrs.society`);
+      const payloadData = { ...manualFormData, mobile: cleanMobile, email: finalEmail };
+
+      if ((payloadData as any).uid) {
         // Update existing member case
-        await onUpdate((manualFormData as any).uid, {
-            ...manualFormData,
-            isAdmin: manualFormData.role === 'admin' || manualFormData.role === 'operator',
+        await onUpdate((payloadData as any).uid, {
+            ...payloadData,
+            isAdmin: payloadData.role === 'admin' || payloadData.role === 'operator',
             status: 'active'
         });
-        toast.success(`Updated ${manualFormData.name} permissions`);
+        toast.success(`Updated ${payloadData.name} permissions`);
         setIsManualEntryOpen(false);
       } else {
         // New member case
-        const resultUid = await (onAddOffline(manualFormData) as unknown as Promise<string | null>);
+        const resultUid = await (onAddOffline(payloadData) as unknown as Promise<string | null>);
         if (resultUid) {
             if (orgSettings?.registrationMode !== 'bulk') {
               sendWAMessage({
-                name: manualFormData.name,
-                mobile: manualFormData.mobile,
+                name: payloadData.name,
+                mobile: cleanMobile,
                 uid: resultUid,
-                pin: manualFormData.pin
+                pin: payloadData.pin
               });
             }
 
@@ -668,7 +683,13 @@ export default function AdminDashboard({
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMember) return;
-    onUpdate(editingMember.uid, editingMember);
+    const cleanMobile = (editingMember.mobile || '').replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
+      return;
+    }
+    const updatedMember = { ...editingMember, mobile: cleanMobile };
+    onUpdate(updatedMember.uid, updatedMember);
     setEditingMember(null);
   };
 
@@ -1273,7 +1294,7 @@ export default function AdminDashboard({
                         className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
                         placeholder="10-digit number" 
                         value={manualFormData.mobile} 
-                        onChange={e => setManualFormData({...manualFormData, mobile: e.target.value})}
+                        onChange={e => setManualFormData({...manualFormData, mobile: e.target.value.replace(/\D/g, '')})}
                       />
                     </div>
                   </div>
@@ -3556,7 +3577,8 @@ export default function AdminDashboard({
                     <Input 
                       id="edit-mobile" 
                       value={editingMember.mobile || ""} 
-                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value})}
+                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value.replace(/\D/g, '')})}
+                      maxLength={10}
                     />
                   </div>
                 </div>
