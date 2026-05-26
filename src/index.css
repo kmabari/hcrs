@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Space+Grotesk:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,8 +7,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: "Outfit", sans-serif;
-    --font-sans: "Outfit", sans-serif;
+    --font-heading: "Manrope", sans-serif;
+    --font-sans: "Inter", sans-serif;
     --font-mono: "Space Grotesk", monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -110,7 +110,7 @@
     @apply font-sans;
     }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading tracking-tight text-[#EC008C];
+    @apply font-heading tracking-tight text-[#0F172A] font-extrabold;
   }
 }
 

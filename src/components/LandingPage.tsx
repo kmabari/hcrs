@@ -79,51 +79,51 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue/10 relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue/10 relative overflow-x-hidden pb-12">
       {/* Absolute background graphics */}
-      <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-brand-blue/5 blur-3xl pointer-events-none" />
-      <div className="absolute top-[40%] right-[-100px] w-[600px] h-[600px] rounded-full bg-brand-magenta/5 blur-3xl pointer-events-none" />
+      <div className="absolute top-[-100px] left-[-100px] w-[600px] h-[600px] rounded-full bg-brand-blue/10 blur-3xl pointer-events-none" />
+      <div className="absolute top-[30%] right-[-100px] w-[700px] h-[700px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none" />
 
       {/* Navigation Bar */}
       <nav 
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-4 md:px-8 py-4",
-          isScrolled ? "bg-white/70 backdrop-blur-md border-b border-slate-200/40 shadow-sm py-3" : "bg-transparent"
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-4 md:px-8 py-5",
+          isScrolled ? "bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-md py-3.5" : "bg-transparent"
         )}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div 
-            className="flex items-center gap-2.5 cursor-pointer group" 
+            className="flex items-center gap-3 cursor-pointer group" 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-100 group-hover:scale-105 transition-transform">
-              <Logo size="sm" className="h-[28px] w-auto" />
+            <div className="bg-white p-1.5 rounded-2xl shadow-md border border-slate-150 group-hover:scale-105 transition-all">
+              <Logo size="sm" className="h-[32px] w-auto" />
             </div>
             <div>
-              <h1 className="text-[10px] font-black text-slate-800 uppercase tracking-wider leading-none">HCRS Portal</h1>
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Kerala Division</p>
+              <h1 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider leading-none">HCRS Portal</h1>
+              <p className="text-[9px] font-black text-brand-magenta uppercase tracking-widest mt-1">Kerala Division</p>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-7">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-blue transition-colors">Home</button>
-            <button onClick={onGalleryClick} className="text-[10px] font-black uppercase tracking-widest text-brand-magenta hover:opacity-80 transition-opacity flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-8">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue transition-colors">Home</button>
+            <button onClick={onGalleryClick} className="text-[11px] font-black uppercase tracking-widest text-brand-magenta hover:opacity-80 transition-opacity flex items-center gap-1.5">
               Archives
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-magenta animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-brand-magenta animate-pulse" />
             </button>
-            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-blue transition-colors">Contact</button>
+            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue transition-colors">Contact</button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Button 
-              variant="ghost" 
+              variant="outline" 
               onClick={onLoginClick}
-              className="text-[10px] font-black uppercase tracking-widest text-brand-magenta hover:bg-brand-magenta/5 rounded-xl h-9 px-3.5"
+              className="text-[11px] font-black uppercase tracking-widest text-slate-800 border-2 border-slate-200/80 hover:bg-slate-100 rounded-xl h-10 px-4 transition-all"
             >
               Sign In
             </Button>
             <Button 
-              className="bg-brand-blue text-white rounded-xl px-5 h-9 font-black uppercase text-[10px] tracking-widest shadow-sm hover:translate-y-[-1px] active:translate-y-0 transition-all border border-brand-blue"
+              className="bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl px-5 h-10 font-black uppercase text-[11px] tracking-widest shadow-md hover:translate-y-[-1px] active:translate-y-0 transition-all border border-brand-blue"
               onClick={onRenew}
             >
               Get ID Card
@@ -133,31 +133,31 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
       </nav>
 
       {/* Main Showcase / Hero Cover */}
-      <div className="w-full flex flex-col items-center pt-24 pb-12 px-4 text-center">
+      <div className="w-full flex flex-col items-center pt-32 pb-16 px-4 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="inline-block p-4 bg-white/75 backdrop-blur-xl rounded-[28px] shadow-sm border border-white mb-8"
+          className="inline-block p-4 bg-white/95 shadow-premium rounded-[32px] border border-slate-100 mb-8"
         >
-          <Logo className="scale-[1.25]" />
+          <Logo className="scale-[1.3]" />
         </motion.div>
         
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
-          className="max-w-3xl"
+          className="max-w-4xl"
         >
-          <h1 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight uppercase leading-[1.05] mb-4">
+          <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight uppercase leading-[1.05] mb-6">
             {settings.fullName}
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="h-px w-8 bg-brand-magenta/30" />
-            <p className="text-brand-magenta font-black uppercase tracking-[0.25em] text-[10px] md:text-xs">
+          <div className="flex items-center justify-center gap-3.5 mb-2">
+            <span className="h-[2px] w-12 bg-gradient-to-r from-transparent to-brand-magenta" />
+            <p className="text-brand-magenta font-black uppercase tracking-[0.25em] text-xs md:text-sm">
               {settings.shortName} Kerala Division
             </p>
-            <span className="h-px w-8 bg-brand-magenta/30" />
+            <span className="h-[2px] w-12 bg-gradient-to-l from-transparent to-brand-magenta" />
           </div>
         </motion.div>
       </div>
@@ -171,83 +171,105 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             exit={{ opacity: 0, y: -10 }}
             className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-20 z-10 relative"
           >
-            {/* Primary Action Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              <motion.button 
-                whileHover={{ y: -3 }}
-                onClick={() => setStage('guidelines')}
-                className="group relative bg-white/80 p-8 rounded-[28px] border border-slate-200/50 hover:border-brand-magenta/20 shadow-sm hover:shadow-md transition-all text-center flex flex-col items-center gap-6"
+            {/* Primary Action Bento Grid - Redesigned with Premium high-contrast buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {/* Enrollment Card */}
+              <div
+                className="group relative bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium hover:shadow-[0_25px_60px_rgba(0,0,0,0.06)] hover:border-brand-magenta/30 transition-all text-center flex flex-col items-center justify-between min-h-[400px]"
               >
-                <div className="bg-brand-magenta/5 p-6 rounded-2xl group-hover:bg-brand-magenta group-hover:text-white transition-colors text-brand-magenta">
-                  <UserPlus className="w-10 h-10" />
+                <div className="flex flex-col items-center gap-6 w-full">
+                  <div className="bg-brand-magenta/10 w-16 h-16 rounded-2xl flex items-center justify-center text-brand-magenta group-hover:scale-115 group-hover:rotate-3 transition-transform shadow-sm">
+                    <UserPlus className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">New Enrollment</h2>
+                    <span className="inline-flex mt-2 bg-pink-50 text-brand-magenta border border-pink-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
+                      പുതിയ രജിസ്ട്രേഷൻ • ₹200
+                    </span>
+                    <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
+                      Register as an official active member to gain community credentials.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">New Enrollment</h2>
-                  <p className="text-brand-magenta font-black uppercase text-[9px] tracking-widest mt-2.5 bg-brand-magenta/5 px-3 py-1 rounded-full inline-block">
-                    പുതിയ രജിസ്ട്രേഷൻ - ₹200
-                  </p>
-                  <p className="text-slate-400 font-medium text-[10px] mt-3 block leading-relaxed max-w-[280px]">
-                    Register as an official active member to gain community credentials.
-                  </p>
-                </div>
-              </motion.button>
+                <Button 
+                  onClick={() => setStage('guidelines')}
+                  className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/15 hover:shadow-brand-magenta/25 bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
+                >
+                  Register Now
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
 
-              <motion.button 
-                whileHover={{ y: -3 }}
-                onClick={onRenew}
-                className="group relative bg-white/80 p-8 rounded-[28px] border border-slate-200/50 hover:border-brand-blue/20 shadow-sm hover:shadow-md transition-all text-center flex flex-col items-center gap-6"
+              {/* Renewal Card */}
+              <div
+                className="group relative bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium hover:shadow-[0_25px_60px_rgba(0,0,0,0.06)] hover:border-brand-blue/30 transition-all text-center flex flex-col items-center justify-between min-h-[400px]"
               >
-                <div className="bg-brand-blue/5 p-6 rounded-2xl group-hover:bg-brand-blue group-hover:text-white transition-colors text-brand-blue">
-                  <RefreshCw className="w-10 h-10" />
+                <div className="flex flex-col items-center gap-6 w-full">
+                  <div className="bg-brand-blue/10 w-16 h-16 rounded-2xl flex items-center justify-center text-brand-blue group-hover:scale-115 group-hover:-rotate-3 transition-transform shadow-sm">
+                    <RefreshCw className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Renew card</h2>
+                    <span className="inline-flex mt-2 bg-blue-50 text-brand-blue border border-blue-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
+                      അംഗത്വം പുതുക്കൽ • ₹100
+                    </span>
+                    <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
+                      Renew your existing membership card easily with quick online processing.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Renew Membership</h2>
-                  <p className="text-brand-blue font-black uppercase text-[9px] tracking-widest mt-2.5 bg-brand-blue/5 px-3 py-1 rounded-full inline-block">
-                    അംഗത്വം പുതുക്കൽ - ₹100
-                  </p>
-                  <p className="text-slate-400 font-medium text-[10px] mt-3 block leading-relaxed max-w-[280px]">
-                    Renew your existing membership card easily with quick online processing.
-                  </p>
-                </div>
-              </motion.button>
+                <Button 
+                  onClick={onRenew}
+                  className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 bg-gradient-to-r from-brand-blue to-indigo-600 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
+                >
+                  Renew Card Now
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
 
-              <motion.button 
-                whileHover={{ y: -3 }}
-                onClick={() => {
-                  setClaimMobile('');
-                  setClaimResult(null);
-                  setStage('claim_check');
-                }}
-                className="group relative bg-white/80 p-8 rounded-[28px] border border-slate-200/50 hover:border-brand-magenta/20 shadow-sm hover:shadow-md transition-all text-center flex flex-col items-center gap-6"
+              {/* Claim Card */}
+              <div
+                className="group relative bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium hover:shadow-[0_25px_60px_rgba(0,0,0,0.06)] hover:border-emerald-500/30 transition-all text-center flex flex-col items-center justify-between min-h-[400px]"
               >
-                <div className="bg-brand-magenta/5 p-6 rounded-2xl group-hover:bg-brand-magenta group-hover:text-white transition-colors text-brand-magenta">
-                  <ShieldCheck className="w-10 h-10" />
+                <div className="flex flex-col items-center gap-6 w-full">
+                  <div className="bg-emerald-100/60 w-16 h-16 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-115 group-hover:rotate-3 transition-transform shadow-sm">
+                    <ShieldCheck className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Support Claim</h2>
+                    <span className="inline-flex mt-2 bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
+                      ക്ലയിം ഫോം • Verified
+                    </span>
+                    <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
+                      Enter your mobile number to check eligibility and proceed to your claim.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Support Claim</h2>
-                  <p className="text-brand-magenta font-black uppercase text-[9px] tracking-widest mt-2.5 bg-brand-magenta/5 px-3 py-1 rounded-full inline-block">
-                    ക്ലയിം ഫോം - ക്ലിക്ക് ചെയ്യുക
-                  </p>
-                  <p className="text-slate-400 font-medium text-[10px] mt-3 block leading-relaxed max-w-[280px]">
-                    Enter your mobile number to check eligibility and proceed to your claim.
-                  </p>
-                </div>
-              </motion.button>
+                <Button 
+                  onClick={() => {
+                    setClaimMobile('');
+                    setClaimResult(null);
+                    setStage('claim_check');
+                  }}
+                  className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 bg-gradient-to-r from-emerald-600 to-teal-500 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
+                >
+                  File Support Claim
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
-            {/* Micro Access Card */}
-            <div className="flex flex-col items-center max-w-sm mx-auto bg-white/70 backdrop-blur-md border border-slate-200/40 p-8 rounded-[32px] shadow-sm">
-              <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] mb-4">Official Logins</span>
+            {/* Micro Access Card - Upgraded */}
+            <div className="flex flex-col items-center max-w-sm mx-auto bg-white border border-slate-150 p-8 rounded-[36px] shadow-premium relative overflow-hidden group">
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mb-4">Official Logins</span>
               <Button 
                 onClick={onLoginClick}
-                className="w-full h-12 rounded-xl font-black text-white bg-slate-800 hover:bg-slate-900 shadow-md transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 group border border-slate-900"
+                className="w-full h-13 rounded-2xl font-black text-white bg-slate-900 hover:bg-slate-950 shadow-lg transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 group hover:translate-y-[-1px] active:translate-y-0"
               >
                 Sign In to Portal
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Button>
             </div>
-
-            {/* About & Context Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-5xl mx-auto pt-6">
               <motion.div 
                 initial={{ opacity: 0, x: -15 }}
@@ -270,27 +292,27 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                 </div>
               </motion.div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <motion.div 
-                  className="bg-white p-6 rounded-[24px] shadow-sm border border-slate-200/40 space-y-4"
+                  className="bg-white p-8 rounded-[32px] shadow-premium border border-slate-150 space-y-5"
                 >
-                  <div className="w-10 h-10 bg-brand-blue/5 rounded-xl flex items-center justify-center text-brand-blue">
-                    <Target className="w-5 h-5" />
+                  <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center text-brand-blue">
+                    <Target className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Our Mission</h3>
-                  <p className="text-xs font-semibold text-slate-400 leading-relaxed italic">
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Our Mission</h3>
+                  <p className="text-xs font-bold text-slate-600 leading-relaxed italic">
                     "{settings.mission}"
                   </p>
                 </motion.div>
                 
                 <motion.div 
-                   className="bg-brand-magenta p-6 rounded-[24px] shadow-sm text-white space-y-4"
+                   className="bg-gradient-to-br from-brand-magenta to-pink-600 p-8 rounded-[32px] shadow-premium text-white space-y-5"
                 >
-                  <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center text-white">
-                    <Eye className="w-5 h-5" />
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white">
+                    <Eye className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-black uppercase text-white tracking-tight">Our Vision</h3>
-                  <p className="text-xs font-semibold leading-relaxed opacity-90">
+                  <h3 className="text-xl font-black uppercase text-white tracking-tight">Our Vision</h3>
+                  <p className="text-xs font-semibold leading-relaxed opacity-95">
                     "{settings.vision}"
                   </p>
                 </motion.div>
@@ -300,19 +322,19 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             {/* Gallery Archive Grid Redesign */}
             <section className="space-y-8 max-w-5xl mx-auto pt-6" id="gallery-preview">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="inline-flex items-center gap-2 bg-brand-magenta/5 text-brand-magenta px-4 py-1.5 rounded-full border border-brand-magenta/10">
                     <LayoutGrid className="w-4 h-4" />
-                    <span className="font-black text-[9px] uppercase tracking-wider">Visual Records</span>
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider">Visual Records</span>
                   </div>
-                  <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight">
-                    Secretariat <span className="text-brand-magenta">Moments</span>
+                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tight">
+                    Secretariat <span className="bg-gradient-to-r from-brand-magenta to-pink-500 bg-clip-text text-transparent">Moments</span>
                   </h2>
                 </div>
                 
                 <Button 
                   onClick={onGalleryClick}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl px-5 h-10 font-bold uppercase text-[10px] tracking-wider border border-slate-200 transition-colors"
+                  className="bg-white hover:bg-slate-50 text-slate-800 rounded-xl px-5 h-12 font-black uppercase text-[10px] tracking-wider border-2 border-slate-200/80 transition-all shadow-sm hover:shadow-md"
                 >
                   Browse Full Gallery
                   <ChevronRight className="w-4 h-4 ml-1" />
@@ -320,23 +342,23 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
               </div>
 
               {gallery.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   {gallery.slice(0, 4).map((item, index) => (
                     <motion.div
                       key={item.url + index}
-                      whileHover={{ y: -2 }}
-                      className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-white p-1 border border-slate-200/50 shadow-sm cursor-pointer"
+                      whileHover={{ y: -4 }}
+                      className="group relative aspect-[3/4] rounded-[28px] overflow-hidden bg-white p-1.5 border border-slate-200/60 shadow-premium cursor-pointer"
                       onClick={onGalleryClick}
                     >
-                      <div className="w-full h-full rounded-xl overflow-hidden relative bg-slate-50">
+                      <div className="w-full h-full rounded-2xl overflow-hidden relative bg-slate-100">
                         <img 
                           src={item.url} 
                           alt={item.title} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                           referrerPolicy="no-referrer"
                         />
-                        <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="bg-white/95 p-2 rounded-lg text-slate-800 shadow-sm text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
+                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                          <div className="bg-white text-slate-900 px-4 py-2 rounded-xl shadow-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap transform translate-y-2 group-hover:translate-y-0 transition-all duration-305">
                             View Gallery
                           </div>
                         </div>
@@ -345,77 +367,77 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-3xl p-10 border border-slate-100 shadow-sm flex flex-col items-center text-center space-y-4">
-                   <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
-                      <ImageIcon className="w-6 h-6" />
+                <div className="bg-white rounded-[32px] p-12 border-2 border-slate-100 shadow-premium flex flex-col items-center text-center space-y-5">
+                   <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-500 shadow-sm border border-slate-150">
+                      <ImageIcon className="w-7 h-7" />
                    </div>
                    <div>
-                     <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">No Archive Photos Yet</h3>
-                     <p className="text-slate-400 font-medium text-xs max-w-sm mx-auto mt-1">Explore Secretariat updates once the administrators upload new event files.</p>
+                     <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">No Archive Photos Yet</h3>
+                     <p className="text-slate-500 font-bold text-xs max-w-sm mx-auto mt-2 leading-relaxed">Explore Secretariat updates once the administrators upload new event files.</p>
                    </div>
                 </div>
               )}
             </section>
 
             {/* Map & Address Section */}
-            <section id="contact-us" className="bg-white border border-slate-200/50 rounded-3xl shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto">
-              <div className="p-8 md:p-12 space-y-8">
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Connect with HCRS</h2>
-                  <p className="text-slate-400 font-medium text-xs">For queries regarding registrations, identity verification or support claims.</p>
+            <section id="contact-us" className="bg-white border-2 border-slate-100 rounded-[36px] shadow-premium overflow-hidden grid grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto">
+              <div className="p-8 md:p-12 space-y-10">
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Connect with HCRS</h2>
+                  <p className="text-slate-500 font-bold text-xs leading-relaxed max-w-md">For queries regarding registrations, identity verification or support claims.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                   <div className="flex gap-4 items-start">
-                    <div className="w-9 h-9 bg-brand-blue/5 rounded-lg flex items-center justify-center text-brand-blue shrink-0">
-                      <MapPin className="w-4 h-4" />
+                    <div className="w-11 h-11 bg-brand-blue/10 rounded-xl flex items-center justify-center text-brand-blue shrink-0 shadow-sm border border-brand-blue/5">
+                      <MapPin className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Headquarters</p>
-                      <p className="text-slate-600 text-xs font-semibold leading-relaxed">{settings.address}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Headquarters</p>
+                      <p className="text-slate-700 text-xs font-bold leading-relaxed">{settings.address}</p>
                     </div>
                   </div>
 
                   <div className="flex gap-4 items-start">
-                    <div className="w-9 h-9 bg-brand-magenta/5 rounded-lg flex items-center justify-center text-brand-magenta shrink-0">
-                      <Phone className="w-4 h-4" />
+                    <div className="w-11 h-11 bg-brand-magenta/10 rounded-xl flex items-center justify-center text-brand-magenta shrink-0 shadow-sm border border-brand-magenta/5">
+                      <Phone className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Helpline</p>
-                      <p className="text-slate-600 text-xs font-semibold">{settings.phone}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Helpline</p>
+                      <p className="text-slate-700 text-xs font-bold">{settings.phone}</p>
                     </div>
                   </div>
 
                   <div className="flex gap-4 items-start">
-                    <div className="w-9 h-9 bg-brand-blue/5 rounded-lg flex items-center justify-center text-brand-blue shrink-0">
-                      <Mail className="w-4 h-4" />
+                    <div className="w-11 h-11 bg-brand-blue/10 rounded-xl flex items-center justify-center text-brand-blue shrink-0 shadow-sm border border-brand-blue/5">
+                      <Mail className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Email Email</p>
-                      <p className="text-slate-600 text-xs font-semibold break-all">{settings.email}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Office</p>
+                      <p className="text-slate-700 text-xs font-bold break-all leading-normal">{settings.email}</p>
                     </div>
                   </div>
 
                   <div className="flex gap-4 items-start">
-                    <div className="w-9 h-9 bg-brand-magenta/5 rounded-lg flex items-center justify-center text-brand-magenta shrink-0">
-                      <Globe className="w-4 h-4" />
+                    <div className="w-11 h-11 bg-brand-magenta/10 rounded-xl flex items-center justify-center text-brand-magenta shrink-0 shadow-sm border border-brand-magenta/5">
+                      <Globe className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Official Site</p>
-                      <a href={settings.website} target="_blank" rel="noreferrer" className="text-slate-600 text-xs font-semibold hover:text-brand-magenta transition-colors">{settings.website}</a>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Official Site</p>
+                      <a href={settings.website} target="_blank" rel="noreferrer" className="text-slate-700 text-xs font-bold hover:text-brand-magenta transition-colors break-all leading-normal">{settings.website}</a>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-slate-50 relative flex items-center justify-center p-8 overflow-hidden border-t md:border-t-0 md:border-l border-slate-200/60 font-sans">
-                <div className="relative bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4 max-w-xs">
-                  <div className="w-12 h-12 bg-slate-950 text-white rounded-xl mx-auto flex items-center justify-center shadow-md">
-                    <MapPin className="w-6 h-6 text-brand-magenta" />
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 relative flex items-center justify-center p-8 overflow-hidden border-t md:border-t-0 md:border-l-2 border-slate-100 font-sans">
+                <div className="relative bg-white p-8 rounded-3xl shadow-premium border border-slate-150 text-center space-y-5 max-w-xs">
+                  <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl mx-auto flex items-center justify-center shadow-lg border border-slate-950">
+                    <MapPin className="w-7 h-7 text-brand-magenta" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Active Districts</h3>
-                    <p className="text-slate-400 font-semibold text-xs mt-1 leading-relaxed">{settings.districtDetails}</p>
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Active Districts</h3>
+                    <p className="text-slate-500 font-semibold text-xs mt-2 leading-relaxed">{settings.districtDetails}</p>
                   </div>
                 </div>
               </div>
@@ -443,24 +465,24 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             exit={{ opacity: 0, scale: 0.98 }}
             className="max-w-2xl mx-auto px-4 pb-24 pt-4"
           >
-            <Card className="border border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-premium overflow-hidden rounded-[24px]">
-              <CardHeader className="bg-slate-50 border-b border-slate-100 pb-6 pt-8 px-8">
+            <Card className="border-2 border-slate-150 bg-white shadow-premium overflow-hidden rounded-[36px]">
+              <CardHeader className="bg-slate-50/80 border-b border-slate-150 pb-8 pt-10 px-8 md:px-10">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl font-black flex items-center gap-2.5 text-slate-800 uppercase tracking-tight">
-                    <ShieldCheck className="w-6 h-6 text-brand-magenta" />
+                  <CardTitle className="text-2xl font-black flex items-center gap-3 text-slate-900 uppercase tracking-tight">
+                    <ShieldCheck className="w-7 h-7 text-brand-magenta" />
                     Registry Guidelines
                   </CardTitle>
                   <Button 
                     variant="ghost" 
                     onClick={() => setStage('landing')} 
-                    className="rounded-full w-9 h-9 p-0 hover:bg-slate-150 border border-slate-200/60 text-slate-500"
+                    className="rounded-full w-10 h-10 p-0 hover:bg-slate-100 border-2 border-slate-205 text-slate-600 transition-all"
                   >
-                     <ArrowLeft className="w-4 h-4" />
+                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-8 pb-6 px-8">
-                <div className="space-y-5 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+              <CardContent className="space-y-8 pt-10 pb-6 px-8 md:px-10">
+                <div className="space-y-6 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
                   {[
                     "Membership is strictly open only to citizens supportive of the HCRS core objectives.",
                     "Digital identity credentials are dynamically generated after verified payment & approval.",
@@ -469,35 +491,35 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                     "All registration and support claims deposits are completely non-refundable."
                   ].map((text, idx) => (
                     <div key={idx} className="flex gap-4 items-start group">
-                      <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 shadow-sm border border-slate-200/30">
-                        <span className="text-slate-500 font-bold text-xs">{idx + 1}</span>
+                      <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md border border-slate-950">
+                        <span className="font-extrabold text-[11px]">{idx + 1}</span>
                       </div>
-                      <p className="text-sm font-semibold text-slate-600 leading-relaxed pt-0.5">{text}</p>
+                      <p className="text-sm font-bold text-slate-700 leading-relaxed pt-1">{text}</p>
                     </div>
                   ))}
                 </div>
 
                 <div 
-                  className="flex items-center space-x-3.5 p-4 bg-slate-50 rounded-xl border border-slate-205 transition-all cursor-pointer w-full hover:bg-slate-100/50" 
+                  className="flex items-center space-x-4 p-5 bg-slate-50 hover:bg-slate-100/70 rounded-2xl border-2 border-slate-150 transition-all cursor-pointer w-full group" 
                   onClick={() => setAgreed(!agreed)}
                 >
                   <Checkbox 
                     id="terms" 
                     checked={agreed} 
                     onCheckedChange={(checked) => setAgreed(checked as boolean)}
-                    className="data-[state=checked]:bg-brand-magenta data-[state=checked]:border-brand-magenta border-slate-300 w-5 h-5 rounded-md"
+                    className="data-[state=checked]:bg-brand-magenta data-[state=checked]:border-brand-magenta border-2 border-slate-305 w-6 h-6 rounded-lg transition-transform group-hover:scale-105"
                   />
                   <Label 
                     htmlFor="terms" 
-                    className="text-[10px] font-black uppercase tracking-wider cursor-pointer select-none text-slate-500"
+                    className="text-[11px] font-black uppercase tracking-wider cursor-pointer select-none text-slate-600 leading-relaxed"
                   >
                     I agree to the terms and hereby proceed to the public registry.
                   </Label>
                 </div>
               </CardContent>
-              <CardFooter className="pt-2 pb-8 px-8">
+              <CardFooter className="pt-2 pb-10 px-8 md:px-10">
                 <Button 
-                  className="w-full h-12 font-black rounded-xl transition-all shadow-md active:translate-y-0 disabled:opacity-30 uppercase tracking-widest text-xs bg-brand-magenta text-white hover:bg-brand-magenta/95"
+                  className="w-full h-14 font-black rounded-2xl transition-all shadow-lg active:translate-y-0 disabled:opacity-40 uppercase tracking-widest text-xs bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95 disabled:hover:opacity-40"
                   disabled={!agreed}
                   onClick={onAccept}
                 >
@@ -514,12 +536,12 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             exit={{ opacity: 0, scale: 0.98 }}
             className="max-w-2xl mx-auto px-4 pb-24 pt-4"
           >
-            <Card className="border border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-premium overflow-hidden rounded-[24px]">
-              <CardHeader className="bg-slate-50 border-b border-slate-100 pb-6 pt-8 px-8">
+            <Card className="border-2 border-slate-150 bg-white shadow-premium overflow-hidden rounded-[36px]">
+              <CardHeader className="bg-slate-50/80 border-b border-slate-150 pb-8 pt-10 px-8 md:px-10">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl font-black flex items-center gap-2.5 text-slate-800 uppercase tracking-tight">
-                    <ShieldCheck className="w-6 h-6 text-brand-magenta" />
-                    യൂസർ വേരിഫിക്കേഷൻ (Support Claim)
+                  <CardTitle className="text-xl md:text-2xl font-black flex items-center gap-3 text-slate-950 uppercase tracking-tight">
+                    <ShieldCheck className="w-7 h-7 text-brand-magenta" />
+                    യൂസർ വേരിഫിക്കേഷൻ
                   </CardTitle>
                   <Button 
                     variant="ghost" 
@@ -527,34 +549,34 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                       setStage('landing');
                       setClaimResult(null);
                     }} 
-                    className="rounded-full w-9 h-9 p-0 hover:bg-slate-150 border border-slate-200/60 text-slate-500"
+                    className="rounded-full w-10 h-10 p-0 hover:bg-slate-100 border-2 border-slate-205 text-slate-600 transition-all"
                   >
-                     <ArrowLeft className="w-4 h-4" />
+                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-8 pb-6 px-8">
+              <CardContent className="space-y-8 pt-10 pb-6 px-8 md:px-10">
                 {!claimResult ? (
-                  <div className="space-y-6">
-                    <div className="bg-brand-magenta/5 border border-brand-magenta/10 p-5 rounded-2xl">
-                      <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                  <div className="space-y-8">
+                    <div className="bg-pink-50 border-2 border-pink-100 p-6 rounded-2xl">
+                      <p className="text-xs font-extrabold text-slate-850 leading-relaxed">
                         ക്ലൈം ഫോം ആക്സസ് ചെയ്യുന്നതിനായി ദയവായി നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകി വേരിഫൈ ചെയ്യുക.
                         <br/>
-                        <span className="text-[10px] text-slate-400 block mt-1 uppercase font-bold tracking-wider">Please enter your registered mobile number to check eligibility and proceed to your claim.</span>
+                        <span className="text-[10px] text-brand-magenta block mt-2 uppercase font-black tracking-wider">Please enter your registered mobile number to check eligibility and proceed to your claim.</span>
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Mobile Number (മൊബൈൽ നമ്പർ)</Label>
+                    <div className="space-y-3">
+                      <Label className="text-[11px] font-black uppercase text-slate-600 tracking-wider">Mobile Number (മൊബൈൽ നമ്പർ)</Label>
                       <div className="relative">
-                        <Phone className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+                        <Phone className="absolute left-4 top-4 w-5 h-5 text-slate-400" />
                         <Input 
                           type="tel"
                           maxLength={10}
                           value={claimMobile}
                           onChange={(e) => setClaimMobile(e.target.value.replace(/\D/g, ''))}
                           placeholder="e.g. 9645934571"
-                          className="pl-12 h-12 bg-white border border-slate-200 focus:border-brand-magenta/50 transition-all rounded-xl font-bold font-mono text-lg"
+                          className="pl-12 h-14 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 transition-all rounded-2xl font-black font-mono text-xl text-slate-900"
                         />
                       </div>
                     </div>
@@ -588,55 +610,55 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                         }
                       }}
                       disabled={checkingClaim}
-                      className="w-full h-12 font-black rounded-xl transition-all shadow-md uppercase tracking-widest text-xs bg-brand-magenta text-white hover:bg-brand-magenta/95"
+                      className="w-full h-14 font-black rounded-2xl transition-all shadow-lg uppercase tracking-widest text-xs bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95"
                     >
                       {checkingClaim ? 'പരിശോധിക്കുന്നു (Checking...)' : 'മൊബൈൽ നമ്പർ വേരിഫൈ ചെയ്യുക (Verify Mobile)'}
                     </Button>
                   </div>
                 ) : claimResult === 'registered' ? (
-                  <div className="space-y-6 text-left py-4">
+                  <div className="space-y-8 text-left py-4">
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-brand-magenta/10 rounded-full flex items-center justify-center mx-auto border border-brand-magenta/20 text-brand-magenta mb-4">
+                      <div className="w-16 h-16 bg-pink-100 border-2 border-pink-200 rounded-2xl flex items-center justify-center mx-auto text-brand-magenta mb-4 shadow-sm">
                         <ShieldCheck className="w-8 h-8 animate-pulse" />
                       </div>
-                      <h3 className="text-xl font-black text-brand-magenta uppercase tracking-tight leading-none text-slate-900">
-                        നിലവിലുള്ള ഒഫീഷ്യൽ മെമ്പർ!
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
+                        நிலവിലുള്ള ഒഫീഷ്യൽ മെമ്പർ!
                       </h3>
-                      <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider mt-1">Please enter Security PIN to access your ID Card and Claim Form.</p>
+                      <p className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider mt-2">Please enter Secure PIN to access your ID Card and Claim Form.</p>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-xl flex items-center justify-between">
+                    <div className="bg-slate-50 border-2 border-slate-150 p-5 rounded-2xl flex items-center justify-between shadow-sm">
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Registered Number</p>
-                        <p className="text-base font-black text-slate-700 tracking-tight font-mono mt-1">{claimMobile}</p>
+                        <p className="text-base font-black text-slate-800 tracking-tight font-mono mt-2">{claimMobile}</p>
                       </div>
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm"
                         onClick={() => {
                           setClaimResult(null);
                           setClaimMobile('');
                           setClaimPin('');
                         }}
-                        className="text-[10px] text-brand-magenta font-black uppercase tracking-wider hover:bg-slate-100"
+                        className="text-[10px] text-brand-magenta font-black uppercase tracking-wider border-2 border-pink-100 bg-pink-50/50 hover:bg-pink-50 rounded-xl"
                       >
                         Change Number
                       </Button>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Security PIN (പാസ്‌വേഡ് അടിക്കുക)</Label>
+                    <div className="space-y-3">
+                      <Label className="text-[11px] font-black uppercase text-slate-600 tracking-wider">Security PIN (പാസ്‌വേഡ് അടിക്കുക)</Label>
                       <Input 
                         type="password"
                         maxLength={12}
                         value={claimPin}
                         onChange={(e) => setClaimPin(e.target.value)}
                         placeholder="••••"
-                        className="h-12 bg-white border border-slate-200 focus:border-brand-magenta/50 transition-all rounded-xl font-bold text-center text-lg tracking-widest font-mono text-slate-800"
+                        className="h-14 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 transition-all rounded-2xl font-black text-center text-xl tracking-widest font-mono text-slate-900"
                       />
                     </div>
 
-                    <div className="pt-2 flex flex-col gap-3">
+                    <div className="pt-4 flex flex-col gap-4">
                       <Button 
                         onClick={async () => {
                           if (!claimPin || claimPin.length < 4) {
@@ -665,7 +687,7 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                           }
                         }}
                         disabled={loggingInClaim}
-                        className="w-full h-12 bg-brand-magenta text-white hover:bg-brand-magenta/90 font-black uppercase text-[11px] tracking-wider rounded-xl shadow-lg shadow-brand-magenta/10 flex items-center justify-center gap-2"
+                        className="w-full h-14 bg-gradient-to-r from-brand-magenta to-pink-500 text-white font-black uppercase text-xs tracking-wider rounded-2xl shadow-lg flex items-center justify-center gap-2"
                       >
                         {loggingInClaim ? 'ലോഗിൻ ചെയ്യുന്നു (Logging inside...)' : 'ലോഗിൻ ചെയ്യുക (Secure Login)'}
                       </Button>
@@ -676,47 +698,47 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                           setClaimMobile('');
                           setClaimPin('');
                         }}
-                        className="w-full h-11 border border-slate-200 text-slate-500 font-black uppercase text-[10px]"
+                        className="w-full h-12 border-2 border-slate-200 text-slate-600 hover:bg-slate-50 font-black uppercase text-[10px] rounded-2xl"
                       >
                         Return Home
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-6 text-center py-4">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto border border-slate-200 text-slate-500">
-                      <UserPlus className="w-8 h-8" />
+                  <div className="space-y-8 text-center py-4">
+                    <div className="w-16 h-16 bg-pink-100 rounded-2xl flex items-center justify-center mx-auto border-2 border-pink-200 text-brand-magenta shadow-sm">
+                      <UserPlus className="w-8 h-8 cursor-not-allowed" />
                     </div>
                     
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-black text-brand-magenta uppercase tracking-tight leading-none text-slate-900">
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
                         രജിസ്റ്റർ ചെയ്യാത്ത മൊബൈൽ നമ്പർ!
                       </h3>
-                      <p className="text-brand-magenta font-bold text-xs uppercase tracking-wider">Unregistered Mobile Number</p>
+                      <p className="text-brand-magenta font-black text-[10px] uppercase tracking-wider block pt-1">Unregistered Mobile Number</p>
                     </div>
 
-                    <p className="text-slate-500 font-semibold text-xs leading-relaxed max-w-md mx-auto">
+                    <p className="text-slate-600 font-bold text-xs leading-relaxed max-w-md mx-auto">
                       ഈ മൊബൈൽ നമ്പർ നിലവിൽ ഇതിൽ രജിസ്റ്റർ ചെയ്തിട്ടില്ല. രജിസ്റ്റർ ചെയ്ത മെമ്പർമാർക്ക് മാത്രമേ ക്ലൈം ഫയൽ ചെയ്യാൻ സാധിക്കുകയുള്ളൂ. ദയവായി പുതിയ മെമ്പർഷിപ്പ് എടുത്ത് ₹200 പെയ്മെന്റിലേക്ക് മാറുക.
                       <br/>
-                      <span className="text-[10px] text-slate-400 font-bold block mt-2 uppercase">This mobile number is not registered. To apply for a claim form, please register as a new member with a payment of ₹200 first.</span>
+                      <span className="text-[10px] text-slate-400 font-black block mt-3 uppercase tracking-wider leading-relaxed">This mobile number is not registered. To apply for a claim form, please register as a new member with a payment of ₹200 first.</span>
                     </p>
 
-                    <div className="pt-4 flex flex-col sm:flex-row gap-3">
+                    <div className="pt-6 flex flex-col sm:flex-row gap-4">
                       <Button 
                         variant="ghost" 
                         onClick={() => {
                           setClaimResult(null);
                           setClaimMobile('');
                         }}
-                        className="flex-1 h-11 border border-slate-200 text-slate-500 font-black uppercase text-[10px]"
+                        className="flex-1 h-13 border-2 border-slate-200 text-slate-600 hover:bg-slate-50 font-black uppercase text-[10px] rounded-2xl"
                       >
-                        വീണ്ടും നോക്കുക (Search Again)
+                        Search Again
                       </Button>
                       <Button 
                         onClick={() => onRegisterWithMobile?.(claimMobile)}
-                        className="flex-1 h-11 bg-brand-magenta text-white hover:bg-brand-magenta/90 font-black uppercase text-[10px] tracking-wider"
+                        className="flex-1 h-13 bg-gradient-to-r from-brand-magenta to-pink-500 text-white font-black uppercase text-[10px] tracking-wider rounded-2xl shadow-lg"
                       >
-                         പുതിയ അംഗത്വം എടുക്കുക ₹200 (Register Now)
+                         രജിസ്റ്റർ ചെയ്യുക ₹200 (Register Now)
                       </Button>
                     </div>
                   </div>
