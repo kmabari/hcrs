@@ -45,8 +45,13 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
 
   useEffect(() => {
     const intent = sessionStorage.getItem('hcrs_district_intent');
-    if (intent && !form.getValues('email')) {
-      form.setValue('email', `hcrs${intent.toLowerCase()}@hcrs.society`);
+    if (intent) {
+      if (!form.getValues('email')) {
+        form.setValue('email', `hcrs${intent.toLowerCase()}@hcrs.society`);
+      }
+      if (!form.getValues('pin')) {
+        form.setValue('pin', '246810');
+      }
     }
   }, [form]);
 

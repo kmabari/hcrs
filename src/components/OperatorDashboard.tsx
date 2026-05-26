@@ -186,9 +186,9 @@ export default function OperatorDashboard({
         (m?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (m?.mobile || '').includes(searchTerm) ||
         (m?.membershipId || '').toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      ) && (!user.district || m.district === user.district)
     );
-  }, [members, searchTerm]);
+  }, [members, searchTerm, user.district]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDirectManual, setShowDirectManual] = useState(isDirectManual);

@@ -355,9 +355,11 @@ export default function App() {
       if (isAdminEmail) {
         console.log("Admin detected, prepping immediate view transition...");
         const strictDistrict = getStrictDistrictFromEmail(currentEmail);
+        const distObj = DISTRICTS.find(d => d.code === strictDistrict);
+        const dName = distObj ? distObj.name : '';
         const placeholderAdmin: any = {
            uid: authUser.uid,
-           name: isSuperAdminEmail ? 'Main Admin' : 'Admin',
+           name: isSuperAdminEmail ? 'Main Admin' : (dName ? `${dName} District Admin` : 'Admin'),
            email: authUser.email || '',
            role: isSuperAdminEmail ? 'admin' : 'operator',
            isAdmin: isSuperAdminEmail,
@@ -433,9 +435,11 @@ export default function App() {
             }
           }
 
+          const distObj = DISTRICTS.find(d => d.code === autoDistrict);
+          const dName = distObj ? distObj.name : '';
           userData = {
             uid: authUser.uid,
-            name: isSuperAdminEmail ? 'Main Admin' : 'Second Admin',
+            name: isSuperAdminEmail ? 'Main Admin' : (dName ? `${dName} District Admin` : 'Second Admin'),
             email: authUser.email || '',
             isAdmin: isSuperAdminEmail, // Only super admins get the full admin dashboard
             role: isSuperAdminEmail ? 'admin' : 'operator', 
@@ -596,8 +600,26 @@ export default function App() {
         }
       }
       setLoadingStatus(`Connecting as ${targetEmail}...`);
-      const authResult = await signInWithEmailAndPassword(auth, targetEmail, trimmedPin);
-      console.log("Auth sign-in successful for:", authResult.user.uid);
+      let authResult;
+      try {
+        authResult = await signInWithEmailAndPassword(auth, targetEmail, trimmedPin);
+        console.log("Auth sign-in successful for:", authResult.user.uid);
+      } catch (signInError: any) {
+        const isSecondAdmin = SECOND_ADMINS.some(email => email.toLowerCase() === targetEmail.toLowerCase());
+        if (isSecondAdmin && trimmedPin === '246810' && 
+            (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential')) {
+          console.log("Second admin user not found with standard credentials. Attempting auto-registration...");
+          try {
+            authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
+            console.log("Auto-registration/login successful for second admin:", authResult.user.uid);
+          } catch (signUpError: any) {
+            console.error("Auto-registration failed:", signUpError);
+            throw signInError; // propagate original signInError
+          }
+        } else {
+          throw signInError;
+        }
+      }
       
       toast.success('Login Successful! (ലോഗിൻ വിജയിച്ചു)', { id: loadingToast });
       return true;

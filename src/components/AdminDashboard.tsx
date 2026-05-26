@@ -1103,14 +1103,16 @@ export default function AdminDashboard({
                 Add Member
               </Button>
             )}
-            <Button 
-              onClick={() => setIsDomainKeyModalOpen(true)}
-              variant="outline"
-              className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
-            >
-              <KeyRound className="w-4 h-4 text-brand-blue" />
-              Set Domain PIN (പാസ്‌വേഡ്)
-            </Button>
+            {!isSecondary && (
+              <Button 
+                onClick={() => setIsDomainKeyModalOpen(true)}
+                variant="outline"
+                className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
+              >
+                <KeyRound className="w-4 h-4 text-brand-blue" />
+                Set Domain PIN (പാസ്‌വേഡ്)
+              </Button>
+            )}
             <Button onClick={handleLogout} variant="outline" className="flex-1 md:flex-none h-10 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider">
               <LogOut className="w-4 h-4 mr-1 text-red-400" />
               Logout
@@ -2807,9 +2809,7 @@ export default function AdminDashboard({
                         
                         // We prefer the current origin unless it's obviously a dev setup AND we have a stable fallback
                         // However, on AI Studio, origin changes frequently, so using window.location.origin is usually SAFEST
-                        const effectiveBase = (currentOrigin.includes('localhost') || currentOrigin.includes('ais-dev')) 
-                          ? (SHARED_URL || currentOrigin) 
-                          : currentOrigin;
+                        const effectiveBase = currentOrigin || SHARED_URL;
 
                         // Remove trailing slash if exists to avoid double slash
                         const cleanBase = effectiveBase.endsWith('/') ? effectiveBase.slice(0, -1) : effectiveBase;

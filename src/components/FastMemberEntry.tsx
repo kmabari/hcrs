@@ -49,7 +49,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   const handleReset = () => {
     setName('');
     setMobile('');
-    setDistrict('');
+    setDistrict(adminUser?.district || '');
     setMandalam('');
     setCreatedMember(null);
   };
