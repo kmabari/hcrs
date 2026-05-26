@@ -60,20 +60,21 @@
 }
 
 :root {
-    /* Premium Organic Palette */
-    --brand-blue: #0054A6;
-    --brand-magenta: #EC008C;
+    /* Premium Design Theme Palette */
+    --brand-blue: #0066FF;
+    --brand-magenta: #FF1493;
+    --brand-navy: #081426;
     --clay: #F8FAFC;
     --clay-dark: #F1F5F9;
 
     --background: var(--clay);
-    --foreground: #0F172A;
+    --foreground: #081426;
     
     --card: #FFFFFF;
-    --card-foreground: #0F172A;
+    --card-foreground: #081426;
     
     --popover: #FFFFFF;
-    --popover-foreground: #0F172A;
+    --popover-foreground: #081426;
     
     --primary: var(--brand-magenta);
     --primary-foreground: #FFFFFF;
@@ -82,7 +83,7 @@
     --secondary-foreground: #FFFFFF;
     
     --muted: #F1F5F9;
-    --muted-foreground: #64748B;
+    --muted-foreground: #475569;
     
     --accent: var(--clay-dark);
     --accent-foreground: var(--brand-blue);
@@ -92,7 +93,7 @@
     --input: #E2E8F0;
     --ring: var(--brand-blue);
     
-    --radius: 1.5rem;
+    --radius: 1.75rem;
 }
 
 @layer base {
@@ -102,33 +103,35 @@
   body {
     @apply bg-background text-foreground;
      background-image: 
-        radial-gradient(circle at 10% 20%, rgba(0, 84, 166, 0.03) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(236, 0, 140, 0.03) 0%, transparent 40%);
+        radial-gradient(circle at 5% 15%, rgba(0, 102, 255, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 95% 85%, rgba(255, 20, 147, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(8, 20, 38, 0.01) 0%, transparent 60%);
      background-attachment: fixed;
     }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
     }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading tracking-tight text-[#0F172A] font-extrabold;
+    @apply font-heading tracking-tight text-[#081426] font-extrabold;
   }
 }
 
 @layer utilities {
   .shadow-premium {
-    box-shadow: 0 20px 50px rgba(0, 84, 166, 0.05), 0 5px 15px rgba(0,0,0,0.02);
+    box-shadow: 0 25px 60px rgba(8, 20, 38, 0.07), 0 5px 15px rgba(0,0,0,0.01);
   }
   
   .shadow-projected {
-    box-shadow: 8px 8px 24px rgba(0, 0, 0, 0.08), -8px -8px 24px rgba(255, 255, 255, 0.8);
+    box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.06), -10px -10px 30px rgba(255, 255, 255, 0.9);
   }
   
   .shadow-projected-active {
-    box-shadow: inset 4px 4px 12px rgba(0, 0, 0, 0.1), inset -4px -4px 12px rgba(255, 255, 255, 0.8);
+    box-shadow: inset 5px 5px 15px rgba(0, 0, 0, 0.08), inset -5px -5px 15px rgba(255, 255, 255, 0.9);
   }
 
   .glass-card {
-    @apply bg-white/60 backdrop-blur-xl border border-white/40;
+    @apply bg-white/80 backdrop-blur-2xl border border-white/50;
+    box-shadow: 0 25px 60px rgba(8, 20, 38, 0.07), 0 5px 15px rgba(0,0,0,0.01);
   }
 }
 

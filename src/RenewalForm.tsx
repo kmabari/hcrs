@@ -190,45 +190,89 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
           {step === 'payment' && (
             <CardContent className="p-8 space-y-8">
-              <div className="bg-brand-blue/5 border border-brand-blue/20 rounded-[28px] p-6">
-                <h4 className="font-black text-brand-blue text-base flex items-center gap-3 mb-3 uppercase tracking-tight">
-                  <Receipt className="w-6 h-6" />
-                  Renewal Treasury
+              <div className="bg-[#081426] text-white rounded-3xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden text-left">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/10 blur-xl pointer-events-none" />
+                
+                <h4 className="font-extrabold text-[#0066FF] text-base flex items-center gap-3 mb-3 uppercase tracking-wider">
+                  <Receipt className="w-5 h-5 text-[#FF1493]" />
+                  Renewal Treasury (പുതുക്കൽ ട്രഷറി)
                 </h4>
-                <p className="text-sm text-foreground/70 font-bold leading-relaxed">Pay <span className="text-brand-magenta font-black italic">₹100</span> via GPay/PhonePe to:</p>
-                <div className="bg-white border border-border p-5 rounded-2xl mt-4 flex items-center justify-between group cursor-copy shadow-sm" onClick={() => {
-                  navigator.clipboard.writeText('9645934571');
-                  toast.success('Number copied');
-                }}>
-                  <p className="text-3xl font-mono font-black text-brand-blue tracking-tighter">9645934571</p>
-                  <span className="text-[10px] font-black text-brand-blue/40 uppercase tracking-widest">Copy</span>
+                
+                <p className="text-xs text-slate-300 font-semibold leading-relaxed">
+                  Pay <span className="text-[#FF1493] font-black text-lg">₹100</span> for 1-Year Membership Renewal. Scan QR code below or pay directly to the official contact receiver:
+                </p>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4 mt-5 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                  <div className="bg-white p-2 rounded-xl shadow-lg shrink-0">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('upi://pay?pa=9645934571@ybl&pn=HCRS%2520Kerala&am=100&cu=INR')}`}
+                      alt="Renewal QR"
+                      className="w-24 h-24 object-contain"
+                    />
+                  </div>
+
+                  <div className="space-y-3 w-full text-center sm:text-left">
+                    <div>
+                      <span className="text-[9px] font-black tracking-widest text-[#FF1493] uppercase">Official UPI Number</span>
+                      <div 
+                        className="flex items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-lg mt-1 border border-slate-800 cursor-pointer hover:border-[#0066FF]/50 transition-all active:scale-98"
+                        onClick={() => {
+                          navigator.clipboard.writeText('9645934571');
+                          toast.success('UPI details copied!');
+                        }}
+                      >
+                        <span className="font-mono font-black text-white text-base">9645934571</span>
+                        <span className="text-[8px] font-black text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">Copy</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                      <a 
+                        href="upi://pay?pa=9645934571@ybl&pn=HCRS%20Kerala&am=100&cu=INR" 
+                        className="text-[8px] font-black uppercase tracking-wider bg-[#0066FF] text-white px-2.5 py-1 rounded-md hover:bg-opacity-90 transition-all inline-flex items-center gap-1"
+                      >
+                        Pay UPI
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-foreground/70 font-black uppercase text-[10px] tracking-widest ml-1">Transaction Ref No.</label>
+              <div className="space-y-5">
+                <div className="space-y-2 text-left">
+                  <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
+                    UPI / UTR Transaction ID (12-അക്ക ട്രാന്സാക്ഷൻ ഐഡി) <span className="text-[#FF1493]">*</span>
+                  </label>
                   <Input 
                     value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    placeholder="Enter 12-digit UPI Transaction ID"
-                    className="h-14 bg-white/5 border-border focus:border-brand-blue/50 transition-all rounded-[20px] font-bold"
+                    onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 12-digit UPI/UTR ID"
+                    maxLength={12}
+                    className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-300"
                   />
                 </div>
-                <Button 
-                  onClick={handleRenewalSubmit}
-                  disabled={submitting}
-                  className="w-full h-16 rounded-[24px] text-lg font-black shadow-xl shadow-brand-blue/10 bg-brand-blue text-white hover:bg-brand-blue/90"
-                >
-                  {submitting ? 'Submitting...' : 'Submit Renewal Request'}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setStep('confirm')}
-                  className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all"
-                >
-                  Go Back
-                </Button>
+
+                <p className="text-[10px] font-bold text-slate-400 leading-relaxed text-left border-t border-slate-100 pt-3">
+                  * ശരിയായ 12-അക്ക യു.പി.ഐ നമ്പർ ഇവിടെ നൽകി പുതുക്കൽ പൂർത്തിയാക്കുക. വെരിഫിക്കേഷന് ശേഷം അംഗത്വം ഉടനടി സജീവമാകും.
+                </p>
+
+                <div className="flex flex-col gap-2.5">
+                  <Button 
+                    onClick={handleRenewalSubmit}
+                    disabled={submitting || transactionId.trim().length < 8}
+                    className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/15 hover:shadow-brand-blue/25 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1px] active:translate-y-0"
+                  >
+                    {submitting ? 'Submitting request...' : 'Complete Renewal / അപ്ഡേറ്റ് ചെയ്യുക'}
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setStep('confirm')}
+                    className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    Go Back
+                  </Button>
+                </div>
               </div>
             </CardContent>
           )}

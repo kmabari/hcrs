@@ -89,10 +89,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 selection:bg-brand-blue/20 bg-slate-50 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 selection:bg-brand-blue/20 relative overflow-hidden">
       {/* Dynamic Background Accents */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/5 blur-3xl" />
-      <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/5 blur-3xl" />
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 15 }}
@@ -102,28 +102,28 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
       >
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-block p-3 bg-white shadow-premium rounded-[24px] mb-4 border border-slate-100">
+          <div className="inline-block p-4 bg-white shadow-premium rounded-[28px] mb-4 border border-slate-100 transition-all hover:scale-105">
             <Logo className="scale-110 mx-auto" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-none uppercase">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">
             Portal Access
           </h2>
-          <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest leading-none">
+          <p className="text-[10px] font-black text-brand-magenta mt-2.5 uppercase tracking-widest leading-none">
             Highrich Community Revival Society
           </p>
         </div>
 
         {/* glassmorphism Card */}
-        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[32px] border border-white/50 shadow-premium">
-          <div className="flex items-center gap-3.5 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-brand-magenta/10 flex items-center justify-center text-brand-magenta">
-              <KeyRound className="w-5 h-5 animate-pulse" />
+        <div className="bg-white border-2 border-slate-150 p-8 rounded-[36px] shadow-premium">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-xl bg-brand-magenta/10 flex items-center justify-center text-brand-magenta shadow-sm">
+              <KeyRound className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-brand-magenta uppercase tracking-wide">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
                 Member Authentication
               </h3>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none">
+              <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mt-1 leading-none">
                 Operator / District / Member Gateway
               </p>
             </div>
@@ -135,19 +135,19 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 control={form.control}
                 name="email"
                 render={({ field, fieldState }) => (
-                  <FormItem className="space-y-1.5Packed">
-                    <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider ml-1">
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">
                       Mobile / Email / Username
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${field.value ? 'text-brand-magenta' : 'text-slate-300'}`} />
+                        <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-brand-magenta' : 'text-slate-300'}`} />
                         <Input 
                           {...field} 
                           type="text" 
-                          placeholder="Eg: 9876543210 or email@domain.com" 
+                          placeholder="Eg: 9876543210 or admin@hcrs.com" 
                           disabled={isLoading}
-                          className={`pl-11 h-12 bg-white/60 border border-slate-200/80 focus:border-brand-magenta focus:ring-0 focus:bg-white transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -160,30 +160,30 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 control={form.control}
                 name="pin"
                 render={({ field, fieldState }) => (
-                  <FormItem className="space-y-1.5Packed">
-                    <div className="flex justify-between items-center mb-1.5 px-1">
-                      <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider">
+                  <FormItem className="space-y-1.5">
+                    <div className="flex justify-between items-center mb-1 bg-transparent px-1">
+                      <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
                         Secure code (PIN)
                       </FormLabel>
                       <button 
                         type="button" 
                         disabled={isLoading}
                         onClick={handleForgotPassword}
-                        className="text-[10px] text-brand-magenta hover:text-brand-magenta/80 transition-colors font-black uppercase tracking-wider disabled:opacity-50"
+                        className="text-[10px] text-brand-magenta hover:text-brand-magenta/80 hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50"
                       >
                         Reset Password
                       </button>
                     </div>
                     <FormControl>
                       <div className="relative">
-                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${field.value ? 'text-brand-magenta' : 'text-slate-300'}`} />
+                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-brand-magenta' : 'text-slate-300'}`} />
                         <Input 
                           {...field} 
                           type="password" 
                           placeholder="••••" 
                           disabled={isLoading}
                           maxLength={12}
-                          className={`pl-11 h-12 bg-white/60 border border-slate-200/80 focus:border-brand-magenta focus:ring-0 focus:bg-white transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -195,24 +195,24 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-12 rounded-xl text-xs font-black shadow-lg shadow-brand-magenta/15 hover:shadow-brand-magenta/20 transition-all hover:translate-y-[-1px] active:translate-y-0 group uppercase tracking-widest bg-brand-magenta text-white hover:bg-brand-magenta/95"
+                className="w-full h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/15 hover:shadow-brand-magenta/25 transition-all hover:translate-y-[-1px] active:translate-y-0 group uppercase tracking-widest bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95"
               >
                 {isLoading ? 'Processing Access...' : 'Verify Credentials'}
-                {!isLoading && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
+                {!isLoading && <ArrowRight className="ml-2 w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />}
               </Button>
             </form>
           </Form>
         </div>
 
-        <div className="mt-6 flex flex-col items-center gap-4">
+        <div className="mt-8 flex flex-col items-center gap-4">
           <Button 
             type="button" 
             variant="ghost" 
             onClick={onBack}
             disabled={isLoading}
-            className="text-slate-400 hover:text-slate-600 font-bold uppercase tracking-wider text-[10px] hover:bg-white/40 rounded-xl"
+            className="text-slate-400 hover:text-slate-600 font-extrabold uppercase tracking-widest text-[10px] hover:bg-white/40 rounded-2xl px-6 h-11 transition-all"
           >
-            <ArrowLeft className="mr-1.5 w-3.5 h-3.5" />
+            <ArrowLeft className="mr-1.5 w-4 h-4" />
             Return to Landing Portal
           </Button>
 
@@ -221,9 +221,9 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                type="button"
                disabled={isLoading}
                onClick={onGoogleLogin}
-               className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 hover:text-brand-blue transition-all flex items-center gap-1.5 group"
+               className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-blue transition-all flex items-center gap-1.5 group"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-300 group-hover:text-brand-blue/50" />
+              <ShieldCheck className="w-4 h-4 text-slate-300 group-hover:text-brand-blue/50" />
               Verified Official Channel
             </button>
           </div>

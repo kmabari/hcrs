@@ -333,7 +333,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200/60 shadow- premium max-w-xl mx-auto overflow-hidden animate-in fade-in duration-500">
+    <div className="bg-white rounded-3xl border border-slate-200/60 shadow-xl max-w-xl mx-auto overflow-hidden animate-in fade-in duration-500">
       <div className="bg-gradient-to-r from-brand-blue to-indigo-950 px-6 py-4 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-white/10 p-2 rounded-xl">

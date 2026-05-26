@@ -77,57 +77,61 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
   };
 
   return (
-    <div className="min-h-screen py-16 px-4 font-sans bg-slate-50 relative overflow-hidden flex items-center justify-center">
+    <div className="min-h-screen py-20 px-4 font-sans relative overflow-hidden flex items-center justify-center">
       {/* Dynamic graphic backdrops */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-brand-magenta/5 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-brand-blue/5 blur-3xl pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none" />
 
       <div className="max-w-xl w-full z-10">
         <div className="text-center mb-10">
-          <div className="inline-block p-2.5 bg-white shadow-premium rounded-[22px] mb-3 border border-slate-100">
+          <div className="inline-block p-3 bg-white shadow-premium rounded-[26px] mb-4 border border-slate-100 transition-all hover:scale-105">
             <Logo className="scale-105 mx-auto" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase leading-none">Membership Registration</h2>
-          <p className="text-slate-400 text-[9px] font-bold tracking-widest mt-1.5 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">Membership Registration</h2>
+          <p className="text-brand-magenta text-[10px] font-black tracking-widest mt-2 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
         </div>
 
         {/* Sleek Form Container */}
-        <Card className="border border-white/50 bg-white/80 backdrop-blur-xl shadow-premium overflow-hidden rounded-[28px]">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-6 pt-7 px-8">
-            <CardTitle className="text-lg font-black text-brand-blue flex items-center gap-3.5 uppercase tracking-tight">
+        <Card className="border-2 border-slate-150 bg-white shadow-premium overflow-hidden rounded-[36px]">
+          <CardHeader className="bg-slate-50/85 border-b border-slate-150 pb-6 pt-8 px-8 md:px-10">
+            <CardTitle className="text-lg md:text-xl font-black text-slate-900 flex items-center gap-3 uppercase tracking-tight">
               {step === 'details' ? (
                 <>
-                  <User className="w-5 h-5 text-brand-blue" />
-                  Fast Registration (ഉടൻ അംഗമാകുക)
+                  <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm">
+                    <User className="w-5 h-5" />
+                  </div>
+                  Fast Registration
                 </>
               ) : (
                 <>
-                  <Receipt className="w-5 h-5 text-brand-blue" />
-                  Membership Fee Payment (അംഗത്വ ഫീസ് അടയ്ക്കുക)
+                  <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  Membership Payment
                 </>
               )}
             </CardTitle>
-            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[8px]">
-              {step === 'details' ? 'Secure Registration Node' : 'Treasury Portal Step 2'}
+            <CardDescription className="text-slate-400 font-black uppercase tracking-widest text-[9px] mt-2">
+              {step === 'details' ? 'Secure Registration Node • Step 1' : 'Treasury Portal • Step 2'}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-8">
+          <CardContent className="p-8 md:p-10">
             {step === 'details' ? (
               <Form {...form}>
-                <form onSubmit={handleNextStep} className="space-y-6">
+                <form onSubmit={handleNextStep} className="space-y-7">
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                     {/* Name Input */}
                     <FormField control={form.control} name="name" render={({ field, fieldState }) => (
-                      <FormItem className="space-y-1.5Packed">
-                        <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider ml-1">Full Name (പൂർണ്ണമായ പേര്)</FormLabel>
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">Full Name (പൂർണ്ണമായ പേര്)</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
+                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
                             <Input 
                               {...field} 
                               placeholder="Enter your full legal name" 
-                              className={`pl-11 h-12 bg-white/60 border border-slate-200/80 focus:border-brand-blue focus:ring-0 focus:bg-white transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                              className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500 focus:border-red-500' : ''}`} 
                             />
                           </div>
                         </FormControl>
@@ -137,11 +141,11 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
                     {/* Phone Input */}
                     <FormField control={form.control} name="mobile" render={({ field, fieldState }) => (
-                      <FormItem className="space-y-1.5Packed">
-                        <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider ml-1">Mobile Number (ഫോൺ നമ്പർ)</FormLabel>
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">Mobile Number (ഫോൺ നമ്പർ)</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
+                            <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
                             <Input 
                               {...field} 
                               maxLength={10}
@@ -150,7 +154,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                                 field.onChange(cleaned);
                               }}
                               placeholder="10-digit number" 
-                              className={`pl-11 h-12 bg-white/60 border border-slate-200/80 focus:border-brand-blue focus:ring-0 focus:bg-white transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                              className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                             />
                           </div>
                         </FormControl>
@@ -160,13 +164,13 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
                     {/* State Select */}
                     <FormField control={form.control} name="state" render={({ field, fieldState }) => (
-                      <FormItem className="space-y-1.5Packed">
-                        <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider ml-1">State (സംസ്ഥാനം)</FormLabel>
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">State (സംസ്ഥാനം)</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
-                            <SelectTrigger className={`h-12 bg-white/60 border border-slate-200/80 focus:border-brand-blue transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
+                            <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
                               <div className="flex items-center gap-2">
-                                <Landmark className={`w-4 h-4 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
+                                <Landmark className={`w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
                                 <SelectValue placeholder="Select State" />
                               </div>
                             </SelectTrigger>
@@ -182,8 +186,8 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* District */}
                       <FormField control={form.control} name="district" render={({ field, fieldState }) => (
-                        <FormItem className="col-span-1 space-y-1.5Packed">
-                          <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider ml-1">District (ജില്ല)</FormLabel>
+                        <FormItem className="col-span-1 space-y-1.5">
+                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">District (ജില്ല)</FormLabel>
                           <Select 
                             onValueChange={(val) => {
                               field.onChange(val);
@@ -192,7 +196,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                             value={field.value || ""}
                           >
                             <FormControl>
-                              <SelectTrigger className={`h-12 bg-white/60 border border-slate-200/80 focus:border-brand-blue transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
+                              <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder="Select District" />
                               </SelectTrigger>
                             </FormControl>
@@ -206,15 +210,15 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
                       {/* Assembly Constituency */}
                       <FormField control={form.control} name="assemblyConstituency" render={({ field, fieldState }) => (
-                        <FormItem className="col-span-1 space-y-1.5Packed">
-                          <FormLabel className="text-slate-500 font-black uppercase text-[10px] tracking-wider ml-1">Assembly Constituency (മണ്ഡലം)</FormLabel>
+                        <FormItem className="col-span-1 space-y-1.5">
+                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">Assembly Constituency (മണ്ഡലം)</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             value={field.value || ""}
                             disabled={!district}
                           >
                             <FormControl>
-                              <SelectTrigger className={`h-12 bg-white/60 border border-slate-200/80 focus:border-brand-blue transition-all rounded-xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
+                              <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder={district ? "Select Assembly" : "Select District first"} />
                               </SelectTrigger>
                             </FormControl>
@@ -229,9 +233,9 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   </motion.div>
 
                   {/* Terms Info */}
-                  <div className="border-t border-slate-100/60 pt-6 flex items-start gap-3">
+                  <div className="border-t border-slate-100 pt-6 flex items-start gap-3.5">
                     <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
+                    <p className="text-[10.5px] text-slate-500 font-bold uppercase leading-relaxed">
                       നിങ്ങൾ വിജയകരമായി രജിസ്റ്റർ ചെയ്താൽ, നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡ് '123456' ഉം ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം. തുടർന്ന് പ്രൊഫൈൽ എഡിറ്റ് ചെയ്ത് നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ പൂർത്തീകരിക്കാവുന്നതാണ്.
                     </p>
                   </div>
@@ -240,73 +244,117 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <Button 
                     type="submit" 
                     disabled={district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district]}
-                    className="w-full h-12 rounded-xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/20 uppercase tracking-widest bg-brand-blue hover:bg-brand-blue/95 text-white disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="w-full h-13 rounded-2xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 uppercase tracking-widest bg-gradient-to-r from-brand-blue to-indigo-600 text-white disabled:opacity-50 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:translate-y-0"
                   >
                     {(district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])
-                      ? 'Quota Exhausted' 
+                      ? 'Quota Exhausted / ക്വാട്ട കഴിഞ്ഞു' 
                       : 'Proceed to Payment / പേയ്മെന്റിലേക്ക് പോവുക'}
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 text-white" />
                   </Button>
                 </form>
               </Form>
             ) : (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <div className="bg-brand-blue/5 border border-brand-blue/20 rounded-[28px] p-6">
-                  <h4 className="font-black text-brand-blue text-base flex items-center gap-3 mb-3 uppercase tracking-tight">
-                    <Receipt className="w-6 h-6" />
-                    Membership Treasury (അംഗത്വ ട്രഷറി)
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-7">
+                <div className="bg-[#081426] text-white rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-brand-magenta/10 blur-2xl pointer-events-none" />
+                  
+                  <h4 className="font-extrabold text-[#0066FF] text-base flex items-center gap-3 mb-4 uppercase tracking-wider">
+                    <Receipt className="w-5 h-5 text-[#FF1493]" />
+                    HCRS Secure Treasury (അംഗത്വ ട്രഷറി)
                   </h4>
-                  <p className="text-sm text-foreground/75 font-bold leading-relaxed">
-                    Pay <span className="text-brand-magenta font-black italic">₹200</span> via GPay/PhonePe to:
+                  
+                  <p className="text-xs text-slate-300 font-semibold leading-relaxed">
+                    Pay <span className="text-[#FF1493] font-black text-lg">₹200</span> for 1-Year National Active Membership. Scan the QR code or pay directly to the official registry receiver:
                   </p>
-                  <div 
-                    className="bg-white border border-border p-5 rounded-2xl mt-4 flex items-center justify-between group cursor-pointer shadow-sm active:scale-95 transition-transform" 
-                    onClick={() => {
-                      navigator.clipboard.writeText('9645934571');
-                      toast.success('Number copied / നമ്പർ കോപ്പി ചെയ്തു!');
-                    }}
-                  >
-                    <p className="text-3xl font-mono font-black text-brand-blue tracking-tighter">9645934571</p>
-                    <span className="text-[10px] font-black text-brand-blue/40 uppercase tracking-widest bg-brand-blue/5 px-2.5 py-1 rounded-md">Copy (കോപ്പി)</span>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-6 mt-6 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                    {/* Public UPI Payment QR Generator */}
+                    <div className="bg-white p-2.5 rounded-2xl shadow-lg border border-slate-100 shrink-0">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('upi://pay?pa=9645934571@ybl&pn=HCRS%20Kerala&am=200&cu=INR')}`}
+                        alt="UPI Payment QR Code"
+                        className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
+                      />
+                    </div>
+
+                    <div className="space-y-3.5 w-full text-center sm:text-left">
+                      <div>
+                        <span className="text-[9px] font-black tracking-widest text-[#FF1493] uppercase">Official UPI Number</span>
+                        <div 
+                          className="flex items-center justify-between gap-3 bg-slate-950 p-3 rounded-xl mt-1 border border-slate-850 cursor-pointer hover:border-[#0066FF]/50 transition-all active:scale-98"
+                          onClick={() => {
+                            navigator.clipboard.writeText('9645934571');
+                            toast.success('UPI details copied / നമ്പർ കോപ്പി ചെയ്തു!');
+                          }}
+                        >
+                          <span className="font-mono font-black text-[#0066FF] text-lg sm:text-xl">9645934571</span>
+                          <span className="text-[8px] font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">Copy</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-1.5">
+                        <a 
+                          href="upi://pay?pa=9645934571@ybl&pn=HCRS%20Kerala&am=200&cu=INR" 
+                          className="text-[9px] font-black uppercase tracking-wider bg-[#0066FF] text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 active:scale-95 transition-all inline-flex items-center gap-1"
+                        >
+                          Pay with UPI
+                        </a>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText('9645934571@ybl');
+                            toast.success('UPI VPA Copied / UPI വിലാസം കോപ്പി ചെയ്തു!');
+                          }}
+                          className="text-[9px] font-black uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-750 active:scale-95 transition-all"
+                        >
+                          Copy VPA
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[9.5px] text-slate-400 font-bold mt-2 uppercase">Please copy this number and pay via Google Pay or PhonePe.</p>
+
+                  <p className="text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-wide leading-relaxed">
+                    * Google Pay, PhonePe, and Paytm can pay directly to the mobile number <span className="text-white font-extrabold">9645934571</span>.
+                  </p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      UPI Transaction Ref No. (ട്രാന്സാക്ഷൻ ഐഡി)
+                      UPI / UTR Transaction ID (12-അക്ക ട്രാന്സാക്ഷൻ ഐഡി) <span className="text-[#FF1493]">*</span>
                     </label>
                     <Input 
                       value={transactionId}
-                      onChange={(e) => setTransactionId(e.target.value)}
-                      placeholder="Enter 12-digit UPI/UTR Number"
-                      className="h-14 bg-white border border-slate-200 focus:border-brand-blue transition-all rounded-xl font-bold font-mono tracking-wider text-center"
+                      onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 3145XXXXXXXX"
+                      maxLength={12}
+                      className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-350"
                     />
                   </div>
 
-                  <p className="text-[10.5px] font-bold text-slate-400 leading-normal border-t border-slate-100 pt-3">
-                    * ശരിയായ ട്രാന്സാക്ഷൻ ഐഡി എന്റർ ചെയ്യുക. പേയ്‌മെന്റ് വെരിഫിക്കേഷന് ശേഷം അക്കൗണ്ട് അപ്പൂവ് ചെയ്യുന്നതാണ്.
+                  <p className="text-[10.5px] font-bold text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
+                    * അടച്ച തുകയുടെ ശരിയായ 12-അക്ക യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാൻസാക്ഷൻ ഐഡിയോ പൂരിപ്പിക്കുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.
                   </p>
 
-                  <Button 
-                    type="button" 
-                    onClick={handleFinalSubmit}
-                    disabled={!transactionId.trim()}
-                    className="w-full h-14 rounded-xl font-black bg-brand-blue hover:bg-brand-blue/95 text-white shadow-xl shadow-brand-blue/15 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    Complete Registration / രജിസ്റ്റർ ചെയ്യുക
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
+                  <div className="flex flex-col gap-3">
+                    <Button 
+                      type="button" 
+                      onClick={handleFinalSubmit}
+                      disabled={transactionId.trim().length < 8}
+                      className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/15 hover:shadow-brand-blue/25 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1.5px] active:translate-y-0"
+                    >
+                      Complete Registration / രജിസ്റ്റർ ചെയ്യുക
+                      <ArrowRight className="w-4 h-4 text-white" />
+                    </Button>
 
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    onClick={() => setStep('details')}
-                    className="w-full h-12 rounded-xl text-foreground/45 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all flex items-center justify-center gap-1"
-                  >
-                    <ArrowLeft className="w-4 h-4" /> Go Back / വിവരങ്ങൾ തിരുത്തുക
-                  </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={() => setStep('details')}
+                      className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-4 h-4" /> Go Back / വിവരങ്ങൾ തിരുത്തുക
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}
