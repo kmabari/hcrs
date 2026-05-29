@@ -795,47 +795,7 @@ export default function AdminDashboard({
     });
   }, [members, searchTerm, districtFilter, sourceFilter]);
 
-  useEffect(() => {
-    if (autoApprovedRun.current || pendingRequests.length === 0) return;
-    autoApprovedRun.current = true;
-    
-    const runAutoApprovals = async () => {
-      console.log(`Auto-approving ${pendingRequests.length} pending members...`);
-      let autoCount = 0;
-      for (const m of pendingRequests) {
-        try {
-          const paddedSerial = String(m.serialNo || 1000).padStart(3, '0');
-          const distCode = (m.district || 'MLP').toUpperCase();
-          const assemblyCode = getAssemblyCode(m.assemblyConstituency || '');
-          const finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
-          
-          const expiry = new Date();
-          expiry.setFullYear(expiry.getFullYear() + 1);
-
-          await updateDoc(doc(db, 'users', m.uid), {
-            status: 'active',
-            isApproved: true,
-            membershipId: finalId,
-            issueDate: serverTimestamp(),
-            expiryDate: expiry,
-            waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent'
-          });
-          autoCount++;
-        } catch (e) {
-          console.error("Auto approval error:", m.uid, e);
-        }
-      }
-      if (autoCount > 0) {
-        toast.success(`നിലവിലെ പെൻഡിങ് എല്ലാ അംഗങ്ങളെയും സിസ്റ്റം സ്വയം അപ്രൂവ് ചെയ്തു കഴിഞ്ഞു! (${autoCount} currently pending members auto-approved and moved to list!)`, {
-          duration: 7000
-        });
-      }
-    };
-    
-    runAutoApprovals();
-  }, [pendingRequests.length]);
-
-  const filteredClaims = useMemo(() => {
+   const filteredClaims = useMemo(() => {
     const term = claimSearchTerm.toLowerCase().trim();
     return claims.filter(c => {
       const matchesSearch = !term || 
@@ -1358,7 +1318,7 @@ export default function AdminDashboard({
                         required 
                         maxLength={10}
                         className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="10-digit number" 
+                        placeholder="**********" 
                         value={manualFormData.mobile} 
                         onChange={e => setManualFormData({...manualFormData, mobile: e.target.value.replace(/\D/g, '')})}
                       />
@@ -3512,7 +3472,7 @@ export default function AdminDashboard({
                       required 
                       maxLength={10} 
                       className="h-12 rounded-xl focus:ring-brand-blue"
-                      placeholder="10-digit number" 
+                      placeholder="**********" 
                       value={manualFormData.mobile} 
                       onChange={e => setManualFormData({...manualFormData, mobile: e.target.value.replace(/\D/g, '')})}
                     />

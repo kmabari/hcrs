@@ -378,7 +378,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             type="tel"
             required
             maxLength={10}
-            placeholder="10 digit phone number (e.g. 9876543210)"
+            placeholder="**********"
             className="h-12 rounded-xl border-slate-200 px-4 focus-visible:ring-brand-blue text-sm font-semibold font-mono"
             value={mobile}
             onChange={e => setMobile(e.target.value.replace(/\D/g, ''))}

@@ -153,7 +153,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                                 const cleaned = e.target.value.replace(/\D/g, '');
                                 field.onChange(cleaned);
                               }}
-                              placeholder="10-digit number" 
+                              placeholder="**********" 
                               className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                             />
                           </div>
@@ -263,69 +263,35 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     HCRS Secure Treasury (അംഗത്വ ട്രഷറി)
                   </h4>
                   
-                  <p className="text-xs text-slate-300 font-semibold leading-relaxed">
-                    Pay <span className="text-[#FF1493] font-black text-lg">₹200</span> for 1-Year National Active Membership. Scan the QR code or pay directly to the official registry receiver:
+                  <p className="text-xs text-slate-300 font-semibold leading-relaxed text-center sm:text-left">
+                    Scan the QR code below using any UPI app (GPay, PhonePe, Paytm) to pay <span className="text-[#FF1493] font-black text-lg">₹200</span> for 1-Year National Active Membership:
                   </p>
 
-                  <div className="flex flex-col sm:flex-row items-center gap-6 mt-6 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                  <div className="flex flex-col items-center justify-center gap-4 mt-6 bg-slate-900/50 p-5 rounded-2xl border border-slate-800">
                     {/* Public UPI Payment QR Generator */}
                     <div className="bg-white p-2.5 rounded-2xl shadow-lg border border-slate-100 shrink-0">
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('upi://pay?pa=9645934571@ybl&pn=HCRS%20Kerala&am=200&cu=INR')}`}
+                        src="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg"
                         alt="UPI Payment QR Code"
-                        className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
+                        className="w-40 h-40 object-contain"
+                        referrerPolicy="no-referrer"
                       />
                     </div>
-
-                    <div className="space-y-3.5 w-full text-center sm:text-left">
-                      <div>
-                        <span className="text-[9px] font-black tracking-widest text-[#FF1493] uppercase">Official UPI Number</span>
-                        <div 
-                          className="flex items-center justify-between gap-3 bg-slate-950 p-3 rounded-xl mt-1 border border-slate-850 cursor-pointer hover:border-[#0066FF]/50 transition-all active:scale-98"
-                          onClick={() => {
-                            navigator.clipboard.writeText('9645934571');
-                            toast.success('UPI details copied / നമ്പർ കോപ്പി ചെയ്തു!');
-                          }}
-                        >
-                          <span className="font-mono font-black text-[#0066FF] text-lg sm:text-xl">9645934571</span>
-                          <span className="text-[8px] font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">Copy</span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-1.5">
-                        <a 
-                          href="upi://pay?pa=9645934571@ybl&pn=HCRS%20Kerala&am=200&cu=INR" 
-                          className="text-[9px] font-black uppercase tracking-wider bg-[#0066FF] text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 active:scale-95 transition-all inline-flex items-center gap-1"
-                        >
-                          Pay with UPI
-                        </a>
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText('9645934571@ybl');
-                            toast.success('UPI VPA Copied / UPI വിലാസം കോപ്പി ചെയ്തു!');
-                          }}
-                          className="text-[9px] font-black uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-750 active:scale-95 transition-all"
-                        >
-                          Copy VPA
-                        </button>
-                      </div>
-                    </div>
+                    <p className="text-[10px] font-black text-slate-400 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-slate-800 text-center uppercase tracking-wider">
+                      ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക
+                    </p>
                   </div>
-
-                  <p className="text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-wide leading-relaxed">
-                    * Google Pay, PhonePe, and Paytm can pay directly to the mobile number <span className="text-white font-extrabold">9645934571</span>.
-                  </p>
                 </div>
 
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      UPI / UTR Transaction ID (12-അക്ക ട്രാന്സാക്ഷൻ ഐഡി) <span className="text-[#FF1493]">*</span>
+                      ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID) <span className="text-[#FF1493]">*</span>
                     </label>
                     <Input 
                       value={transactionId}
                       onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, ''))}
-                      placeholder="e.g. 3145XXXXXXXX"
+                      placeholder="TXNXXXXXXXXXX"
                       maxLength={12}
                       className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-350"
                     />

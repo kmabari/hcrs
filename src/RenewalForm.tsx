@@ -130,7 +130,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   <Input 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="e.g. KL/MLP/KTK/1001 or 9645..."
+                    placeholder="e.g. KL/MLP/KTK/1001 or **********"
                     className="pl-12 h-14 bg-white/5 border-border focus:border-brand-blue/50 transition-all rounded-[20px] font-bold text-lg"
                   />
                 </div>
@@ -198,55 +198,34 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   Renewal Treasury (പുതുക്കൽ ട്രഷറി)
                 </h4>
                 
-                <p className="text-xs text-slate-300 font-semibold leading-relaxed">
-                  Pay <span className="text-[#FF1493] font-black text-lg">₹100</span> for 1-Year Membership Renewal. Scan QR code below or pay directly to the official contact receiver:
+                <p className="text-xs text-slate-300 font-semibold leading-relaxed text-center sm:text-left">
+                  Scan the QR code below using any UPI app (GPay, PhonePe, Paytm) to pay <span className="text-[#FF1493] font-black text-lg">₹100</span> for 1-Year Membership Renewal:
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center gap-4 mt-5 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
-                  <div className="bg-white p-2 rounded-xl shadow-lg shrink-0">
+                <div className="flex flex-col items-center justify-center gap-4 mt-5 bg-slate-900/40 p-5 rounded-xl border border-slate-800">
+                  <div className="bg-white p-2.5 rounded-xl shadow-lg shrink-0">
                     <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('upi://pay?pa=9645934571@ybl&pn=HCRS%2520Kerala&am=100&cu=INR')}`}
+                      src="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg"
                       alt="Renewal QR"
-                      className="w-24 h-24 object-contain"
+                      className="w-40 h-40 object-contain"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
-
-                  <div className="space-y-3 w-full text-center sm:text-left">
-                    <div>
-                      <span className="text-[9px] font-black tracking-widest text-[#FF1493] uppercase">Official UPI Number</span>
-                      <div 
-                        className="flex items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-lg mt-1 border border-slate-800 cursor-pointer hover:border-[#0066FF]/50 transition-all active:scale-98"
-                        onClick={() => {
-                          navigator.clipboard.writeText('9645934571');
-                          toast.success('UPI details copied!');
-                        }}
-                      >
-                        <span className="font-mono font-black text-white text-base">9645934571</span>
-                        <span className="text-[8px] font-black text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">Copy</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                      <a 
-                        href="upi://pay?pa=9645934571@ybl&pn=HCRS%20Kerala&am=100&cu=INR" 
-                        className="text-[8px] font-black uppercase tracking-wider bg-[#0066FF] text-white px-2.5 py-1 rounded-md hover:bg-opacity-90 transition-all inline-flex items-center gap-1"
-                      >
-                        Pay UPI
-                      </a>
-                    </div>
-                  </div>
+                  <p className="text-[10px] font-black text-slate-400 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-slate-800 text-center uppercase tracking-wider">
+                    ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-5">
                 <div className="space-y-2 text-left">
                   <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                    UPI / UTR Transaction ID (12-അക്ക ട്രാന്സാക്ഷൻ ഐഡി) <span className="text-[#FF1493]">*</span>
+                    ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID) <span className="text-[#FF1493]">*</span>
                   </label>
                   <Input 
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 12-digit UPI/UTR ID"
+                    placeholder="TXNXXXXXXXXXX"
                     maxLength={12}
                     className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-300"
                   />

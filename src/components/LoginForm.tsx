@@ -145,7 +145,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                         <Input 
                           {...field} 
                           type="text" 
-                          placeholder="Eg: 9876543210 or admin@hcrs.com" 
+                          placeholder="********** or admin@hcrs.com" 
                           disabled={isLoading}
                           className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />

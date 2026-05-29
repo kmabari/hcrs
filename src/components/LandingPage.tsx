@@ -575,7 +575,7 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                           maxLength={10}
                           value={claimMobile}
                           onChange={(e) => setClaimMobile(e.target.value.replace(/\D/g, ''))}
-                          placeholder="e.g. 9645934571"
+                          placeholder="**********"
                           className="pl-12 h-14 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 transition-all rounded-2xl font-black font-mono text-xl text-slate-900"
                         />
                       </div>
