@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Save, Info, Target, Eye, MapPin, Phone, Mail, Globe, LayoutGrid, RefreshCw, Trash2, Plus, CheckCircle2, X } from 'lucide-react';
+import { Save, Info, Target, Eye, MapPin, Phone, Mail, Globe, LayoutGrid, RefreshCw, Trash2, Plus, CheckCircle2, X, AlertTriangle } from 'lucide-react';
 import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings, addAnnouncement, deleteAnnouncement, updateAnnouncement, subscribeToAnnouncements, Announcement } from '@/src/lib/cms';
 
 export default function BrandingManager() {
@@ -291,7 +291,7 @@ export default function BrandingManager() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-left">
                     <Label className="font-bold text-xs text-slate-700">ഹെഡിങ് (News Title / Heading) *</Label>
                     <Input 
                       value={settings.announcementTitle || ''} 
@@ -300,18 +300,18 @@ export default function BrandingManager() {
                       className="h-11 rounded-lg border-slate-200 font-bold text-slate-700 text-xs bg-slate-50/30"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-left">
                     <Label className="font-bold text-xs text-slate-700">തീയതി (Date / Case Date)</Label>
                     <Input 
                       value={settings.announcementCaseDate || ''} 
                       onChange={e => setSettings({...settings, announcementCaseDate: e.target.value})}
-                      placeholder="ഉദാ: 2026-06-15"
+                      placeholder="ഉദാ: 2026-05-30"
                       className="h-11 rounded-lg border-slate-200 font-semibold text-xs bg-slate-50/30"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <Label className="font-bold text-slate-700 text-xs">പ്രധാന വാർത്ത വിവരണം / ഉള്ളടക്കം (News Content) *</Label>
                   <Textarea 
                     value={settings.announcementText || ''} 
@@ -322,26 +322,60 @@ export default function BrandingManager() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 md:col-span-2 text-left">
                     <Label className="font-bold text-slate-700 text-xs">വാർത്തയോടൊപ്പം കാട്ടേണ്ട ഫോട്ടോ ലിങ്ക് (News Photo URL) (Optional)</Label>
                     <Input 
                       value={settings.announcementImageUrl || ''} 
-                      onChange={e => setSettings({...settings, announcementImageUrl: e.target.value})}
-                      placeholder="ഇമേജ് ലിങ്ക് പേസ്റ്റ് ചെയ്യുക. ഉദാ: https://images.weserv.nl/?url=..."
+                      onChange={e => {
+                        let val = e.target.value.trim();
+                        // Support auto-extracting direct raw URL from pasted HTML/BBCode code
+                        if (val.startsWith('<')) {
+                          const srcMatch = val.match(/src="([^"]+)"/i);
+                          if (srcMatch && srcMatch[1]) {
+                            val = srcMatch[1];
+                          } else {
+                            const hrefMatch = val.match(/href="([^"]+)"/i);
+                            if (hrefMatch && hrefMatch[1]) {
+                              val = hrefMatch[1];
+                            }
+                          }
+                        } else if (val.includes('[img]')) {
+                          const imgMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
+                          if (imgMatch && imgMatch[1]) {
+                            val = imgMatch[1].trim();
+                          }
+                        }
+                        setSettings({...settings, announcementImageUrl: val});
+                      }}
+                      placeholder="ഇമേജ് ലിങ്ക് അല്ലെങ്കിൽ HTML കോഡ് പേസ്റ്റ് ചെയ്യുക. ഉദാ: https://i.ibb.co/..."
                       className="h-11 rounded-lg border-slate-200 font-semibold text-xs bg-slate-50/30"
                     />
                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                      ചില വാർത്തകളിൽ ഇമേജുകൾ ഉൾപ്പെടുത്താൻ വെബ് സൈറ്റുകളിൽ നിന്നുള്ള ഇമേജ് ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക.
+                      നിങ്ങൾക്ക് ഡയറക്ട് ലിങ്ക് നൽകാം, അല്ലെങ്കിൽ ImgBB അപ്‌ലോഡിന് ശേഷം ലഭിക്കുന്ന HTML കോഡ് നേരിട്ട് ഇവിടെ പേസ്റ്റ് ചെയ്യാം. സിസ്റ്റം അത് ഓട്ടോമാറ്റിക് ആയി ശരിയാക്കിക്കൊള്ളും!
                     </p>
+
+                    {settings.announcementImageUrl && !settings.announcementImageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) && (settings.announcementImageUrl.includes('ibb.co') || settings.announcementImageUrl.includes('postimg') || !settings.announcementImageUrl.startsWith('http')) && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 font-bold space-y-1 mt-2 text-left">
+                        <p className="flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>ചിത്രത്തിന്റെ തെറ്റായ ലിങ്ക് ആണ് നൽകിയിട്ടുള്ളത്! (Invalid Image Link Detected)</span>
+                        </p>
+                        <p className="font-medium text-[10px] leading-relaxed text-slate-600">
+                          നിങ്ങൾ നൽകിയത് വെബ്‌പേജ് ലിങ്ക് ആണ് (ഉദാ: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">https://ibb.co/...</code>). ഇത് വെബ്സൈറ്റിൽ ചിത്രം കാണിക്കില്ല.
+                          <br />
+                          <strong>പരിഹാരം:</strong> ചിത്രത്തിന്റെ <strong>Direct link</strong> (ഡിറക്ട് ലിങ്ക്) ആയ <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">https://i.ibb.co/...</code> എന്ന് തുടങ്ങുന്ന ലിങ്ക് ചേർക്കുക. അല്ലെങ്കിൽ ImgBB-യിൽ ലഭിക്കുന്ന <strong>HTML embed code</strong> മുഴുവനായി ഇവിടെ കോപ്പി പേസ്റ്റ് ചെയ്യുക!
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {settings.announcementImageUrl && (
-                    <div className="border border-slate-200 rounded-xl p-1.5 bg-slate-55 flex flex-col items-center">
+                    <div className="border border-slate-200 rounded-xl p-1.5 bg-slate-50 flex flex-col items-center">
                       <span className="text-[8px] font-bold text-slate-400 uppercase mb-1">Live Photo Preview:</span>
                       <img 
                         src={settings.announcementImageUrl} 
                         alt="Preview" 
-                        className="h-14 max-w-full object-contain rounded-lg"
+                        className="h-16 max-w-full object-contain rounded-lg"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = 'none';
@@ -401,6 +435,34 @@ export default function BrandingManager() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Direct save button for Section A */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="button"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        await saveOrgSettings(settings);
+                        toast.success('പ്രധാന വാർത്താ വിവരങ്ങൾ വിജയകരമായി സേവ് ചെയ്തിരിക്കുന്നു! (Primary news saved successfully)');
+                      } catch (err) {
+                        toast.error('സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.');
+                        console.error(err);
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase tracking-wider px-6 py-4 h-11 rounded-xl shadow-lg shadow-brand-blue/10 flex items-center gap-2"
+                  >
+                    {saving ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    ഈ പ്രധാന വാർത്ത മാത്രം സേവ് ചെയ്യുക (Save Pinned News Only)
+                  </Button>
                 </div>
               </div>
 
@@ -499,17 +561,51 @@ export default function BrandingManager() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2 md:col-span-2 text-left">
                       <Label className="font-bold text-slate-700 text-xs">വിലപിടിപ്പുള്ള ചിത്രങ്ങളുടെ ലിങ്ക് (News Image/Photo URL) (Optional)</Label>
                       <Input 
                         value={newImageUrl} 
-                        onChange={e => setNewImageUrl(e.target.value)}
-                        placeholder="ഉദാ: https://images.weserv.nl/?url=https://..."
+                        onChange={e => {
+                          let val = e.target.value.trim();
+                          // Support auto-extracting direct raw URL from pasted HTML/BBCode code
+                          if (val.startsWith('<')) {
+                            const srcMatch = val.match(/src="([^"]+)"/i);
+                            if (srcMatch && srcMatch[1]) {
+                              val = srcMatch[1];
+                            } else {
+                              const hrefMatch = val.match(/href="([^"]+)"/i);
+                              if (hrefMatch && hrefMatch[1]) {
+                                val = hrefMatch[1];
+                              }
+                            }
+                          } else if (val.includes('[img]')) {
+                            const imgMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
+                            if (imgMatch && imgMatch[1]) {
+                              val = imgMatch[1].trim();
+                            }
+                          }
+                          setNewImageUrl(val);
+                        }}
+                        placeholder="ഇമേജ് ലിങ്ക് അല്ലെങ്കിൽ HTML കോഡ് പേസ്റ്റ് ചെയ്യുക. ഉദാ: https://i.ibb.co/..."
                         className="h-11 rounded-lg border-slate-200 font-semibold text-xs"
                       />
                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                        ചില വാർത്തകളിൽ ഇമേജുകൾ ഉൾപ്പെടുത്താൻ വെബ് സൈറ്റുകളിൽ നിന്നുള്ള ഇമേജ് ലിങ്ക് പേസ്റ്റ് ചെയ്യുക.
+                        നിങ്ങൾക്ക് ഡയറക്ട് ലിങ്ക് നൽകാം, അല്ലെങ്കിൽ ImgBB അപ്‌ലോഡിന് ശേഷം ലഭിക്കുന്ന HTML കോഡ് നേരിട്ട് ഇവിടെ പേസ്റ്റ് ചെയ്യാം. സിസ്റ്റം അത് ഓട്ടോമാറ്റിക് ആയി ശരിയാക്കിക്കൊള്ളും!
                       </p>
+
+                      {newImageUrl && !newImageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) && (newImageUrl.includes('ibb.co') || newImageUrl.includes('postimg') || !newImageUrl.startsWith('http')) && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 font-bold space-y-1 mt-2 text-left">
+                          <p className="flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>ചിത്രത്തിന്റെ തെറ്റായ ലിങ്ക് ആണ് നൽകിയിട്ടുള്ളത്! (Invalid Image Link Detected)</span>
+                          </p>
+                          <p className="font-medium text-[10px] leading-relaxed text-slate-600">
+                            നിങ്ങൾ നൽകിയത് വെബ്‌പേജ് ലിങ്ക് ആണ് (ഉദാ: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">https://ibb.co/...</code>). ഇത് വെബ്സൈറ്റിൽ ചിത്രം കാണിക്കില്ല.
+                            <br />
+                            <strong>പരിഹാരം:</strong> ചിത്രത്തിന്റെ <strong>Direct link</strong> (ഡിറക്ട് ലിങ്ക്) ആയ <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">https://i.ibb.co/...</code> എന്ന് തുടങ്ങുന്ന ലിങ്ക് ചേർക്കുക. അല്ലെങ്കിൽ ImgBB-യിൽ ലഭിക്കുന്ന <strong>HTML embed code</strong> മുഴുവനായി ഇവിടെ കോപ്പി പേസ്റ്റ് ചെയ്യുക!
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {newImageUrl && (
@@ -518,7 +614,7 @@ export default function BrandingManager() {
                         <img 
                           src={newImageUrl} 
                           alt="Preview" 
-                          className="h-14 max-w-full object-contain rounded-lg"
+                          className="h-16 max-w-full object-contain rounded-lg"
                           referrerPolicy="no-referrer"
                           onError={(e) => {
                             (e.target as HTMLElement).style.display = 'none';
