@@ -16,6 +16,12 @@ interface RenewalFormProps {
   initialMobile?: string;
 }
 
+const QR_MIRRORS = [
+  'https://images.weserv.nl/?url=https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg',
+  'https://wsrv.nl/?url=https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg',
+  'https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg'
+];
+
 export default function RenewalForm({ onBack, onSuccess, initialMobile }: RenewalFormProps) {
   const [step, setStep] = useState<'search' | 'confirm' | 'payment'>('search');
   const [searchQuery, setSearchQuery] = useState(initialMobile || '');
@@ -31,6 +37,8 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     return today.toTimeString().split(' ')[0].substring(0, 5);
   });
   const [submitting, setSubmitting] = useState(false);
+  const [mirrorIndex, setMirrorIndex] = useState(0);
+  const [qrSrc, setQrSrc] = useState(QR_MIRRORS[0]);
 
   useEffect(() => {
     if (initialMobile) {
@@ -200,30 +208,104 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
           {step === 'payment' && (
             <CardContent className="p-8 space-y-8">
-              <div className="bg-[#081426] text-white rounded-3xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden text-left">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/10 blur-xl pointer-events-none" />
+              <div className="bg-[#030e1d] text-white rounded-[32px] p-6 md:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
+                <div className="absolute top-0 right-0 w-36 h-36 bg-brand-blue/20 blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-brand-magenta/15 blur-3xl pointer-events-none" />
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-magenta to-indigo-600" />
                 
-                <h4 className="font-extrabold text-[#0066FF] text-base flex items-center gap-3 mb-3 uppercase tracking-wider">
-                  <Receipt className="w-5 h-5 text-[#FF1493]" />
-                  Renewal Treasury (പുതുക്കൽ ട്രഷറി)
+                <h4 className="font-extrabold text-white text-base md:text-lg flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
+                  <span className="p-1.5 rounded-xl bg-brand-blue/20 text-[#0066FF] flex items-center justify-center animate-pulse">
+                    <Receipt className="w-5 h-5 text-[#FF1493]" />
+                  </span>
+                  പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)
                 </h4>
                 
-                <p className="text-xs text-slate-300 font-semibold leading-relaxed text-center sm:text-left">
-                  Scan the QR code below using any UPI app (GPay, PhonePe, Paytm) to pay <span className="text-[#FF1493] font-black text-lg">₹100</span> for 1-Year Membership Renewal:
+                <p className="text-xs text-slate-200 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/5 p-3 rounded-2xl border border-brand-blue/20 mb-5">
+                  Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-[#FF1493] font-black text-lg underline decoration-brand-magenta">₹100</span> for 1-Year Membership Renewal. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക):
                 </p>
 
-                <div className="flex flex-col items-center justify-center gap-4 mt-5 bg-slate-900/40 p-5 rounded-xl border border-slate-800">
-                  <div className="bg-white p-2.5 rounded-xl shadow-lg shrink-0">
+                <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/60 p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
+                  {/* Public UPI Payment QR with Proxy support for Palakkad cellular ISP blocks */}
+                  <div className="bg-white p-3 rounded-2xl shadow-xl shrink-0">
                     <img 
-                      src="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg"
-                      alt="Renewal QR"
-                      className="w-40 h-40 object-contain"
+                      src={qrSrc}
+                      onError={() => {
+                        if (mirrorIndex < QR_MIRRORS.length - 1) {
+                          const nextIndex = mirrorIndex + 1;
+                          setMirrorIndex(nextIndex);
+                          setQrSrc(QR_MIRRORS[nextIndex]);
+                        }
+                      }}
+                      alt="UPI Payment QR Code"
+                      className="w-44 h-44 object-contain"
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-slate-800 text-center uppercase tracking-wider">
-                    ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക
-                  </p>
+                  <div className="flex flex-col items-center gap-2 w-full text-center mt-1">
+                    <p className="text-[10px] font-black text-white bg-slate-950/80 px-4 py-2 rounded-lg border border-slate-800 tracking-wider flex items-center gap-1.5 justify-center">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക
+                    </p>
+                    
+                    {/* Diagnostic & Mirror Selector */}
+                    <div className="w-full mt-3 bg-slate-950/40 border border-slate-800 p-3.5 rounded-xl text-left space-y-2.5">
+                      <span className="text-[9px] font-extrabold text-[#FF1493] uppercase tracking-wider block">
+                        ക്യു ആർ കോഡ് ലോഡിങ് തകരാർ പരിഹരിപ്പാൻ (QR Load Options)
+                      </span>
+                      <p className="text-[9px] text-slate-400 font-semibold leading-relaxed">
+                        പാലക്കാട് ഉൾപ്പെടെയുള്ള ചില മൊബൈൽ നെറ്റ്‌വർക്കുകളിൽ QR കാണാൻ കഴിഞ്ഞില്ലെങ്കിൽ താഴത്തെ ഓപ്ഷനുകൾ ഉപയോഗിക്കുക:
+                      </p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMirrorIndex(0);
+                            setQrSrc(QR_MIRRORS[0]);
+                          }}
+                          className={`h-7 rounded-md text-[8px] font-black uppercase transition-all ${qrSrc === QR_MIRRORS[0] ? 'bg-brand-blue text-white border-brand-blue' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
+                        >
+                          ചാനൽ 1
+                        </Button>
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMirrorIndex(1);
+                            setQrSrc(QR_MIRRORS[1]);
+                          }}
+                          className={`h-7 rounded-md text-[8px] font-black uppercase transition-all ${qrSrc === QR_MIRRORS[1] ? 'bg-brand-blue text-white border-brand-blue' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
+                        >
+                          ചാനൽ 2
+                        </Button>
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMirrorIndex(2);
+                            setQrSrc(QR_MIRRORS[2]);
+                          }}
+                          className={`h-7 rounded-md text-[8px] font-black uppercase transition-all ${qrSrc === QR_MIRRORS[2] ? 'bg-brand-blue text-white border-brand-blue' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
+                        >
+                          ചാനൽ 3 (Direct)
+                        </Button>
+                      </div>
+                      
+                      <div className="pt-1.5 border-t border-slate-800/40">
+                        <a 
+                          href="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg" 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="block w-full text-center bg-[#FF1493]/10 hover:bg-[#FF1493]/20 border border-[#FF1493]/25 text-[#FF1493] rounded-lg py-1.5 font-bold text-[9px] uppercase tracking-wider transition-all"
+                        >
+                          ലിങ്ക് വഴി കാണുക (Direct Link)
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
