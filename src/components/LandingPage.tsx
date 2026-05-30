@@ -169,8 +169,84 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, y: -10 }}
-            className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-20 z-10 relative"
+            className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-16 z-10 relative"
           >
+            {/* TODAY'S UPDATE BOX (ഇന്നത്തെ അപ്ഡേഷൻ) */}
+            {settings?.announcementActive && (
+              <div id="home_announcement_box" className="max-w-4xl mx-auto w-full bg-gradient-to-br from-indigo-50 via-white to-blue-50/70 border-3 border-brand-blue rounded-[36px] p-6 md:p-8 shadow-2xl relative overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-top-4 duration-1000">
+                {/* Glossy top decorative banner with animated pulse effect */}
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-magenta to-indigo-600" />
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-blue/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-brand-magenta/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200/60">
+                  <div className="flex items-center gap-3">
+                    <span className="p-2.5 rounded-2xl bg-brand-blue/15 text-brand-blue flex items-center justify-center shadow-inner animate-pulse">
+                      <RefreshCw className="w-5 h-5 text-brand-blue" />
+                    </span>
+                    <div>
+                      <h3 className="text-lg md:text-xl font-black text-brand-blue uppercase tracking-tight">
+                        {settings?.announcementTitle || 'ഇന്നത്തെ അപ്ഡേഷൻ (TODAY\'S UPDATE)'}
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Important Announcement</p>
+                    </div>
+                  </div>
+                  {settings?.announcementCaseDate && (
+                    <span className="self-start sm:self-center bg-brand-magenta text-white border border-brand-magenta/15 px-4.5 py-1.5 rounded-full font-black text-xs tracking-wider uppercase font-mono shadow-md shadow-brand-magenta/15">
+                      {settings?.announcementCaseDate}
+                    </span>
+                  )}
+                </div>
+
+                {settings?.announcementText && (
+                  <div className="text-slate-800 text-xs md:text-sm font-semibold leading-relaxed mb-6 whitespace-pre-wrap bg-white/70 p-4 md:p-6 rounded-[24px] border border-slate-200/50 shadow-inner text-left">
+                    {settings?.announcementText}
+                  </div>
+                )}
+
+                {/* Case Related Detailed Specifications */}
+                {(settings?.announcementCaseNo || settings?.announcementCaseName || settings?.announcementCourt || settings?.announcementAdvocate || settings?.announcementJudgeBench) && (
+                  <div className="bg-white/95 border-2 border-indigo-100 rounded-[28px] p-5 md:p-6 space-y-3 shadow-md relative overflow-hidden text-left">
+                    <div className="absolute top-0 right-0 bg-indigo-50/40 text-brand-blue font-black font-mono text-[9px] px-3.5 py-1 rounded-bl-2xl uppercase tracking-widest">
+                      Case Profile / കേസ് വിവരങ്ങൾ
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {settings?.announcementCaseNo && (
+                        <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
+                          <span className="font-extrabold text-[#FF1493] uppercase tracking-wider text-[9px]">കേസ് നമ്പർ (Case No.):</span>
+                          <span className="font-black text-slate-800 text-sm font-mono">{settings?.announcementCaseNo}</span>
+                        </div>
+                      )}
+                      {settings?.announcementCaseName && (
+                        <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
+                          <span className="font-extrabold text-[#FF1493] uppercase tracking-wider text-[9px]">ആയ കേസ് (Case Name):</span>
+                          <span className="font-black text-slate-800 text-sm">{settings?.announcementCaseName}</span>
+                        </div>
+                      )}
+                      {settings?.announcementCourt && (
+                        <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
+                          <span className="font-extrabold text-[#FF1493] uppercase tracking-wider text-[9px]">കോടതി (Court):</span>
+                          <span className="font-black text-slate-800 text-sm">{settings?.announcementCourt}</span>
+                        </div>
+                      )}
+                      {settings?.announcementAdvocate && (
+                        <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
+                          <span className="font-extrabold text-[#FF1493] uppercase tracking-wider text-[9px]">അഭിഭാഷകൻ (Advocate):</span>
+                          <span className="font-black text-slate-800 text-sm">{settings?.announcementAdvocate}</span>
+                        </div>
+                      )}
+                      {settings?.announcementJudgeBench && (
+                        <div className="flex flex-col gap-1 col-span-1 md:col-span-2">
+                          <span className="font-extrabold text-[#FF1493] uppercase tracking-wider text-[9px]">ബെഞ്ച് (Judge/Bench):</span>
+                          <span className="font-black text-slate-800 text-sm leading-tight">{settings?.announcementJudgeBench}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Primary Action Bento Grid - Redesigned with Premium high-contrast buttons */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {/* Enrollment Card */}

@@ -129,6 +129,37 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
             {step === 'details' ? (
               <Form {...form}>
                 <form onSubmit={handleNextStep} className="space-y-7">
+                  {/* INSTANTLY VISIBLE QR CODE (എല്ലാവർക്കും കാണാവുന്ന QR കോഡ്) */}
+                  <div className="bg-[#081426] text-white rounded-3xl p-5 border-2 border-brand-blue shadow-lg relative overflow-hidden flex flex-col items-center">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/10 blur-xl pointer-events-none" />
+                    <h4 className="font-extrabold text-[#0066FF] text-xs flex items-center gap-2 mb-2 uppercase tracking-wider">
+                      <Receipt className="w-4 h-4 text-[#FF1493]" />
+                      പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)
+                    </h4>
+                    <p className="text-[10px] text-slate-300 font-semibold mb-3 text-center leading-relaxed">
+                      അംഗത്വം എടുക്കുന്നതിനായി താഴെയുള്ള കിയു ആർ കോഡ് സ്കാൻ ചെയ്ത് <span className="text-[#FF1493] font-black">₹200</span> അടയ്ക്കുക:
+                    </p>
+                    <div className="bg-white p-2.5 rounded-2xl shadow-md border border-slate-100 shrink-0 flex flex-col items-center">
+                      <img 
+                        src="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg"
+                        alt="UPI Payment QR Code"
+                        className="w-32 h-32 object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <a 
+                      href="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg" 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="mt-2 text-[9px] font-black text-[#0066FF] underline hover:text-[#0055DD] uppercase tracking-widest"
+                    >
+                      ലിങ്ക് (QR Direct Link)
+                    </a>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-center mt-2.5">
+                      GPay, PhonePe, Paytm വഴി പേയ്‌മെന്റ് ചെയ്യാം
+                    </span>
+                  </div>
+
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                     {/* Name Input */}
                     <FormField control={form.control} name="name" render={({ field, fieldState }) => (
