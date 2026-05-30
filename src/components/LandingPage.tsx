@@ -32,6 +32,31 @@ import { STATIC_GALLERY_IMAGES } from '../constants';
 import { cn } from '@/lib/utils';
 import Logo from '../Logo';
 
+export function extractDirectImageUrl(url: string | undefined): string {
+  if (!url) return '';
+  let val = url.trim();
+  
+  // Extract from HTML src matching src="..."
+  const srcMatch = val.match(/src=["']([^"']+)["']/i);
+  if (srcMatch && srcMatch[1]) {
+    return srcMatch[1].trim();
+  }
+  
+  // Extract from BBCode img matching [img]...[/img]
+  const bbcMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
+  if (bbcMatch && bbcMatch[1]) {
+    return bbcMatch[1].trim();
+  }
+
+  // Extract from HTML href matching href="..."
+  const hrefMatch = val.match(/href=["']([^"']+)["']/i);
+  if (hrefMatch && hrefMatch[1] && hrefMatch[1].includes('i.ibb.co')) {
+    return hrefMatch[1].trim();
+  }
+  
+  return val;
+}
+
 interface LandingPageProps {
   announcements?: Announcement[];
   onAccept: () => void;
@@ -229,6 +254,18 @@ export default function LandingPage({
                     )}
                   </div>
 
+                  {currentAnn.imageUrl && (
+                    <div className="mb-6 flex justify-center max-w-lg mx-auto overflow-hidden rounded-[24px] border-2 border-slate-800 bg-slate-900/40 p-2 shadow-inner">
+                      <img 
+                        src={extractDirectImageUrl(currentAnn.imageUrl)} 
+                        alt={currentAnn.title}
+                        className="w-full h-auto max-h-[450px] object-contain rounded-[18px] transition-transform duration-500 hover:scale-[1.02]"
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800/60 text-left">
                     <div className="flex items-center gap-3">
                       <span className="p-2.5 rounded-2xl bg-brand-blue/20 text-brand-blue flex items-center justify-center shadow-inner">
@@ -247,18 +284,6 @@ export default function LandingPage({
                       </span>
                     )}
                   </div>
-
-                  {currentAnn.imageUrl && (
-                    <div className="mb-6 flex justify-center max-w-lg mx-auto overflow-hidden rounded-[24px] border-2 border-slate-800 bg-slate-900/40 p-2 shadow-inner">
-                      <img 
-                        src={currentAnn.imageUrl} 
-                        alt={currentAnn.title}
-                        className="w-full h-auto max-h-[450px] object-contain rounded-[18px] transition-transform duration-500 hover:scale-[1.02]"
-                        referrerPolicy="no-referrer"
-                        loading="lazy"
-                      />
-                    </div>
-                  )}
 
                   {currentAnn.text && (
                     <div className="text-slate-200 text-xs md:text-sm font-semibold leading-relaxed mb-6 whitespace-pre-wrap bg-slate-900/60 p-4 md:p-6 rounded-[24px] border border-slate-800 shadow-inner text-left">

@@ -328,21 +328,19 @@ export default function BrandingManager() {
                       value={settings.announcementImageUrl || ''} 
                       onChange={e => {
                         let val = e.target.value.trim();
-                        // Support auto-extracting direct raw URL from pasted HTML/BBCode code
-                        if (val.startsWith('<')) {
-                          const srcMatch = val.match(/src="([^"]+)"/i);
-                          if (srcMatch && srcMatch[1]) {
-                            val = srcMatch[1];
+                        // Extremely robust extractor for any embedded HTML or BBCode anywhere in the pasted string:
+                        const srcMatch = val.match(/src=["']([^"']+)["']/i);
+                        if (srcMatch && srcMatch[1]) {
+                          val = srcMatch[1].trim();
+                        } else {
+                          const bbcMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
+                          if (bbcMatch && bbcMatch[1]) {
+                            val = bbcMatch[1].trim();
                           } else {
-                            const hrefMatch = val.match(/href="([^"]+)"/i);
-                            if (hrefMatch && hrefMatch[1]) {
-                              val = hrefMatch[1];
+                            const hrefMatch = val.match(/href=["']([^"']+)["']/i);
+                            if (hrefMatch && hrefMatch[1] && hrefMatch[1].includes('i.ibb.co')) {
+                              val = hrefMatch[1].trim();
                             }
-                          }
-                        } else if (val.includes('[img]')) {
-                          const imgMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
-                          if (imgMatch && imgMatch[1]) {
-                            val = imgMatch[1].trim();
                           }
                         }
                         setSettings({...settings, announcementImageUrl: val});
@@ -567,21 +565,19 @@ export default function BrandingManager() {
                         value={newImageUrl} 
                         onChange={e => {
                           let val = e.target.value.trim();
-                          // Support auto-extracting direct raw URL from pasted HTML/BBCode code
-                          if (val.startsWith('<')) {
-                            const srcMatch = val.match(/src="([^"]+)"/i);
-                            if (srcMatch && srcMatch[1]) {
-                              val = srcMatch[1];
+                          // Extremely robust extractor for any embedded HTML or BBCode anywhere in the pasted string:
+                          const srcMatch = val.match(/src=["']([^"']+)["']/i);
+                          if (srcMatch && srcMatch[1]) {
+                            val = srcMatch[1].trim();
+                          } else {
+                            const bbcMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
+                            if (bbcMatch && bbcMatch[1]) {
+                              val = bbcMatch[1].trim();
                             } else {
-                              const hrefMatch = val.match(/href="([^"]+)"/i);
-                              if (hrefMatch && hrefMatch[1]) {
-                                val = hrefMatch[1];
+                              const hrefMatch = val.match(/href=["']([^"']+)["']/i);
+                              if (hrefMatch && hrefMatch[1] && hrefMatch[1].includes('i.ibb.co')) {
+                                val = hrefMatch[1].trim();
                               }
-                            }
-                          } else if (val.includes('[img]')) {
-                            const imgMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
-                            if (imgMatch && imgMatch[1]) {
-                              val = imgMatch[1].trim();
                             }
                           }
                           setNewImageUrl(val);
