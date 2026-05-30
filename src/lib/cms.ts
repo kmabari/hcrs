@@ -24,6 +24,7 @@ export interface OrgSettings {
   announcementAdvocate?: string;
   announcementJudgeBench?: string;
   announcementTitle?: string;
+  announcementImageUrl?: string;
 }
 
 export interface GalleryItem {
@@ -78,7 +79,8 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   announcementCaseName: '',
   announcementCourt: '',
   announcementAdvocate: '',
-  announcementJudgeBench: ''
+  announcementJudgeBench: '',
+  announcementImageUrl: ''
 };
 
 export async function getOrgSettings(): Promise<OrgSettings> {

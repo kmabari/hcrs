@@ -186,9 +186,9 @@ export default function LandingPage({
             {/* TODAY'S UPDATE BOX (ഇന്നത്തെ അപ്ഡേഷൻ) */}
             {(() => {
               const activeAnnouncements = (() => {
-                const list = announcements ? announcements.filter(a => a.active !== false) : [];
-                if (list.length === 0 && settings?.announcementActive && settings?.announcementText) {
-                  return [{
+                const list = announcements ? [...announcements.filter(a => a.active !== false)] : [];
+                if (settings?.announcementActive && settings?.announcementText) {
+                  list.unshift({
                     id: 'legacy',
                     title: settings?.announcementTitle || "ഇന്നത്തെ അപ്ഡേഷൻ",
                     text: settings?.announcementText,
@@ -198,8 +198,8 @@ export default function LandingPage({
                     court: settings?.announcementCourt || "",
                     advocate: settings?.announcementAdvocate || "",
                     judgeBench: settings?.announcementJudgeBench || "",
-                    imageUrl: ""
-                  } as Announcement];
+                    imageUrl: settings?.announcementImageUrl || ""
+                  } as Announcement);
                 }
                 return list;
               })();
