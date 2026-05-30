@@ -246,65 +246,6 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക
                     </p>
-                    
-                    {/* Diagnostic & Mirror Selector */}
-                    <div className="w-full mt-3 bg-slate-950/40 border border-slate-800 p-3.5 rounded-xl text-left space-y-2.5">
-                      <span className="text-[9px] font-extrabold text-[#FF1493] uppercase tracking-wider block">
-                        ക്യു ആർ കോഡ് ലോഡിങ് തകരാർ പരിഹരിപ്പാൻ (QR Load Options)
-                      </span>
-                      <p className="text-[9px] text-slate-400 font-semibold leading-relaxed">
-                        പാലക്കാട് ഉൾപ്പെടെയുള്ള ചില മൊബൈൽ നെറ്റ്‌വർക്കുകളിൽ QR കാണാൻ കഴിഞ്ഞില്ലെങ്കിൽ താഴത്തെ ഓപ്ഷനുകൾ ഉപയോഗിക്കുക:
-                      </p>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setMirrorIndex(0);
-                            setQrSrc(QR_MIRRORS[0]);
-                          }}
-                          className={`h-7 rounded-md text-[8px] font-black uppercase transition-all ${qrSrc === QR_MIRRORS[0] ? 'bg-brand-blue text-white border-brand-blue' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
-                        >
-                          ചാനൽ 1
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setMirrorIndex(1);
-                            setQrSrc(QR_MIRRORS[1]);
-                          }}
-                          className={`h-7 rounded-md text-[8px] font-black uppercase transition-all ${qrSrc === QR_MIRRORS[1] ? 'bg-brand-blue text-white border-brand-blue' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
-                        >
-                          ചാനൽ 2
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setMirrorIndex(2);
-                            setQrSrc(QR_MIRRORS[2]);
-                          }}
-                          className={`h-7 rounded-md text-[8px] font-black uppercase transition-all ${qrSrc === QR_MIRRORS[2] ? 'bg-brand-blue text-white border-brand-blue' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
-                        >
-                          ചാനൽ 3 (Direct)
-                        </Button>
-                      </div>
-                      
-                      <div className="pt-1.5 border-t border-slate-800/40">
-                        <a 
-                          href="https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg" 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="block w-full text-center bg-[#FF1493]/10 hover:bg-[#FF1493]/20 border border-[#FF1493]/25 text-[#FF1493] rounded-lg py-1.5 font-bold text-[9px] uppercase tracking-wider transition-all"
-                        >
-                          ലിങ്ക് വഴി കാണുക (Direct Link)
-                        </a>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
