@@ -1388,6 +1388,70 @@ export default function App() {
           ) : (
             <>
               <div className="w-full flex flex-col items-center">
+                {/* TODAY'S UPDATE BOX (ഇന്നത്തെ അപ്ഡേഷൻ) */}
+                {orgSettings?.announcementActive && (
+                  <div id="member_announcement_box" className="w-full max-w-sm mb-8 bg-gradient-to-br from-indigo-50/90 to-blue-50/90 border-2 border-brand-blue/30 rounded-3xl p-5 shadow-md relative overflow-hidden transition-all duration-300">
+                    {/* Glossy top decorative banner */}
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta" />
+                    
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="p-1.5 rounded-lg bg-brand-blue/15 text-brand-blue flex items-center justify-center">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </span>
+                      <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">
+                        {orgSettings?.announcementTitle || 'ഇന്നത്തെ അപ്ഡേഷൻ'}
+                      </h3>
+                      {orgSettings?.announcementCaseDate && (
+                        <span className="ml-auto bg-brand-magenta/10 text-brand-magenta border border-brand-magenta/15 px-2.5 py-0.5 rounded-full font-black text-[9px] tracking-wider uppercase font-mono">
+                          {orgSettings?.announcementCaseDate}
+                        </span>
+                      )}
+                    </div>
+
+                    {orgSettings?.announcementText && (
+                      <div className="text-slate-700 text-xs font-semibold leading-relaxed mb-4 whitespace-pre-wrap bg-white/40 p-3 rounded-2xl border border-slate-100/55">
+                        {orgSettings?.announcementText}
+                      </div>
+                    )}
+
+                    {/* Case Related Detailed Specifications (Court case parameters requested in prompt) */}
+                    {(orgSettings?.announcementCaseNo || orgSettings?.announcementCaseName || orgSettings?.announcementCourt || orgSettings?.announcementAdvocate || orgSettings?.announcementJudgeBench) && (
+                      <div className="bg-white/90 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 mt-2.5 shadow-xs">
+                        {orgSettings?.announcementCaseNo && (
+                          <div className="flex justify-between items-center text-[10px] border-b border-dashed border-slate-100 pb-1.5">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[8px]">കേസ് നമ്പർ (Case No.):</span>
+                            <span className="font-black text-slate-800 text-right truncate pl-4 max-w-[190px] font-mono">{orgSettings?.announcementCaseNo}</span>
+                          </div>
+                        )}
+                        {orgSettings?.announcementCaseName && (
+                          <div className="flex justify-between items-center text-[10px] border-b border-dashed border-slate-100 pb-1.5">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[8px]">ആയ കേസ് (Case Name):</span>
+                            <span className="font-black text-slate-800 text-right truncate pl-4 max-w-[190px]">{orgSettings?.announcementCaseName}</span>
+                          </div>
+                        )}
+                        {orgSettings?.announcementCourt && (
+                          <div className="flex justify-between items-center text-[10px] border-b border-dashed border-slate-100 pb-1.5">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[8px]">കോടതി (Court):</span>
+                            <span className="font-black text-slate-800 text-right truncate pl-4 max-w-[190px]">{orgSettings?.announcementCourt}</span>
+                          </div>
+                        )}
+                        {orgSettings?.announcementAdvocate && (
+                          <div className="flex justify-between items-center text-[10px] border-b border-dashed border-slate-100 pb-1.5">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[8px]">അഭിഭാഷകൻ (Advocate):</span>
+                            <span className="font-black text-slate-800 text-right truncate pl-4 max-w-[190px]">{orgSettings?.announcementAdvocate}</span>
+                          </div>
+                        )}
+                        {orgSettings?.announcementJudgeBench && (
+                          <div className="flex justify-between items-start text-[10px]">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[8px] shrink-0 mt-0.5">ബെഞ്ച് (Judge/Bench):</span>
+                            <span className="font-black text-slate-800 text-right max-w-[190px] leading-tight pl-4">{orgSettings?.announcementJudgeBench}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* URGENT ACTIONS - MOVED TO TOP */}
                 <div className="w-full max-w-sm mb-10">
                   {user.renewalPending ? (

@@ -153,6 +153,130 @@ export default function BrandingManager() {
 
             <Separator className="opacity-50" />
 
+            {/* Today's Special Announcement / Update column */}
+            <div className="space-y-6 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+              <h3 className="text-xs font-black text-brand-blue uppercase tracking-[0.3em] flex items-center gap-2">
+                 <RefreshCw className="w-3.5 h-3.5 text-brand-blue" /> ഇന്നത്തെ അപ്ഡേഷൻ (Today's Announcement)
+              </h3>
+              <p className="text-slate-500 font-bold text-[10px] uppercase tracking-wider -mt-3">
+                അംഗങ്ങളുടെ ഐഡി തുറക്കുമ്പോൾ കാണിക്കുന്ന ഇന്നത്തെ അപ്ഡേഷൻ വിവരങ്ങൾ ഇവിടെ സജ്ജമാക്കാം.
+              </p>
+
+              <div className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-150">
+                  <div className="space-y-0.5">
+                    <Label className="font-black text-slate-800 text-[10.5px] uppercase tracking-wider">അപ്ഡേഷൻ കാണിക്കണോ ? (Status)</Label>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ഇത് ആക്റ്റീവ് ആക്കിയാൽ മാത്രമേ മെമ്പർ കാർഡ് പേജിൽ ഈ ബോക്സ് പ്രത്യക്ഷപ്പെടുകയുള്ളൂ.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, announcementActive: true })}
+                      className={`h-10 rounded-lg text-[10px] font-black px-4 uppercase tracking-wider shrink-0 transition-colors ${
+                        settings.announcementActive ? 'bg-brand-blue text-white' : 'border border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      Active (ഓൺ)
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, announcementActive: false })}
+                      className={`h-10 rounded-lg text-[10px] font-black px-4 uppercase tracking-wider shrink-0 transition-colors ${
+                        !settings.announcementActive ? 'bg-red-500 text-white' : 'border border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      Inactive (ഓഫ്)
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-bold text-xs text-slate-700">അപ്ഡേഷൻ ഹെഡിങ് (Title)</Label>
+                    <Input 
+                      value={settings.announcementTitle || ''} 
+                      onChange={e => setSettings({...settings, announcementTitle: e.target.value})}
+                      placeholder="ഇന്നത്തെ അപ്ഡേഷൻ"
+                      className="h-11 rounded-lg border-slate-200 bg-white font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold text-xs text-slate-700">തീയതി (Case Date / Date)</Label>
+                    <Input 
+                      value={settings.announcementCaseDate || ''} 
+                      onChange={e => setSettings({...settings, announcementCaseDate: e.target.value})}
+                      placeholder="ഉദാ: 2026-06-15"
+                      className="h-11 rounded-lg border-slate-200 bg-white font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700 text-xs">പ്രധാന വിഷയം / വിവരണം (Main Announcement Brief)</Label>
+                  <Textarea 
+                    value={settings.announcementText || ''} 
+                    onChange={e => setSettings({...settings, announcementText: e.target.value})}
+                    placeholder="വിഷയത്തെക്കുറിച്ചുള്ള വിവരങ്ങൾ ഇവിടെ മുഴുവനായി നൽകാം..."
+                    className="min-h-[100px] rounded-xl border-slate-200 bg-white p-3 font-semibold text-xs leading-relaxed"
+                  />
+                </div>
+
+                <div className="bg-slate-100/50 p-4 rounded-xl border border-slate-200/50 space-y-4">
+                  <h4 className="text-[10px] font-black uppercase text-brand-blue tracking-widest">കേസ് സംബന്ധമായ വിവരങ്ങൾ (Optional Court Case Details)</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <Label className="font-bold text-[10.5px] text-slate-600">കേസ് നമ്പർ (Case No.)</Label>
+                      <Input 
+                        value={settings.announcementCaseNo || ''} 
+                        onChange={e => setSettings({...settings, announcementCaseNo: e.target.value})}
+                        placeholder="ഉദാ: WP(C) No. 4321/2026"
+                        className="h-10 rounded-lg border-slate-200 bg-white text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="font-bold text-[10.5px] text-slate-600">കേസ് ഏതാണ് (Case Name / Type)</Label>
+                      <Input 
+                        value={settings.announcementCaseName || ''} 
+                        onChange={e => setSettings({...settings, announcementCaseName: e.target.value})}
+                        placeholder="ഉദാ: റിട്ട് ഹർജി"
+                        className="h-10 rounded-lg border-slate-200 bg-white text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="font-bold text-[10.5px] text-slate-600">കോടതി (Court Name)</Label>
+                      <Input 
+                        value={settings.announcementCourt || ''} 
+                        onChange={e => setSettings({...settings, announcementCourt: e.target.value})}
+                        placeholder="ഉദാ: കേരള ഹൈക്കോടതി"
+                        className="h-10 rounded-lg border-slate-200 bg-white text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="font-bold text-[10.5px] text-slate-600">അഭിഭാഷകന്റെ പേര് (Advocate Name)</Label>
+                      <Input 
+                        value={settings.announcementAdvocate || ''} 
+                        onChange={e => setSettings({...settings, announcementAdvocate: e.target.value})}
+                        placeholder="ഉദാ: അഡ്വ. പ്രേംരാജ് കുമാർ"
+                        className="h-10 rounded-lg border-slate-200 bg-white text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="font-bold text-[10.5px] text-slate-600">ജഡ്ജിയുടെ പേര് / ബെഞ്ച് (Judge's Name / Bench)</Label>
+                      <Input 
+                        value={settings.announcementJudgeBench || ''} 
+                        onChange={e => setSettings({...settings, announcementJudgeBench: e.target.value})}
+                        placeholder="ഉദാ: ജസ്റ്റിസ് ഇക്ബാൽ അഹമ്മദ് ബെഞ്ച്"
+                        className="h-10 rounded-lg border-slate-200 bg-white text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator className="opacity-50" />
+
             {/* Contact & Address */}
             <div className="space-y-6">
               <h3 className="text-xs font-black text-brand-magenta/40 uppercase tracking-[0.3em] flex items-center gap-2">

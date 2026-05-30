@@ -182,9 +182,9 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
                     <UserPlus className="w-8 h-8" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">New Enrollment</h2>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">New Membership</h2>
                     <span className="inline-flex mt-2 bg-pink-50 text-brand-magenta border border-pink-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
-                      പുതിയ രജിസ്ട്രേഷൻ • ₹200
+                      ന്യൂ മെമ്പർഷിപ്പ് • ₹200
                     </span>
                     <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
                       Register as an official active member to gain community credentials.

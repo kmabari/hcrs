@@ -15,6 +15,15 @@ export interface OrgSettings {
   districtDetails: string;
   updatedAt: any;
   registrationMode?: 'normal' | 'bulk';
+  announcementActive?: boolean;
+  announcementText?: string;
+  announcementCaseNo?: string;
+  announcementCaseDate?: string;
+  announcementCaseName?: string;
+  announcementCourt?: string;
+  announcementAdvocate?: string;
+  announcementJudgeBench?: string;
+  announcementTitle?: string;
 }
 
 export interface GalleryItem {
@@ -45,7 +54,16 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   website: "www.hcrs-society.org",
   districtDetails: "Active in all 14 districts of Kerala with committed grass-root leadership.",
   updatedAt: new Date(),
-  registrationMode: 'normal'
+  registrationMode: 'normal',
+  announcementActive: false,
+  announcementTitle: 'ഇന്നത്തെ അപ്ഡേഷൻ (Today\'s Update)',
+  announcementText: '',
+  announcementCaseNo: '',
+  announcementCaseDate: '',
+  announcementCaseName: '',
+  announcementCourt: '',
+  announcementAdvocate: '',
+  announcementJudgeBench: ''
 };
 
 export async function getOrgSettings(): Promise<OrgSettings> {

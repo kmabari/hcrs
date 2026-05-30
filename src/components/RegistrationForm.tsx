@@ -33,6 +33,14 @@ interface RegistrationFormProps {
 export default function RegistrationForm({ onSubmit, districtQuotas = {}, districtQuotasUsed = {}, initialMobile }: RegistrationFormProps) {
   const [step, setStep] = React.useState<'details' | 'payment'>('details');
   const [transactionId, setTransactionId] = React.useState('');
+  const [paymentDate, setPaymentDate] = React.useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // YYYY-MM-DD
+  });
+  const [paymentTime, setPaymentTime] = React.useState(() => {
+    const today = new Date();
+    return today.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -70,7 +78,8 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
       postOffice: '',
       bloodGroup: '',
       transactionId: transactionId.trim(),
-      paymentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      paymentDate: paymentDate,
+      paymentTime: paymentTime,
       pin: '123456', // default lock pin
     };
     onSubmit(fullValues);
@@ -284,6 +293,53 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                 </div>
 
                 <div className="space-y-6">
+                  {/* Payment Date & Time Input fields */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
+                        അടച്ച തീയതി (Payment Date) <span className="text-[#FF1493]">*</span>
+                      </label>
+                      <Input 
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="h-12 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-xl font-bold font-mono text-center text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
+                        അടച്ച സമയം (Payment Time) <span className="text-[#FF1493]">*</span>
+                      </label>
+                      <Input 
+                        type="time"
+                        value={paymentTime}
+                        onChange={(e) => setPaymentTime(e.target.value)}
+                        className="h-12 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-xl font-bold font-mono text-center text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Helper Button and indicator */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                    <span className="text-[10px] font-bold text-slate-500 leading-tight">
+                      തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:
+                    </span>
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const today = new Date();
+                        setPaymentDate(today.toISOString().split('T')[0]);
+                        setPaymentTime(today.toTimeString().split(' ')[0].substring(0, 5));
+                        toast.success('തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!');
+                      }}
+                      className="border border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 text-[9px] font-black uppercase px-2.5 h-8 rounded-lg shrink-0 flex items-center gap-1.5"
+                    >
+                      ഇപ്പോൾ (Use Current)
+                    </Button>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
                       ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID) <span className="text-[#FF1493]">*</span>

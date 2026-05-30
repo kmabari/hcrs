@@ -1097,7 +1097,7 @@ export default function AdminDashboard({
           </div>
           <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
             <div className="hidden lg:flex flex-col items-end gap-0.5 px-4 border-r border-slate-250">
-               <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Public enrollment address</p>
+               <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Public registration address</p>
                <p className="text-[9px] font-black text-brand-blue truncate max-w-[200px] font-mono select-all">
                  {STABLE_URL.replace('https://', '')}
                </p>
@@ -1638,7 +1638,12 @@ export default function AdminDashboard({
                              <div className="flex justify-between items-end">
                                 <div>
                                    <p className="text-[11px] font-black text-slate-700">Ref: {(member as any).renewalTransactionId || 'N/A'}</p>
-                                   <p className="text-[9px] font-bold text-slate-400">Date: {member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toLocaleDateString() : new Date(member.renewalDate).toLocaleDateString()) : 'Today'}</p>
+                                   <p className="text-[9px] font-bold text-slate-400">Submitted: {member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toLocaleDateString() : new Date(member.renewalDate).toLocaleDateString()) : 'Today'}</p>
+                                   {((member as any).renewalPaymentDate || (member as any).renewalPaymentTime) && (
+                                     <p className="text-[9px] font-extrabold text-[#0066FF] mt-0.5">
+                                       Transferred: {(member as any).renewalPaymentDate || ''} {(member as any).renewalPaymentTime || ''}
+                                     </p>
+                                   )}
                                 </div>
                                 <div className="text-right">
                                    <p className="text-xl font-black text-brand-magenta leading-none">₹100</p>
@@ -2058,6 +2063,12 @@ export default function AdminDashboard({
                                   <span className="opacity-60 font-medium text-slate-500">Txn ID:</span>
                                   {member.transactionId || 'Not provided'}
                                 </p>
+                                {member.paymentDate && (
+                                  <p className="text-sm text-brand-magenta font-bold flex justify-between">
+                                    <span className="opacity-60 font-medium text-slate-500">Date:</span>
+                                    {member.paymentDate}
+                                  </p>
+                                )}
                                 <p className="text-sm text-brand-magenta font-bold flex justify-between">
                                   <span className="opacity-60 font-medium text-slate-500">Time:</span>
                                   {member.paymentTime || 'Not provided'}
@@ -3224,7 +3235,8 @@ export default function AdminDashboard({
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1 space-y-1 text-sm text-orange-700">
                         <p><strong>Transaction ID:</strong> {viewingMember.transactionId}</p>
-                        <p><strong>Time:</strong> {viewingMember.paymentTime}</p>
+                        {viewingMember.paymentDate && <p><strong>Payment Date:</strong> {viewingMember.paymentDate}</p>}
+                        <p><strong>Payment Time:</strong> {viewingMember.paymentTime || 'N/A'}</p>
                       </div>
                       {viewingMember.paymentProofUrl && (
                         <Button 
