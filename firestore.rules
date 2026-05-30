@@ -146,13 +146,19 @@ service cloud.firestore {
                     isValidUser(incoming()) &&
                     (isOperator() || (incoming().get('isAdmin', false) == false && incoming().get('role', 'member') == 'member'));
 
-      allow update: if isSignedIn() && isValidUser(incoming()) && (
+      allow update: if isValidUser(incoming()) && (
         // Action 1: Admin/Operator Update
-        (isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'photoUrl', 'details']) || isAdmin())) ||
+        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'photoUrl', 'details']) || isAdmin())) ||
         
         // Action 2: User Profile Edit (Self) - restricted fields
-        (isOwner(userId) && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId']))
+        (isSignedIn() && isOwner(userId) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId'])) ||
+
+        // Action 3: Public General Renewal Submission
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime']) &&
+         incoming().status == 'pending' &&
+         incoming().isApproved == false &&
+         incoming().renewalPending == true)
       );
 
       allow delete: if isAdmin();
