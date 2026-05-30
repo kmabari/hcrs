@@ -197,8 +197,9 @@ export default function LandingPage({
                     caseName: settings?.announcementCaseName || "",
                     court: settings?.announcementCourt || "",
                     advocate: settings?.announcementAdvocate || "",
-                    judgeBench: settings?.announcementJudgeBench || ""
-                  }];
+                    judgeBench: settings?.announcementJudgeBench || "",
+                    imageUrl: ""
+                  } as Announcement];
                 }
                 return list;
               })();
@@ -250,6 +251,18 @@ export default function LandingPage({
                   {currentAnn.text && (
                     <div className="text-slate-200 text-xs md:text-sm font-semibold leading-relaxed mb-6 whitespace-pre-wrap bg-slate-900/60 p-4 md:p-6 rounded-[24px] border border-slate-800 shadow-inner text-left">
                       {currentAnn.text}
+                    </div>
+                  )}
+
+                  {currentAnn.imageUrl && (
+                    <div className="mb-6 flex justify-center max-w-lg mx-auto overflow-hidden rounded-[24px] border-2 border-slate-800 bg-slate-900/40 p-2 shadow-inner">
+                      <img 
+                        src={currentAnn.imageUrl} 
+                        alt={currentAnn.title}
+                        className="w-full h-auto max-h-[350px] object-contain rounded-[18px] transition-transform duration-500 hover:scale-[1.02]"
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
                     </div>
                   )}
 

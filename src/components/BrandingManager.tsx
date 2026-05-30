@@ -15,7 +15,7 @@ export default function BrandingManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // New announcement form state
+  // New & Edit announcement form state
   const [newTitle, setNewTitle] = useState('');
   const [newText, setNewText] = useState('');
   const [newCaseDate, setNewCaseDate] = useState('');
@@ -24,7 +24,43 @@ export default function BrandingManager() {
   const [newCourt, setNewCourt] = useState('');
   const [newAdvocate, setNewAdvocate] = useState('');
   const [newJudgeBench, setNewJudgeBench] = useState('');
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+
+  const startEditing = (ann: Announcement) => {
+    setEditingAnnId(ann.id || null);
+    setNewTitle(ann.title);
+    setNewText(ann.text);
+    setNewCaseDate(ann.caseDate || '');
+    setNewCaseNo(ann.caseNo || '');
+    setNewCaseName(ann.caseName || '');
+    setNewCourt(ann.court || '');
+    setNewAdvocate(ann.advocate || '');
+    setNewJudgeBench(ann.judgeBench || '');
+    setNewImageUrl(ann.imageUrl || '');
+    toast.message('തിരുത്താനുള്ള വിവരങ്ങൾ ഫോമിലേക്ക് ലോഡ് ചെയ്‌തിരിക്കുന്നു.', {
+      description: 'മുകളിലെ ഫോമിൽ വിവരങ്ങൾ തിരുത്തിയ ശേഷം മാറ്റങ്ങൾ സേവ് ചെയ്യുക.',
+    });
+    // Scroll to section smoothly
+    const formSec = document.getElementById('announcement_form_container');
+    if (formSec) {
+      formSec.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingAnnId(null);
+    setNewTitle('');
+    setNewText('');
+    setNewCaseDate('');
+    setNewCaseNo('');
+    setNewCaseName('');
+    setNewCourt('');
+    setNewAdvocate('');
+    setNewJudgeBench('');
+    setNewImageUrl('');
+  };
 
   useEffect(() => {
     fetchSettings();
@@ -214,10 +250,11 @@ export default function BrandingManager() {
                 </div>
               </div>
 
-              {/* Add New Announcement Form Accordion/Box */}
-              <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm space-y-4">
+              {/* Add/Edit Announcement Form Accordion/Box */}
+              <div id="announcement_form_container" className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm space-y-4 scroll-mt-6">
                 <h4 className="text-[11px] font-black text-brand-blue uppercase tracking-widest flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-brand-magenta" /> പുതിയ അറിയിപ്പ് ചേർക്കുക (Add New Announcement)
+                  {editingAnnId ? <Save className="w-4 h-4 text-brand-blue animate-pulse" /> : <Plus className="w-4 h-4 text-brand-magenta" />}
+                  {editingAnnId ? 'അറിയിപ്പ് എഡിറ്റ് ചെയ്യുക (Edit Active Announcement)' : 'പുതിയ അറിയിപ്പ് ചേർക്കുക (Add New Announcement)'}
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,6 +286,19 @@ export default function BrandingManager() {
                     placeholder="മുഴുവൻ വിവരങ്ങളും ഇവിടെ നൽകുക..."
                     className="min-h-[90px] rounded-xl border-slate-200 p-3 font-semibold text-xs leading-relaxed"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700 text-xs">ന്യൂസ് ഇമേജ് ലിങ്ക് (Image / Photo Link URL) (Optional)</Label>
+                  <Input 
+                    value={newImageUrl} 
+                    onChange={e => setNewImageUrl(e.target.value)}
+                    placeholder="ഉദാ: https://images.weserv.nl/?url=https://..."
+                    className="h-11 rounded-lg border-slate-200 font-semibold text-xs"
+                  />
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    ചില വാർത്തകളിൽ ഇമേജുകൾ ഉൾപ്പെടുത്താൻ വെബ് സൈറ്റുകളിൽ നിന്നുള്ള ഇമേജ് ലിങ്ക് പേസ്റ്റ് ചെയ്യുക.
+                  </p>
                 </div>
 
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 space-y-4">
@@ -303,7 +353,21 @@ export default function BrandingManager() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-1">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+                  {editingAnnId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={cancelEditing}
+                      className="w-full sm:w-auto h-10 border-slate-200 text-slate-500 hover:bg-slate-50 font-black text-[10px] uppercase tracking-wider rounded-xl px-5 flex items-center justify-center gap-1.5"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                      എഡിറ്റിങ് ക്യാൻസൽ (Cancel Edit)
+                    </Button>
+                  ) : (
+                    <div className="hidden sm:block" />
+                  )}
+                  
                   <Button
                     type="button"
                     disabled={adding}
@@ -313,20 +377,28 @@ export default function BrandingManager() {
                         return;
                       }
                       setAdding(true);
+                      const annData = {
+                        title: newTitle.trim(),
+                        text: newText.trim(),
+                        caseDate: newCaseDate.trim(),
+                        caseNo: newCaseNo.trim(),
+                        caseName: newCaseName.trim(),
+                        court: newCourt.trim(),
+                        advocate: newAdvocate.trim(),
+                        judgeBench: newJudgeBench.trim(),
+                        imageUrl: newImageUrl.trim(),
+                        active: true
+                      };
                       try {
-                        await addAnnouncement({
-                          title: newTitle.trim(),
-                          text: newText.trim(),
-                          caseDate: newCaseDate.trim(),
-                          caseNo: newCaseNo.trim(),
-                          caseName: newCaseName.trim(),
-                          court: newCourt.trim(),
-                          advocate: newAdvocate.trim(),
-                          judgeBench: newJudgeBench.trim(),
-                          active: true
-                        });
-                        toast.success('പുതിയ അറിയിപ്പ് വിജയകരമായി ചേർത്തു.');
-                        // Reset
+                        if (editingAnnId) {
+                          await updateAnnouncement(editingAnnId, annData);
+                          toast.success('വാർത്ത വിവരങ്ങൾ വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു.');
+                          setEditingAnnId(null);
+                        } else {
+                          await addAnnouncement(annData);
+                          toast.success('പുതിയ അറിയിപ്പ് വിജയകരമായി ചേർത്തു.');
+                        }
+                        // Reset form fields
                         setNewTitle('');
                         setNewText('');
                         setNewCaseDate('');
@@ -335,16 +407,19 @@ export default function BrandingManager() {
                         setNewCourt('');
                         setNewAdvocate('');
                         setNewJudgeBench('');
+                        setNewImageUrl('');
                       } catch (error) {
                         console.error(error);
-                        toast.error('അറിയിപ്പ് ചേർക്കാൻ കഴിഞ്ഞില്ല.');
+                        toast.error(editingAnnId ? 'അപ്‌ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.' : 'അറിയിപ്പ് ചേർക്കാൻ കഴിഞ്ഞില്ല.');
                       } finally {
                         setAdding(false);
                       }
                     }}
-                    className="bg-brand-magenta text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl h-10 px-6 shadow-md shadow-brand-magenta/10"
+                    className={`w-full sm:w-auto text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl h-10 px-6 shadow-md ${
+                      editingAnnId ? 'bg-brand-blue shadow-brand-blue/10 hover:bg-brand-blue/95' : 'bg-brand-magenta shadow-brand-magenta/10 hover:bg-brand-magenta/95'
+                    }`}
                   >
-                    {adding ? 'ചേർക്കുന്നു...' : 'അറിയിപ്പ് കോൺഫിഗർ ചെയ്യുക (ADD NOW)'}
+                    {adding ? 'പ്രോസസ്സിങ്...' : editingAnnId ? 'മാറ്റങ്ങൾ സേവ് ചെയ്യുക (SAVE CHANGES)' : 'അറിയിപ്പ് കോൺഫിഗർ ചെയ്യുക (ADD NOW)'}
                   </Button>
                 </div>
               </div>
@@ -359,7 +434,7 @@ export default function BrandingManager() {
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
                     {announcements.map((ann) => (
-                      <div key={ann.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-start justify-between gap-4 hover:border-slate-300 transition-all">
+                      <div key={ann.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-300 transition-all">
                         <div className="space-y-1.5 text-left flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-extrabold text-slate-800 text-sm truncate">{ann.title}</span>
@@ -372,7 +447,16 @@ export default function BrandingManager() {
                               <span className="bg-slate-100 text-slate-500 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Paused</span>
                             )}
                           </div>
-                          <p className="text-slate-500 font-semibold text-xs leading-relaxed line-clamp-3 whitespace-pre-wrap">{ann.text}</p>
+                          
+                          <p className="text-slate-500 font-semibold text-xs leading-relaxed line-clamp-2 whitespace-pre-wrap">{ann.text}</p>
+                          
+                          {ann.imageUrl && (
+                            <div className="text-[9px] text-[#FF1493] font-bold flex items-center gap-1">
+                              <span>📸 ഇമേജ് ലിങ്ക് ലഭ്യമാണ്:</span>
+                              <span className="underline truncate max-w-[200px] font-normal">{ann.imageUrl}</span>
+                            </div>
+                          )}
+
                           {ann.caseNo && (
                             <div className="text-[9px] text-brand-magenta font-black uppercase tracking-wider mt-1">
                               CASE: {ann.caseNo} | {ann.court || 'Court'}
@@ -380,7 +464,18 @@ export default function BrandingManager() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 self-center shrink-0">
+                        <div className="flex items-center gap-2 md:self-center shrink-0 w-full md:w-auto justify-end">
+                          {/* Edit button */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEditing(ann)}
+                            className="h-8 rounded-lg text-[9px] font-extrabold px-3 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 flex items-center gap-1"
+                          >
+                            Edit / തിരുത്തുക
+                          </Button>
+
                           {/* Toggle Active status */}
                           <Button
                             type="button"
@@ -411,6 +506,9 @@ export default function BrandingManager() {
                                 try {
                                   await deleteAnnouncement(ann.id!);
                                   toast.success('അറിയിപ്പ് വിജയകരമായി ഡിലീറ്റ് ചെയ്തു.');
+                                  if (editingAnnId === ann.id) {
+                                    cancelEditing();
+                                  }
                                 } catch (e) {
                                   toast.error('ഡിലീറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.');
                                 }

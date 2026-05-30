@@ -176,6 +176,12 @@ service cloud.firestore {
       allow write: if isAdmin() && isValidGallery(incoming());
     }
 
+    // --- Collection: announcements ---
+    match /announcements/{annId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // --- Collection: admins ---
     match /admins/{adminId} {
       allow read: if isSignedIn();

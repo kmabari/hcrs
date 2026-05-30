@@ -47,6 +47,7 @@ export interface Announcement {
   judgeBench?: string;
   createdAt?: any;
   active?: boolean;
+  imageUrl?: string;
 }
 
 const SETTINGS_DOC_ID = 'main_config';

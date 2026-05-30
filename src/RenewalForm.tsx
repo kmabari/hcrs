@@ -116,7 +116,19 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       });
       
       toast.success('Renewal request submitted! Admin will verify soon.', { id: loadingToast });
-      onSuccess(foundMember);
+      
+      // Pass the fully updated member state to parent immediately
+      const updatedMember: UserProfile = {
+        ...foundMember,
+        status: 'pending',
+        isApproved: false,
+        renewalPending: true,
+        renewalTransactionId: transactionId,
+        renewalPaymentDate: paymentDate,
+        renewalPaymentTime: paymentTime,
+      };
+      
+      onSuccess(updatedMember);
     } catch (error) {
       toast.error('Renewal failed. Please try again.', { id: loadingToast });
       handleFirestoreError(error, OperationType.UPDATE, `users/${foundMember?.uid}`);
@@ -304,15 +316,15 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   </label>
                   <Input 
                     value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, ''))}
-                    placeholder="TXNXXXXXXXXXX"
-                    maxLength={12}
+                    onChange={(e) => setTransactionId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                    placeholder="E.g. TXN123456789 or 12-digit UTR"
+                    maxLength={25}
                     className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-300"
                   />
                 </div>
 
                 <p className="text-[10px] font-bold text-slate-400 leading-relaxed text-left border-t border-slate-100 pt-3">
-                  * ശരിയായ 12-അക്ക യു.പി.ഐ നമ്പർ ഇവിടെ നൽകി പുതുക്കൽ പൂർത്തിയാക്കുക. വെരിഫിക്കേഷന് ശേഷം അംഗത്വം ഉടനടി സജീവമാകും.
+                  * ഇവിടെ ശരിയായ യു.പി.ഐ നമ്പർ അല്ലെങ്കിൽ റഫറൻസ് നമ്പറുകൾ നൽകി പുതുക്കൽ പൂർത്തിയാക്കുക. വെരിഫിക്കേഷന് ശേഷം അംഗത്വം സജീവമാകും.
                 </p>
 
                 <div className="flex flex-col gap-2.5">

@@ -356,7 +356,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                         setPaymentTime(today.toTimeString().split(' ')[0].substring(0, 5));
                         toast.success('തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!');
                       }}
-                      className="border border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 text-[9px] font-black uppercase px-2.5 h-8 rounded-lg shrink-0 flex items-center gap-1.5"
+                      className="border border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 text-[9px] font-black uppercase px-2.5 h-8 rounded-lg shrink-0 flex items-center gap-1.5 bg-white"
                     >
                       ഇപ്പോൾ (Use Current)
                     </Button>
@@ -368,15 +368,15 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     </label>
                     <Input 
                       value={transactionId}
-                      onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, ''))}
-                      placeholder="TXNXXXXXXXXXX"
-                      maxLength={12}
+                      onChange={(e) => setTransactionId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      placeholder="E.g. TXN123456789 or 12-digit UTR"
+                      maxLength={25}
                       className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-350"
                     />
                   </div>
 
                   <p className="text-[10.5px] font-bold text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
-                    * അടച്ച തുകയുടെ ശരിയായ 12-അക്ക യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാൻസാക്ഷൻ ഐഡിയോ പൂരിപ്പിക്കുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.
+                    * അടച്ച തുകയുടെ ശരിയായ യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാന്സാക്ഷൻ ഐഡിയോ ഇവിടെ നൽകുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.
                   </p>
 
                   <div className="flex flex-col gap-3">
