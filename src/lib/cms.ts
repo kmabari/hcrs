@@ -35,6 +35,20 @@ export interface GalleryItem {
   createdAt: any;
 }
 
+export interface Announcement {
+  id?: string;
+  title: string;
+  text: string;
+  caseDate?: string;
+  caseNo?: string;
+  caseName?: string;
+  court?: string;
+  advocate?: string;
+  judgeBench?: string;
+  createdAt?: any;
+  active?: boolean;
+}
+
 const SETTINGS_DOC_ID = 'main_config';
 
 export const defaultSettings: OrgSettings = {
@@ -118,3 +132,33 @@ export function subscribeToGallery(callback: (items: GalleryItem[]) => void) {
     callback(items);
   });
 }
+
+export async function addAnnouncement(item: Omit<Announcement, 'id' | 'createdAt'>) {
+  const collRef = collection(db, 'announcements');
+  return await addDoc(collRef, {
+    ...item,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function updateAnnouncement(id: string, item: Partial<Announcement>) {
+  const docRef = doc(db, 'announcements', id);
+  await updateDoc(docRef, item);
+}
+
+export async function deleteAnnouncement(id: string) {
+  const docRef = doc(db, 'announcements', id);
+  await deleteDoc(docRef);
+}
+
+export function subscribeToAnnouncements(callback: (items: Announcement[]) => void) {
+  const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Announcement[];
+    callback(items);
+  });
+}
+

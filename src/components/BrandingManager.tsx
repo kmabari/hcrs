@@ -6,16 +6,34 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Save, Info, Target, Eye, MapPin, Phone, Mail, Globe, LayoutGrid, RefreshCw } from 'lucide-react';
-import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
+import { Save, Info, Target, Eye, MapPin, Phone, Mail, Globe, LayoutGrid, RefreshCw, Trash2, Plus, CheckCircle2, X } from 'lucide-react';
+import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings, addAnnouncement, deleteAnnouncement, updateAnnouncement, subscribeToAnnouncements, Announcement } from '@/src/lib/cms';
 
 export default function BrandingManager() {
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // New announcement form state
+  const [newTitle, setNewTitle] = useState('');
+  const [newText, setNewText] = useState('');
+  const [newCaseDate, setNewCaseDate] = useState('');
+  const [newCaseNo, setNewCaseNo] = useState('');
+  const [newCaseName, setNewCaseName] = useState('');
+  const [newCourt, setNewCourt] = useState('');
+  const [newAdvocate, setNewAdvocate] = useState('');
+  const [newJudgeBench, setNewJudgeBench] = useState('');
+  const [adding, setAdding] = useState(false);
+
   useEffect(() => {
     fetchSettings();
+    const unsubAnnouncements = subscribeToAnnouncements((data) => {
+      setAnnouncements(data);
+    });
+    return () => {
+      unsubAnnouncements();
+    };
   }, []);
 
   const fetchSettings = async () => {
@@ -154,124 +172,259 @@ export default function BrandingManager() {
             <Separator className="opacity-50" />
 
             {/* Today's Special Announcement / Update column */}
-            <div className="space-y-6 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-              <h3 className="text-xs font-black text-brand-blue uppercase tracking-[0.3em] flex items-center gap-2">
-                 <RefreshCw className="w-3.5 h-3.5 text-brand-blue" /> ഇന്നത്തെ അപ്ഡേഷൻ (Today's Announcement)
-              </h3>
-              <p className="text-slate-500 font-bold text-[10px] uppercase tracking-wider -mt-3">
-                അംഗങ്ങളുടെ ഐഡി തുറക്കുമ്പോൾ കാണിക്കുന്ന ഇന്നത്തെ അപ്ഡേഷൻ വിവരങ്ങൾ ഇവിടെ സജ്ജമാക്കാം.
-              </p>
-
-              <div className="space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-150">
+            <div className="space-y-6 bg-slate-50/50 p-6 md:p-8 rounded-3xl border border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-150">
+                <div>
+                  <h3 className="text-xs font-black text-brand-blue uppercase tracking-[0.3em] flex items-center gap-2">
+                     <RefreshCw className="w-3.5 h-3.5 text-brand-blue animate-spin" /> പ്രധാന അറിയിപ്പുകൾ (Manage Live Updates & Announcements)
+                  </h3>
+                  <p className="text-slate-500 font-bold text-[10px] uppercase tracking-wider mt-1">
+                    വെബ്‌സൈറ്റിൽ കാണിക്കുന്ന മികച്ച അറിയിപ്പുകളുടെ വിവരങ്ങൾ ഇവിടെ നൽകാം. നിങ്ങൾക്ക് ഒന്നിൽ കൂടുതൽ അപ്ഡേറ്റുകൾ ഇവിടെ ചേർക്കാവുന്നതാണ്.
+                  </p>
+                </div>
+                
+                {/* Global Status toggler */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
                   <div className="space-y-0.5">
-                    <Label className="font-black text-slate-800 text-[10.5px] uppercase tracking-wider">അപ്ഡേഷൻ കാണിക്കണോ ? (Status)</Label>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ഇത് ആക്റ്റീവ് ആക്കിയാൽ മാത്രമേ മെമ്പർ കാർഡ് പേജിൽ ഈ ബോക്സ് പ്രത്യക്ഷപ്പെടുകയുള്ളൂ.</p>
+                    <Label className="font-extrabold text-slate-700 text-[10px] uppercase tracking-wider block">അറിയിപ്പ് കോളം (Status)</Label>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase">{settings.announcementActive ? 'ഓൺ (Active)' : 'ഓഫ് (Inactive)'}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => setSettings({ ...settings, announcementActive: true })}
-                      className={`h-10 rounded-lg text-[10px] font-black px-4 uppercase tracking-wider shrink-0 transition-colors ${
+                      className={`h-8 rounded-lg text-[9px] font-black px-3.5 uppercase tracking-wider transition-colors ${
                         settings.announcementActive ? 'bg-brand-blue text-white' : 'border border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
                       }`}
                     >
-                      Active (ഓൺ)
+                      Active
                     </Button>
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => setSettings({ ...settings, announcementActive: false })}
-                      className={`h-10 rounded-lg text-[10px] font-black px-4 uppercase tracking-wider shrink-0 transition-colors ${
+                      className={`h-8 rounded-lg text-[9px] font-black px-3.5 bg-red-500 text-white uppercase tracking-wider transition-colors ${
                         !settings.announcementActive ? 'bg-red-500 text-white' : 'border border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
                       }`}
                     >
-                      Inactive (ഓഫ്)
+                      Inactive
                     </Button>
                   </div>
                 </div>
+              </div>
+
+              {/* Add New Announcement Form Accordion/Box */}
+              <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm space-y-4">
+                <h4 className="text-[11px] font-black text-brand-blue uppercase tracking-widest flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-brand-magenta" /> പുതിയ അറിയിപ്പ് ചേർക്കുക (Add New Announcement)
+                </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-bold text-xs text-slate-700">അപ്ഡേഷൻ ഹെഡിങ് (Title)</Label>
+                    <Label className="font-bold text-xs text-slate-700">അപ്ഡേഷൻ ഹെഡിങ് (Title / Heading) *</Label>
                     <Input 
-                      value={settings.announcementTitle || ''} 
-                      onChange={e => setSettings({...settings, announcementTitle: e.target.value})}
-                      placeholder="ഇന്നത്തെ അപ്ഡേഷൻ"
-                      className="h-11 rounded-lg border-slate-200 bg-white font-bold"
+                      value={newTitle} 
+                      onChange={e => setNewTitle(e.target.value)}
+                      placeholder="ഉദാ: ഇന്നത്തെ അപ്ഡേഷൻ (Today's Updates)"
+                      className="h-11 rounded-lg border-slate-200 font-bold text-slate-700 text-xs"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold text-xs text-slate-700">തീയതി (Case Date / Date)</Label>
+                    <Label className="font-bold text-xs text-slate-700">തീയതി (Date / Case Date)</Label>
                     <Input 
-                      value={settings.announcementCaseDate || ''} 
-                      onChange={e => setSettings({...settings, announcementCaseDate: e.target.value})}
+                      value={newCaseDate} 
+                      onChange={e => setNewCaseDate(e.target.value)}
                       placeholder="ഉദാ: 2026-06-15"
-                      className="h-11 rounded-lg border-slate-200 bg-white font-bold"
+                      className="h-11 rounded-lg border-slate-200 font-bold text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-bold text-slate-700 text-xs">പ്രധാന വിഷയം / വിവരണം (Main Announcement Brief)</Label>
+                  <Label className="font-bold text-slate-700 text-xs">പ്രധാന അറിയിപ്പ് വിവരണം (Announcement Main Description) *</Label>
                   <Textarea 
-                    value={settings.announcementText || ''} 
-                    onChange={e => setSettings({...settings, announcementText: e.target.value})}
-                    placeholder="വിഷയത്തെക്കുറിച്ചുള്ള വിവരങ്ങൾ ഇവിടെ മുഴുവനായി നൽകാം..."
-                    className="min-h-[100px] rounded-xl border-slate-200 bg-white p-3 font-semibold text-xs leading-relaxed"
+                    value={newText} 
+                    onChange={e => setNewText(e.target.value)}
+                    placeholder="മുഴുവൻ വിവരങ്ങളും ഇവിടെ നൽകുക..."
+                    className="min-h-[90px] rounded-xl border-slate-200 p-3 font-semibold text-xs leading-relaxed"
                   />
                 </div>
 
-                <div className="bg-slate-100/50 p-4 rounded-xl border border-slate-200/50 space-y-4">
-                  <h4 className="text-[10px] font-black uppercase text-brand-blue tracking-widest">കേസ് സംബന്ധമായ വിവരങ്ങൾ (Optional Court Case Details)</h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 space-y-4">
+                  <h5 className="text-[9.5px] font-black uppercase text-brand-magenta tracking-widest">കേസ് സംബന്ധമായ വിവരങ്ങൾ (Optional Case Profile Details)</h5>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     <div className="space-y-1">
-                      <Label className="font-bold text-[10.5px] text-slate-600">കേസ് നമ്പർ (Case No.)</Label>
+                      <Label className="font-bold text-[10px] text-slate-600">കേസ് നമ്പർ (Case No.)</Label>
                       <Input 
-                        value={settings.announcementCaseNo || ''} 
-                        onChange={e => setSettings({...settings, announcementCaseNo: e.target.value})}
+                        value={newCaseNo} 
+                        onChange={e => setNewCaseNo(e.target.value)}
                         placeholder="ഉദാ: WP(C) No. 4321/2026"
                         className="h-10 rounded-lg border-slate-200 bg-white text-xs"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="font-bold text-[10.5px] text-slate-600">കേസ് ഏതാണ് (Case Name / Type)</Label>
+                      <Label className="font-bold text-[10px] text-slate-600">കേസ് ഏതാണ് (Case Name)</Label>
                       <Input 
-                        value={settings.announcementCaseName || ''} 
-                        onChange={e => setSettings({...settings, announcementCaseName: e.target.value})}
+                        value={newCaseName} 
+                        onChange={e => setNewCaseName(e.target.value)}
                         placeholder="ഉദാ: റിട്ട് ഹർജി"
                         className="h-10 rounded-lg border-slate-200 bg-white text-xs"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="font-bold text-[10.5px] text-slate-600">കോടതി (Court Name)</Label>
+                      <Label className="font-bold text-[10px] text-slate-600">കോടതി (Court Name)</Label>
                       <Input 
-                        value={settings.announcementCourt || ''} 
-                        onChange={e => setSettings({...settings, announcementCourt: e.target.value})}
+                        value={newCourt} 
+                        onChange={e => setNewCourt(e.target.value)}
                         placeholder="ഉദാ: കേരള ഹൈക്കോടതി"
                         className="h-10 rounded-lg border-slate-200 bg-white text-xs"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="font-bold text-[10.5px] text-slate-600">അഭിഭാഷകന്റെ പേര് (Advocate Name)</Label>
+                      <Label className="font-bold text-[10px] text-slate-600">അഭിഭാഷകന്റെ പേര് (Advocate Name)</Label>
                       <Input 
-                        value={settings.announcementAdvocate || ''} 
-                        onChange={e => setSettings({...settings, announcementAdvocate: e.target.value})}
+                        value={newAdvocate} 
+                        onChange={e => setNewAdvocate(e.target.value)}
                         placeholder="ഉദാ: അഡ്വ. പ്രേംരാജ് കുമാർ"
                         className="h-10 rounded-lg border-slate-200 bg-white text-xs"
                       />
                     </div>
                     <div className="space-y-1 md:col-span-2">
-                      <Label className="font-bold text-[10.5px] text-slate-600">ജഡ്ജിയുടെ പേര് / ബെഞ്ച് (Judge's Name / Bench)</Label>
+                      <Label className="font-bold text-[10px] text-slate-600">ജഡ്ജിയുടെ പേര് / ബെഞ്ച് (Judge's Name / Bench)</Label>
                       <Input 
-                        value={settings.announcementJudgeBench || ''} 
-                        onChange={e => setSettings({...settings, announcementJudgeBench: e.target.value})}
+                        value={newJudgeBench} 
+                        onChange={e => setNewJudgeBench(e.target.value)}
                         placeholder="ഉദാ: ജസ്റ്റിസ് ഇക്ബാൽ അഹമ്മദ് ബെഞ്ച്"
                         className="h-10 rounded-lg border-slate-200 bg-white text-xs"
                       />
                     </div>
                   </div>
                 </div>
+
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="button"
+                    disabled={adding}
+                    onClick={async () => {
+                      if (!newTitle.trim() || !newText.trim()) {
+                        toast.error('ഹെഡിങ്, വാർത്ത വിവരണം എന്നിവ നൽകൽ നിർബന്ധമാണ്.');
+                        return;
+                      }
+                      setAdding(true);
+                      try {
+                        await addAnnouncement({
+                          title: newTitle.trim(),
+                          text: newText.trim(),
+                          caseDate: newCaseDate.trim(),
+                          caseNo: newCaseNo.trim(),
+                          caseName: newCaseName.trim(),
+                          court: newCourt.trim(),
+                          advocate: newAdvocate.trim(),
+                          judgeBench: newJudgeBench.trim(),
+                          active: true
+                        });
+                        toast.success('പുതിയ അറിയിപ്പ് വിജയകരമായി ചേർത്തു.');
+                        // Reset
+                        setNewTitle('');
+                        setNewText('');
+                        setNewCaseDate('');
+                        setNewCaseNo('');
+                        setNewCaseName('');
+                        setNewCourt('');
+                        setNewAdvocate('');
+                        setNewJudgeBench('');
+                      } catch (error) {
+                        console.error(error);
+                        toast.error('അറിയിപ്പ് ചേർക്കാൻ കഴിഞ്ഞില്ല.');
+                      } finally {
+                        setAdding(false);
+                      }
+                    }}
+                    className="bg-brand-magenta text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl h-10 px-6 shadow-md shadow-brand-magenta/10"
+                  >
+                    {adding ? 'ചേർക്കുന്നു...' : 'അറിയിപ്പ് കോൺഫിഗർ ചെയ്യുക (ADD NOW)'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Saved Announcements List */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">നിലവിലുള്ള അറിയിപ്പുകൾ (Current Announcements List ({announcements.length}))</h4>
+                {announcements.length === 0 ? (
+                  <div className="bg-white p-6 border border-slate-200/60 rounded-2xl text-center text-slate-400 text-xs font-semibold">
+                    നിലവിൽ അറിയിപ്പുകൾ ഒന്നും ചേർത്തിട്ടില്ല. ദയവായി മുകളിൽ പുതിയത് ചേർക്കുക.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {announcements.map((ann) => (
+                      <div key={ann.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-start justify-between gap-4 hover:border-slate-300 transition-all">
+                        <div className="space-y-1.5 text-left flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-slate-800 text-sm truncate">{ann.title}</span>
+                            {ann.caseDate && (
+                              <span className="bg-brand-blue/10 text-brand-blue text-[9px] font-black px-2 py-0.5 rounded-full">{ann.caseDate}</span>
+                            )}
+                            {ann.active ? (
+                              <span className="bg-emerald-100 text-emerald-800 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Active</span>
+                            ) : (
+                              <span className="bg-slate-100 text-slate-500 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Paused</span>
+                            )}
+                          </div>
+                          <p className="text-slate-500 font-semibold text-xs leading-relaxed line-clamp-3 whitespace-pre-wrap">{ann.text}</p>
+                          {ann.caseNo && (
+                            <div className="text-[9px] text-brand-magenta font-black uppercase tracking-wider mt-1">
+                              CASE: {ann.caseNo} | {ann.court || 'Court'}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 self-center shrink-0">
+                          {/* Toggle Active status */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await updateAnnouncement(ann.id!, { active: !ann.active });
+                                toast.success('അറിയിപ്പ് സ്റ്റാറ്റസ് മാറ്റിയിരിക്കുന്നു.');
+                              } catch (e) {
+                                toast.error('സ്റ്റാറ്റസ് മാറ്റാൻ കഴിഞ്ഞില്ല.');
+                              }
+                            }}
+                            className={`h-8 rounded-lg text-[9px] font-extrabold px-3 ${
+                              ann.active ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {ann.active ? 'Pause' : 'Activate'}
+                          </Button>
+                          
+                          {/* Delete design of announcement */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                              if (confirm('ഈ അറിയിപ്പ് എന്നെന്നേക്കുമായി ഡിലീറ്റ് ചെയ്യണമെന്നുറപ്പാണോ?')) {
+                                try {
+                                  await deleteAnnouncement(ann.id!);
+                                  toast.success('അറിയിപ്പ് വിജയകരമായി ഡിലീറ്റ് ചെയ്തു.');
+                                } catch (e) {
+                                  toast.error('ഡിലീറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.');
+                                }
+                              }
+                            }}
+                            className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

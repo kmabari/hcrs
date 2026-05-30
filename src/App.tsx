@@ -11,7 +11,7 @@ import OperatorDashboard from './components/OperatorDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import Logo from './Logo';
 import { UserProfile } from './types';
-import { subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
+import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToAnnouncements, Announcement } from './lib/cms';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL } from './constants';
@@ -84,6 +84,7 @@ export default function App() {
   const [districtQuotas, setDistrictQuotas] = useState<Record<string, number>>({});
   const [districtQuotasUsed, setDistrictQuotasUsed] = useState<Record<string, number>>({});
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -104,7 +105,13 @@ export default function App() {
     const unsub = subscribeToOrgSettings((settings) => {
       setOrgSettings(settings);
     });
-    return () => unsub();
+    const unsubAnnouncements = subscribeToAnnouncements((data) => {
+      setAnnouncements(data);
+    });
+    return () => {
+      unsub();
+      unsubAnnouncements();
+    };
   }, []);
   const [isDirectManual, setIsDirectManual] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1321,6 +1328,7 @@ export default function App() {
     <div className="min-h-screen font-sans antialiased text-foreground selection:bg-brand-blue/20">
       {view === 'landing' && (
         <LandingPage 
+          announcements={announcements}
           onAccept={handleAcceptTerms} 
           onRenew={handleRenewClick}
           onLoginClick={() => setView('login')} 

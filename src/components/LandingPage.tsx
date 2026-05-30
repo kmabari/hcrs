@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { 
   ShieldCheck, 
   ChevronRight, 
+  ChevronLeft,
   Check, 
   UserPlus, 
   RefreshCw, 
@@ -26,12 +27,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToGallery, GalleryItem } from '@/src/lib/cms';
+import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToGallery, GalleryItem, Announcement } from '@/src/lib/cms';
 import { STATIC_GALLERY_IMAGES } from '../constants';
 import { cn } from '@/lib/utils';
 import Logo from '../Logo';
 
 interface LandingPageProps {
+  announcements?: Announcement[];
   onAccept: () => void;
   onRenew: () => void;
   onLoginClick: () => void;
@@ -41,12 +43,22 @@ interface LandingPageProps {
   onLoginDirect?: (mobile: string, pin: string) => Promise<boolean>;
 }
 
-export default function LandingPage({ onAccept, onRenew, onLoginClick, onGalleryClick, onRenewWithMobile, onRegisterWithMobile, onLoginDirect }: LandingPageProps) {
+export default function LandingPage({ 
+  announcements = [],
+  onAccept, 
+  onRenew, 
+  onLoginClick, 
+  onGalleryClick, 
+  onRenewWithMobile, 
+  onRegisterWithMobile, 
+  onLoginDirect 
+}: LandingPageProps) {
   const [stage, setStage] = useState<'landing' | 'guidelines' | 'claim_check'>('landing');
   const [agreed, setAgreed] = useState(false);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [currentAnnounceIndex, setCurrentAnnounceIndex] = useState(0);
 
   // States for claim lookup system
   const [claimMobile, setClaimMobile] = useState('');
@@ -172,99 +184,160 @@ export default function LandingPage({ onAccept, onRenew, onLoginClick, onGallery
             className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-16 z-10 relative"
           >
             {/* TODAY'S UPDATE BOX (ഇന്നത്തെ അപ്ഡേഷൻ) */}
-            {settings?.announcementActive && (
-              <div id="home_announcement_box" className="max-w-4xl mx-auto w-full bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border-3 border-[#FF1493] rounded-[36px] p-6 md:p-8 shadow-[0_30px_70px_rgba(255,20,147,0.15)] relative overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-top-4 duration-1000">
-                {/* Decorative glowing backdrops */}
-                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-magenta to-indigo-600" />
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#FF1493]/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-brand-blue/15 rounded-full blur-3xl pointer-events-none" />
+            {(() => {
+              const activeAnnouncements = (() => {
+                const list = announcements ? announcements.filter(a => a.active !== false) : [];
+                if (list.length === 0 && settings?.announcementActive && settings?.announcementText) {
+                  return [{
+                    id: 'legacy',
+                    title: settings?.announcementTitle || "ഇന്നത്തെ അപ്ഡേഷൻ",
+                    text: settings?.announcementText,
+                    caseDate: settings?.announcementCaseDate || "",
+                    caseNo: settings?.announcementCaseNo || "",
+                    caseName: settings?.announcementCaseName || "",
+                    court: settings?.announcementCourt || "",
+                    advocate: settings?.announcementAdvocate || "",
+                    judgeBench: settings?.announcementJudgeBench || ""
+                  }];
+                }
+                return list;
+              })();
 
-                {/* Special Update Header Badge with animated pulse */}
-                <div className="flex justify-center mb-6">
-                  <span className="bg-gradient-to-r from-[#FF1493] to-indigo-600 text-white font-extrabold uppercase px-6 py-2 rounded-full text-[10px] md:text-xs tracking-[0.2em] shadow-lg shadow-brand-magenta/30 border border-white/15 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    ഏറ്റവും പുതിയ വിവരങ്ങൾ / NEW LIVE UPDATE
-                  </span>
-                </div>
+              const currentAnn = activeAnnouncements[currentAnnounceIndex] || activeAnnouncements[0];
 
-                {/* Featured Uploaded Banner of Today's Update */}
-                <div className="mb-8 rounded-3xl overflow-hidden border-2 border-slate-800 shadow-2xl relative group bg-black/40">
-                  <img 
-                    src="https://i.ibb.co/bRsMHTZ6/1780135602129.png" 
-                    alt="HCRS Today's Highlight Update" 
-                    className="w-full h-auto object-contain select-none transition-transform duration-500 group-hover:scale-[1.015]"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
-                </div>
+              if (!settings?.announcementActive || !currentAnn) return null;
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800/60 text-left">
-                  <div className="flex items-center gap-3">
-                    <span className="p-2.5 rounded-2xl bg-brand-blue/20 text-brand-blue flex items-center justify-center shadow-inner">
-                      <RefreshCw className="w-5 h-5 text-brand-blue" />
+              return (
+                <div id="home_announcement_box" className="max-w-4xl mx-auto w-full bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border-3 border-[#FF1493] rounded-[36px] p-6 md:p-8 shadow-[0_30px_70px_rgba(255,20,147,0.15)] relative overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-top-4 duration-1000">
+                  {/* Decorative glowing backdrops */}
+                  <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-magenta to-indigo-600" />
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#FF1493]/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-brand-blue/15 rounded-full blur-3xl pointer-events-none" />
+
+                  {/* Special Update Header Badge with animated pulse */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                    <span className="bg-gradient-to-r from-[#FF1493] to-indigo-600 text-white font-extrabold uppercase px-6 py-2 rounded-full text-[10px] md:text-xs tracking-[0.2em] shadow-lg shadow-brand-magenta/30 border border-white/15 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                      ഏറ്റവും പുതിയ വിവരങ്ങൾ / NEW LIVE UPDATE
                     </span>
-                    <div>
-                      <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">
-                        {settings?.announcementTitle || 'ഇന്നത്തെ അപ്ഡേഷൻ (TODAY\'S UPDATE)'}
-                      </h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Notification Center / അറിയിപ്പ് കോളം</p>
-                    </div>
+                    
+                    {activeAnnouncements.length > 1 && (
+                      <span className="bg-slate-900/90 text-slate-300 font-mono text-xs font-black px-4 py-1.5 rounded-full border border-slate-800 shadow-inner">
+                        UPDATE {currentAnnounceIndex + 1} OF {activeAnnouncements.length}
+                      </span>
+                    )}
                   </div>
-                  {settings?.announcementCaseDate && (
-                    <span className="self-start sm:self-center bg-brand-magenta text-white border border-brand-magenta/20 px-4.5 py-1.5 rounded-full font-black text-xs tracking-wider uppercase font-mono shadow-md shadow-brand-magenta/20">
-                      {settings?.announcementCaseDate}
-                    </span>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800/60 text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="p-2.5 rounded-2xl bg-brand-blue/20 text-brand-blue flex items-center justify-center shadow-inner">
+                        <RefreshCw className="w-5 h-5 text-brand-blue" />
+                      </span>
+                      <div>
+                        <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">
+                          {currentAnn.title}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Notification Center / അറിയിപ്പ് കോളം</p>
+                      </div>
+                    </div>
+                    {currentAnn.caseDate && (
+                      <span className="self-start sm:self-center bg-brand-magenta text-white border border-brand-magenta/20 px-4.5 py-1.5 rounded-full font-black text-xs tracking-wider uppercase font-mono shadow-md shadow-brand-magenta/20">
+                        {currentAnn.caseDate}
+                      </span>
+                    )}
+                  </div>
+
+                  {currentAnn.text && (
+                    <div className="text-slate-200 text-xs md:text-sm font-semibold leading-relaxed mb-6 whitespace-pre-wrap bg-slate-900/60 p-4 md:p-6 rounded-[24px] border border-slate-800 shadow-inner text-left">
+                      {currentAnn.text}
+                    </div>
+                  )}
+
+                  {/* Case Related Detailed Specifications */}
+                  {(currentAnn.caseNo || currentAnn.caseName || currentAnn.court || currentAnn.advocate || currentAnn.judgeBench) && (
+                    <div className="bg-slate-950/80 border border-slate-850 rounded-[28px] p-5 md:p-6 mb-6 space-y-3 shadow-md relative overflow-hidden text-left">
+                      <div className="absolute top-0 right-0 bg-[#FF1493]/15 text-[#FF1493] font-black font-mono text-[9px] px-3.5 py-1 rounded-bl-2xl uppercase tracking-widest">
+                        Case Profile / കേസ് വിവരങ്ങൾ
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {currentAnn.caseNo && (
+                          <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
+                            <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">കേസ് നമ്പർ (Case No.):</span>
+                            <span className="font-black text-white text-sm font-mono">{currentAnn.caseNo}</span>
+                          </div>
+                        )}
+                        {currentAnn.caseName && (
+                          <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
+                            <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">ആയ കേസ് (Case Name):</span>
+                            <span className="font-black text-white text-sm">{currentAnn.caseName}</span>
+                          </div>
+                        )}
+                        {currentAnn.court && (
+                          <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
+                            <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">കോടതി (Court):</span>
+                            <span className="font-black text-white text-sm">{currentAnn.court}</span>
+                          </div>
+                        )}
+                        {currentAnn.advocate && (
+                          <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
+                            <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">അഭിഭാഷകൻ (Advocate):</span>
+                            <span className="font-black text-white text-sm">{currentAnn.advocate}</span>
+                          </div>
+                        )}
+                        {currentAnn.judgeBench && (
+                          <div className="flex flex-col gap-1 col-span-1 md:col-span-2">
+                            <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">ബെഞ്ച് (Judge/Bench):</span>
+                            <span className="font-black text-white text-sm leading-tight">{currentAnn.judgeBench}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Multi-announcements dynamic action controllers */}
+                  {activeAnnouncements.length > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800/50">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setCurrentAnnounceIndex((prev) => (prev - 1 + activeAnnouncements.length) % activeAnnouncements.length);
+                        }}
+                        className="text-slate-400 hover:text-white hover:bg-slate-900/60 rounded-full py-2 px-4 text-xs font-bold flex items-center gap-1.5 transition-all text-left self-stretch sm:self-auto justify-center"
+                      >
+                        <ChevronLeft className="w-4 h-4 text-[#FF1493]" />
+                        മുൻപത്തെ എഴുത്ത് (PREV)
+                      </Button>
+
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setCurrentAnnounceIndex(0);
+                            toast.success('തിരഞ്ഞെടുപ്പ് ആദ്യ അറിയിപ്പിലേക്ക് റീസെറ്റ് ചെയ്തിരിക്കുന്നു.');
+                          }}
+                          className="bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-black px-4 py-2.5 rounded-xl border border-slate-800 flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-brand-blue animate-spin" />
+                          റീപ്രസ്സ് (RESET)
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setCurrentAnnounceIndex((prev) => (prev + 1) % activeAnnouncements.length);
+                          }}
+                          className="bg-gradient-to-r from-[#FF1493] to-indigo-600 text-white font-black text-xs px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-magenta/20 flex-1 sm:flex-initial"
+                        >
+                          അടുത്ത അപ്ഡേഷൻ (NEXT)
+                          <ChevronRight className="w-4 h-4 text-white" />
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
-
-                {settings?.announcementText && (
-                  <div className="text-slate-200 text-xs md:text-sm font-semibold leading-relaxed mb-6 whitespace-pre-wrap bg-slate-900/60 p-4 md:p-6 rounded-[24px] border border-slate-800 shadow-inner text-left">
-                    {settings?.announcementText}
-                  </div>
-                )}
-
-                {/* Case Related Detailed Specifications */}
-                {(settings?.announcementCaseNo || settings?.announcementCaseName || settings?.announcementCourt || settings?.announcementAdvocate || settings?.announcementJudgeBench) && (
-                  <div className="bg-slate-950/80 border border-slate-850 rounded-[28px] p-5 md:p-6 space-y-3 shadow-md relative overflow-hidden text-left">
-                    <div className="absolute top-0 right-0 bg-[#FF1493]/15 text-[#FF1493] font-black font-mono text-[9px] px-3.5 py-1 rounded-bl-2xl uppercase tracking-widest">
-                      Case Profile / കേസ് വിവരങ്ങൾ
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                      {settings?.announcementCaseNo && (
-                        <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
-                          <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">കേസ് നമ്പർ (Case No.):</span>
-                          <span className="font-black text-white text-sm font-mono">{settings?.announcementCaseNo}</span>
-                        </div>
-                      )}
-                      {settings?.announcementCaseName && (
-                        <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
-                          <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">ആയ കേസ് (Case Name):</span>
-                          <span className="font-black text-white text-sm">{settings?.announcementCaseName}</span>
-                        </div>
-                      )}
-                      {settings?.announcementCourt && (
-                        <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
-                          <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">കോടതി (Court):</span>
-                          <span className="font-black text-white text-sm">{settings?.announcementCourt}</span>
-                        </div>
-                      )}
-                      {settings?.announcementAdvocate && (
-                        <div className="flex flex-col gap-1 border-b border-slate-800/40 pb-2 md:border-b-0 md:pb-0">
-                          <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">അഭിഭാഷകൻ (Advocate):</span>
-                          <span className="font-black text-white text-sm">{settings?.announcementAdvocate}</span>
-                        </div>
-                      )}
-                      {settings?.announcementJudgeBench && (
-                        <div className="flex flex-col gap-1 col-span-1 md:col-span-2">
-                          <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[9px]">ബെഞ്ച് (Judge/Bench):</span>
-                          <span className="font-black text-white text-sm leading-tight">{settings?.announcementJudgeBench}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             {/* Primary Action Bento Grid - Redesigned with Premium high-contrast buttons */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
