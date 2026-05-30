@@ -1044,18 +1044,47 @@ export default function App() {
   const handleUpdateMember = async (uid: string, data: Partial<UserProfile>) => {
     const loadingToast = toast.loading('Updating details...');
     try {
+      const existingMember = members.find(m => m.uid === uid);
+      const finalData = { ...data };
+
       // If we are explicitly setting isApproved to true in an update, 
       // ensure status is active and issueDate is set (Request #3)
-      const finalData = { ...data };
       if (data.isApproved === true) {
         finalData.status = 'active';
         finalData.issueDate = serverTimestamp();
         
         // Also set expiry if it doesn't have one
-        if (!data.expiryDate) {
+        if (!data.expiryDate && (!existingMember || !existingMember.expiryDate)) {
           const expiry = new Date();
           expiry.setFullYear(expiry.getFullYear() + 1);
           finalData.expiryDate = expiry;
+        }
+      }
+
+      // Automatically recalculate membership ID if constituency or district is updated/changed
+      if (existingMember) {
+        const hasNewDistrict = data.district !== undefined && data.district !== existingMember.district;
+        const hasNewAssembly = data.assemblyConstituency !== undefined && data.assemblyConstituency !== existingMember.assemblyConstituency;
+
+        if (hasNewDistrict || hasNewAssembly) {
+          const rawDistrict = data.district !== undefined ? data.district : existingMember.district;
+          const rawAssembly = data.assemblyConstituency !== undefined ? data.assemblyConstituency : existingMember.assemblyConstituency;
+
+          const distCode = getDistrictCode(rawDistrict || 'MLP').toUpperCase();
+          const assemblyCode = getAssemblyCode(rawAssembly || '').toUpperCase();
+
+          // Retain the serial number suffix
+          let serialSuffix = '';
+          if (existingMember.serialNo) {
+            serialSuffix = String(existingMember.serialNo).padStart(3, '0');
+          } else if (existingMember.membershipId) {
+            const parts = existingMember.membershipId.split('/');
+            serialSuffix = parts[parts.length - 1] || '1001';
+          } else {
+            serialSuffix = '1001';
+          }
+
+          finalData.membershipId = `KL/${distCode}/${assemblyCode}/${serialSuffix}`;
         }
       }
 
