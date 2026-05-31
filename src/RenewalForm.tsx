@@ -16,10 +16,12 @@ interface RenewalFormProps {
   initialMobile?: string;
 }
 
+const UPI_PAYLOAD = "upi://pay?pa=9846431909@okbizaxis&pn=Member&am=100&tn=HCRS%20RENEWAL";
+
 const QR_MIRRORS = [
-  'https://images.weserv.nl/?url=https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg',
-  'https://wsrv.nl/?url=https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg',
-  'https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg'
+  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(UPI_PAYLOAD)}`,
+  `https://quickchart.io/qr?text=${encodeURIComponent(UPI_PAYLOAD)}&size=300`,
+  `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(UPI_PAYLOAD)}`
 ];
 
 export default function RenewalForm({ onBack, onSuccess, initialMobile }: RenewalFormProps) {

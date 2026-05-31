@@ -1095,10 +1095,10 @@ export default function LandingPage({
                     </div>
 
                     <h2 className="text-3xl font-black text-white tracking-tight uppercase">
-                      Our <span className="bg-gradient-to-r from-brand-blue to-brand-magenta bg-clip-text text-transparent">Vision</span>
+                      Our <span className="text-white">Vision</span>
                     </h2>
 
-                    <p className="text-slate-350 font-bold text-sm leading-relaxed pt-2">
+                    <p className="text-slate-100 font-bold text-sm leading-relaxed pt-2">
                       To build empowered communities where every individual enjoys dignity, support, opportunity, and access to essential resources.
                     </p>
                   </div>
