@@ -3643,7 +3643,7 @@ export default function AdminDashboard({
 
         {/* Edit Member Dialog */}
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-bold">Edit Member Details</DialogTitle>
               <DialogDescription className="font-medium">

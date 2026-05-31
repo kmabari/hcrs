@@ -534,10 +534,7 @@ export default function App() {
                     return !isMainAdmin;
                   });
                   
-                setMembers(prev => {
-                   if (prev.length === list.length && snapshot.metadata.fromCache) return prev;
-                   return list;
-                });
+                setMembers(list);
               }, (err) => {
                 console.error("Members fetch error:", err);
               });

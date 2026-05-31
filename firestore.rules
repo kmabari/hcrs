@@ -20,37 +20,39 @@ service cloud.firestore {
     }
 
     function isMainAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email.lower() in [
-          'kmabarikiyafoods@gmail.com',
-          'hcrsindia@gmail.com',
-          'admin@hcrs.society',
-          '9645934571@hcrs.society',
-          'mabarikiyafoods@gmail.com'
-        ]
-      );
+      return isSignedIn() && 
+             request.auth.token.email != null && (
+               request.auth.token.email.lower() in [
+                 'kmabarikiyafoods@gmail.com',
+                 'hcrsindia@gmail.com',
+                 'admin@hcrs.society',
+                 '9645934571@hcrs.society',
+                 'mabarikiyafoods@gmail.com'
+               ]
+             );
     }
 
     function isSecondAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email.lower() in [
-          'hcrskerala@gmail.com',
-          'hcrskasaragod@hcrs.society',
-          'hcrskannur@hcrs.society',
-          'hcrswayanad@hcrs.society',
-          'hcrskozhikode@hcrs.society',
-          'hcrsmalappuram@hcrs.society',
-          'hcrspalakkad@hcrs.society',
-          'hcrsthrissur@hcrs.society',
-          'hcrsernakulam@hcrs.society',
-          'hcrsidukki@hcrs.society',
-          'hcrskottayam@hcrs.society',
-          'hcrsalappuzha@hcrs.society',
-          'hcrspathanamthitta@hcrs.society',
-          'hcrskollam@hcrs.society',
-          'hcrsthiruvananthapuram@hcrs.society'
-        ]
-      );
+      return isSignedIn() && 
+             request.auth.token.email != null && (
+               request.auth.token.email.lower() in [
+                 'hcrskerala@gmail.com',
+                 'hcrskasaragod@hcrs.society',
+                 'hcrskannur@hcrs.society',
+                 'hcrswayanad@hcrs.society',
+                 'hcrskozhikode@hcrs.society',
+                 'hcrsmalappuram@hcrs.society',
+                 'hcrspalakkad@hcrs.society',
+                 'hcrsthrissur@hcrs.society',
+                 'hcrsernakulam@hcrs.society',
+                 'hcrsidukki@hcrs.society',
+                 'hcrskottayam@hcrs.society',
+                 'hcrsalappuzha@hcrs.society',
+                 'hcrspathanamthitta@hcrs.society',
+                 'hcrskollam@hcrs.society',
+                 'hcrsthiruvananthapuram@hcrs.society'
+               ]
+             );
     }
 
     function isAdmin() {
