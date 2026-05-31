@@ -93,10 +93,18 @@ export default function App() {
 
   const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && (
     user.renewalPending ||
-    !user.expiryDate ||
     (() => {
-      const exp = user.expiryDate;
-      const d = exp?.toDate ? exp.toDate() : (exp?.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+      const exp = user.expiryDate || (() => {
+        const reg = user.registrationDate;
+        if (!reg) return null;
+        const regD = reg.toDate ? reg.toDate() : (reg.seconds ? new Date(reg.seconds * 1000) : new Date(reg));
+        if (isNaN(regD.getTime())) return null;
+        const expD = new Date(regD);
+        expD.setFullYear(expD.getFullYear() + 1);
+        return expD;
+      })();
+      if (!exp) return true;
+      const d = exp.toDate ? exp.toDate() : (exp.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
       return isNaN(d.getTime()) ? true : d.getTime() < Date.now();
     })()
   );
@@ -1117,23 +1125,31 @@ export default function App() {
   };
 
   const handleDeleteMember = async (uid: string) => {
-    const loadingToast = toast.loading('Deactivating member profile...');
-    console.log("Attempting to deactivate (soft-delete) document:", uid);
+    const existing = members.find(m => m.uid === uid);
+    const shouldHardDelete = existing && existing.status === 'deleted';
+
+    const loadingToast = toast.loading(shouldHardDelete ? 'അംഗത്തെ ശാശ്വതമായി ഒഴിവാക്കുന്നു...' : 'Deactivating member profile...');
+    console.log(`Attempting to ${shouldHardDelete ? 'permanently delete' : 'deactivate'} document:`, uid);
     try {
       const userRef = doc(db, 'users', uid);
       
-      // Update status to deleted instead of hard delete
-      await updateDoc(userRef, {
-        status: 'deleted',
-        deletedAt: serverTimestamp(),
-        deletedBy: auth.currentUser?.email
-      });
-      
-      toast.success('Member deactivated and hidden.', { id: loadingToast });
-      console.log(`Soft-deleted user successfully: ${uid}`);
+      if (shouldHardDelete) {
+        // Complete hard delete from Firestore
+        await deleteDoc(userRef);
+        toast.success('അംഗത്തെ വിജയകരമായി ഡാറ്റാബേസിൽ നിന്ന് പൂർണ്ണമായും ഒഴിവാക്കി. (Deleted permanently.)', { id: loadingToast });
+      } else {
+        // Update status to deleted instead of hard delete
+        await updateDoc(userRef, {
+          status: 'deleted',
+          deletedAt: serverTimestamp(),
+          deletedBy: auth.currentUser?.email
+        });
+        toast.success('Member deactivated and hidden.', { id: loadingToast });
+      }
+      console.log(`${shouldHardDelete ? 'Hard' : 'Soft'}-deleted user successfully: ${uid}`);
     } catch (error: any) {
-      console.error("Deactivation failed:", error);
-      let msg = 'Deactivation failed. ';
+      console.error("Deletion/Deactivation failed:", error);
+      let msg = 'Failed to delete/deactivate. ';
       if (error.code === 'permission-denied') {
         msg += 'Permission denied. Please ensure you are logged in as admin.';
       } else {

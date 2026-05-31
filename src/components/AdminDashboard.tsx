@@ -2163,9 +2163,18 @@ export default function AdminDashboard({
                              <Button 
                                 variant="outline"
                                 onClick={() => setViewingMember(member)}
-                                className="px-4 border-slate-200 font-bold rounded-xl h-11 text-[10px] uppercase"
+                                className="border-slate-200 font-bold rounded-xl h-11 text-[10px] uppercase px-3"
                              >
                                 Details
+                             </Button>
+                             <Button 
+                                type="button"
+                                variant="ghost"
+                                onClick={() => handleDeleteClick(member.uid)}
+                                className="h-11 w-11 text-red-500 hover:bg-red-550 border border-red-50 hover:text-white hover:bg-red-650 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                                title="Delete Permanently / ശാശ്വതമായി ഒഴിവാക്കുക"
+                             >
+                                <Trash2 className="w-4 h-4" />
                              </Button>
                           </div>
                         </div>
@@ -3758,6 +3767,44 @@ export default function AdminDashboard({
                       maxLength={6}
                     />
                   </div>
+
+                  {isSuperAdmin && (
+                    <div className="space-y-2 p-3 bg-red-50/20 border border-brand-magenta/25 rounded-2xl">
+                      <Label htmlFor="edit-join-date" className="text-brand-magenta font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> Joining Date (ജോയിനിംഗ് തീയതി)
+                      </Label>
+                      <Input 
+                        id="edit-join-date" 
+                        type="date"
+                        value={(() => {
+                          const dateVal = editingMember.registrationDate;
+                          if (!dateVal) return '';
+                          const d = dateVal.toDate ? dateVal.toDate() : (dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal));
+                          if (isNaN(d.getTime())) return '';
+                          return d.toISOString().split('T')[0];
+                        })()} 
+                        onChange={e => {
+                          const selectedDateVal = e.target.value;
+                          if (selectedDateVal) {
+                            const newRegDate = new Date(selectedDateVal);
+                            const newExpiryDate = new Date(newRegDate);
+                            newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                            
+                            setEditingMember({
+                              ...editingMember,
+                              registrationDate: newRegDate,
+                              expiryDate: newExpiryDate,
+                              renewalPending: false
+                            });
+                          }
+                        }}
+                        className="bg-white border-brand-magenta/30 focus-visible:ring-brand-magenta"
+                      />
+                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                        * സൂപ്പർ അഡ്മിന് മാത്രം: ജോയിനിംഗ് തീയതി മാറ്റുമ്പോൾ തനിയെ ഒരു വർഷത്തെ കാലാവധി (Validity Period) കണക്കാക്കുകയും, കാർഡ് ആക്റ്റീവ് ആവുകയും ചെയ്യും.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

@@ -124,10 +124,18 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
   const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && (
     member.renewalPending ||
-    !member.expiryDate ||
     (() => {
-      const exp = member.expiryDate;
-      const d = exp?.toDate ? exp.toDate() : (exp?.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+      const exp = member.expiryDate || (() => {
+        const reg = member.registrationDate;
+        if (!reg) return null;
+        const regD = reg.toDate ? reg.toDate() : (reg.seconds ? new Date(reg.seconds * 1000) : new Date(reg));
+        if (isNaN(regD.getTime())) return null;
+        const expD = new Date(regD);
+        expD.setFullYear(expD.getFullYear() + 1);
+        return expD;
+      })();
+      if (!exp) return true;
+      const d = exp.toDate ? exp.toDate() : (exp.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
       return isNaN(d.getTime()) ? true : d.getTime() < Date.now();
     })()
   );
