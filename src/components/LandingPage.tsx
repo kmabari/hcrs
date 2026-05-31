@@ -21,7 +21,25 @@ import {
   Globe, 
   LayoutGrid, 
   AlertTriangle,
-  Image as ImageIcon 
+  Image as ImageIcon,
+  Users,
+  HeartHandshake,
+  Scale,
+  Shield,
+  Award,
+  Heart,
+  Briefcase,
+  Activity,
+  Building2,
+  CalendarRange,
+  Sparkles,
+  Gavel,
+  BadgeAlert,
+  IdCard,
+  Coins,
+  Compass,
+  Network,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -169,32 +187,133 @@ export default function LandingPage({
         </div>
       </nav>
 
-      {/* Main Showcase / Hero Cover */}
-      <div className="w-full flex flex-col items-center pt-32 pb-16 px-4 text-center">
+      {/* Main Showcase / Hero Cover - Redesigned Professional Banner */}
+      <div className="w-full max-w-6xl mx-auto pt-32 pb-16 px-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="inline-block p-4 bg-white/95 shadow-premium rounded-[32px] border border-slate-100 mb-8"
-        >
-          <Logo className="scale-[1.3]" />
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="max-w-4xl"
+          transition={{ duration: 0.6 }}
+          className="relative bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 rounded-[40px] p-8 md:p-14 overflow-hidden border-2 border-slate-800 shadow-[0_40px_80px_rgba(0,0,0,0.35)]"
         >
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight uppercase leading-[1.05] mb-6">
-            {settings.fullName}
-          </h1>
-          <div className="flex items-center justify-center gap-3.5 mb-2">
-            <span className="h-[2px] w-12 bg-gradient-to-r from-transparent to-brand-magenta" />
-            <p className="text-brand-magenta font-black uppercase tracking-[0.25em] text-xs md:text-sm">
-              {settings.shortName} Kerala Division
-            </p>
-            <span className="h-[2px] w-12 bg-gradient-to-l from-transparent to-brand-magenta" />
+          {/* Decorative Background Accents */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,20,147,0.12),transparent_45%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.12),transparent_45%)] pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+          <div className="absolute -left-16 -top-16 w-64 h-64 bg-brand-blue/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-brand-magenta/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Dot Grid Layer */}
+          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+
+          {/* Core Content */}
+          <div className="relative flex flex-col items-center text-center">
+            
+            {/* Top Registration Badge */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="inline-flex items-center gap-2 bg-slate-900/95 hover:bg-slate-850/95 border border-slate-800 px-5 py-2.5 rounded-full shadow-inner mb-8 transition-all cursor-default"
+            >
+              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
+              </div>
+              <span className="font-extrabold text-[10px] md:text-xs text-slate-300 uppercase tracking-[0.18em] font-mono">
+                Govt. Registered Society • Reg No: TSR/TC/20/2025
+              </span>
+            </motion.div>
+
+            {/* Glowing Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+              className="p-4 bg-white/95 shadow-lg shadow-white/5 rounded-[32px] border border-white/10 mb-8"
+            >
+              <Logo className="scale-[1.15]" />
+            </motion.div>
+
+            {/* Main Title & Subtitle */}
+            <div className="max-w-4xl space-y-6 mb-12">
+              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight uppercase leading-[1.1] [text-shadow:0_2px_10px_rgba(0,0,0,0.5)]">
+                HIGHRICH COMMUNITY<br />
+                <span className="bg-gradient-to-r from-brand-blue via-violet-400 to-[#FF1493] bg-clip-text text-transparent">
+                  REVIVAL SOCIETY
+                </span> (HCRS)
+              </h1>
+              <p className="text-slate-300 font-bold text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                A Registered Society Committed To Reviving & Supporting The Highrich Community
+              </p>
+            </div>
+
+            {/* Horizontal Line divider */}
+            <div className="w-full max-w-md h-px bg-gradient-to-r from-transparent via-slate-850 to-transparent mb-12" />
+
+            {/* Core Pillars / Professional Icons Grid */}
+            <div className="w-full max-w-5xl">
+              <p className="text-[10px] md:text-xs font-black text-brand-magenta uppercase tracking-[0.25em] mb-6">
+                Our Core Pillars • പ്രധാന ലക്ഷ്യങ്ങൾ
+              </p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+                {[
+                  {
+                    title: "Community",
+                    titleMl: "കമ്മ്യൂണിറ്റി ബന്ധങ്ങൾ",
+                    desc: "Fostering kinship, solidarity and mutual group communication among all members.",
+                    icon: Users,
+                    color: "text-blue-400 bg-blue-500/10 border-blue-500/20"
+                  },
+                  {
+                    title: "Revival",
+                    titleMl: "പുനരുജ്ജീവനം",
+                    desc: "Rebuilding confidence, establishing dynamic development channels, and restoring trust.",
+                    icon: Sparkles,
+                    color: "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                  },
+                  {
+                    title: "Support",
+                    titleMl: "സഹായ പദ്ധതികൾ",
+                    desc: "Active social welfare initiatives, medical assistance and continuous guidance programs.",
+                    icon: HeartHandshake,
+                    color: "text-rose-400 bg-rose-500/10 border-rose-500/20"
+                  },
+                  {
+                    title: "Legal Protection",
+                    titleMl: "നിയമ സംരക്ഷണം",
+                    desc: "Providing lawful help mechanisms, structured guidance, and rights advocacy frameworks.",
+                    icon: Shield,
+                    color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25"
+                  }
+                ].map((pillar, i) => {
+                  const IconComponent = pillar.icon;
+                  return (
+                    <motion.div
+                      key={pillar.title}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 + i * 0.1 }}
+                      className="bg-slate-900/60 border border-slate-850 rounded-[28px] p-6 hover:border-slate-700/80 transition-all group hover:bg-slate-900 duration-300 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${pillar.color} mb-4 shrink-0 group-hover:scale-110 transition-transform`}>
+                          <IconComponent className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-white font-extrabold text-sm md:text-base leading-tight uppercase">
+                          {pillar.title}
+                        </h3>
+                        <p className="text-[10px] text-brand-magenta font-black uppercase tracking-wider mt-0.5 mb-3">
+                          {pillar.titleMl}
+                        </p>
+                      </div>
+                      <p className="text-slate-400 text-xs font-semibold leading-relaxed mt-2">
+                        {pillar.desc}
+                      </p>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         </motion.div>
       </div>
@@ -476,54 +595,750 @@ export default function LandingPage({
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Button>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-5xl mx-auto pt-6">
+            {/* About HCRS & Our Mission Section - Redesigned to exact specifications */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-6xl mx-auto pt-6 text-left">
+              
+              {/* Left Column (lg:col-span-5): ABOUT HCRS */}
               <motion.div 
-                initial={{ opacity: 0, x: -15 }}
-                whileInView={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="space-y-6"
+                transition={{ duration: 0.5 }}
+                className="lg:col-span-5 space-y-6 flex flex-col justify-between"
               >
-                <div className="inline-flex items-center gap-2 bg-brand-magenta/5 text-brand-magenta px-4 py-1.5 rounded-full border border-brand-magenta/10">
-                  <Info className="w-4 h-4" />
-                  <span className="font-black text-[9px] uppercase tracking-wider">About Our Society</span>
-                </div>
-                <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none uppercase">
-                  Fostering Community <br/>
-                  <span className="text-brand-blue italic">And Economic Unity</span>
-                </h2>
-                <div className="text-sm text-slate-500 font-medium leading-relaxed space-y-4">
-                  {settings.aboutUs.split('\n\n').map((para, i) => (
-                    <p key={i}>{para}</p>
-                  ))}
+                <div className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium relative h-full flex flex-col justify-between overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-brand-magenta/5 to-transparent rounded-full pointer-events-none" />
+                  
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 bg-brand-magenta/5 text-brand-magenta px-4 py-1.5 rounded-full border border-brand-magenta/10">
+                      <Building2 className="w-4 h-4" />
+                      <span className="font-extrabold text-[10px] uppercase tracking-wider">About HCRS • ഞങ്ങളെക്കുറിച്ച്</span>
+                    </div>
+
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">
+                      About <span className="text-brand-magenta">HCRS</span>
+                    </h2>
+
+                    <div className="space-y-5 text-sm text-slate-600 font-semibold leading-relaxed">
+                      <div className="flex gap-4 items-start group">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                          <Building2 className="w-5 h-5 text-brand-magenta" />
+                        </div>
+                        <p className="pt-1 text-[13px] md:text-sm font-bold text-slate-700">
+                          <strong className="text-slate-950 font-black">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a legally registered non-profit organization formed in 2025 in Thrissur, Kerala.
+                        </p>
+                      </div>
+
+                      <div className="flex gap-4 items-start group">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                          <Users className="w-5 h-5 text-brand-blue" />
+                        </div>
+                        <p className="pt-1 text-[13px] md:text-sm font-bold text-slate-700">
+                          HCRS was established as a <strong className="text-slate-950 font-black">revival committee</strong> for the members of Highrich Online Shoppe.
+                        </p>
+                      </div>
+
+                      <div className="flex gap-4 items-start group">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                          <HeartHandshake className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <p className="pt-1 text-[13px] md:text-sm font-bold text-slate-700">
+                          Efforts are ongoing to support affected community members through welfare initiatives, awareness programs, community support activities, and <strong className="text-slate-950 font-black">lawful assistance mechanisms</strong>.
+                        </p>
+                      </div>
+
+                      <div className="flex gap-4 items-start group">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                          <Sparkles className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <p className="pt-1 text-[13px] md:text-sm font-bold text-slate-700">
+                          HCRS remains committed to helping members <strong className="text-slate-950 font-black">rebuild confidence, stability, and opportunities</strong> through collective action.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Registered Status Sub-Card */}
+                  <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Kerala Division</p>
+                      <p className="text-xs font-black text-slate-800 uppercase tracking-wider mt-1.5">Registered Non-Profit</p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <motion.div 
-                  className="bg-white p-8 rounded-[32px] shadow-premium border border-slate-150 space-y-5"
-                >
-                  <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center text-brand-blue">
-                    <Target className="w-6 h-6" />
+
+              {/* Right Column (lg:col-span-7): OUR MISSION & CARD MATRIX */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="lg:col-span-7 space-y-6"
+              >
+                <div className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium h-full flex flex-col justify-between">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 bg-brand-blue/5 text-brand-blue px-4 py-1.5 rounded-full border border-brand-blue/10">
+                      <Target className="w-4 h-4" />
+                      <span className="font-extrabold text-[10px] uppercase tracking-wider">Our Society Mission • ലക്ഷ്യങ്ങൾ</span>
+                    </div>
+
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">
+                      Our <span className="text-brand-blue">Mission</span>
+                    </h2>
+
+                    <p className="text-sm font-bold text-slate-500 leading-relaxed">
+                      Our society works to restore trust and rebuild livelihoods through:
+                    </p>
+
+                    {/* Mission Core Focus Cards Matrix */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[
+                        {
+                          title: "Community Welfare",
+                          titleMl: "കമ്മ്യൂണിറ്റി ക്ഷേമം",
+                          icon: Users,
+                          iconColor: "text-blue-500",
+                          bgColor: "bg-blue-50/70 border-blue-100/80"
+                        },
+                        {
+                          title: "Medical Assistance",
+                          titleMl: "ചികിത്സാ സഹായം",
+                          icon: Activity,
+                          iconColor: "text-rose-500",
+                          bgColor: "bg-rose-50/70 border-rose-100/80"
+                        },
+                        {
+                          title: "Legal Awareness",
+                          titleMl: "നിയമ ബോധവൽക്കരണം",
+                          icon: Gavel,
+                          iconColor: "text-amber-500",
+                          bgColor: "bg-amber-50/70 border-amber-100/80"
+                        },
+                        {
+                          title: "Social Support",
+                          titleMl: "സാമൂഹിക പിന്തുണ",
+                          icon: HeartHandshake,
+                          iconColor: "text-emerald-500",
+                          bgColor: "bg-emerald-50/70 border-emerald-100/80"
+                        },
+                        {
+                          title: "Financial Guidance",
+                          titleMl: "സാമ്പത്തിക മാർഗ്ഗനിർദ്ദേശം",
+                          icon: Briefcase,
+                          iconColor: "text-purple-500",
+                          bgColor: "bg-purple-50/70 border-purple-100/80"
+                        }
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <div 
+                            key={item.title}
+                            className={`p-4.5 rounded-2xl border-2 ${item.bgColor} flex flex-col justify-between transition-all hover:scale-[1.02] cursor-default`}
+                          >
+                            <div className={`w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100 shrink-0 mb-3`}>
+                              <Icon className={`w-4 h-4 ${item.iconColor}`} />
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-[#111111] text-xs leading-snug uppercase tracking-tight">
+                                {item.title}
+                              </h4>
+                              <p className="text-[10px] text-slate-500 font-extrabold tracking-wide mt-1">
+                                {item.titleMl}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Our Mission</h3>
-                  <p className="text-xs font-bold text-slate-600 leading-relaxed italic">
-                    "{settings.mission}"
-                  </p>
+
+                  {/* Special Attention Priority Segment */}
+                  <div className="mt-8 pt-6 border-t border-slate-100">
+                    <div className="bg-gradient-to-r from-pink-500/5 to-rose-500/5 border-2 border-pink-100/80 rounded-[28px] p-5 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                      <div className="absolute top-[-30px] right-[-30px] w-24 h-24 bg-brand-magenta/5 rounded-full blur-xl pointer-events-none" />
+                      
+                      <div className="space-y-1.5 max-w-sm">
+                        <div className="inline-flex items-center gap-1.5 text-brand-magenta font-black uppercase text-[10px] tracking-widest leading-none">
+                          <BadgeAlert className="w-3.5 h-3.5" />
+                          Special Attention segment
+                        </div>
+                        <p className="text-xs font-bold text-slate-600 leading-relaxed pt-1">
+                          Our society pays a prioritized focus and active attention to:
+                        </p>
+                      </div>
+
+                      {/* Pill list targeting priority members */}
+                      <div className="grid grid-cols-2 gap-2.5 shrink-0 w-full sm:w-auto">
+                        {[
+                          { lbl: "Women", lblMl: "വനിതകൾ", icon: Heart },
+                          { lbl: "Widows", lblMl: "വിധവകൾ", icon: Shield },
+                          { lbl: "Senior Citizens", lblMl: "മുതിർന്ന പൗരന്മാർ", icon: Award },
+                          { lbl: "Families facing hardships", lblMl: "നിരാലംബർ", icon: Users }
+                        ].map((priority) => {
+                          const PriIcon = priority.icon;
+                          return (
+                            <div 
+                              key={priority.lbl}
+                              className="bg-white px-3.5 py-2.5 rounded-xl border border-pink-150/80 flex items-center gap-2 shadow-sm shrink-0"
+                            >
+                              <PriIcon className="w-3.5 h-3.5 text-brand-magenta shrink-0" />
+                              <div>
+                                <p className="font-extrabold text-[10px] text-slate-850 leading-none uppercase">{priority.lbl}</p>
+                                <p className="text-[9px] font-black text-slate-400 mt-0.5">{priority.lblMl}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </motion.div>
+
+            </div>
+
+            {/* OUR KEY ACTIVITIES SECTION */}
+            <section className="space-y-8 max-w-6xl mx-auto pt-16">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center gap-2 bg-brand-blue/5 text-brand-blue px-4 py-1.5 rounded-full border border-brand-blue/10">
+                  <Activity className="w-4 h-4 text-brand-blue" />
+                  <span className="font-extrabold text-[10px] uppercase tracking-wider">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tight">
+                  Our Key <span className="text-brand-blue">Activities</span>
+                </h2>
+                <p className="text-slate-500 font-semibold text-xs md:text-sm max-w-xl mx-auto">
+                  We are actively engaged in structured initiatives and programs to restore the community.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Card 1 */}
+                <motion.div 
+                  whileHover={{ y: -6 }}
+                  className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full pointer-events-none" />
+                  <div className="space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      <IdCard className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                      Membership Campaigns
+                    </h3>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      HCRS Membership Campaigns unite members and supporters for welfare, awareness, revival initiatives, and community participation.
+                    </p>
+                  </div>
+                  <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between text-blue-500">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Uniting Members</span>
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  </div>
                 </motion.div>
-                
+
+                {/* Card 2 */}
                 <motion.div 
-                   className="bg-gradient-to-br from-brand-magenta to-pink-600 p-8 rounded-[32px] shadow-premium text-white space-y-5"
+                  whileHover={{ y: -6 }}
+                  className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all text-left"
                 >
-                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white">
-                    <Eye className="w-6 h-6" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-rose-500/5 to-transparent rounded-full pointer-events-none" />
+                  <div className="space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      <HeartHandshake className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                      Welfare Activities
+                    </h3>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      Supporting members through welfare programs, awareness campaigns, and compassionate assistance initiatives.
+                    </p>
                   </div>
-                  <h3 className="text-xl font-black uppercase text-white tracking-tight">Our Vision</h3>
-                  <p className="text-xs font-semibold leading-relaxed opacity-95">
-                    "{settings.vision}"
-                  </p>
+                  <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between text-rose-500">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Active Relief</span>
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                  </div>
+                </motion.div>
+
+                {/* Card 3 */}
+                <motion.div 
+                  whileHover={{ y: -6 }}
+                  className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-full pointer-events-none" />
+                  <div className="space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 text-amber-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      <Coins className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                      Financial Support
+                    </h3>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      Providing support initiatives for education, medical needs, emergencies, and livelihood recovery efforts.
+                    </p>
+                  </div>
+                  <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between text-amber-500">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Essential Recovery</span>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  </div>
                 </motion.div>
               </div>
-            </div>
+            </section>
+
+            {/* OUR JOURNEY SECTION */}
+            <section className="space-y-12 max-w-5xl mx-auto pt-20 pb-10">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center gap-2 bg-brand-magenta/5 text-brand-magenta px-4 py-1.5 rounded-full border border-brand-magenta/10">
+                  <Compass className="w-4 h-4 text-brand-magenta" />
+                  <span className="font-extrabold text-[10px] uppercase tracking-wider">The Timeline • ചരിത്രവഴി</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tight">
+                  Our <span className="text-brand-magenta">Journey</span>
+                </h2>
+                <p className="text-slate-500 font-semibold text-xs md:text-sm max-w-xl mx-auto">
+                  A timeline tracking our establishment, unity, and dedicated ongoing community efforts.
+                </p>
+              </div>
+
+              {/* Timeline graphic wrapper */}
+              <div className="relative border-l-2 border-slate-200/80 ml-4 md:ml-32 space-y-12 text-left">
+                {/* Milestone 1 */}
+                <div className="relative pl-8 sm:pl-12 group">
+                  {/* Glowing Node */}
+                  <div className="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-slate-950 border-4 border-brand-magenta group-hover:scale-125 transition-transform shadow-md" />
+                  
+                  {/* Content Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                    {/* Year/Signpost (Left alignment offset) */}
+                    <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
+                      <span className="inline-block bg-slate-950 text-brand-magenta font-black font-mono text-xs md:text-sm px-4.5 py-1.5 rounded-full border border-brand-magenta/10 shadow-sm uppercase tracking-widest">
+                        2025 • ESTD
+                      </span>
+                    </div>
+                    {/* Card container */}
+                    <div className="md:col-span-9 bg-white border border-slate-150 p-6 md:p-8 rounded-[28px] shadow-premium hover:border-brand-magenta/30 transition-all duration-300">
+                      <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-brand-magenta" />
+                        Foundation In Thrissur
+                      </h3>
+                      <p className="text-slate-600 font-bold text-xs md:text-sm leading-relaxed">
+                        The Highrich Community Revival Society (HCRS) was formed in 2025 in Thrissur, Kerala.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Milestone 2 */}
+                <div className="relative pl-8 sm:pl-12 group">
+                  {/* Glowing Node */}
+                  <div className="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-slate-950 border-4 border-brand-blue group-hover:scale-125 transition-transform shadow-md" />
+                  
+                  {/* Content Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                    {/* Year/Signpost */}
+                    <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
+                      <span className="inline-block bg-slate-950 text-brand-blue font-black font-mono text-xs md:text-sm px-4 py-1.5 rounded-full border border-brand-blue/10 shadow-sm uppercase tracking-wider">
+                        OUR FOCUS
+                      </span>
+                    </div>
+                    {/* Card container */}
+                    <div className="md:col-span-9 bg-white border border-slate-150 p-6 md:p-8 rounded-[28px] shadow-premium hover:border-brand-blue/30 transition-all duration-300">
+                      <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-brand-blue" />
+                        Unity & Welfare Mobilization
+                      </h3>
+                      <p className="text-slate-600 font-bold text-xs md:text-sm leading-relaxed">
+                        The organization was established to unite members, promote community welfare, and provide support initiatives during difficult circumstances.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Milestone 3 */}
+                <div className="relative pl-8 sm:pl-12 group">
+                  {/* Glowing Node */}
+                  <div className="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-slate-950 border-4 border-emerald-500 group-hover:scale-125 transition-transform shadow-md" />
+                  
+                  {/* Content Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                    {/* Year/Signpost */}
+                    <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
+                      <span className="inline-block bg-slate-950 text-emerald-400 font-black font-mono text-xs md:text-sm px-4.5 py-1.5 rounded-full border border-emerald-500/10 shadow-sm uppercase tracking-wider">
+                        ONGOING
+                      </span>
+                    </div>
+                    {/* Card container */}
+                    <div className="md:col-span-9 bg-white border border-slate-150 p-6 md:p-8 rounded-[28px] shadow-premium hover:border-emerald-500/30 transition-all duration-300">
+                      <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        Continuous Support Platform
+                      </h3>
+                      <p className="text-slate-600 font-bold text-xs md:text-sm leading-relaxed">
+                        Today HCRS continues to serve as a platform for awareness, welfare, support, and community engagement.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* OUR VISION & FOCUS AREAS SECTION */}
+            <section className="space-y-12 max-w-6xl mx-auto pt-20">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                {/* OUR VISION (Left 5-cols) */}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                  className="lg:col-span-5 relative bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 rounded-[40px] p-8 md:p-10 border-2 border-slate-800 shadow-premium flex flex-col justify-between overflow-hidden text-left"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,20,147,0.08),transparent_40%)] pointer-events-none" />
+                  <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-brand-blue/10 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="space-y-6 relative max-w-sm">
+                    <div className="inline-flex items-center gap-2 bg-white/5 text-brand-magenta px-4 py-1.5 rounded-full border border-white/10">
+                      <Eye className="w-4 h-4 text-brand-magenta" />
+                      <span className="font-extrabold text-[10px] uppercase tracking-wider text-slate-200">Our society Vision • ദർശനം</span>
+                    </div>
+
+                    <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                      Our <span className="bg-gradient-to-r from-brand-blue to-brand-magenta bg-clip-text text-transparent">Vision</span>
+                    </h2>
+
+                    <p className="text-slate-350 font-bold text-sm leading-relaxed pt-2">
+                      To build empowered communities where every individual enjoys dignity, support, opportunity, and access to essential resources.
+                    </p>
+                  </div>
+
+                  <div className="pt-8 border-t border-slate-850 mt-8 flex items-center gap-4 relative">
+                    <div className="w-11 h-11 rounded-xl bg-brand-magenta/10 text-brand-magenta flex items-center justify-center border border-brand-magenta/20 shrink-0">
+                      <Sparkles className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-white text-xs font-extrabold uppercase tracking-wider">Empowerment First</h4>
+                      <p className="text-[10px] text-slate-400 font-extrabold tracking-wider mt-0.5">Dignity • Opportunity • Support</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* FOCUS AREAS (Right 7-cols) */}
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="lg:col-span-7 bg-white border-2 border-slate-100 p-8 md:p-10 rounded-[36px] shadow-premium flex flex-col justify-between text-left"
+                >
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 bg-brand-blue/5 text-brand-blue px-4 py-1.5 rounded-full border border-brand-blue/10">
+                      <Target className="w-4 h-4 text-brand-blue" />
+                      <span className="font-extrabold text-[10px] uppercase tracking-wider">Social Pillars • സുപ്രധാന ലക്ഷ്യങ്ങൾ</span>
+                    </div>
+
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">
+                      Focus <span className="text-brand-blue">Areas</span>
+                    </h2>
+
+                    <p className="text-slate-500 font-semibold text-xs md:text-sm">
+                      We focus on critical development blocks to foster societal health and security.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                      {[
+                        {
+                          num: "01",
+                          title: "Social Welfare",
+                          titleMl: "സാമൂഹിക ക്ഷേമം",
+                          desc: "Supporting health, education, and livelihood initiatives.",
+                          icon: Heart,
+                          color: "bg-rose-50 border-rose-100 text-rose-500"
+                        },
+                        {
+                          num: "02",
+                          title: "Women & Youth Development",
+                          titleMl: "സ്ത്രീ-യുവജന ക്ഷേമം",
+                          desc: "Encouraging participation, empowerment, and leadership.",
+                          icon: Users,
+                          color: "bg-purple-50 border-purple-100 text-purple-500"
+                        },
+                        {
+                          num: "03",
+                          title: "Community Support",
+                          titleMl: "കമ്മ്യൂണിറ്റി പിന്തുണ",
+                          desc: "Building stronger support networks and crisis response structures.",
+                          icon: HeartHandshake,
+                          color: "bg-emerald-50 border-emerald-100 text-emerald-500"
+                        },
+                        {
+                          num: "04",
+                          title: "Awareness Programs",
+                          titleMl: "ബോധവൽക്കരണം",
+                          desc: "Promoting education, legal orientation, and information sharing.",
+                          icon: Compass,
+                          color: "bg-blue-50 border-blue-100 text-blue-500"
+                        }
+                      ].map((area) => {
+                        const AreaIcon = area.icon;
+                        return (
+                          <div 
+                            key={area.title} 
+                            className="p-5 bg-slate-50/50 border border-slate-150 rounded-2xl flex items-start gap-4 hover:border-slate-300 transition-all group"
+                          >
+                            <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center border ${area.color} group-hover:scale-110 transition-transform`}>
+                              <AreaIcon className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black font-mono text-slate-400 block tracking-wider uppercase">Area {area.num}</span>
+                              <h4 className="text-slate-900 font-extrabold text-sm uppercase leading-tight">{area.title}</h4>
+                              <p className="text-[10px] text-brand-magenta font-black uppercase tracking-wider">{area.titleMl}</p>
+                              <p className="text-slate-500 text-xs font-bold leading-relaxed pt-1">{area.desc}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+
+            {/* OUR STATE & DISTRICT COMMITTEES SECTION */}
+            <section className="space-y-8 max-w-6xl mx-auto pt-20">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center gap-2 bg-brand-blue/5 text-brand-blue px-4 py-1.5 rounded-full border border-brand-blue/10">
+                  <Network className="w-4 h-4 text-brand-blue" />
+                  <span className="font-extrabold text-[10px] uppercase tracking-wider">Administrative structure • കമ്മിറ്റികൾ</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tight">
+                  State & District <span className="text-brand-blue">Committees</span>
+                </h2>
+                <p className="text-slate-500 font-semibold text-xs md:text-sm max-w-xl mx-auto">
+                  Highrich Community Revival Society operates through State, District, and local leadership teams.
+                </p>
+              </div>
+
+              <div className="bg-white border-2 border-slate-100 rounded-[36px] p-8 md:p-10 shadow-premium">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center text-left">
+                  {/* Left explanation block */}
+                  <div className="lg:col-span-5 space-y-5">
+                    <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                      <Network className="w-6 h-6 text-brand-magenta" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                      Structured Coordination
+                    </h3>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      These committees coordinate welfare initiatives, member support, awareness programs, and community activities to ensure structural efficiency and rapid service delivery.
+                    </p>
+                    <div className="w-20 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta rounded" />
+                  </div>
+
+                  {/* Right 3 core columns */}
+                  <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {[
+                      {
+                        title: "State Leadership",
+                        titleMl: "സംസ്ഥാന സമിതി",
+                        desc: "Apex planning body formulating state-wide welfare frameworks.",
+                        icon: UserCheck,
+                        color: "text-brand-magenta bg-brand-magenta/5 border-brand-magenta/10"
+                      },
+                      {
+                        title: "District Committee",
+                        titleMl: "ജില്ലാ കമ്മിറ്റികൾ",
+                        desc: "District divisions managing localized member outreach.",
+                        icon: Building2,
+                        color: "text-brand-blue bg-brand-blue/5 border-brand-blue/10"
+                      },
+                      {
+                        title: "Team Network",
+                        titleMl: "ഗ്രൂപ്പ് ശൃംഖല",
+                        desc: "Grassroots division coordinating instant helpline assistance.",
+                        icon: Network,
+                        color: "text-emerald-500 bg-emerald-50/70 border-emerald-100"
+                      }
+                    ].map((item, index) => {
+                      const TeamIcon = item.icon;
+                      return (
+                        <div 
+                          key={index} 
+                          className="bg-slate-50/50 hover:bg-white border border-slate-150 hover:border-slate-300 transition-all rounded-2xl p-6 flex flex-col justify-between h-full hover:shadow-sm"
+                        >
+                          <div className="space-y-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${item.color}`}>
+                              <TeamIcon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-slate-900 text-xs md:text-sm uppercase tracking-tight">{item.title}</h4>
+                              <p className="text-[10px] text-brand-magenta font-black uppercase tracking-wider mt-0.5">{item.titleMl}</p>
+                            </div>
+                          </div>
+                          <p className="text-slate-500 text-xs font-semibold leading-relaxed mt-4">
+                            {item.desc}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* HCRS MEMBERSHIP BENEFITS SECTION */}
+            <section className="space-y-8 max-w-6xl mx-auto pt-20">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center gap-2 bg-brand-magenta/5 text-brand-magenta px-4 py-1.5 rounded-full border border-brand-magenta/10">
+                  <Award className="w-4 h-4 text-brand-magenta" />
+                  <span className="font-extrabold text-[10px] uppercase tracking-wider">Member Privileges • അംഗത്വ ആനുകൂല്യങ്ങൾ</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tight">
+                  HCRS Membership <span className="text-brand-magenta">Benefits</span>
+                </h2>
+                <p className="text-slate-500 font-semibold text-xs md:text-sm max-w-xl mx-auto">
+                  By joining our registered collective, you unlock vital community support systems, legal standing, and advocacy channels.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Benefit 1 */}
+                <motion.div 
+                  whileHover={{ y: -6 }}
+                  className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full pointer-events-none" />
+                  <div className="space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      <Briefcase className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                        Reclaiming Livelihoods
+                      </h3>
+                      <p className="text-[10px] text-brand-blue font-black uppercase tracking-wider mt-0.5">
+                        ജീവനമാർഗ്ഗ പുനരുദ്ധാരണം
+                      </p>
+                    </div>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      Working collectively to support members through awareness, welfare initiatives, and community revival efforts.
+                    </p>
+                  </div>
+                  <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between text-blue-500">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Life Recovery Block</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                  </div>
+                </motion.div>
+
+                {/* Benefit 2 */}
+                <motion.div 
+                  whileHover={{ y: -6 }}
+                  className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-brand-magenta/5 to-transparent rounded-full pointer-events-none" />
+                  <div className="space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-pink-50 border border-pink-100 text-brand-magenta flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      <Scale className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                        Stand For Justice
+                      </h3>
+                      <p className="text-[10px] text-brand-magenta font-black uppercase tracking-wider mt-0.5">
+                        നീതിക്കായുള്ള നിലകൊള്ളൽ
+                      </p>
+                    </div>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      Members can participate in lawful representation efforts, petitions, and community advocacy initiatives.
+                    </p>
+                  </div>
+                  <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between text-brand-magenta">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Advocacy Standing</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-magenta animate-pulse" />
+                  </div>
+                </motion.div>
+
+                {/* Benefit 3 */}
+                <motion.div 
+                  whileHover={{ y: -6 }}
+                  className="bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-full pointer-events-none" />
+                  <div className="space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                      <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                        Guaranteed Privacy
+                      </h3>
+                      <p className="text-[10px] text-emerald-605 font-black uppercase tracking-wider mt-0.5">
+                        വ്യക്തിവിവര സുരക്ഷിതത്വം
+                      </p>
+                    </div>
+                    <p className="text-slate-600 font-semibold text-xs md:text-sm leading-relaxed">
+                      HCRS is committed to protecting member information through secure and responsible data handling practices.
+                    </p>
+                  </div>
+                  <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between text-emerald-500">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Encrypted Safeguards</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+
+            {/* JOIN HCRS SECTION (Become an HCRS Member CTA) */}
+            <section className="max-w-6xl mx-auto pt-20">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="relative bg-gradient-to-br from-indigo-950 via-slate-950 to-brand-blue/20 rounded-[40px] p-8 md:p-14 border-2 border-slate-800 shadow-[0_30px_70px_rgba(0,0,0,0.30)] overflow-hidden text-center"
+              >
+                {/* Visual decorations */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(255,20,147,0.15),transparent_40%)] pointer-events-none" />
+                <div className="absolute -left-10 -bottom-10 w-44 h-44 bg-brand-blue/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -right-10 -top-10 w-44 h-44 bg-brand-magenta/15 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="max-w-2xl mx-auto space-y-8 relative">
+                  <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full">
+                    <UserPlus className="w-4 h-4 text-brand-magenta" />
+                    <span className="font-extrabold text-[10px] text-slate-300 uppercase tracking-widest">Join HCRS • നമ്മളിൽ ഒരാളാകൂ</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white uppercase tracking-tight">
+                      Become an <span className="bg-gradient-to-r from-brand-blue to-brand-magenta bg-clip-text text-transparent">HCRS Member</span>
+                    </h2>
+                    <p className="text-brand-magenta font-black uppercase tracking-[0.2em] text-xs md:text-sm">
+                      Stand for the Highrich Revival & Support Movement
+                    </p>
+                    <p className="text-slate-350 text-xs sm:text-sm md:text-base font-bold leading-relaxed max-w-xl mx-auto">
+                      Join HCRS and become part of a strong community working together for welfare, awareness, support, and collective progress.
+                    </p>
+                  </div>
+
+                  {/* Horizontal visual indicator */}
+                  <div className="w-20 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta rounded mx-auto" />
+
+                  {/* Prominent Action Button Grid */}
+                  <div className="pt-4 max-w-xs mx-auto">
+                    <Button 
+                      onClick={() => setStage('guidelines')}
+                      className="w-full h-14 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/10 hover:shadow-brand-magenta/25 bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2.5 uppercase tracking-widest hover:scale-[1.02] active:scale-100"
+                    >
+                      <UserPlus className="w-5 h-5" />
+                      Register Membership Now
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </section>
 
             {/* Gallery Archive Grid Redesign */}
             <section className="space-y-8 max-w-5xl mx-auto pt-6" id="gallery-preview">
