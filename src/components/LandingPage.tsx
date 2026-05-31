@@ -887,6 +887,94 @@ export default function LandingPage({
                   </div>
                 </motion.div>
               </div>
+
+              {/* Dynamic Galleries Preview Section */}
+              <div className="space-y-8 pt-8">
+                {[
+                  {
+                    category: 'Membership Campaigns',
+                    title: 'Membership Campaigns Archive',
+                    desc: 'Sneak peek into physical membership campaigns, active recruitment zones, and community interactions.',
+                    icon: <IdCard className="w-5 h-5 text-blue-500" />,
+                    bgColor: 'bg-blue-50/20 border-blue-100/60',
+                    btnColor: 'text-blue-600 hover:bg-blue-50 border-blue-200'
+                  },
+                  {
+                    category: 'Welfare Activities',
+                    title: 'Welfare Activities Photo Grid',
+                    desc: 'Capturing moments of direct relief campaigns, compassionate delivery work, and home visits.',
+                    icon: <HeartHandshake className="w-5 h-5 text-rose-500" />,
+                    bgColor: 'bg-rose-50/20 border-rose-100/60',
+                    btnColor: 'text-rose-600 hover:bg-rose-50 border-rose-200'
+                  },
+                  {
+                    category: 'Financial Support',
+                    title: 'Financial Support & Claims Gallery',
+                    desc: 'Transparency and active record checking of educational support, emergency medical disbursements.',
+                    icon: <Coins className="w-5 h-5 text-amber-500" />,
+                    bgColor: 'bg-amber-50/20 border-amber-100/60',
+                    btnColor: 'text-amber-600 hover:bg-amber-50 border-amber-200'
+                  }
+                ].map((act) => {
+                  const sectionImages = gallery.filter(img => img.category === act.category).slice(0, 6);
+                  return (
+                    <div 
+                      key={act.category} 
+                      className={`p-6 md:p-8 rounded-[32px] border-2 bg-white shadow-premium text-left space-y-6 ${act.bgColor}`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-150 flex items-center justify-center shrink-0">
+                            {act.icon}
+                          </div>
+                          <div>
+                            <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">{act.title}</h3>
+                            <p className="text-[11px] text-slate-500 font-semibold">{act.desc}</p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={onGalleryClick}
+                          className={`rounded-xl h-9 text-[10px] font-black uppercase tracking-wider px-4 bg-white border shadow-sm hover:shadow-md transition-all ${act.btnColor}`}
+                        >
+                          View All Photos
+                          <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      </div>
+
+                      {sectionImages.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 animate-fade-in">
+                          {sectionImages.map((img, i) => (
+                            <motion.div
+                              key={img.url + i}
+                              whileHover={{ y: -3 }}
+                              onClick={onGalleryClick}
+                              className="aspect-square bg-slate-100 border border-slate-200 rounded-2xl overflow-hidden relative cursor-pointer group shadow-sm"
+                            >
+                              <img 
+                                src={img.url} 
+                                alt={img.title} 
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-2.5 backdrop-blur-[1px]">
+                                <p className="text-[9px] font-extrabold text-white uppercase tracking-tight line-clamp-2 leading-tight">
+                                  {img.title}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-8 bg-white/40 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center">
+                          <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
+                          <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Preview Gallery Empty</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
 
             {/* OUR JOURNEY SECTION */}

@@ -46,10 +46,12 @@ export interface UserProfile {
 export interface GalleryItem {
   id: string;
   url: string;
-  category: 'State Committee' | 'District Committee' | 'Society Programs' | 'Dharna / Events' | 'Community Activities' | 'Member Support Activities';
+  category: string;
   title: string;
   description?: string;
   createdAt: any;
+  order?: number;
+  district?: string;
 }
 
 export interface DistrictQuota {

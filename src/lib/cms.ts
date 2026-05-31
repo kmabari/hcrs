@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, query, addDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, query, addDoc, deleteDoc, serverTimestamp, orderBy, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface OrgSettings {
@@ -34,6 +34,8 @@ export interface GalleryItem {
   title: string;
   description?: string;
   createdAt: any;
+  order?: number;
+  district?: string;
 }
 
 export interface Announcement {
@@ -116,8 +118,14 @@ export async function addGalleryItem(item: Omit<GalleryItem, 'id' | 'createdAt'>
   const collRef = collection(db, 'gallery');
   return await addDoc(collRef, {
     ...item,
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    order: item.order !== undefined ? item.order : 0
   });
+}
+
+export async function updateGalleryItem(id: string, updates: Partial<GalleryItem>) {
+  const docRef = doc(db, 'gallery', id);
+  await updateDoc(docRef, updates);
 }
 
 export async function deleteGalleryItem(id: string) {
@@ -126,14 +134,84 @@ export async function deleteGalleryItem(id: string) {
 }
 
 export function subscribeToGallery(callback: (items: GalleryItem[]) => void) {
-  const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'gallery'));
   return onSnapshot(q, (snapshot) => {
     const items = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as GalleryItem[];
+    // Sort items primarily by 'order' (ascending) and secondarily by 'createdAt' (descending)
+    items.sort((a, b) => {
+      const orderA = a.order !== undefined ? Number(a.order) : 0;
+      const orderB = b.order !== undefined ? Number(b.order) : 0;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      return timeB - timeA;
+    });
     callback(items);
   });
+}
+
+export function subscribeToGalleryCategories(callback: (categories: string[]) => void) {
+  const collRef = collection(db, 'gallery_categories');
+  return onSnapshot(collRef, async (snapshot) => {
+    if (snapshot.empty) {
+      // Seed default categories
+      const DEFAULT_CATEGORIES = [
+        'Membership Campaigns',
+        'Welfare Activities',
+        'Financial Support',
+        'State Committee',
+        'District Committee',
+        'Mandalam Committee',
+        'Society Programs',
+        'Public Meetings',
+        'Legal Activities',
+        'Community Support Activities',
+        'Other Events'
+      ];
+      try {
+        for (const cat of DEFAULT_CATEGORIES) {
+          await addDoc(collRef, { name: cat, createdAt: serverTimestamp() });
+        }
+      } catch (err) {
+        console.error("Seeding categories failed:", err);
+      }
+    } else {
+      const categories: string[] = [];
+      snapshot.docs.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data && data.name) {
+          categories.push(data.name);
+        }
+      });
+      // Sort alphabetically
+      categories.sort((a, b) => a.localeCompare(b));
+      callback(categories);
+    }
+  });
+}
+
+export async function addGalleryCategory(name: string) {
+  const collRef = collection(db, 'gallery_categories');
+  const snap = await getDocs(collRef);
+  const exists = snap.docs.some(docSnap => docSnap.data()?.name?.trim().toLowerCase() === name.trim().toLowerCase());
+  if (!exists) {
+    await addDoc(collRef, { name: name.trim(), createdAt: serverTimestamp() });
+  }
+}
+
+export async function deleteGalleryCategory(name: string) {
+  const collRef = collection(db, 'gallery_categories');
+  const snap = await getDocs(collRef);
+  const matchingDoc = snap.docs.find(docSnap => docSnap.data()?.name?.trim().toLowerCase() === name.trim().toLowerCase());
+  if (matchingDoc) {
+    await deleteDoc(doc(db, 'gallery_categories', matchingDoc.id));
+  }
 }
 
 export async function addAnnouncement(item: Omit<Announcement, 'id' | 'createdAt'>) {

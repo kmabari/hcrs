@@ -1527,10 +1527,10 @@ export default function AdminDashboard({
                       Branding & CMS
                     </TabsTrigger>
                   )}
-                  {!isSecondary && (
+                  {(isSuperAdmin || user?.role === 'admin') && (
                     <TabsTrigger value="gallery_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                       <ImageIcon className="w-3 h-3 text-slate-400" />
-                      Gallery
+                      Gallery Management
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -1580,7 +1580,7 @@ export default function AdminDashboard({
               </TabsContent>
 
               <TabsContent value="gallery_mgmt">
-                <GalleryManagement />
+                <GalleryManagement user={user} />
               </TabsContent>
 
               <TabsContent value="branding">
