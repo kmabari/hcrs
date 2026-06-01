@@ -557,10 +557,12 @@ export default function App() {
           let healed = false;
           try {
             let loginMobile = '';
-            if (currentEmail && currentEmail.endsWith('@hcrs.society')) {
-              loginMobile = currentEmail.split('@')[0];
-            } else if (currentEmail && /^\d{10}$/.test(currentEmail)) {
-              loginMobile = currentEmail;
+            if (currentEmail) {
+              const prefix = currentEmail.split('@')[0];
+              const match = prefix.match(/\d{10}/);
+              if (match) {
+                loginMobile = match[0];
+              }
             }
             
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
@@ -585,6 +587,13 @@ export default function App() {
                   
                   await setDoc(doc(db, 'users', authUser.uid), healedProfile);
                   console.log("Dynamic UID healing successful!");
+                  
+                  // Cleanup old offline/temporary document from Firestore to avoid duplicate counts/listing
+                  if (oldDocId.startsWith('offline_')) {
+                    console.log(`Deleting old offline document ${oldDocId} since it has been synced to ${authUser.uid}`);
+                    await deleteDoc(doc(db, 'users', oldDocId));
+                  }
+                  
                   healed = true;
                 }
               }
@@ -697,6 +706,28 @@ export default function App() {
           } catch (signUpError: any) {
             console.error("Auto-healing registration failed:", signUpError);
             throw signInError; // propagate original signInError
+          }
+        } else if (mappedUserData && trimmedPin === (mappedUserData.pin || '123456')) {
+          // The database PIN is correct, but login failed (e.g., wrong-password because of old out-of-sync auth record)
+          console.log("PIN is correct in Firestore, but standard Auth login failed. Attempting secondary/v2 auth channel...");
+          const mobilePart = isMobile ? values.email : (mappedUserData.mobile || '');
+          const secondaryEmail = `${mobilePart}_v2@hcrs.society`;
+          try {
+            authResult = await signInWithEmailAndPassword(auth, secondaryEmail, trimmedPin);
+            console.log("Sign-in successful via v2 channel:", authResult.user.uid);
+          } catch (secError: any) {
+            if (secError.code === 'auth/user-not-found' || secError.code === 'auth/invalid-credential') {
+              console.log("Secondary auth account doesn't exist. Creating fresh v2 channel...");
+              try {
+                authResult = await createUserWithEmailAndPassword(auth, secondaryEmail, trimmedPin);
+                console.log("Created fresh v2 auth account:", authResult.user.uid);
+              } catch (createSecError) {
+                console.error("Failed to create secondary auth account:", createSecError);
+                throw signInError;
+              }
+            } else {
+              throw signInError;
+            }
           }
         } else {
           throw signInError;
