@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
-import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
@@ -1555,9 +1555,9 @@ export default function App() {
                       <p className="text-[10px] font-black tracking-widest text-amber-500 uppercase mt-2">RENEWAL PENDING APPROVAL</p>
                       
                       <p className="text-slate-600 font-semibold text-[11px] leading-relaxed mt-4">
-                        താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ഉടൻ ക്ലൈം ഫോം ലഭ്യമാകും.
+                        താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ഉടൻ വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകും.
                         <br/>
-                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Our admin team is verifying your ₹100 renewal receipt. The claim form unlocks once completed.</span>
+                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Our admin team is verifying your ₹100 renewal receipt. The info registry form unlocks once completed.</span>
                       </p>
                     </div>
                   ) : isExpired ? (
@@ -1573,9 +1573,9 @@ export default function App() {
                       <p className="text-[10px] font-black tracking-widest text-brand-magenta uppercase mt-2">MEMBERSHIP EXPIRED / RENEWAL REQUIRED</p>
                       
                       <p className="text-slate-500 font-semibold text-xs leading-relaxed mt-4">
-                        താങ്കളുടെ അംഗത്വം കാലാവധി കഴിഞ്ഞിരിക്കുന്നു. ക്ലൈം ഫോം ഉപയോഗിക്കുന്നതിനും ഐഡി കാർഡ് പുതുക്കുന്നതിനും ₹100 അടയ്ക്കുക.
+                        താങ്കളുടെ അംഗത്വം കാലാവധി കഴിഞ്ഞിരിക്കുന്നു. വിവര രജിസ്ട്രി ഫോം ഉപയോഗിക്കുന്നതിനും ഐഡി കാർഡ് പുതുക്കുന്നതിനും ₹100 അടയ്ക്കുക.
                         <br/>
-                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Your membership validity has expired. To lock active card features and support claims, please renew now.</span>
+                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Your membership validity has expired. To lock active card features and information registry portal, please renew now.</span>
                       </p>
 
                       <Button 
@@ -1595,13 +1595,13 @@ export default function App() {
                         className="w-full h-18 rounded-[28px] font-black bg-brand-magenta text-white shadow-2xl shadow-brand-magenta/30 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-brand-magenta/40"
                       >
                         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
-                           <ShieldAlert className="w-5 h-5" />
+                           <Info className="w-5 h-5" />
                         </div>
-                        Support & Claim Form
+                        Financial Info Registry
                       </Button>
                       <div className="flex flex-col items-center mt-4 space-y-1">
                         <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.2em] animate-pulse">Action Required</p>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">ക്ലൈം ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
                       </div>
                     </>
                   )}

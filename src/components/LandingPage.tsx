@@ -677,21 +677,26 @@ export default function LandingPage({
                 </Button>
               </div>
 
-              {/* Claim Card */}
+              {/* Information Registry Card */}
               <div
-                className="group relative bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium hover:shadow-[0_25px_60px_rgba(0,0,0,0.06)] hover:border-emerald-500/30 transition-all text-center flex flex-col items-center justify-between min-h-[400px]"
+                className="group relative bg-white border-2 border-slate-100 p-8 rounded-[36px] shadow-premium hover:shadow-[0_25px_60px_rgba(0,0,0,0.06)] hover:border-brand-magenta/30 transition-all text-center flex flex-col items-center justify-between min-h-[400px]"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-emerald-100/60 w-16 h-16 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-115 group-hover:rotate-3 transition-transform shadow-sm">
-                    <ShieldCheck className="w-8 h-8" />
+                  <div className="bg-brand-blue/10 w-16 h-16 rounded-2xl flex items-center justify-center text-brand-blue group-hover:scale-115 group-hover:rotate-3 transition-transform shadow-sm">
+                    <Info className="w-8 h-8 text-brand-blue" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Support Claim</h2>
-                    <span className="inline-flex mt-2 bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
-                      ക്ലയിം ഫോം • Verified
-                    </span>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight uppercase">Member Financial Information Registry</h2>
+                    <div className="flex flex-col gap-1 items-center mt-2">
+                      <span className="inline-flex bg-brand-blue/5 text-brand-blue border border-brand-blue/10 font-bold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
+                        Verified Information Collection
+                      </span>
+                      <span className="text-[10px] font-extrabold text-[#FF1493] uppercase tracking-wider mt-0.5">
+                        Verified Member Information Collection Portal
+                      </span>
+                    </div>
                     <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
-                      Enter your mobile number to check eligibility and proceed to your claim.
+                      This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.
                     </p>
                   </div>
                 </div>
@@ -701,9 +706,9 @@ export default function LandingPage({
                     setClaimResult(null);
                     setStage('claim_check');
                   }}
-                  className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 bg-gradient-to-r from-emerald-600 to-teal-500 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
+                  className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 bg-gradient-to-r from-brand-blue to-[#FF1493] text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
                 >
-                  File Support Claim
+                  Access Registry Portal
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -1034,7 +1039,7 @@ export default function LandingPage({
                   },
                   {
                     category: 'Financial Support',
-                    title: 'Financial Support & Claims Gallery',
+                    title: 'Financial Support & Activity Gallery',
                     desc: 'Transparency and active record checking of educational support, emergency medical disbursements.',
                     icon: <Coins className="w-5 h-5 text-amber-500" />,
                     bgColor: 'bg-amber-50/20 border-amber-100/60',
@@ -1618,7 +1623,7 @@ export default function LandingPage({
               <div className="p-8 md:p-12 space-y-10">
                 <div className="space-y-3">
                   <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Connect with HCRS</h2>
-                  <p className="text-slate-500 font-bold text-xs leading-relaxed max-w-md">For queries regarding registrations, identity verification or support claims.</p>
+                  <p className="text-slate-500 font-bold text-xs leading-relaxed max-w-md">For queries regarding registrations, identity verification or the financial context registry.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -1722,7 +1727,7 @@ export default function LandingPage({
                     "Digital identity credentials are dynamically generated after verified payment & approval.",
                     "Intentional submission of falsified credentials constitutes permanent blacklisting.",
                     "The Digital identity card is a secure dynamic property issued in Kerala division.",
-                    "All registration and support claims deposits are completely non-refundable."
+                    "All registration and member registry verification fees are completely non-refundable."
                   ].map((text, idx) => (
                     <div key={idx} className="flex gap-4 items-start group">
                       <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md border border-slate-950">
@@ -1774,8 +1779,8 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50/80 border-b border-slate-150 pb-8 pt-10 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl md:text-2xl font-black flex items-center gap-3 text-slate-950 uppercase tracking-tight">
-                    <ShieldCheck className="w-7 h-7 text-brand-magenta" />
-                    യൂസർ വേരിഫിക്കേഷൻ
+                    <Info className="w-7 h-7 text-brand-blue" />
+                    മെമ്പർ വിവര രജിസ്ട്രി
                   </CardTitle>
                   <Button 
                     variant="ghost" 
@@ -1783,7 +1788,7 @@ export default function LandingPage({
                       setStage('landing');
                       setClaimResult(null);
                     }} 
-                    className="rounded-full w-10 h-10 p-0 hover:bg-slate-100 border-2 border-slate-205 text-slate-600 transition-all"
+                    className="rounded-full w-10 h-10 p-0 hover:bg-slate-100 border-2 border-slate-200 text-slate-600 transition-all"
                   >
                      <ArrowLeft className="w-5 h-5" />
                   </Button>
@@ -1792,12 +1797,63 @@ export default function LandingPage({
               <CardContent className="space-y-8 pt-10 pb-6 px-8 md:px-10">
                 {!claimResult ? (
                   <div className="space-y-8">
-                    <div className="bg-pink-50 border-2 border-pink-100 p-6 rounded-2xl">
-                      <p className="text-xs font-extrabold text-slate-850 leading-relaxed">
-                        ക്ലൈം ഫോം ആക്സസ് ചെയ്യുന്നതിനായി ദയവായി നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകി വേരിഫൈ ചെയ്യുക.
-                        <br/>
-                        <span className="text-[10px] text-brand-magenta block mt-2 uppercase font-black tracking-wider">Please enter your registered mobile number to check eligibility and proceed to your claim.</span>
-                      </p>
+                    {/* Secure and Trusted Registry Information Block */}
+                    <div className="bg-slate-50 border-2 border-slate-150 p-6 rounded-3xl space-y-4 text-left">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
+                          <Info className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-slate-900 leading-tight uppercase">Member Financial Information Registry</h3>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 mt-1">
+                            <span className="inline-flex bg-brand-blue/5 text-brand-blue border border-brand-blue/10 font-bold text-[8px] tracking-wider uppercase px-2 py-0.5 rounded-full shrink-0">
+                              Verified Information Collection
+                            </span>
+                            <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider">Verified Member Information Portal</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-slate-600 font-semibold space-y-3 leading-relaxed border-t border-slate-150 pt-4">
+                        <p className="font-extrabold text-slate-800">
+                          This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.
+                        </p>
+                        
+                        <div className="space-y-1.5 pl-3 border-l-2 border-brand-blue/30 pb-0.5 mt-2">
+                          <p className="text-[10px] font-black text-brand-blue uppercase tracking-wider mb-1">The information collected will help identify:</p>
+                          <p className="flex items-start gap-1.5 text-[11px] font-bold text-slate-700">
+                            <span className="text-brand-magenta shrink-0">•</span> Members facing urgent financial difficulties
+                          </p>
+                          <p className="flex items-start gap-1.5 text-[11px] font-bold text-slate-700">
+                            <span className="text-brand-magenta shrink-0">•</span> Members requiring priority consideration for future support initiatives
+                          </p>
+                          <p className="flex items-start gap-1.5 text-[11px] font-bold text-slate-700">
+                            <span className="text-brand-magenta shrink-0">•</span> Members who wish to continue participating in future business opportunities
+                          </p>
+                          <p className="flex items-start gap-1.5 text-[11px] font-bold text-slate-700">
+                            <span className="text-brand-magenta shrink-0">•</span> Members who prefer settlement and closure of their financial involvement upon resolution
+                          </p>
+                        </div>
+                        
+                        <p className="text-slate-605 text-[11px]">
+                          The information submitted through this registry will be compiled, verified, and may be shared with the Highrich Management and Legal Team for reference, planning, verification, and member support activities.
+                        </p>
+                        
+                        <p className="text-slate-605 text-[11px]">
+                          This registry is intended solely for information collection, member verification, and support planning purposes.
+                        </p>
+                        
+                        <p className="bg-brand-blue/[0.03] border border-brand-blue/10 p-3.5 rounded-xl text-[10px] text-slate-600 font-bold leading-normal">
+                          <strong>Note:</strong> Submission of information does not constitute a legal claim, compensation claim, or guarantee of payment.
+                        </p>
+                      </div>
+
+                      <div className="bg-pink-50 border-2 border-pink-100 p-4 rounded-xl mt-4">
+                        <p className="text-xs font-extrabold text-slate-800 leading-relaxed">
+                          വിവര രജിസ്ട്രി ഫോം ആക്സസ് ചെയ്യുന്നതിനായി ദയവായി നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകി വേരിഫൈ ചെയ്യുക:
+                          <span className="text-[10px] text-brand-magenta block mt-1.5 uppercase font-black tracking-wider">Please enter your registered mobile number to check eligibility and proceed to the registry.</span>
+                        </p>
+                      </div>
                     </div>
 
                     <div className="space-y-3">
@@ -1858,7 +1914,7 @@ export default function LandingPage({
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
                         நிலവിലുള്ള ഒഫീഷ്യൽ മെമ്പർ!
                       </h3>
-                      <p className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider mt-2">Please enter Secure PIN to access your ID Card and Claim Form.</p>
+                      <p className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider mt-2">Please enter Secure PIN to access your ID Card and Information Registry.</p>
                     </div>
 
                     <div className="bg-slate-50 border-2 border-slate-150 p-5 rounded-2xl flex items-center justify-between shadow-sm">
@@ -1952,9 +2008,9 @@ export default function LandingPage({
                     </div>
 
                     <p className="text-slate-600 font-bold text-xs leading-relaxed max-w-md mx-auto">
-                      ഈ മൊബൈൽ നമ്പർ നിലവിൽ ഇതിൽ രജിസ്റ്റർ ചെയ്തിട്ടില്ല. രജിസ്റ്റർ ചെയ്ത മെമ്പർമാർക്ക് മാത്രമേ ക്ലൈം ഫയൽ ചെയ്യാൻ സാധിക്കുകയുള്ളൂ. ദയവായി പുതിയ മെമ്പർഷിപ്പ് എടുത്ത് ₹200 പെയ്മെന്റിലേക്ക് മാറുക.
+                      ഈ മൊബൈൽ നമ്പർ നിലവിൽ ഇതിൽ രജിസ്റ്റർ ചെയ്തിട്ടില്ല. രജിസ്റ്റർ ചെയ്ത മെമ്പർമാർക്ക് മാത്രമേ വിവര രജിസ്ട്രി ഫോം നൽകാൻ സാധിക്കുകയുള്ളൂ. ദയവായി പുതിയ മെമ്പർഷിപ്പ് എടുത്ത് ₹200 പെയ്മെന്റിലേക്ക് മാറുക.
                       <br/>
-                      <span className="text-[10px] text-slate-400 font-black block mt-3 uppercase tracking-wider leading-relaxed">This mobile number is not registered. To apply for a claim form, please register as a new member with a payment of ₹200 first.</span>
+                      <span className="text-[10px] text-slate-400 font-black block mt-3 uppercase tracking-wider leading-relaxed">This mobile number is not registered. Only registered active members can access the information registry. Please register as a new member with a payment of ₹200 first.</span>
                     </p>
 
                     <div className="pt-6 flex flex-col sm:flex-row gap-4">

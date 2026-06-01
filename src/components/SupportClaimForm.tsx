@@ -12,7 +12,8 @@ import {
   LayoutDashboard,
   ShieldAlert,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -267,12 +268,12 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       {/* Header */}
       <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-magenta/10 flex items-center justify-center text-brand-magenta">
-            <LayoutDashboard className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue">
+            <Info className="w-5 h-5" />
           </div>
           <div>
-             <h3 className="text-sm font-black text-brand-blue uppercase tracking-tight">Member Support</h3>
-             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Highrich Claim Form</p>
+             <h3 className="text-sm font-black text-brand-blue uppercase tracking-tight">Financial Registry</h3>
+             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Member Financial Information Registry</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0">✕</Button>
