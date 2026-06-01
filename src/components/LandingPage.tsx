@@ -1493,7 +1493,7 @@ export default function LandingPage({
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
                         Guaranteed Privacy
                       </h3>
-                      <p className="text-[10px] text-emerald-605 font-black uppercase tracking-wider mt-0.5">
+                      <p className="text-[10px] text-emerald-600 font-black uppercase tracking-wider mt-0.5">
                         വ്യക്തിവിവര സുരക്ഷിതത്വം
                       </p>
                     </div>
@@ -1507,55 +1507,6 @@ export default function LandingPage({
                   </div>
                 </motion.div>
               </div>
-            </section>
-
-            {/* JOIN HCRS SECTION (Become an HCRS Member CTA) */}
-            <section className="max-w-6xl mx-auto pt-20">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                className="relative bg-gradient-to-br from-indigo-950 via-slate-950 to-brand-blue/20 rounded-[40px] p-8 md:p-14 border-2 border-slate-800 shadow-[0_30px_70px_rgba(0,0,0,0.30)] overflow-hidden text-center"
-              >
-                {/* Visual decorations */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(255,20,147,0.15),transparent_40%)] pointer-events-none" />
-                <div className="absolute -left-10 -bottom-10 w-44 h-44 bg-brand-blue/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -right-10 -top-10 w-44 h-44 bg-brand-magenta/15 rounded-full blur-2xl pointer-events-none" />
-
-                <div className="max-w-2xl mx-auto space-y-8 relative">
-                  <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full">
-                    <UserPlus className="w-4 h-4 text-brand-magenta" />
-                    <span className="font-extrabold text-[10px] text-slate-300 uppercase tracking-widest">Join HCRS • നമ്മളിൽ ഒരാളാകൂ</span>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white uppercase tracking-tight">
-                      Become an <span className="bg-gradient-to-r from-brand-blue to-brand-magenta bg-clip-text text-transparent">HCRS Member</span>
-                    </h2>
-                    <p className="text-brand-magenta font-black uppercase tracking-[0.2em] text-xs md:text-sm">
-                      Stand for the Highrich Revival & Support Movement
-                    </p>
-                    <p className="text-slate-350 text-xs sm:text-sm md:text-base font-bold leading-relaxed max-w-xl mx-auto">
-                      Join HCRS and become part of a strong community working together for welfare, awareness, support, and collective progress.
-                    </p>
-                  </div>
-
-                  {/* Horizontal visual indicator */}
-                  <div className="w-20 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta rounded mx-auto" />
-
-                  {/* Prominent Action Button Grid */}
-                  <div className="pt-4 max-w-xs mx-auto">
-                    <Button 
-                      onClick={() => setStage('guidelines')}
-                      className="w-full h-14 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/10 hover:shadow-brand-magenta/25 bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2.5 uppercase tracking-widest hover:scale-[1.02] active:scale-100"
-                    >
-                      <UserPlus className="w-5 h-5" />
-                      Register Membership Now
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
             </section>
 
             {/* Gallery Archive Grid Redesign */}
