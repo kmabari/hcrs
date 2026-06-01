@@ -3805,6 +3805,74 @@ export default function AdminDashboard({
                       </p>
                     </div>
                   )}
+
+                  <div className="space-y-2 p-3 bg-blue-50/10 border border-brand-blue/20 rounded-2xl">
+                    <Label htmlFor="edit-expiry-date" className="text-brand-blue font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" /> Expiry Date (കാലാവധി തീയതി)
+                    </Label>
+                    <Input 
+                      id="edit-expiry-date" 
+                      type="date"
+                      value={(() => {
+                        const dateVal = editingMember.expiryDate;
+                        if (!dateVal) return '';
+                        const d = dateVal.toDate ? dateVal.toDate() : (dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal));
+                        if (isNaN(d.getTime())) return '';
+                        return d.toISOString().split('T')[0];
+                      })()} 
+                      onChange={e => {
+                        const selectedDateVal = e.target.value;
+                        if (selectedDateVal) {
+                          const newExpiryDate = new Date(selectedDateVal);
+                          setEditingMember({
+                            ...editingMember,
+                            expiryDate: newExpiryDate,
+                            renewalPending: false
+                          });
+                        }
+                      }}
+                      className="bg-white border-brand-blue/30 focus-visible:ring-brand-blue"
+                    />
+                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-2">
+                      അംഗത്തിന്റെ ഐഡി കാർഡിന്റെ കാലാവധി ഈ തീയതിയോടെ അവസാനിക്കും. താഴെ പറയുന്ന ബട്ടണുകൾ ഉപയോഗിച്ച് വേഗത്തിൽ ക്രമീകരിക്കാം:
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        className="text-[10px] text-green-600 border-green-200 hover:bg-green-50 font-bold flex-1"
+                        onClick={() => {
+                          const oneYearFromNow = new Date();
+                          oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+                          setEditingMember({
+                            ...editingMember,
+                            expiryDate: oneYearFromNow,
+                            renewalPending: false
+                          });
+                        }}
+                      >
+                        +1 Year (വാലിഡിറ്റി നൽകുക)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        className="text-[10px] text-red-600 border-red-200 hover:bg-red-50 font-bold flex-1"
+                        onClick={() => {
+                          const yesterday = new Date();
+                          yesterday.setDate(yesterday.getDate() - 1);
+                          setEditingMember({
+                            ...editingMember,
+                            expiryDate: yesterday,
+                            renewalPending: false
+                          });
+                        }}
+                      >
+                        Expire (വാലിഡിറ്റി കളയുക)
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

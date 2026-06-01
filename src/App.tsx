@@ -1091,8 +1091,10 @@ export default function App() {
 
         const isBulk = orgSettings?.registrationMode === 'bulk';
         const isAdminAccount = values.role === 'admin' || values.role === 'operator';
+        
+        // Manual admin additions have expired validity by default from the start (as requested by user)
         const expiry = new Date();
-        expiry.setFullYear(expiry.getFullYear() + 1);
+        expiry.setDate(expiry.getDate() - 1); // Expired yesterday!
 
         const offlineMemberData = {
           uid,
