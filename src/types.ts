@@ -41,6 +41,9 @@ export interface UserProfile {
   details?: string;
   entryBy?: string;
   waStatus?: 'Pending' | 'Sent' | 'Failed';
+  stateCode?: string;
+  districtCode?: string;
+  constituencyCode?: string;
 }
 
 export interface GalleryItem {

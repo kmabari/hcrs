@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Lock, Save, ArrowLeft, Mail, MapPin, Heart, Calendar, EyeOff } from 'lucide-react';
-import { DISTRICTS, BLOOD_GROUPS } from '@/src/constants';
+import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, getAssemblyCode } from '@/src/constants';
 
 interface ProfileEditFormProps {
   user: UserProfile;
@@ -23,6 +23,8 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
   const [bloodGroup, setBloodGroup] = useState(user.bloodGroup || '');
   const [gender, setGender] = useState(user.gender || '');
   const [dob, setDob] = useState(user.dob || '');
+  const [district, setDistrict] = useState(user.district || DISTRICTS[0].code);
+  const [assemblyConstituency, setAssemblyConstituency] = useState(user.assemblyConstituency || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +46,9 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
       postOffice: postOffice.trim(),
       bloodGroup: bloodGroup,
       gender: gender,
-      dob: dob
+      dob: dob,
+      district: district,
+      assemblyConstituency: assemblyConstituency
     };
 
     try {
@@ -101,19 +105,19 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
               <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Membership ID</span>
               <span className="text-xs font-mono font-black text-brand-blue truncate block">{user.membershipId || 'KL/HCRS/PENDING'}</span>
             </div>
+            <div className="pt-2 pb-1.5">
+              <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Constituency Code</span>
+              <span className="text-xs font-mono font-black text-brand-blue truncate block">
+                {user.constituencyCode || (user.assemblyConstituency ? getAssemblyCode(user.assemblyConstituency) : 'NA')}
+              </span>
+            </div>
             <div className="pt-2 pb-0.5">
               <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">State</span>
               <span className="text-xs font-black text-slate-600 truncate block">{user.state || 'Kerala'}</span>
             </div>
-            <div className="pt-2 pb-0.5">
-              <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">District / Mandalam</span>
-              <span className="text-xs font-black text-slate-600 truncate block">
-                {getDistrictName(user.district)} / {user.assemblyConstituency}
-              </span>
-            </div>
           </div>
-          <p className="text-[9px] text-indigo-505 font-bold uppercase text-center mt-2">
-            ⚠️ Contact high-rank administrators to amend locked values.
+          <p className="text-[9px] text-indigo-500 font-bold uppercase text-center mt-2">
+            ⚠️ Contact high-rank administrators to amend core credentials.
           </p>
         </div>
 
@@ -121,6 +125,44 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
         <div className="space-y-4">
           <div className="font-black text-[10px] text-brand-blue uppercase tracking-wider border-b border-slate-100 pb-1.5">
             Editable Personal Information
+          </div>
+
+          {/* District & Assembly Constituency */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
+                District / ജില്ലാ
+              </Label>
+              <Select value={district} onValueChange={(val) => {
+                setDistrict(val);
+                setAssemblyConstituency(CONSTITUENCIES[val]?.[0] || 'NA');
+              }}>
+                <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-black bg-white">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {DISTRICTS.map(d => (
+                    <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
+                Assembly Constituency / മണ്ഡലം
+              </Label>
+              <Select value={assemblyConstituency} onValueChange={setAssemblyConstituency}>
+                <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-black bg-white">
+                  <SelectValue placeholder="Select Constituency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {(CONSTITUENCIES[district] || []).map(ac => (
+                    <SelectItem key={ac} value={ac}>{ac}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Email */}

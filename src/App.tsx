@@ -14,7 +14,7 @@ import { UserProfile } from './types';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToAnnouncements, Announcement } from './lib/cms';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
-import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL } from './constants';
+import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode, getAssemblyCode, generateNewMembershipId } from './constants';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
@@ -130,48 +130,6 @@ export default function App() {
 
   const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
   const [fireStatus, setFireStatus] = useState<'online' | 'offline' | 'checking'>('checking');
-
-  const getDistrictCode = (nameOrCode: string) => {
-    if (!nameOrCode) return 'OTH';
-    const normalized = nameOrCode.trim().toUpperCase();
-    const d = DISTRICTS.find(dist => {
-      const nameUpper = dist.name.toUpperCase();
-      const plainLocalName = dist.name.split(' ')[0].toUpperCase();
-      return nameUpper.includes(normalized) || normalized.includes(plainLocalName) || dist.code.toUpperCase() === normalized;
-    });
-    return d ? d.code : (normalized.length > 3 ? normalized.slice(0, 3) : normalized);
-  };
-
-  const getAssemblyCode = (name: string) => {
-    if (!name) return 'OTH';
-    // Remove spaces, take first 3-5 chars or specific mappings
-    const clean = name.trim().toUpperCase().replace(/\s/g, '');
-    
-    // Specific Mappings for Districts mentioned or common ones
-    // Kannur (KNN)
-    if (clean === 'THALASSERY') return 'TSY';
-    if (clean === 'KANNUR') return 'KNR';
-    if (clean === 'TALIPARAMBA') return 'TBA';
-    if (clean === 'IRITTY') return 'IRY';
-    if (clean === 'PAYYANUR') return 'PNR';
-    
-    // Malappuram (MPM)
-    if (clean === 'KOTTAKKAL') return 'KTK';
-    if (clean === 'MALAPPURAM') return 'MPM';
-    if (clean === 'PERINTHALMANNA') return 'PMN';
-    if (clean === 'NILAMBUR') return 'NBR';
-    
-    // Ernakulam (EKM)
-    if (clean === 'KOCHI') return 'KOC';
-    if (clean === 'ALUVA') return 'ALV';
-    
-    // Kozhikode (KOZ)
-    if (clean === 'KOZHIKODE') return 'KOZ';
-    if (clean === 'VADAKARA') return 'VDK';
-
-    // Default strategy: first 3 significant letters
-    return clean.length >= 3 ? clean.slice(0, 3) : clean.padEnd(3, 'X');
-  };
 
   const handleGoogleLogin = async () => {
     const loadingToast = toast.loading('Signing in with Google...');
@@ -895,7 +853,7 @@ export default function App() {
 
           const memberDistCode = getDistrictCode(values.district);
           const assemblyCode = getAssemblyCode(values.assemblyConstituency);
-          const membershipId = `KL/${memberDistCode}/${assemblyCode}/${nextSerial}`;
+          const membershipId = generateNewMembershipId(values.district, values.assemblyConstituency, nextSerial);
 
           const now = new Date();
           const expiry = new Date();
@@ -914,7 +872,10 @@ export default function App() {
             isAdmin: isAdminEmail,
             role: isAdminEmail ? 'admin' : (isOperatorEmail ? 'operator' : 'member'),
             serialNo: nextSerial,
-            waStatus: 'Pending'
+            waStatus: 'Pending',
+            stateCode: 'KL',
+            districtCode: memberDistCode.toUpperCase(),
+            constituencyCode: assemblyCode.toUpperCase()
           };
           transaction.set(userRef, newMemberData);
         });
@@ -946,10 +907,13 @@ export default function App() {
       const member = members.find(m => m.uid === uid);
       if (!member) throw new Error("Member not found");
 
-      const paddedSerial = String(member.serialNo).padStart(3, '0');
-      const distCode = (member.district || 'MLP').toUpperCase();
-      const assemblyCode = getAssemblyCode(member.assemblyConstituency || '');
-      const finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+      const paddedSerial = String(member.serialNo || 1001).padStart(3, '0');
+      const distCode = getDistrictCode(member.district || 'MLP').toUpperCase();
+      const assemblyCode = getAssemblyCode(member.assemblyConstituency || '').toUpperCase();
+      const isUpgraded = member.membershipId && member.membershipId.toUpperCase().startsWith('HCRS-');
+      const finalId = isUpgraded 
+        ? member.membershipId 
+        : `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
 
       const now = new Date();
       const expiry = new Date();
@@ -963,7 +927,10 @@ export default function App() {
         membershipId: finalId,
         issueDate: serverTimestamp(),
         expiryDate: expiry,
-        waStatus: isBulk ? 'Pending' : 'Sent'
+        waStatus: isBulk ? 'Pending' : 'Sent',
+        stateCode: 'KL',
+        districtCode: distCode,
+        constituencyCode: assemblyCode
       });
       toast.success('Member approved successfully', { id: loadingToast });
     } catch (error) {
@@ -1074,10 +1041,9 @@ export default function App() {
         let nextSerial = (metaDoc.data()?.count || 1000) + 1;
         transaction.set(metadataRef, { count: nextSerial }, { merge: true });
 
-        const paddedSerial = String(nextSerial).padStart(3, '0');
-        const distCodeMember = (values.district || 'MLP').toUpperCase();
-        const assemblyCode = getAssemblyCode(values.assemblyConstituency || '');
-        const finalId = `KL/${distCodeMember}/${assemblyCode}/${paddedSerial}`;
+        const memberDistCode = getDistrictCode(values.district || 'MLP').toUpperCase();
+        const assemblyCode = getAssemblyCode(values.assemblyConstituency || '').toUpperCase();
+        const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial);
 
         const isMainAdminFinal = MAIN_ADMINS.some(e => e.toLowerCase() === (user?.email || '').toLowerCase());
         // Increment count for Operators and Second Admins if they have a real profile document
@@ -1114,7 +1080,10 @@ export default function App() {
           registeredBy: user?.uid, // Track who added this member
           registeredByName: user?.name || 'Admin', // Store name for display
           serialNo: nextSerial,
-          waStatus: isBulk ? 'Pending' : 'Sent'
+          waStatus: isBulk ? 'Pending' : 'Sent',
+          stateCode: 'KL',
+          districtCode: memberDistCode,
+          constituencyCode: assemblyCode
         };
         transaction.set(userRef, offlineMemberData);
       });
@@ -1189,17 +1158,29 @@ export default function App() {
           const assemblyCode = getAssemblyCode(rawAssembly || '').toUpperCase();
 
           // Retain the serial number suffix
-          let serialSuffix = '';
+          let serialSuffixRef = 1001;
+          let serialSuffixStr = '1001';
           if (existingMember.serialNo) {
-            serialSuffix = String(existingMember.serialNo).padStart(3, '0');
+            serialSuffixRef = existingMember.serialNo;
+            serialSuffixStr = String(existingMember.serialNo);
           } else if (existingMember.membershipId) {
-            const parts = existingMember.membershipId.split('/');
-            serialSuffix = parts[parts.length - 1] || '1001';
-          } else {
-            serialSuffix = '1001';
+            const parts = existingMember.membershipId.split(/[\/-]/);
+            const rawSuffix = parts[parts.length - 1] || '1001';
+            const digitsMatch = rawSuffix.match(/\d+/);
+            const num = digitsMatch ? parseInt(digitsMatch[0], 10) : 1001;
+            serialSuffixRef = num;
+            serialSuffixStr = digitsMatch ? digitsMatch[0] : rawSuffix;
           }
 
-          finalData.membershipId = `KL/${distCode}/${assemblyCode}/${serialSuffix}`;
+          const isUpgraded = existingMember.membershipId && existingMember.membershipId.toUpperCase().startsWith('HCRS-');
+          if (isUpgraded) {
+            finalData.membershipId = generateNewMembershipId(rawDistrict || 'MLP', rawAssembly || '', serialSuffixRef);
+          } else {
+            finalData.membershipId = `KL/${distCode}/${assemblyCode}/${serialSuffixStr.padStart(3, '0')}`;
+          }
+          finalData.stateCode = 'KL';
+          finalData.districtCode = distCode;
+          finalData.constituencyCode = assemblyCode;
         }
       }
 
@@ -1215,7 +1196,45 @@ export default function App() {
     if (!user) return;
     const loadingToast = toast.loading('Saving your profile...');
     try {
-      await updateDoc(doc(db, 'users', user.uid), updatedData);
+      const finalData = { ...updatedData };
+      
+      const hasNewDistrict = updatedData.district !== undefined && updatedData.district !== user.district;
+      const hasNewAssembly = updatedData.assemblyConstituency !== undefined && updatedData.assemblyConstituency !== user.assemblyConstituency;
+
+      if (hasNewDistrict || hasNewAssembly) {
+        const rawDistrict = updatedData.district !== undefined ? updatedData.district : user.district;
+        const rawAssembly = updatedData.assemblyConstituency !== undefined ? updatedData.assemblyConstituency : user.assemblyConstituency;
+
+        const distCode = getDistrictCode(rawDistrict || 'MLP').toUpperCase();
+        const assemblyCode = getAssemblyCode(rawAssembly || '').toUpperCase();
+
+        // Retain the serial number suffix
+        let serialSuffixRef = 1001;
+        let serialSuffixStr = '1001';
+        if (user.serialNo) {
+          serialSuffixRef = user.serialNo;
+          serialSuffixStr = String(user.serialNo);
+        } else if (user.membershipId) {
+          const parts = user.membershipId.split(/[\/-]/);
+          const rawSuffix = parts[parts.length - 1] || '1001';
+          const digitsMatch = rawSuffix.match(/\d+/);
+          const num = digitsMatch ? parseInt(digitsMatch[0], 10) : 1001;
+          serialSuffixRef = num;
+          serialSuffixStr = digitsMatch ? digitsMatch[0] : rawSuffix;
+        }
+
+        const isUpgraded = user.membershipId && user.membershipId.toUpperCase().startsWith('HCRS-');
+        if (isUpgraded) {
+          finalData.membershipId = generateNewMembershipId(rawDistrict || 'MLP', rawAssembly || '', serialSuffixRef);
+        } else {
+          finalData.membershipId = `KL/${distCode}/${assemblyCode}/${serialSuffixStr.padStart(3, '0')}`;
+        }
+        finalData.stateCode = 'KL';
+        finalData.districtCode = distCode;
+        finalData.constituencyCode = assemblyCode;
+      }
+
+      await updateDoc(doc(db, 'users', user.uid), finalData);
       toast.success('Profile updated successfully! (വിവരങ്ങൾ പുതുക്കിയിരിക്കുന്നു.)', { id: loadingToast });
       setIsEditingProfile(false);
     } catch (error) {

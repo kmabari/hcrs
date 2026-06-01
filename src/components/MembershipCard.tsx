@@ -5,7 +5,7 @@ import { Download, MapPin, ShieldCheck, Camera, PartyPopper, Share2, LogOut, Cal
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { UserProfile } from '@/src/types';
-import { DISTRICTS } from '@/src/constants';
+import { DISTRICTS, getAssemblyCode } from '@/src/constants';
 import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
 import { compressImage } from '@/src/lib/imageUtils';
@@ -291,7 +291,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               </div>
               
               <p className="text-[10px] font-black text-brand-magenta uppercase tracking-widest mt-1.5">
-                {districtName} DISTRICT
+                {districtName} DISTRICT - {member.constituencyCode || (member.assemblyConstituency ? getAssemblyCode(member.assemblyConstituency) : 'NA')}
               </p>
             </div>
           </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment } from 'firebase/firestore';
-import { DISTRICTS, CONSTITUENCIES } from '@/src/constants';
+import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -200,13 +200,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           transaction.set(opRef, { quotaUsed: increment(1) }, { merge: true });
         }
 
-        // Generate Structured Membership ID: State + District + Mandalam (Assembly) + Running Serial 6 digits
-        // For Mandalam code: First 3 letters of Chosen Mandalam stripped of whitespace
-        const cleanMandalamName = mandalam.toUpperCase().replace(/\s/g, '');
-        const mandalamCode = cleanMandalamName.length >= 3 ? cleanMandalamName.substring(0, 3) : 'MDL';
-        
-        const serialStr = String(nextSerial).padStart(6, '0');
-        const generatedMembershipId = `${stateCode}-${district}-${mandalamCode}-${serialStr}`.toUpperCase();
+        // Generate Structured Membership ID: HCRS-KL-District-Constituency-Serial (4 digits)
+        const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
 
         const newProfile: any = {
           uid: finalUid,
@@ -232,17 +227,17 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           registrationDate: serverTimestamp(),
           registeredBy: adminUser?.uid || 'district_admin',
           registeredByName: adminUser?.name || 'District Admin',
-          waStatus: 'Pending'
+          waStatus: 'Pending',
+          stateCode: 'KL',
+          districtCode: getDistrictCode(district).toUpperCase(),
+          constituencyCode: getAssemblyCode(mandalam).toUpperCase()
         };
 
         transaction.set(userRef, newProfile);
       });
 
       // 6. SUCCESS
-      const cleanMandalamName = mandalam.toUpperCase().replace(/\s/g, '');
-      const mandalamCode = cleanMandalamName.length >= 3 ? cleanMandalamName.substring(0, 3) : 'MDL';
-      const serialStr = String(nextSerial).padStart(6, '0');
-      const generatedMembershipId = `${stateCode}-${district}-${mandalamCode}-${serialStr}`.toUpperCase();
+      const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
 
       setCreatedMember({
         name: name.trim(),

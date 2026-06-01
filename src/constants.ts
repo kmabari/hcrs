@@ -16,20 +16,20 @@ export const DISTRICTS = [
 ];
 
 export const CONSTITUENCIES: Record<string, string[]> = {
-  KSD: ['Manjeshwar', 'Kasaragod', 'Udma', 'Kanhangad', 'Trikaripur'],
-  KNR: ['Payyanur', 'Kalliasseri', 'Taliparamba', 'Irikkur', 'Azhikode', 'Kannur', 'Dharmadam', 'Thalassery', 'Kuthuparamba', 'Mattannur', 'Peravoor'],
-  WYD: ['Mananthavady', 'Sulthan Bathery', 'Kalpetta'],
-  KOZ: ['Vadakara', 'Kuttiadi', 'Nadapuram', 'Quilandy', 'Perambra', 'Balussery', 'Elathur', 'Kozhikode North', 'Kozhikode South', 'Beypore', 'Kunnamangalam', 'Koduvally', 'Thiruvambady'],
-  MLP: ['Kondotty', 'Eranad', 'Nilambur', 'Wandoor', 'Manjeri', 'Perinthalmanna', 'Mankada', 'Malappuram', 'Vengara', 'Vallikkunnu', 'Tirurangadi', 'Tanur', 'Tirur', 'Kottakkal', 'Thavanur', 'Ponnani'],
-  PKD: ['Thrithala', 'Pattambi', 'Shoranur', 'Ottapalam', 'Kongad', 'Mannarkkad', 'Malampuzha', 'Palakkad', 'Tarur', 'Chittur', 'Nenmara', 'Alathur'],
-  TCR: ['Chelakkara', 'Kunnamkulam', 'Guruvayur', 'Manalur', 'Wadakkanchery', 'Ollur', 'Thrissur', 'Nattika', 'Kaipamangalam', 'Irinjalakuda', 'Puthukkad', 'Chalakudy', 'Kodungallur'],
-  EKM: ['Perumbavoor', 'Angamaly', 'Aluva', 'Kalamassery', 'Paravur', 'Vypin', 'Kochi', 'Thrippunithura', 'Ernakulam', 'Thrikkakara', 'Kunnathunad', 'Piravom', 'Muvattupuzha', 'Kothamangalam'],
-  IDK: ['Devikulam', 'Udumbanchola', 'Thodupuzha', 'Idukki', 'Peerumade'],
-  KTM: ['Pala', 'Kaduthuruthy', 'Vaikom', 'Ettumanoor', 'Kottayam', 'Puthuppally', 'Changanassery', 'Kanjirappally', 'Poonjar'],
-  ALP: ['Aroor', 'Cherthala', 'Alappuzha', 'Ambalappuzha', 'Kuttanad', 'Haripad', 'Kayamkulam', 'Mavelikkara', 'Chengannur'],
-  PTA: ['Thiruvalla', 'Ranni', 'Aranmula', 'Konni', 'Adoor'],
-  KLM: ['Karunagappally', 'Chavara', 'Kunnathur', 'Kottarakkara', 'Pathanapuram', 'Punalur', 'Chadayamangalam', 'Kundara', 'Kollam', 'Eravipuram', 'Chathannoor'],
-  TVM: ['Varkala', 'Attingal', 'Chirayinkeezhu', 'Nedumangad', 'Vamanapuram', 'Kazhakkoottam', 'Vattiyoorkavu', 'Thiruvananthapuram', 'Nemom', 'Aruvikkara', 'Parassala', 'Kattakada', 'Kovalam', 'Neyyattinkara']
+  KSD: ['Manjeshwar', 'Kasaragod', 'Udma', 'Kanhangad', 'Trikaripur', 'NA'],
+  KNR: ['Payyanur', 'Kalliasseri', 'Taliparamba', 'Irikkur', 'Azhikode', 'Kannur', 'Dharmadam', 'Thalassery', 'Kuthuparamba', 'Mattannur', 'Peravoor', 'NA'],
+  WYD: ['Mananthavady', 'Sulthan Bathery', 'Kalpetta', 'NA'],
+  KOZ: ['Vadakara', 'Kuttiadi', 'Nadapuram', 'Quilandy', 'Perambra', 'Balussery', 'Elathur', 'Kozhikode North', 'Kozhikode South', 'Beypore', 'Kunnamangalam', 'Koduvally', 'Thiruvambady', 'NA'],
+  MLP: ['Kondotty', 'Eranad', 'Nilambur', 'Wandoor', 'Manjeri', 'Perinthalmanna', 'Mankada', 'Malappuram', 'Vengara', 'Vallikkunnu', 'Tirurangadi', 'Tanur', 'Tirur', 'Kottakkal', 'Thavanur', 'Ponnani', 'NA'],
+  PKD: ['Thrithala', 'Pattambi', 'Shoranur', 'Ottapalam', 'Kongad', 'Mannarkkad', 'Malampuzha', 'Palakkad', 'Tarur', 'Chittur', 'Nenmara', 'Alathur', 'NA'],
+  TCR: ['Chelakkara', 'Kunnamkulam', 'Guruvayur', 'Manalur', 'Wadakkanchery', 'Ollur', 'Thrissur', 'Nattika', 'Kaipamangalam', 'Irinjalakuda', 'Puthukkad', 'Chalakudy', 'Kodungallur', 'NA'],
+  EKM: ['Perumbavoor', 'Angamaly', 'Aluva', 'Kalamassery', 'Paravur', 'Vypin', 'Kochi', 'Thrippunithura', 'Ernakulam', 'Thrikkakara', 'Kunnathunad', 'Piravom', 'Muvattupuzha', 'Kothamangalam', 'NA'],
+  IDK: ['Devikulam', 'Udumbanchola', 'Thodupuzha', 'Idukki', 'Peerumade', 'NA'],
+  KTM: ['Pala', 'Kaduthuruthy', 'Vaikom', 'Ettumanoor', 'Kottayam', 'Puthuppally', 'Changanassery', 'Kanjirappally', 'Poonjar', 'NA'],
+  ALP: ['Aroor', 'Cherthala', 'Alappuzha', 'Ambalappuzha', 'Kuttanad', 'Haripad', 'Kayamkulam', 'Mavelikkara', 'Chengannur', 'NA'],
+  PTA: ['Thiruvalla', 'Ranni', 'Aranmula', 'Konni', 'Adoor', 'NA'],
+  KLM: ['Karunagappally', 'Chavara', 'Kunnathur', 'Kottarakkara', 'Pathanapuram', 'Punalur', 'Chadayamangalam', 'Kundara', 'Kollam', 'Eravipuram', 'Chathannoor', 'NA'],
+  TVM: ['Varkala', 'Attingal', 'Chirayinkeezhu', 'Nedumangad', 'Vamanapuram', 'Kazhakkoottam', 'Vattiyoorkavu', 'Thiruvananthapuram', 'Nemom', 'Aruvikkara', 'Parassala', 'Kattakada', 'Kovalam', 'Neyyattinkara', 'NA']
 };
 
 export const STATES = [
@@ -207,3 +207,204 @@ export const STATIC_GALLERY_IMAGES = [
   { url: 'https://i.ibb.co/JWKMGM0w/FB-IMG-1778746495375.jpg', category: 'MLA Petitions (140 Constituencies)', title: 'MLA Petition 68', createdAt: new Date('2026-05-17') },
   { url: 'https://i.ibb.co/1YkGGLz1/FB-IMG-1778746247195.jpg', category: 'MLA Petitions (140 Constituencies)', title: 'MLA Petition 69', createdAt: new Date('2026-05-17') }
 ];
+
+export const getDistrictCode = (nameOrCode: string): string => {
+  if (!nameOrCode) return 'OTH';
+  const normalized = nameOrCode.trim().toUpperCase();
+  const d = DISTRICTS.find(dist => {
+    const nameUpper = dist.name.toUpperCase();
+    const plainLocalName = dist.name.split(' ')[0].toUpperCase();
+    return nameUpper.includes(normalized) || normalized.includes(plainLocalName) || dist.code.toUpperCase() === normalized;
+  });
+  return d ? d.code : (normalized.length > 3 ? normalized.slice(0, 3) : normalized);
+};
+
+export const getAssemblyCode = (name: string): string => {
+  if (!name) return 'NA';
+  const clean = name.trim().toUpperCase().replace(/\s/g, '');
+  if (clean === 'NA' || clean === 'N/A') return 'NA';
+
+  const lookup: Record<string, string> = {
+    // THIRUVANANTHAPURAM
+    'VARKALA': 'VRK',
+    'ATTINGAL': 'ATG',
+    'CHIRAYINKEEZHU': 'CHK',
+    'NEDUMANGAD': 'NDM',
+    'VAMANAPURAM': 'VMP',
+    'KAZHAKOOTTAM': 'KZM',
+    'KAZHAKKOOTTAM': 'KZM',
+    'VATTIYOORKAVU': 'VTK',
+    'THIRUVANANTHAPURAM': 'TVM',
+    'NEMOM': 'NEM',
+    'ARUVIKKARA': 'ARV',
+    'PARASSALA': 'PRS',
+    'KATTAKADA': 'KTK',
+    'KOVALAM': 'KVL',
+    'NEYYATTINKARA': 'NYK',
+
+    // KOLLAM
+    'KARUNAGAPPALLY': 'KRP',
+    'CHAVARA': 'CHV',
+    'KUNNATHUR': 'KNR',
+    'KOTTARAKKARA': 'KTR',
+    'PATHANAPURAM': 'PTP',
+    'PUNALUR': 'PNL',
+    'CHADAYAMANGALAM': 'CDM',
+    'KUNDARA': 'KND',
+    'KOLLAM': 'KLM',
+    'ERAVIPURAM': 'EVP',
+    'CHATHANNOOR': 'CHN',
+
+    // MALAPPURAM
+    'KONDOTTY': 'KDT',
+    'VALLIKKUNNU': 'VLK',
+    'TIRURANGADI': 'TRD',
+    'TANUR': 'TNR',
+    'TIRUR': 'TRR',
+    'KOTTAKKAL': 'KTK',
+    'THAVANUR': 'TVR',
+    'PONNANI': 'PNN',
+    'PERINTHALMANNA': 'PTM',
+    'MANKADA': 'MNK',
+    'MALAPPURAM': 'MLP',
+    'VENGARA': 'VGR',
+    'VALLUVANAD': 'VLN',
+    'NILAMBUR': 'NLB',
+    'ERANAD': 'ERN',
+    'WANDOOR': 'WDR',
+    'MANJERI': 'MJR',
+    
+    // KASARAGOD (KSD)
+    'MANJESHWAR': 'MNW',
+    'KASARAGOD': 'KSG',
+    'UDMA': 'UDM',
+    'KANHANGAD': 'KHD',
+    'TRIKARIPUR': 'TKP',
+
+    // KANNUR (KNR)
+    'PAYYANUR': 'PAY',
+    'KALLIASSERI': 'KLS',
+    'TALIPARAMBA': 'TBA',
+    'IRIKKUR': 'IRK',
+    'AZHIKODE': 'AZH',
+    'KANNUR': 'KNR',
+    'DHARMADAM': 'DMD',
+    'THALASSERY': 'TSY',
+    'KUTHUPARAMBA': 'KPB',
+    'MATTANNUR': 'MTR',
+    'PERAVOOR': 'PVR',
+
+    // WAYANAD (WYD)
+    'MANANTHAVADY': 'MTY',
+    'SULTHANBATHERY': 'SBY',
+    'KALPETTA': 'KPT',
+
+    // KOZHIKODE (KOZ)
+    'VADAKARA': 'VDK',
+    'KUTTIADI': 'KTD',
+    'NADAPURAM': 'NDP',
+    'QUILANDY': 'QLD',
+    'PERAMBRA': 'PRM',
+    'BALUSSERY': 'BSY',
+    'ELATHUR': 'ELT',
+    'KOZHIKODENORTH': 'KKN',
+    'KOZHIKODESOUTH': 'KKS',
+    'BEYPORE': 'BYP',
+    'KUNNAMANGALAM': 'KNG',
+    'KODUVALLY': 'KDY',
+    'THIRUVAMBADY': 'TVB',
+
+    // PALAKKAD (PKD)
+    'THRITHALA': 'TTL',
+    'PATTAMBI': 'PTB',
+    'SHORANUR': 'SNR',
+    'OTTAPALAM': 'OTP',
+    'KONGAD': 'KGD',
+    'MANNARKKAD': 'MNK',
+    'MALAMPUZHA': 'MLP',
+    'PALAKKAD': 'PKD',
+    'TARUR': 'TRR',
+    'CHITTUR': 'CTR',
+    'NENMARA': 'NMR',
+    'ALATHUR': 'ALT',
+
+    // THRISSUR (TCR / TSR)
+    'CHELAKKARA': 'CKA',
+    'KUNNAMKULAM': 'KKM',
+    'GURUVAYUR': 'GVR',
+    'MANALUR': 'MNL',
+    'WADAKKANCHERY': 'WDK',
+    'OLLUR': 'OLR',
+    'THRISSUR': 'TSR',
+    'NATTIKA': 'NTK',
+    'KAIPAMANGALAM': 'KPG',
+    'IRINJALAKUDA': 'IJK',
+    'PUTHUKKAD': 'PKD',
+    'CHALAKUDY': 'CKY',
+    'KODUNGALLUR': 'KDL',
+
+    // ERNAKULAM (EKM)
+    'PERUMBAVOOR': 'PBR',
+    'ANGAMALY': 'AGY',
+    'ALUVA': 'ALV',
+    'KALAMASSERY': 'KMY',
+    'PARAVUR': 'PVR',
+    'VYPIN': 'VPN',
+    'KOCHI': 'KOC',
+    'THRIPPUNITHURA': 'TPT',
+    'ERNAKULAM': 'EKM',
+    'THRIKKAKARA': 'TKK',
+    'KUNNATHUNAD': 'KND',
+    'PIRAVOM': 'PVM',
+    'MUVATTUPUZHA': 'MVP',
+    'KOTHAMANGALAM': 'KGM',
+
+    // IDUKKI (IDK)
+    'DEVIKULAM': 'DVK',
+    'UDUMBANCHOLA': 'UDC',
+    'THODUPUZHA': 'TDY', 
+    'IDUKKI': 'IDK',
+    'PEERUMADE': 'PMD',
+
+    // KOTTAYAM (KTM)
+    'PALA': 'PAL',
+    'KADUTHURUTHY': 'KDT',
+    'VAIKOM': 'VAK',
+    'ETTUMANOOR': 'ETM',
+    'KOTTAYAM': 'KTM',
+    'PUTHUPPALLY': 'PPL',
+    'CHANGANASSERY': 'CHY',
+    'KANJIRAPPALLY': 'KJP',
+    'POONJAR': 'PJR',
+
+    // ALAPPUZHA (ALP)
+    'AROOR': 'ARR',
+    'CHERTHALA': 'CTL',
+    'ALAPPUZHA': 'ALP',
+    'AMBALAPUZHA': 'ABP',
+    'KUTTANAD': 'KTD',
+    'HARIPAD': 'HPD',
+    'KAYAMKULAM': 'KYM',
+    'MAVELIKKARA': 'MVK',
+    'CHENGANNUR': 'CGR',
+
+    // PATHANAMTHITTA (PTA)
+    'THIRUVALLA': 'TVL',
+    'RANNI': 'RNI',
+    'ARANMULA': 'AML',
+    'KONNI': 'KNI',
+    'ADOOR': 'ADR',
+  };
+
+  if (lookup[clean]) return lookup[clean];
+  return clean.length >= 3 ? clean.substring(0, 3) : clean.padEnd(3, 'X');
+};
+
+export const generateNewMembershipId = (district: string, assembly: string, serial: number): string => {
+  const dCode = getDistrictCode(district).toUpperCase();
+  const rawDist = dCode === 'TCR' ? 'TSR' : dCode;
+  const aCode = getAssemblyCode(assembly).toUpperCase();
+  const paddedSerial = String(serial).padStart(4, '0');
+  return `HCRS-KL-${rawDist}-${aCode}-${paddedSerial}`;
+};
+

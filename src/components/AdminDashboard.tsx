@@ -40,7 +40,7 @@ import {
   Bell,
   ChevronRight
 } from 'lucide-react';
-import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL } from '@/src/constants';
+import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -174,6 +174,8 @@ export default function AdminDashboard({
   const getAssemblyCode = (name: string) => {
     if (!name) return 'OTH';
     const clean = name.trim().toUpperCase().replace(/\s/g, '');
+    
+    if (clean === 'NA' || clean === 'N/A') return 'NA';
     
     if (clean === 'THALASSERY') return 'TSY';
     if (clean === 'KANNUR') return 'KNR';
@@ -749,6 +751,9 @@ export default function AdminDashboard({
                            (m.mobile && String(m.mobile).includes(term)) ||
                            (m.membershipId && m.membershipId.toLowerCase().includes(term)) ||
                            (m.email && m.email.toLowerCase().includes(term)) ||
+                           (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
                            (m.district && districtMap.get(m.district)?.includes(term));
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted' && m.status !== 'pending') : m.status === statusFilter;
@@ -781,6 +786,9 @@ export default function AdminDashboard({
                            (m.mobile && String(m.mobile).includes(term)) ||
                            (m.membershipId && m.membershipId.toLowerCase().includes(term)) ||
                            (m.email && m.email.toLowerCase().includes(term)) ||
+                           (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
                            (m.district && DISTRICTS.find(d => d.code === m.district)?.name.toLowerCase().includes(term));
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       
@@ -847,6 +855,10 @@ export default function AdminDashboard({
                            (m.name && m.name.toLowerCase().includes(term)) || 
                            (m.mobile && String(m.mobile).includes(term)) ||
                            (m.membershipId && m.membershipId.toLowerCase().includes(term)) ||
+                           (m.email && m.email.toLowerCase().includes(term)) ||
+                           (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
                            (m.district && DISTRICTS.find(d => d.code === m.district)?.name.toLowerCase().includes(term));
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       
@@ -1983,9 +1995,12 @@ export default function AdminDashboard({
                               let count = 0;
                               for (const m of pendingRequests) {
                                 const paddedSerial = String(m.serialNo || 1000).padStart(3, '0');
-                                const distCode = (m.district || 'MLP').toUpperCase();
-                                const assemblyCode = getAssemblyCode(m.assemblyConstituency || '');
-                                const finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+                                const distCode = getDistrictCode(m.district || 'MLP').toUpperCase();
+                                const assemblyCode = getAssemblyCode(m.assemblyConstituency || '').toUpperCase();
+                                const isUpgraded = m.membershipId && m.membershipId.toUpperCase().startsWith('HCRS-');
+                                const finalId = isUpgraded 
+                                  ? m.membershipId 
+                                  : `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
                                 
                                 const expiry = new Date();
                                 expiry.setFullYear(expiry.getFullYear() + 1);
@@ -1996,7 +2011,10 @@ export default function AdminDashboard({
                                   membershipId: finalId,
                                   issueDate: serverTimestamp(),
                                   expiryDate: expiry,
-                                  waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent'
+                                  waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent',
+                                  stateCode: 'KL',
+                                  districtCode: distCode,
+                                  constituencyCode: assemblyCode
                                 });
                                 count++;
                               }
@@ -3216,7 +3234,7 @@ export default function AdminDashboard({
                     <h4 className="font-bold text-sm text-slate-400 uppercase tracking-widest">Location Details</h4>
                     <div className="space-y-3">
                       <DetailItem label="District" value={DISTRICTS.find(d => d.code === viewingMember.district)?.name || viewingMember.district} />
-                      <DetailItem label="Assembly" value={viewingMember.assemblyConstituency} />
+                      <DetailItem label="Assembly" value={`${viewingMember.assemblyConstituency} (${viewingMember.constituencyCode || getAssemblyCode(viewingMember.assemblyConstituency)})`} />
                       <DetailItem label="State" value={viewingMember.state || 'Kerala'} />
                       <DetailItem label="Address" value={viewingMember.address || 'N/A'} />
                       <DetailItem label="Post Office" value={viewingMember.postOffice || 'N/A'} />
@@ -3806,73 +3824,75 @@ export default function AdminDashboard({
                     </div>
                   )}
 
-                  <div className="space-y-2 p-3 bg-blue-50/10 border border-brand-blue/20 rounded-2xl">
-                    <Label htmlFor="edit-expiry-date" className="text-brand-blue font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" /> Expiry Date (കാലാവധി തീയതി)
-                    </Label>
-                    <Input 
-                      id="edit-expiry-date" 
-                      type="date"
-                      value={(() => {
-                        const dateVal = editingMember.expiryDate;
-                        if (!dateVal) return '';
-                        const d = dateVal.toDate ? dateVal.toDate() : (dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal));
-                        if (isNaN(d.getTime())) return '';
-                        return d.toISOString().split('T')[0];
-                      })()} 
-                      onChange={e => {
-                        const selectedDateVal = e.target.value;
-                        if (selectedDateVal) {
-                          const newExpiryDate = new Date(selectedDateVal);
-                          setEditingMember({
-                            ...editingMember,
-                            expiryDate: newExpiryDate,
-                            renewalPending: false
-                          });
-                        }
-                      }}
-                      className="bg-white border-brand-blue/30 focus-visible:ring-brand-blue"
-                    />
-                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-2">
-                      അംഗത്തിന്റെ ഐഡി കാർഡിന്റെ കാലാവധി ഈ തീയതിയോടെ അവസാനിക്കും. താഴെ പറയുന്ന ബട്ടണുകൾ ഉപയോഗിച്ച് വേഗത്തിൽ ക്രമീകരിക്കാം:
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        className="text-[10px] text-green-600 border-green-200 hover:bg-green-50 font-bold flex-1"
-                        onClick={() => {
-                          const oneYearFromNow = new Date();
-                          oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-                          setEditingMember({
-                            ...editingMember,
-                            expiryDate: oneYearFromNow,
-                            renewalPending: false
-                          });
+                  {isSuperAdmin && (
+                    <div className="space-y-2 p-3 bg-blue-50/10 border border-brand-blue/20 rounded-2xl">
+                      <Label htmlFor="edit-expiry-date" className="text-brand-blue font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> Expiry Date (കാലാവധി തീയതി)
+                      </Label>
+                      <Input 
+                        id="edit-expiry-date" 
+                        type="date"
+                        value={(() => {
+                          const dateVal = editingMember.expiryDate;
+                          if (!dateVal) return '';
+                          const d = dateVal.toDate ? dateVal.toDate() : (dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal));
+                          if (isNaN(d.getTime())) return '';
+                          return d.toISOString().split('T')[0];
+                        })()} 
+                        onChange={e => {
+                          const selectedDateVal = e.target.value;
+                          if (selectedDateVal) {
+                            const newExpiryDate = new Date(selectedDateVal);
+                            setEditingMember({
+                              ...editingMember,
+                              expiryDate: newExpiryDate,
+                              renewalPending: false
+                            });
+                          }
                         }}
-                      >
-                        +1 Year (വാലിഡിറ്റി നൽകുക)
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        className="text-[10px] text-red-600 border-red-200 hover:bg-red-50 font-bold flex-1"
-                        onClick={() => {
-                          const yesterday = new Date();
-                          yesterday.setDate(yesterday.getDate() - 1);
-                          setEditingMember({
-                            ...editingMember,
-                            expiryDate: yesterday,
-                            renewalPending: false
-                          });
-                        }}
-                      >
-                        Expire (വാലിഡിറ്റി കളയുക)
-                      </Button>
+                        className="bg-white border-brand-blue/30 focus-visible:ring-brand-blue"
+                      />
+                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-2">
+                        അംഗത്തിന്റെ আইഡി കാർഡിന്റെ കാലാവധി ഈ തീയതിയോടെ അവസാനിക്കും. താഴെ പറയുന്ന ബട്ടണുകൾ ഉപയോഗിച്ച് വേഗത്തിൽ ക്രമീകരിക്കാം:
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          className="text-[10px] text-green-600 border-green-200 hover:bg-green-50 font-bold flex-1"
+                          onClick={() => {
+                            const oneYearFromNow = new Date();
+                            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+                            setEditingMember({
+                              ...editingMember,
+                              expiryDate: oneYearFromNow,
+                              renewalPending: false
+                            });
+                          }}
+                        >
+                          +1 Year (വാലിഡിറ്റി നൽകുക)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          className="text-[10px] text-red-600 border-red-200 hover:bg-red-50 font-bold flex-1"
+                          onClick={() => {
+                            const yesterday = new Date();
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            setEditingMember({
+                              ...editingMember,
+                              expiryDate: yesterday,
+                              renewalPending: false
+                            });
+                          }}
+                        >
+                          Expire (വാലിഡിറ്റി കളയുക)
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
