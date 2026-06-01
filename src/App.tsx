@@ -393,13 +393,23 @@ export default function App() {
 
       console.log("User is authenticated, fetching profile listener for UID:", authUser.uid);
       setLoadingStatus('Syncing Profile...');
-      unsubscribeUser = onSnapshot(doc(db, 'users', authUser.uid), (docSnap) => {
+      unsubscribeUser = onSnapshot(doc(db, 'users', authUser.uid), async (docSnap) => {
         let userData: UserProfile | null = null;
         console.log("Profile Snapshot Received. Exists:", docSnap.exists());
         
         if (docSnap.exists()) {
           setLoadingStatus('Finalizing Access...');
           const freshData = { uid: authUser.uid, ...docSnap.data() } as UserProfile;
+          
+          if (freshData.status === 'deleted' && !isAdminEmail) {
+            console.log("Deactivated/Deleted user logged in. Signing out...");
+            signOut(auth).then(() => {
+              setView('landing');
+              toast.error('താങ്കളുടെ അക്കൗണ്ട് അഡ്മിൻ ഡി-ആക്റ്റീവ് ചെയ്തിരിക്കുന്നു! ദയവായി അഡ്മിനുമായി ബന്ധപ്പെടുക. (Your account is deactivated. Please contact Admin.)');
+            });
+            return;
+          }
+
           if (isAdminEmail) {
             freshData.role = isSuperAdminEmail ? 'admin' : 'operator';
             freshData.isAdmin = isSuperAdminEmail;
@@ -542,7 +552,48 @@ export default function App() {
           }
         } else {
           console.warn("Profile document not found for UID:", authUser.uid);
-          if (view === 'loading' && !isAdminEmail) {
+          
+          // --- DYNAMIC UID MISMATCH HEALING ---
+          let healed = false;
+          try {
+            let loginMobile = '';
+            if (currentEmail && currentEmail.endsWith('@hcrs.society')) {
+              loginMobile = currentEmail.split('@')[0];
+            } else if (currentEmail && /^\d{10}$/.test(currentEmail)) {
+              loginMobile = currentEmail;
+            }
+            
+            if (loginMobile && /^\d{10}$/.test(loginMobile)) {
+              console.log("Healing check: checking offline or mismatched profile for mobile:", loginMobile);
+              const usersRef = collection(db, 'users');
+              const q = query(usersRef, where('mobile', '==', loginMobile), limit(1));
+              const querySnap = await getDocs(q);
+              
+              if (!querySnap.empty) {
+                const oldDoc = querySnap.docs[0];
+                const oldDocId = oldDoc.id;
+                
+                if (oldDocId !== authUser.uid) {
+                  console.log(`Found mismatched profile at ${oldDocId}. Auto-copying to current logged-in UID ${authUser.uid}...`);
+                  const profileData = oldDoc.data();
+                  const healedProfile = {
+                    ...profileData,
+                    uid: authUser.uid,
+                    status: profileData.status || 'active',
+                    issueDate: profileData.issueDate || serverTimestamp(),
+                  };
+                  
+                  await setDoc(doc(db, 'users', authUser.uid), healedProfile);
+                  console.log("Dynamic UID healing successful!");
+                  healed = true;
+                }
+              }
+            }
+          } catch (healErr) {
+            console.error("Error healing UID mismatch:", healErr);
+          }
+
+          if (!healed && view === 'loading' && !isAdminEmail) {
             // If they just logged in but have no doc, maybe they're new or deleted
             setView('register');
             toast.info('പൂർണ്ണരൂപം ലഭ്യമല്ല. ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Profile not found, please register)');
@@ -597,6 +648,7 @@ export default function App() {
     setLoadingStatus('Authenticating...');
     try {
       setView('loading');
+      let mappedUserData: any = null;
 
       if (isMobile) {
         setLoadingStatus('Resolving Mobile Identity...');
@@ -604,11 +656,18 @@ export default function App() {
         const q = query(usersRef, where('mobile', '==', targetEmail), limit(1));
         const querySnap = await getDocs(q);
         if (!querySnap.empty) {
-          const userData = querySnap.docs[0].data();
-          if (userData.email) targetEmail = userData.email;
+          mappedUserData = querySnap.docs[0].data();
+          if (mappedUserData.email) targetEmail = mappedUserData.email;
           else targetEmail = `${targetEmail}@hcrs.society`;
         } else {
           targetEmail = `${targetEmail}@hcrs.society`;
+        }
+      } else if (targetEmail.includes('@')) {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', targetEmail), limit(1));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          mappedUserData = querySnap.docs[0].data();
         }
       }
       setLoadingStatus(`Connecting as ${targetEmail}...`);
@@ -626,6 +685,17 @@ export default function App() {
             console.log("Auto-registration/login successful for second admin:", authResult.user.uid);
           } catch (signUpError: any) {
             console.error("Auto-registration failed:", signUpError);
+            throw signInError; // propagate original signInError
+          }
+        } else if ((signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') && 
+                   mappedUserData && trimmedPin === (mappedUserData.pin || '123456')) {
+          // Dynamic Auth auto-creation/healing for valid offline profiles
+          console.log("Entered PIN matches registered database profile PIN. Healing Auth registration...");
+          try {
+            authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
+            console.log("Dynamically created / healed Auth account for user:", authResult.user.uid);
+          } catch (signUpError: any) {
+            console.error("Auto-healing registration failed:", signUpError);
             throw signInError; // propagate original signInError
           }
         } else {
