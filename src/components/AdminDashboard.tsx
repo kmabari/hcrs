@@ -198,6 +198,16 @@ export default function AdminDashboard({
 
   const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
   
+  const countOf2026Members = useMemo(() => {
+    return members.filter(m => {
+      if (m.role === 'admin' || m.role === 'operator') return false;
+      const regDate = m.registrationDate;
+      if (!regDate) return true; // If missing, count it
+      const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
+      return d.getFullYear() >= 2026;
+    }).length;
+  }, [members]);
+  
   const isSecondary = !isSuperAdmin && (user?.role === 'admin' || user?.role === 'operator');
   const autoApprovedRun = useRef(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -586,6 +596,56 @@ export default function AdminDashboard({
   const getAdminLabel = (email: string) => {
     if (MAIN_ADMINS.includes(email)) return 'Main Admin';
     return 'Second Admin (സെക്കൻഡ് അഡ്മിൻ)';
+  };
+
+  const [isAligningDates, setIsAligningDates] = useState(false);
+
+  const handleAlignAllDatesTo2025 = async () => {
+    const targets = members.filter(m => {
+      if (m.role === 'admin' || m.role === 'operator') return false;
+      const regDate = m.registrationDate;
+      if (!regDate) return true; // Align if date is missing
+      const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
+      return d.getFullYear() >= 2026; // Match anyone who has joining date in 2026 or later
+    });
+
+    if (targets.length === 0) {
+      toast.info("എല്ലാ മെമ്പർമാരുടെയും ജോയിനിംഗ് തീയതികൾ നിലവിൽ 2025-ലേക്ക് മാറ്റിയിട്ടുണ്ട്.");
+      return;
+    }
+
+    const confirmAction = window.confirm(`${targets.length} മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി 2025-ലേക്ക് മാറ്റാനും അവരെ റിന്യൂവൽ ചെയ്യേണ്ടവരായി (Expired/Renewal Required) കാണിക്കാനും നിങ്ങൾ ആഗ്രഹിക്കുന്നുണ്ടോ?`);
+    if (!confirmAction) return;
+
+    setIsAligningDates(true);
+    const loadingToast = toast.loading(`ആകെ ${targets.length} മെമ്പർമാരുടെ വിവരങ്ങൾ പുതുക്കുന്നു...`);
+
+    try {
+      const { writeBatch, doc } = await import('firebase/firestore');
+      const batch = writeBatch(db);
+      const regDate2025 = new Date('2025-06-01T12:00:00Z');
+      const expDate2026 = new Date('2026-06-01T12:00:00Z');
+
+      let count = 0;
+      for (const m of targets) {
+        const memberRef = doc(db, 'users', m.uid);
+        batch.update(memberRef, {
+          registrationDate: regDate2025,
+          issueDate: regDate2025,
+          expiryDate: expDate2026,
+          renewalPending: false
+        });
+        count++;
+      }
+
+      await batch.commit();
+      toast.success(`വിജയകരമായി ${count} മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി 2025 ജൂൺ 1 ലേക്ക് മാറ്റിയിരിക്കുന്നു! കാർഡ് കാലാവധി കഴിഞ്ഞതിനാൽ അവർക്ക് ലോഗിൻ ചെയ്യുമ്പോൾ തന്നെ അതാത് ദിവസം ₹100 റിന്യൂവൽ ചെയ്യാൻ ആവശ്യപ്പെടും.`, { id: loadingToast });
+    } catch (error) {
+      console.error("Batch update error:", error);
+      toast.error("തീയതികൾ മാറ്റുന്നതിൽ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.", { id: loadingToast });
+    } finally {
+      setIsAligningDates(false);
+    }
   };
 
   const handleApproveRenewal = async (member: UserProfile) => {
@@ -1502,6 +1562,41 @@ export default function AdminDashboard({
               <StatsCard title="Verified Members" value={members.filter(m => m.status === 'active').length} icon={<CheckCircle2 className="w-8 h-8"/>} color="green" />
               <StatsCard title="Emergency Cases" value={claimStats.emergencyCount} icon={<ShieldAlert className="w-8 h-8"/>} color="red" />
             </div>
+
+            {isSuperAdmin && countOf2026Members > 0 && (
+              <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-brand-magenta/20 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5 text-brand-magenta animate-pulse" />
+                      <h4 className="font-black text-slate-800 text-sm uppercase tracking-wide">
+                        അംഗങ്ങളുടെ ജോയിനിംഗ് തീയതി ക്രമീകരണ അസിസ്റ്റന്റ് (Super Admin Mode)
+                      </h4>
+                    </div>
+                    <p className="text-slate-600 text-xs font-semibold leading-relaxed">
+                      ലിസ്റ്റിൽ രജിസ്റ്റർ ചെയ്തവരും മൈഗ്രേറ്റ് ചെയ്തതുമായ <span className="font-black text-brand-magenta text-sm underline">{countOf2026Members}</span> മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി ഇപ്പോഴും 2026 ലാണ് കിടക്കുന്നത്. ഇവരെ എത്രയും വേഗം 2025 ലേക്ക് മാറ്റുകയും കാർഡ് കാലാവധി കഴിഞ്ഞ് പുതുക്കേണ്ട സമയം കഴിഞ്ഞതായി (Renewal Required) രേഖപ്പെടുത്തുകയും വേണം. അംഗങ്ങൾക്ക് ലോഗിൻ ചെയ്യുമ്പോൾ റിന്യൂവൽ പേജ് വരാൻ ഇത് സഹായിക്കും.
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
+                      Align {countOf2026Members} members to joining year 2025. This makes their cards expired (due for ₹100 renewal) and prompts them to renew when they access their account.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAlignAllDatesTo2025}
+                    disabled={isAligningDates}
+                    className="bg-brand-magenta hover:bg-brand-magenta/95 text-white font-black text-xs uppercase tracking-widest px-6 py-6 h-auto shrink-0 shadow-lg shadow-brand-magenta/15 hover:scale-[1.01] active:scale-[0.99] transition-all rounded-xl cursor-pointer"
+                  >
+                    {isAligningDates ? (
+                      <span className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        പെൻഡിങ് വിവരങ്ങൾ പുതുക്കുന്നു...
+                      </span>
+                    ) : (
+                      "എല്ലാവരെയും 2025 ആക്കുക (Align to 2025)"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <Tabs defaultValue="list" className="space-y-6">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
