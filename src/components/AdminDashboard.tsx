@@ -600,6 +600,7 @@ export default function AdminDashboard({
         isApproved: true,
         renewalPending: false,
         issueDate: serverTimestamp(), // Update issue date on renewal approval
+        registrationDate: serverTimestamp(), // Set active registration/joining date of that exact day
         expiryDate: expiry,
         paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
       });
@@ -2010,6 +2011,7 @@ export default function AdminDashboard({
                                   isApproved: true,
                                   membershipId: finalId,
                                   issueDate: serverTimestamp(),
+                                  registrationDate: serverTimestamp(), // Join Date is given as the exact day of approval
                                   expiryDate: expiry,
                                   waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent',
                                   stateCode: 'KL',

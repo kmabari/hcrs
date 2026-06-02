@@ -926,6 +926,7 @@ export default function App() {
         isApproved: true,
         membershipId: finalId,
         issueDate: serverTimestamp(),
+        registrationDate: serverTimestamp(), // JOINING/REGISTRATION DATE updated to exact day of activation
         expiryDate: expiry,
         waStatus: isBulk ? 'Pending' : 'Sent',
         stateCode: 'KL',
@@ -1059,19 +1060,18 @@ export default function App() {
         const isAdminAccount = values.role === 'admin' || values.role === 'operator';
         
         // Manual admin additions have expired validity by default from the start (as requested by user)
-        const expiry = new Date();
-        expiry.setDate(expiry.getDate() - 1); // Expired yesterday!
+        const expiry = new Date('2026-06-01T12:00:00Z'); // Expired on June 1, 2026
 
         const offlineMemberData = {
           uid,
           ...values,
           email: finalEmail, // USE SANITIZED EMAIL
-          registrationDate: serverTimestamp(),
+          registrationDate: new Date('2025-06-01T12:00:00Z'), // Joining / Registration Date set to 2025
           membershipId: finalId,
           status: 'active', // Auto-approved
           isPaid: true,
           isApproved: true,
-          issueDate: serverTimestamp(),
+          issueDate: new Date('2025-06-01T12:00:00Z'),
           expiryDate: expiry,
           isAdmin: isAdminAccount,
           role: values.role || 'member',
@@ -1529,10 +1529,51 @@ export default function App() {
 
       {view === 'support' && user && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-white min-h-screen">
-          <SupportClaimForm 
-            user={user} 
-            onClose={() => setView('card')} 
-          />
+          {isExpired ? (
+            <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto space-y-6">
+              <div className="h-20 w-20 rounded-full bg-rose-100 border border-brand-magenta/30 flex items-center justify-center text-brand-magenta shadow-lg animate-bounce">
+                <ShieldAlert className="w-10 h-10" />
+              </div>
+              
+              <h2 className="text-2xl font-black text-slate-850 uppercase tracking-tight leading-none">
+                വിവര രജിസ്ട്രി ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു!
+              </h2>
+              <p className="text-[10px] font-black tracking-widest text-brand-magenta uppercase mt-1">ACCESS BLOCKED / RENEWAL REQUIRED</p>
+
+              <div className="bg-rose-50/50 border border-brand-magenta/15 p-5 rounded-2xl text-slate-600 font-semibold text-xs leading-relaxed text-left space-y-3">
+                <p>
+                  പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്. സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong>Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കേണ്ടതുണ്ട്.</strong>
+                </p>
+                <p className="text-[10.5px] text-slate-400 font-bold leading-normal uppercase">
+                  Your membership validity has expired. To access/submit the Financial Info Registry form, please renew your membership now (₹100).
+                </p>
+              </div>
+
+              <div className="w-full space-y-3 pt-4">
+                <Button 
+                  onClick={() => {
+                    setPrefilledMobile(user.mobile);
+                    setView('renewal');
+                  }}
+                  className="w-full h-14 rounded-2xl font-black bg-brand-magenta text-white shadow-xl shadow-brand-magenta/30 hover:scale-[1.01] active:scale-95 transition-all text-xs uppercase tracking-widest cursor-pointer"
+                >
+                  അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setView('card')}
+                  className="w-full h-12 rounded-xl border-slate-250 text-xs uppercase text-slate-500 font-bold hover:bg-slate-50"
+                >
+                  തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <SupportClaimForm 
+              user={user} 
+              onClose={() => setView('card')} 
+            />
+          )}
         </div>
       )}
 
