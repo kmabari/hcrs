@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import LandingPage from './components/LandingPage';
 import RegistrationForm from './components/RegistrationForm';
 import RenewalForm from './RenewalForm';
@@ -1800,6 +1801,7 @@ export default function App() {
       )}
 
       <Toaster position="top-center" richColors theme="dark" />
+      <Analytics />
     </div>
   );
 }
