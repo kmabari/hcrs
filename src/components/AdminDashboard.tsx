@@ -98,6 +98,7 @@ interface AdminDashboardProps {
   districtQuotas?: Record<string, number>;
   districtQuotasUsed?: Record<string, number>;
   handleLogout: () => void;
+  onViewCard?: () => void;
 }
 
 const MAIN_ADMINS = [
@@ -138,6 +139,7 @@ const getCategoryLabel = (catId: string) => {
   return mapping[catId] || catId;
 };
 
+
 export default function AdminDashboard({ 
   user,
   members, 
@@ -151,7 +153,8 @@ export default function AdminDashboard({
   onSyncQuotas,
   districtQuotas = {},
   districtQuotasUsed = {},
-  handleLogout
+  handleLogout,
+  onViewCard
 }: AdminDashboardProps) {
   const getDistrictCode = (nameOrCode: string) => {
     if (!nameOrCode) return DISTRICTS[0].code;
@@ -1042,11 +1045,21 @@ export default function AdminDashboard({
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
+          {onViewCard && (
+            <Button 
+              onClick={onViewCard} 
+              variant="outline" 
+              className="w-full h-10 text-[9px] font-black rounded-lg tracking-wider uppercase border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta hover:bg-brand-magenta/10 hover:text-brand-magenta transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              എന്റെ ഐഡി കാർഡ് (My Card)
+            </Button>
+          )}
           <Button 
             onClick={handleLogout} 
             variant="ghost" 
-            className="w-full h-10 text-[9px] font-black rounded-lg tracking-wider uppercase text-red-500 hover:text-red-700 hover:bg-red-50/50 transition-all"
+            className="w-full h-10 text-[9px] font-black rounded-lg tracking-wider uppercase text-red-500 hover:text-red-700 hover:bg-red-50/50 transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5 mr-1.5 shrink-0" />
             Logout Session
@@ -1104,10 +1117,20 @@ export default function AdminDashboard({
                 <span>Claims Support</span>
               </button>
             </nav>
-            <div className="p-4 border-t border-slate-100">
+            <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
+               {onViewCard && (
+                 <Button 
+                   onClick={() => { setMobileSidebarOpen(false); onViewCard(); }} 
+                   variant="outline" 
+                   className="w-full h-10 text-[9px] font-black rounded-xl tracking-wider uppercase border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta hover:bg-brand-magenta/10 hover:text-brand-magenta transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                 >
+                   <Smartphone className="w-3.5 h-3.5" />
+                   എന്റെ ഐഡി കാർഡ് (My Card)
+                 </Button>
+               )}
                <button 
                  onClick={handleLogout}
-                 className="w-full h-10 text-[9px] font-black text-red-550 uppercase tracking-widest text-center"
+                 className="w-full h-10 text-[9px] font-black text-red-550 uppercase tracking-widest text-center cursor-pointer"
                >
                  Sign Out
                </button>
@@ -1208,6 +1231,16 @@ export default function AdminDashboard({
               >
                 <KeyRound className="w-4 h-4 text-brand-blue" />
                 Set Domain PIN (പാസ്‌വേഡ്)
+              </Button>
+            )}
+            {onViewCard && (
+              <Button 
+                onClick={onViewCard} 
+                variant="outline" 
+                className="flex-1 md:flex-none h-10 border border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta font-black rounded-xl px-4 hover:bg-brand-magenta/10 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+              >
+                <Smartphone className="w-4 h-4 text-brand-magenta" />
+                എന്റെ ഐഡി കാർഡ് (My Card)
               </Button>
             )}
             <Button onClick={handleLogout} variant="outline" className="flex-1 md:flex-none h-10 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider">
@@ -1563,7 +1596,7 @@ export default function AdminDashboard({
               <StatsCard title="Emergency Cases" value={claimStats.emergencyCount} icon={<ShieldAlert className="w-8 h-8"/>} color="red" />
             </div>
 
-            {isSuperAdmin && countOf2026Members > 0 && (
+            {false && isSuperAdmin && countOf2026Members > 0 && (
               <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-brand-magenta/20 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1">
@@ -2156,6 +2189,12 @@ export default function AdminDashboard({
                             </Avatar>
                             <div className="space-y-1">
                               <h3 className="text-xl font-bold text-slate-900">{member.name}</h3>
+                              {member.mobile && (
+                                <p className="text-slate-700 flex items-center gap-1.5 font-extrabold text-sm bg-slate-100 hover:bg-slate-200/70 transition-colors w-fit px-3 py-1 rounded-lg">
+                                  <Smartphone className="w-4 h-4 text-brand-blue" />
+                                  <a href={`tel:${member.mobile}`} className="hover:underline">{member.mobile}</a>
+                                </p>
+                              )}
                               <p className="text-slate-500 flex items-center gap-1 font-medium italic">
                                 <Mail className="w-3.5 h-3.5" /> {member.email}
                               </p>

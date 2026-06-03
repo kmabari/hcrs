@@ -86,6 +86,7 @@ interface OperatorDashboardProps {
   handleLogout: () => void;
   isDirectManual?: boolean;
   isSecondAdmin?: boolean;
+  onViewCard?: () => void;
 }
 
 export default function OperatorDashboard({ 
@@ -98,7 +99,8 @@ export default function OperatorDashboard({
   districtQuotasUsed = {},
   handleLogout,
   isDirectManual = false,
-  isSecondAdmin = false
+  isSecondAdmin = false,
+  onViewCard
 }: OperatorDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -319,6 +321,16 @@ export default function OperatorDashboard({
             
             <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
               <span className="text-xs font-bold text-slate-400 font-mono hidden md:inline-block leading-none">{user.email}</span>
+              {onViewCard && (
+                <Button 
+                  onClick={onViewCard} 
+                  variant="outline" 
+                  className="h-12 border-brand-magenta/35 hover:bg-brand-magenta/5 text-brand-magenta font-black rounded-xl px-5 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                >
+                  <Phone className="w-4 h-4 text-brand-magenta" />
+                  എന്റെ ഐഡി കാർഡ് (My Card)
+                </Button>
+              )}
               <Button onClick={handleLogout} variant="destructive" className="h-12 font-black rounded-xl px-6 transition-all hover:scale-102 active:scale-95 text-xs uppercase tracking-wider">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
@@ -1070,7 +1082,17 @@ export default function OperatorDashboard({
             )}
           </DialogContent>
         </Dialog>
-            <Button onClick={handleLogout} variant="destructive" className="flex-1 md:flex-none h-14 font-black rounded-2xl px-8 transition-all hover:scale-105 active:scale-95 text-sm uppercase tracking-tight">
+            {onViewCard && (
+              <Button 
+                onClick={onViewCard} 
+                variant="outline" 
+                className="flex-1 md:flex-none h-14 border-2 border-brand-magenta/35 hover:bg-brand-magenta/5 text-brand-magenta font-black rounded-2xl px-8 transition-all hover:scale-105 active:scale-95 text-sm uppercase tracking-tight cursor-pointer animate-pulse"
+              >
+                <Phone className="w-5 h-5 mr-2" />
+                എന്റെ ഐഡി കാർഡ് (My Card)
+              </Button>
+            )}
+            <Button onClick={handleLogout} variant="destructive" className="flex-1 md:flex-none h-14 font-black rounded-2xl px-8 transition-all hover:scale-105 active:scale-95 text-sm uppercase tracking-tight cursor-pointer">
               <LogOut className="w-5 h-5 mr-2" />
               EXIT
             </Button>

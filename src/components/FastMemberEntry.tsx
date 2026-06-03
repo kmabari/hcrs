@@ -224,8 +224,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           isAdmin: false,
           role: 'member',
           serialNo: nextSerial,
-          registrationDate: new Date('2025-06-01T12:00:00Z'), // Manual entry defaults to join date 2025
-          expiryDate: new Date('2026-06-01T12:00:00Z'), // Expiry set to 2026 so they require renewal
+          registrationDate: new Date('2025-04-15T12:00:00Z'), // Manual entry defaults to join date April 2025
+          expiryDate: new Date('2026-04-15T12:00:00Z'), // Expiry set to April 2026 so they require renewal
           registeredBy: adminUser?.uid || 'district_admin',
           registeredByName: adminUser?.name || 'District Admin',
           waStatus: 'Pending',

@@ -1060,18 +1060,18 @@ export default function App() {
         const isAdminAccount = values.role === 'admin' || values.role === 'operator';
         
         // Manual admin additions have expired validity by default from the start (as requested by user)
-        const expiry = new Date('2026-06-01T12:00:00Z'); // Expired on June 1, 2026
+        const expiry = new Date('2026-04-15T12:00:00Z'); // Expired on April 15, 2026
 
         const offlineMemberData = {
           uid,
           ...values,
           email: finalEmail, // USE SANITIZED EMAIL
-          registrationDate: new Date('2025-06-01T12:00:00Z'), // Joining / Registration Date set to 2025
+          registrationDate: new Date('2025-04-15T12:00:00Z'), // Joining / Registration Date set to April 2025
           membershipId: finalId,
           status: 'active', // Auto-approved
           isPaid: true,
           isApproved: true,
-          issueDate: new Date('2025-06-01T12:00:00Z'),
+          issueDate: new Date('2025-04-15T12:00:00Z'),
           expiryDate: expiry,
           isAdmin: isAdminAccount,
           role: values.role || 'member',
@@ -1734,10 +1734,10 @@ export default function App() {
                 >
                   <Pencil className="w-4 h-4 text-white" /> Edit Profile Details
                 </Button>
-                {user.isAdmin && (
+                {(user.role === 'admin' || user.role === 'operator' || user.isAdmin) && (
                   <Button 
-                    onClick={() => setView('admin')}
-                    className="w-full h-16 rounded-2xl font-bold bg-brand-blue text-white uppercase tracking-widest shadow-xl"
+                    onClick={() => setView(user.role === 'operator' ? 'operator' : 'admin')}
+                    className="w-full h-16 rounded-2xl font-bold bg-brand-blue text-white uppercase tracking-widest shadow-xl cursor-pointer"
                   >
                     Open Dashboard
                   </Button>
@@ -1778,6 +1778,7 @@ export default function App() {
               districtQuotas={districtQuotas}
               districtQuotasUsed={districtQuotasUsed}
               handleLogout={handleLogout}
+              onViewCard={() => setView('card')}
             />
         </div>
       )}
@@ -1795,6 +1796,7 @@ export default function App() {
             handleLogout={handleLogout}
             isDirectManual={isDirectManual}
             isSecondAdmin={SECOND_ADMINS.some(email => email.toLowerCase() === (user.email || '').toLowerCase())}
+            onViewCard={() => setView('card')}
           />
         </div>
       )}
