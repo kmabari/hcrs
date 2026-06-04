@@ -2664,45 +2664,42 @@ export default function AdminDashboard({
                                         </div>
                                       </div>
                                     </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2">
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        className="h-8 text-[9px] font-black uppercase border-brand-blue/20 text-brand-blue hover:bg-brand-blue/5"
-                                        onClick={() => {
-                                          if (admin) {
-                                            // Open manual entry for update? 
-                                            // Actually, for simplicity, let's just populate the state
-                                            // and let handleManualSubmit handle it if we add a currentUid state
-                                            setManualFormData({
-                                              ...manualFormData,
-                                              role: 'admin',
-                                              district: dist.code,
-                                              name: admin.name || '',
-                                              email: admin.email || '',
-                                              mobile: admin.mobile || '',
-                                              pin: admin.pin || '240678',
-                                              quota: admin.quota || 100
-                                            });
-                                          } else {
-                                            setManualFormData({
-                                              ...manualFormData,
-                                              role: 'admin',
-                                              district: dist.code,
-                                              name: '',
-                                              email: '',
-                                              mobile: '',
-                                              pin: '240678',
-                                              quota: 100
-                                            });
-                                          }
-                                          setIsManualEntryOpen(true);
-                                        }}
-                                      >
-                                        {admin ? 'Update' : 'Assign'}
-                                      </Button>
-                                      {admin && (
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          className="h-8 text-[9px] font-black uppercase border-brand-blue/20 text-brand-blue hover:bg-brand-blue/5"
+                                          onClick={() => {
+                                            if (admin) {
+                                              setManualFormData({
+                                                ...manualFormData,
+                                                role: 'admin',
+                                                district: dist.code,
+                                                name: admin.name || '',
+                                                email: admin.email || '',
+                                                mobile: admin.mobile || '',
+                                                pin: admin.pin || '240678',
+                                                quota: admin.quota || 100
+                                              });
+                                            } else {
+                                              setManualFormData({
+                                                ...manualFormData,
+                                                role: 'admin',
+                                                district: dist.code,
+                                                name: '',
+                                                email: '',
+                                                mobile: '',
+                                                pin: '240678',
+                                                quota: 100
+                                              });
+                                            }
+                                            setIsManualEntryOpen(true);
+                                          }}
+                                        >
+                                          {admin ? 'Update' : 'Assign'}
+                                        </Button>
+                                        {admin && (
                                         <Button 
                                           size="sm" 
                                           variant="ghost"
@@ -2729,159 +2726,127 @@ export default function AdminDashboard({
                   </Card>
 
                   <Card className="border-2 border-brand-magenta/20 bg-white rounded-[32px] overflow-hidden shadow-sm">
-                  <CardHeader className="bg-brand-magenta/5 border-b border-brand-magenta/10 p-8 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-brand-magenta p-2 rounded-xl">
-                        <MapPin className="w-6 h-6 text-white" />
+                    <CardHeader className="bg-brand-magenta/5 border-b border-brand-magenta/10 p-8 flex flex-row items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-brand-magenta p-2 rounded-xl">
+                          <MapPin className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-black text-brand-dark-purple tracking-tight uppercase">District-Wise Shared Quotas</CardTitle>
+                          <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">
+                            Global entry limits for entire districts (Applies to all members/operators)
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-2xl font-black text-brand-dark-purple tracking-tight uppercase">District-Wise Shared Quotas</CardTitle>
-                        <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">
-                          Global entry limits for entire districts (Applies to all members/operators)
-                        </CardDescription>
-                      </div>
-                    </div>
-                    {isSuperAdmin && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={onSyncQuotas}
-                        className="bg-white border-brand-magenta/20 text-brand-magenta font-black text-[10px] uppercase tracking-widest hover:bg-brand-magenta hover:text-white transition-all shadow-sm h-10 px-6 rounded-xl"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5 mr-2" />
-                        Sync Used Counts
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader className="bg-slate-50/50">
-                          <TableRow className="border-slate-200">
-                            <TableHead className="w-[180px]">District (ജില്ല)</TableHead>
-                            <TableHead>Quota Configuration & Real-Time Count (ക്വാട്ടയും തദ്സമയ വിവരങ്ങളും)</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {DISTRICTS.map((dist) => {
-                            const total = districtQuotas[dist.code] || 0;
-                            const used = districtQuotasUsed[dist.code] || 0;
-                            const percent = total > 0 ? Math.round((used / total) * 100) : 0;
-                            
-                            return (
-                              <TableRow key={dist.code} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                                <TableCell className="align-middle">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center shrink-0">
-                                      <MapPin className="w-4 h-4 text-brand-blue" />
-                                    </div>
-                                    <span className="font-black text-slate-800 uppercase text-xs">{dist.name}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="align-middle">
-                                  <div className="flex flex-col lg:flex-row lg:items-center gap-4 py-2">
-                                    {/* Inputs & edit control */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <div className="relative">
-                                        <Label className="sr-only">Edit Quota</Label>
-                                        <Input 
-                                          type="number" 
-                                          id={`dist-quota-input-${dist.code}`}
-                                          className="w-24 h-10 rounded-xl font-black text-center pr-8 border-slate-200 focus:border-brand-magenta/40 bg-slate-50/50"
-                                          placeholder="0"
-                                          defaultValue={total || ''}
-                                        />
-                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">LIMIT</div>
+                      {isSuperAdmin && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={onSyncQuotas}
+                          className="bg-white border-brand-magenta/20 text-brand-magenta font-black text-[10px] uppercase tracking-widest hover:bg-brand-magenta hover:text-white transition-all shadow-sm h-10 px-6 rounded-xl"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                          Sync Used Counts
+                        </Button>
+                      )}
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader className="bg-slate-50/50">
+                            <TableRow className="border-slate-200">
+                              <TableHead className="w-[180px]">District (ജില്ല)</TableHead>
+                              <TableHead>Quota Configuration & Real-Time Count (ക്വാട്ടയും തദ്സമയ വിവരങ്ങളും)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {DISTRICTS.map((dist) => {
+                              const total = districtQuotas[dist.code] || 0;
+                              const used = districtQuotasUsed[dist.code] || 0;
+                              const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+                              
+                              return (
+                                <TableRow key={dist.code} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                                  <TableCell className="align-middle">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center shrink-0">
+                                        <MapPin className="w-4 h-4 text-brand-blue" />
                                       </div>
-                                      <Button 
-                                        size="sm" 
-                                        className="h-10 px-4 bg-brand-magenta text-white hover:bg-brand-magenta/90 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/10 active:scale-95 transition-all"
-                                        onClick={() => {
-                                          const input = document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement;
-                                          const val = parseInt(input.value) || 0;
-                                          onUpdateDistrictQuota?.(dist.code, val);
-                                          toast.success(`${dist.name} limit updated to ${val}`);
-                                        }}
-                                      >
-                                        SET LIMIT
-                                      </Button>
-                                      {total > 0 && (
+                                      <span className="font-black text-slate-800 uppercase text-xs">{dist.name}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="align-middle">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-2">
+                                      {/* Simplified Count Indicator */}
+                                      <div className="flex items-center gap-2 shrink-0 bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl">
+                                        <span className="text-[10px] font-black uppercase text-slate-500">ചെയ്തത് (Used):</span>
+                                        <span className="text-sm font-black text-emerald-600 font-mono">{used}</span>
+                                        <span className="text-slate-350 font-bold">/</span>
+                                        <span className="text-sm font-black text-slate-705 text-slate-700 font-mono">{total > 0 ? total : '∞'}</span>
+                                        {total > 0 && (
+                                          <span className="text-[9px] font-black text-brand-magenta uppercase bg-brand-magenta/5 border border-brand-magenta/10 px-2 py-0.5 rounded-md ml-1.5">
+                                            {total - used} ബാക്കി (Left)
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Quota Limit Input and Button right inside area */}
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <div className="relative">
+                                          <Label className="sr-only">Edit Quota</Label>
+                                          <Input 
+                                            type="number" 
+                                            id={`dist-quota-input-${dist.code}`}
+                                            className="w-24 h-10 rounded-xl font-black text-center pr-8 border-slate-200 focus:border-brand-magenta/40 bg-slate-50/50"
+                                            placeholder="0"
+                                            defaultValue={total || ''}
+                                          />
+                                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">LIMIT</div>
+                                        </div>
                                         <Button 
-                                          variant="ghost" 
                                           size="sm" 
-                                          className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 px-3 rounded-xl font-black text-[10px] uppercase transition-all"
+                                          className="h-10 px-4 bg-brand-magenta text-white hover:bg-brand-magenta/90 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/10 active:scale-95 transition-all"
                                           onClick={() => {
-                                            onUpdateDistrictQuota?.(dist.code, 0);
                                             const input = document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement;
-                                            if (input) input.value = '';
-                                            toast.info(`${dist.name} quota set to Unlimited`);
+                                            const val = parseInt(input.value) || 0;
+                                            onUpdateDistrictQuota?.(dist.code, val);
+                                            toast.success(`${dist.name} limit updated to ${val || 'Unlimited'}`);
                                           }}
                                         >
-                                          Reset
+                                          മാറ്റുക (Set)
                                         </Button>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Real-time details in badge rows */}
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className="text-[10px] font-black tracking-wider uppercase text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg">
-                                        ക്വാട്ട (Limit): <strong className="text-slate-800 ml-1">{total > 0 ? total : 'Unlimited (പരിധിയില്ല)'}</strong>
-                                      </span>
-                                      
-                                      <span className="text-[10px] font-black tracking-wider uppercase text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-                                        ചെയ്തത് (Used): <strong className="text-emerald-700">{used}</strong>
-                                      </span>
-
-                                      {total > 0 ? (
-                                        <span className={cn(
-                                          "text-[10px] font-black tracking-wider uppercase px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5",
-                                          used >= total 
-                                            ? "text-red-600 bg-red-50 border-red-100" 
-                                            : "text-brand-magenta bg-brand-magenta/5 border-brand-magenta/10"
-                                        )}>
-                                          {used >= total ? (
-                                            <>Locked (കഴിഞ്ഞു)</>
-                                          ) : (
-                                            <>ബാക്കി (Balance): <strong className="text-brand-magenta">{total - used}</strong></>
-                                          )}
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] font-black tracking-wider uppercase text-brand-blue bg-brand-blue/5 border border-brand-blue/10 px-2.5 py-1.5 rounded-lg">
-                                          ബാക്കി: Unlimited
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {/* Progress display */}
-                                    {total > 0 && (
-                                      <div className="flex items-center gap-2 w-32 shrink-0">
-                                        <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                                          <div 
-                                            className={cn(
-                                              "h-full transition-all duration-1000",
-                                              percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-orange-500' : 'bg-brand-magenta'
-                                            )}
-                                            style={{ width: `${Math.min(100, percent)}%` }}
-                                          />
-                                        </div>
-                                        <span className={cn(
-                                          "text-[9px] font-black uppercase text-right w-10",
-                                          percent >= 100 ? 'text-red-600' : 'text-slate-500'
-                                        )}>{percent}%</span>
                                       </div>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
+
+                                      {/* Progress display */}
+                                      {total > 0 && (
+                                        <div className="flex items-center gap-2 w-28 shrink-0">
+                                          <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden font-sans">
+                                            <div 
+                                              className={cn(
+                                                "h-full transition-all duration-1000",
+                                                percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-orange-500' : 'bg-brand-magenta'
+                                              )}
+                                              style={{ width: `${Math.min(100, percent)}%` }}
+                                            />
+                                          </div>
+                                          <span className={cn(
+                                            "text-[9px] font-black uppercase text-right w-10 font-mono",
+                                            percent >= 100 ? 'text-red-650 text-red-600' : 'text-slate-550'
+                                          )}>{percent}%</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
 
               <Card className="border-2 border-slate-200 bg-white rounded-[32px] overflow-hidden shadow-sm">
                 <CardHeader className="bg-slate-50 border-b border-slate-200 p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">

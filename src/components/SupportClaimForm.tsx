@@ -54,20 +54,6 @@ const CATEGORIES = [
     headerColor: 'text-violet-600 font-extrabold'
   },
   { 
-    id: 'grocery', 
-    label: 'Grocery Consignment Advance (ഗ്രോസറി കോൺസൈമെന്റ് അഡ്വാൻസ്)',
-    heading: 'Grocery (ഗ്രോസറി)', 
-    sub: 'Consignment Advance (കോൺസൈമെന്റ് അഡ്വാൻസ്)',
-    headerColor: 'text-emerald-600 font-extrabold'
-  },
-  { 
-    id: 'goodwill', 
-    label: 'Goodwill Consignment Advance (ഗുഡ്‌വിൽ കോൺസൈമെന്റ് അഡ്വാൻസ്)',
-    heading: 'Goodwill (ഗുഡ്‌വിൽ)', 
-    sub: 'Consignment Advance (കോൺസൈമെന്റ് അഡ്വാൻസ്)',
-    headerColor: 'text-amber-600 font-extrabold'
-  },
-  { 
     id: 'other', 
     label: 'Other Consignment Advance (മറ്റു കോൺസൈമെന്റ് അഡ്വാൻസ്)',
     heading: 'Other (മറ്റുള്ളവ)', 
@@ -77,16 +63,16 @@ const CATEGORIES = [
 ];
 
 const PREFERENCES = [
-  { id: 'settlement', label: 'I prefer settlement and closure after receiving balance' },
-  { id: 'wait', label: 'I can wait if company continues and grows' },
-  { id: 'continue', label: 'I am ready to continue with company based on future plans' }
+  { id: 'settlement', label: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു (I prefer settlement and closure after receiving balance)' },
+  { id: 'wait', label: 'കമ്പനി തുടർന്നു പോകുകയാണെങ്കിൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും (I can wait if company continues and grows)' },
+  { id: 'continue', label: 'ഭാവി പ്ലാനുകൾ അനുസരിച്ച് കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ് (I am ready to continue with company based on future plans)' }
 ];
 
 const HARDSHIPS = [
-  { id: 'bank', label: 'Under bank seizure pressure' },
-  { id: 'crisis', label: 'Serious financial crisis' },
-  { id: 'medical', label: 'Medical emergency' },
-  { id: 'none', label: 'No emergency' }
+  { id: 'bank', label: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു (Under bank seizure pressure)' },
+  { id: 'crisis', label: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി (Serious financial crisis)' },
+  { id: 'medical', label: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ (Medical emergency)' },
+  { id: 'none', label: 'അടിയന്തിര പ്രാധാന്യമില്ല (No emergency)' }
 ];
 
 export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
@@ -112,6 +98,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [futurePreference, setFuturePreference] = useState('');
   const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
   const [existingClaimId, setExistingClaimId] = useState<string | null>(null);
+  const [consentLegal, setConsentLegal] = useState(false);
 
   // Fetch existing claim for this user to allow edit/update
   useEffect(() => {
@@ -139,6 +126,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           }
           if (docData.futurePreference) setFuturePreference(docData.futurePreference);
           if (docData.hardshipStatus) setHardshipStatus(docData.hardshipStatus);
+          if (docData.consentLegal !== undefined) setConsentLegal(docData.consentLegal);
           
           toast.info('മുമ്പ് സബ്മിറ്റ് ചെയ്ത വിവരങ്ങൾ കാണിച്ചിരിക്കുന്നു. നിങ്ങൾക്ക് ആവശ്യമുള്ള മാറ്റങ്ങൾ വരുത്തി അപ്ഡേറ്റ് ചെയ്യാവുന്നതാണ്.');
         }
@@ -193,11 +181,11 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const isEmergency = hardshipStatus.some(h => ['bank', 'crisis', 'medical'].includes(h));
 
   const priorityInfo = useMemo(() => {
-    if (isEmergency) return { label: 'EMERGENCY RED', color: 'bg-red-600', text: 'Bank seizure / serious hardship' };
-    if (futurePreference === 'settlement') return { label: 'RED', color: 'bg-red-500', text: 'Demanding immediate settlement' };
-    if (futurePreference === 'wait') return { label: 'ORANGE', color: 'bg-orange-500', text: 'Willing to wait some time' };
-    if (futurePreference === 'continue') return { label: 'GREEN', color: 'bg-green-500', text: 'Willing to continue with company' };
-    return { label: 'PENDING', color: 'bg-slate-400', text: 'Selection required' };
+    if (isEmergency) return { label: 'EMERGENCY RED', color: 'bg-red-600', text: 'ബാങ്ക് ജപ്തി ഭീഷണി / കടുത്ത പ്രയാസങ്ങൾ (Bank seizure / serious hardship)' };
+    if (futurePreference === 'settlement') return { label: 'RED', color: 'bg-red-500', text: 'ഉടൻ സെറ്റിൽമെന്റ് ആവശ്യപ്പെടുന്നു (Demanding immediate settlement)' };
+    if (futurePreference === 'wait') return { label: 'ORANGE', color: 'bg-orange-500', text: 'കുറച്ചു സമയം കാത്തിരിക്കാൻ തയ്യാറാണ് (Willing to wait some time)' };
+    if (futurePreference === 'continue') return { label: 'GREEN', color: 'bg-green-500', text: 'കമ്പനിയുമായി തുടർന്നു പോകാൻ താല്പര്യപ്പെടുന്നു (Willing to continue with company)' };
+    return { label: 'PENDING', color: 'bg-slate-400', text: 'മുൻഗണന തിരഞ്ഞെടുക്കുക (Selection required)' };
   }, [isEmergency, futurePreference]);
 
   const handleSubmit = async () => {
@@ -226,6 +214,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         hardshipStatus,
         isEmergency,
         priorityStatus: priorityInfo.label,
+        consentLegal,
         updatedAt: serverTimestamp(),
         // Only add createdAt for new submissions
         ...(existingClaimId ? {} : { createdAt: serverTimestamp() })
@@ -250,15 +239,29 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
   if (completed) {
     return (
-      <div className="p-8 text-center space-y-6">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
+      <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-full my-auto">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-300">
+          <CheckCircle2 className="w-10 h-10 text-green-600 animate-bounce" />
         </div>
-        <h2 className="text-2xl font-black text-brand-blue uppercase">Submitted Successfully</h2>
-        <p className="text-slate-500 text-sm font-bold max-w-xs mx-auto">
-          Thank you for providing your details. Our coordination team will review your information.
-        </p>
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue font-bold">Back to Dashboard</Button>
+        <h2 className="text-2xl font-black text-brand-blue uppercase tracking-tight">സമർപ്പണം വിജയകരം (Submitted Successfully)</h2>
+        <p className="text-slate-500 text-[11px] font-bold tracking-widest uppercase">FINANCIAL REGISTRY SUBMISSION COMPLETED</p>
+
+        <div className="bg-emerald-50/50 border border-emerald-500/15 p-5 rounded-2xl text-slate-700 font-semibold text-xs leading-relaxed text-left space-y-3">
+          <p>
+            പ്രിയ അംഗമേ, താങ്കൾ നൽകിയ വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി.
+          </p>
+          <p>
+            നിങ്ങളുടെ സമ്മതപ്രകാരം, <strong>ഇതിന്റെ ഒരു കോപ്പി മാനേജ്മെന്റിനും മറ്റൊരു കോപ്പി ലീഗൽ അഡ്വൈസർക്കും കൈമാറിയിട്ടുണ്ട്.</strong> ക്ലെയിം വെരിഫിക്കേഷൻ ടീം ഈ വിവരങ്ങൾ തുടർനടപടികൾക്കായി പരിശോധിക്കുന്നതാണ്.
+          </p>
+          <hr className="border-emerald-500/10" />
+          <p className="text-[10px] text-slate-400 font-bold leading-normal uppercase">
+            A copy of this submission is shared with the management and the company's legal advisor based on your consent for auditing and coordination purposes.
+          </p>
+        </div>
+
+        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold h-13 shadow-lg active:scale-95 transition-all">
+          തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
+        </Button>
       </div>
     );
   }
@@ -299,6 +302,25 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Address</p>
               <p className="text-xs font-bold text-slate-500 truncate">{user.address}</p>
             </div>
+        </div>
+
+        {/* Verification Warning Card / Disclaimer */}
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-[28px] p-5 relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 shrink-0 mt-0.5">
+              <Info className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest leading-none">പ്രധാന വിവരണം (Important Disclaimer)</h4>
+              <p className="text-slate-700 font-bold text-xs leading-relaxed">
+                ഇത് നിങ്ങളുടെ യഥാർത്ഥ കണക്ക് ആയിക്കൊള്ളണമെന്നില്ല. ആവറേജ് മനസ്സിലാക്കാൻ വേണ്ടിയാണ്. നിങ്ങളുടെ കണക്കും കമ്പനിയുടെ ഡാറ്റയും ചെക്ക് ചെയ്തതിനുശേഷം ആ ഡാറ്റ പ്രകാരമുള്ള സംഖ്യയാണ് നിങ്ങൾക്ക് ലഭിക്കാൻ ഉണ്ടാവുകയുള്ളൂ എന്ന് നിങ്ങൾ മനസ്സിലാക്കണം. നിങ്ങളുടെ ഓർമ്മയിലുള്ള സംഖ്യ എഴുതിയാൽ മതിയാകും.
+              </p>
+              <p className="text-[10px] text-amber-600 font-bold uppercase leading-normal">
+                This does not need to be your exact claim amount. It is collected to understand the overall average. The final eligible amount is processed only after verifying records with the company database. State the amounts based on your recollection.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Step 1: ID & Categories */}
@@ -352,13 +374,15 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           </div>
 
           {selectedCategories.includes('other') && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Specify Other Category</Label>
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 border-2 border-slate-100 bg-slate-50/50 p-4 rounded-2xl">
+              <Label className="text-[10px] font-black text-brand-blue uppercase tracking-widest ml-1">മറ്റു ഏത് വഴിയിലാണ് പണം കൊടുത്തത്? (How did you pay?)</Label>
               <Input 
                 value={otherCategory}
                 onChange={(e) => setOtherCategory(e.target.value)}
-                className="h-12 border-2 border-slate-100 rounded-xl font-bold"
+                placeholder="ഉദാഹരണം: ബാങ്ക് ട്രാൻസ്ഫർ, നേരിട്ട് നൽകിയത്, മറ്റൊരു അക്കൗണ്ട് വഴി (Specify details here)"
+                className="h-12 border-2 border-slate-100 bg-white rounded-xl font-bold focus:border-brand-blue/30"
               />
+              <p className="text-[9.5px] font-bold text-slate-400 uppercase mt-1">Please provide clear details on how you made the payment or provided the funds.</p>
             </motion.div>
           )}
         </section>
@@ -514,7 +538,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">3</span>
-                <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">Future Preference</h4>
+                <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">ഭാവിയിലെ താല്പര്യം (Future Preference)</h4>
               </div>
               
               <div className="space-y-3">
@@ -546,7 +570,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">4</span>
-                <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">Emergency Status</h4>
+                <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">അടിയന്തിര പ്രാധാന്യ വിവരങ്ങൾ (Emergency Status)</h4>
               </div>
 
               <div className="space-y-3">
@@ -575,7 +599,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                        }`}
                      >
                        <Checkbox checked={hardshipStatus.includes(hard.id)} className={`pointer-events-none ${hardshipStatus.includes(hard.id) ? "border-red-500" : ""}`} />
-                       <Label className="text-xs font-black text-slate-700 flex-1 truncate">{hard.label}</Label>
+                       <Label className="text-xs font-bold text-slate-700 cursor-pointer flex-1 leading-relaxed">{hard.label}</Label>
                        {['bank', 'crisis', 'medical'].includes(hard.id) && (
                          <ShieldAlert className="w-4 h-4 text-red-500" />
                        )}
@@ -606,6 +630,38 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
            </div>
         </section>
 
+        {/* Step 5: Transparency & Sharing Consent */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">5</span>
+            <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest text-[11px]">സമ്മതപത്രം (Sharing Consent)</h4>
+          </div>
+
+          <div 
+            onClick={() => setConsentLegal(!consentLegal)}
+            className={`p-5 rounded-3xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
+              consentLegal 
+                ? 'border-emerald-500 bg-emerald-50/40 shadow-sm' 
+                : 'border-slate-100 hover:border-slate-200 bg-white'
+            }`}
+          >
+            <Checkbox checked={consentLegal} onCheckedChange={(val) => setConsentLegal(!!val)} className={`w-5 h-5 border-slate-300 mt-1 pointer-events-none ${consentLegal ? 'border-emerald-600 bg-emerald-600 text-white' : ''}`} />
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                ഇതിന്റെ ഒരു കോപ്പി മാനേജ്മെന്റിനും ഒരു കോപ്പി ലീഗൽ അഡ്വൈസർക്കും കൈമാറുന്നതാണ്. അതിന് ഞാൻ സമ്മതിക്കുന്നു.
+              </p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
+                A copy of this form submission will be shared with the management and the company's legal advisor. Do you agree with this?
+              </p>
+              <div className="flex gap-2.5 mt-1.5">
+                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${consentLegal ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                  {consentLegal ? 'സമ്മതിച്ചു (Agreed)' : 'സമ്മതമില്ല (Not Agreed - Consent Required)'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </div>
 
       {/* Sticky Bottom Actions */}
@@ -618,7 +674,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           Cancel
         </Button>
         <Button 
-          disabled={loading || !futurePreference || hardshipStatus.length === 0}
+          disabled={loading || !futurePreference || hardshipStatus.length === 0 || !consentLegal}
           onClick={handleSubmit} 
           className="h-14 flex-[2] rounded-2xl bg-brand-blue text-white shadow-xl shadow-brand-blue/20 hover:shadow-2xl transition-all font-black text-sm relative overflow-hidden"
         >

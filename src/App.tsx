@@ -711,6 +711,8 @@ export default function App() {
           : 'Invalid email or Password. (ഇമെയിൽ അല്ലെങ്കിൽ പാസ്‌വേഡ് തെറ്റാണ്)';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many attempts. Try again later. (പലതവണ ശ്രമിച്ചു, പിന്നീട് ശ്രമിക്കുക)';
+      } else if (error.code === 'auth/network-request-failed' || (error.message && error.message.includes('network-request-failed'))) {
+        errorMessage = 'നെറ്റ്‌വർക്ക് തകരാർ! നിങ്ങളുടെ ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുകയോ പേജ് റീഫ്രഷ് ചെയ്യുകയോ ചെയ്യുക. (Network connection failed. Please check your internet connection or reload the page.)';
       }
       toast.error(errorMessage, { id: loadingToast });
       return false;
@@ -1534,7 +1536,37 @@ export default function App() {
 
       {view === 'support' && user && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-white min-h-screen">
-          {isExpired ? (
+          {user.status === 'pending' ? (
+            <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto space-y-6">
+              <div className="h-20 w-20 rounded-full bg-amber-100 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-lg animate-bounce">
+                <Clock className="w-10 h-10 animate-pulse" />
+              </div>
+              
+              <h2 className="text-2xl font-black text-slate-850 uppercase tracking-tight leading-none">
+                അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+              </h2>
+              <p className="text-[10px] font-black tracking-widest text-amber-505 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
+
+              <div className="bg-amber-50/50 border border-amber-500/15 p-5 rounded-2xl text-slate-600 font-semibold text-xs leading-relaxed text-left space-y-3">
+                <p>
+                  പ്രിയ അംഗമേ, താങ്കളുടെ പുതിയ അംഗത്വം അഡ്മിൻ വെരിഫൈ ചെയ്ത് അപ്പ്രൂവ് ചെയ്യേണ്ടതുണ്ട്. <strong>അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകൂ.</strong>
+                </p>
+                <p className="text-[10.5px] text-slate-400 font-bold leading-normal uppercase">
+                  Your registration is pending admin approval. Access to the Financial Info Registry portal will unlock once your account is active.
+                </p>
+              </div>
+
+              <div className="w-full pt-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => setView('card')}
+                  className="w-full h-12 rounded-xl border-slate-250 text-xs uppercase text-slate-500 font-bold hover:bg-slate-50"
+                >
+                  തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
+                </Button>
+              </div>
+            </div>
+          ) : isExpired ? (
             <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto space-y-6">
               <div className="h-20 w-20 rounded-full bg-rose-100 border border-brand-magenta/30 flex items-center justify-center text-brand-magenta shadow-lg animate-bounce">
                 <ShieldAlert className="w-10 h-10" />
@@ -1623,6 +1655,23 @@ export default function App() {
                         താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ഉടൻ വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകും.
                         <br/>
                         <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Our admin team is verifying your ₹100 renewal receipt. The info registry form unlocks once completed.</span>
+                      </p>
+                    </div>
+                  ) : user.status === 'pending' ? (
+                    <div className="w-full bg-amber-55/60 bg-amber-50 rounded-[28px] border-2 border-amber-200/50 p-6 text-center shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
+                      <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-4 text-amber-500">
+                        <Clock className="w-6 h-6 animate-pulse" />
+                      </div>
+                      <h3 className="text-lg font-black text-slate-850 uppercase tracking-tight leading-tight">
+                        അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                      </h3>
+                      <p className="text-[10px] font-black tracking-widest text-amber-500 uppercase mt-2">MEMBERSHIP PENDING APPROVAL</p>
+                      
+                      <p className="text-slate-600 font-semibold text-[11px] leading-relaxed mt-4">
+                        ತಾങ്കളുടെ പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ വിവരങ്ങളും പേയ്‌മെന്റും അഡ്മിൻ പാനലിൽ പരിശോധനയിലാണ്. വെരിഫിക്കേഷൻ പൂർത്തിയായാൽ ഇവിടെ കാർഡ് ആക്റ്റീവ് ആകുകയും വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകുകയും ചെയ്യും.
+                        <br/>
+                        <span className="text-[9.5px] text-slate-400 font-bold block mt-2 uppercase">Your membership registration and payment are currently under review by our admin. Access will unlock once verified.</span>
                       </p>
                     </div>
                   ) : isExpired ? (

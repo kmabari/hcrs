@@ -38,7 +38,7 @@ export const STATES = [
 
 export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
-export const MEMBERSHIP_TYPES = ['Annual', 'Life'];
+export const MEMBERSHIP_TYPES = ['Annual'];
 
 export const LOGO_URL = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
 export const FALLBACK_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/hcrs-portal.firebasestorage.app/o/assets%2Flogo.png?alt=media&token=8e953154-8c8c-4467-975a-69488339845d';

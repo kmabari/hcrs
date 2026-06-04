@@ -219,6 +219,15 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               </div>
             </div>
           )}
+          {!isExpired && member.status === 'pending' && (
+            <div className="absolute inset-0 bg-amber-600/10 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
+              <div className="bg-amber-500/95 text-white font-black uppercase text-[10px] tracking-[0.15em] px-5 py-3 rounded-xl shadow-2xl -rotate-12 border border-amber-400/30 flex flex-col items-center gap-1 text-center select-none scale-105">
+                <Clock className="w-4 h-4 animate-pulse text-white" />
+                <span>PENDING APPROVAL</span>
+                <span className="text-[9px] font-bold block normal-case">(അപ്രൂവലിനായി കാത്തിരിക്കുന്നു)</span>
+              </div>
+            </div>
+          )}
           {/* Top Premium Card Margin Strip */}
           <div className="bg-brand-magenta h-1.5 w-full absolute top-0 left-0 z-30" />
           
@@ -330,7 +339,9 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                   crossOrigin="anonymous" 
                 />
               </div>
-              <p className="text-[5.5px] font-black text-slate-400 mt-1 uppercase tracking-widest leading-none">VERIFIED MEMBER</p>
+              <p className={`text-[5.5px] font-black mt-1 uppercase tracking-widest leading-none ${member.status === 'pending' ? 'text-amber-500 animate-pulse' : 'text-slate-400'}`}>
+                {member.status === 'pending' ? 'PROVISIONAL' : 'VERIFIED MEMBER'}
+              </p>
             </div>
 
             {/* Secretary Signature */}
