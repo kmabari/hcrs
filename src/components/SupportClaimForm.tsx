@@ -99,36 +99,35 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
   const [existingClaimId, setExistingClaimId] = useState<string | null>(null);
   const [consentLegal, setConsentLegal] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
-  // Fetch existing claim for this user to allow edit/update
+  // Fetch existing claim for this user to prevent resubmission
   useEffect(() => {
     async function checkExistingClaim() {
-      if (!user?.uid) return;
+      if (!user) return;
       try {
         setLoading(true);
-        const q = query(collection(db, 'claims'), where('uid', '==', user.uid));
-        const snap = await getDocs(q);
-        if (snap.docs.length > 0) {
-          const docData = snap.docs[0].data();
-          setExistingClaimId(snap.docs[0].id);
-          
-          if (docData.highrichId) setHighrichId(docData.highrichId);
-          if (docData.categories) setSelectedCategories(docData.categories);
-          if (docData.otherCategory) setOtherCategory(docData.otherCategory);
-          if (docData.categoryDetails) setCategoryDetails(docData.categoryDetails);
-          if (docData.noBreakup !== undefined) setNoBreakup(docData.noBreakup);
-          if (docData.totalPaid !== undefined || docData.totalReceived !== undefined) {
-             setTotalItems({
-                paid: docData.totalPaid || 0,
-                received: docData.totalReceived || 0,
-                pending: (docData.totalPaid || 0) - (docData.totalReceived || 0)
-             });
+        let found = false;
+        
+        // Priority 1: Check by mobile number
+        if (user.mobile) {
+          const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
+          const snapMobile = await getDocs(qMobile);
+          if (!snapMobile.empty) {
+            setExistingClaimId(snapMobile.docs[0].id);
+            setAlreadySubmitted(true);
+            found = true;
           }
-          if (docData.futurePreference) setFuturePreference(docData.futurePreference);
-          if (docData.hardshipStatus) setHardshipStatus(docData.hardshipStatus);
-          if (docData.consentLegal !== undefined) setConsentLegal(docData.consentLegal);
-          
-          toast.info('മുമ്പ് സബ്മിറ്റ് ചെയ്ത വിവരങ്ങൾ കാണിച്ചിരിക്കുന്നു. നിങ്ങൾക്ക് ആവശ്യമുള്ള മാറ്റങ്ങൾ വരുത്തി അപ്ഡേറ്റ് ചെയ്യാവുന്നതാണ്.');
+        }
+        
+        // Priority 2: Check by UID if not already found
+        if (!found && user.uid) {
+          const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
+          const snapUid = await getDocs(qUid);
+          if (!snapUid.empty) {
+            setExistingClaimId(snapUid.docs[0].id);
+            setAlreadySubmitted(true);
+          }
         }
       } catch (err) {
         console.error("Error fetching existing claim:", err);
@@ -237,6 +236,35 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     }
   };
 
+  if (alreadySubmitted && !completed) {
+    return (
+      <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-screen my-auto">
+        <div className="w-20 h-20 bg-rose-50 border border-brand-magenta/30 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-magenta shadow-lg">
+          <ShieldAlert className="w-10 h-10 animate-pulse text-brand-magenta" />
+        </div>
+        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight leading-tight">സമർപ്പണം ഇതിനകം പൂർത്തിയായി!<br/>(Already Submitted)</h2>
+        <p className="text-brand-magenta text-[10px] font-black tracking-widest uppercase">REGISTRY ACCESS SECURELY BLOCKED</p>
+
+        <div className="bg-rose-50/50 border border-brand-magenta/15 p-5 rounded-2xl text-slate-705 font-bold text-xs leading-relaxed text-left space-y-3">
+          <p className="text-slate-700">
+            പ്രിയ അംഗമേ, താങ്കൾ ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് വിവര രജിസ്ട്രി ഫോം വിജയകരമായി ഇതിനകം തന്നെ സമർപ്പിച്ചിട്ടുള്ളതാണ്.
+          </p>
+          <p className="text-slate-600">
+            സുരക്ഷാ ക്രമീകരണങ്ങൾ അനുസരിച്ച്, <strong>ഒരു തവണ സമർപ്പിച്ച വിവരങ്ങൾ പിന്നീട് മാറ്റാനോ വീണ്ടും ഫോം പൂരിപ്പിക്കാനോ സാധ്യമല്ല.</strong> ഇത് ഡ്യൂപ്ലിക്കേഷൻ ഒഴിവാക്കാനും ഡാറ്റാ സുരക്ഷിതത്വം ഉറപ്പുവരുത്താനും വേണ്ടിയാണ്.
+          </p>
+          <hr className="border-brand-magenta/10" />
+          <p className="text-[10px] text-slate-400 font-extrabold leading-normal uppercase">
+            You have already submitted your financial details. For security and data integrity reasons, forms cannot be edited or resubmitted once finalized.
+          </p>
+        </div>
+
+        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/95 text-white font-bold h-13 shadow-lg active:scale-95 transition-all text-xs">
+          തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
+        </Button>
+      </div>
+    );
+  }
+
   if (completed) {
     return (
       <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-full my-auto">
@@ -251,11 +279,11 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             പ്രിയ അംഗമേ, താങ്കൾ നൽകിയ വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി.
           </p>
           <p>
-            നിങ്ങളുടെ സമ്മതപ്രകാരം, <strong>ഇതിന്റെ ഒരു കോപ്പി മാനേജ്മെന്റിനും മറ്റൊരു കോപ്പി ലീഗൽ അഡ്വൈസർക്കും കൈമാറിയിട്ടുണ്ട്.</strong> ക്ലെയിം വെരിഫിക്കേഷൻ ടീം ഈ വിവരങ്ങൾ തുടർനടപടികൾക്കായി പരിശോധിക്കുന്നതാണ്.
+            നിങ്ങളുടെ സമ്മതപ്രകാരം, <strong>ഇതിന്റെ ഒരു കോപ്പി മാനേജ്മെന്റിനും മറ്റൊരു കോപ്പി ലീഗൽ അഡ്വൈസർക്കും കൈമാറുന്നതാണ്.</strong> ക്ലെയിം വെരിഫിക്കേഷൻ ടീം ഈ വിവരങ്ങൾ തുടർനടപടികൾക്കായി പരിശോധിക്കുന്നതാണ്.
           </p>
           <hr className="border-emerald-500/10" />
           <p className="text-[10px] text-slate-400 font-bold leading-normal uppercase">
-            A copy of this submission is shared with the management and the company's legal advisor based on your consent for auditing and coordination purposes.
+            A copy of this submission will be shared with the management and the company's legal advisor based on your consent for auditing and coordination purposes.
           </p>
         </div>
 
@@ -375,14 +403,14 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
           {selectedCategories.includes('other') && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 border-2 border-slate-100 bg-slate-50/50 p-4 rounded-2xl">
-              <Label className="text-[10px] font-black text-brand-blue uppercase tracking-widest ml-1">മറ്റു ഏത് വഴിയിലാണ് പണം കൊടുത്തത്? (How did you pay?)</Label>
+              <Label className="text-[10px] font-black text-brand-blue uppercase tracking-widest ml-1">നിങ്ങൾക്ക് വിശദമായി വല്ലതും എഴുതി പറയാനുണ്ടെങ്കിൽ ഇവിടെ എഴുതാം (Write in detail here)</Label>
               <Input 
                 value={otherCategory}
                 onChange={(e) => setOtherCategory(e.target.value)}
-                placeholder="ഉദാഹരണം: ബാങ്ക് ട്രാൻസ്ഫർ, നേരിട്ട് നൽകിയത്, മറ്റൊരു അക്കൗണ്ട് വഴി (Specify details here)"
+                placeholder="ഇവിടെ എഴുതുക (Write here...)"
                 className="h-12 border-2 border-slate-100 bg-white rounded-xl font-bold focus:border-brand-blue/30"
               />
-              <p className="text-[9.5px] font-bold text-slate-400 uppercase mt-1">Please provide clear details on how you made the payment or provided the funds.</p>
+              <p className="text-[9.5px] font-bold text-slate-400 uppercase mt-1">നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ വ്യക്തമായി ഇവിടെ നൽകാം (Enter details here)</p>
             </motion.div>
           )}
         </section>

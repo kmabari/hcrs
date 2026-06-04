@@ -90,6 +90,37 @@ export default function App() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
+  const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
+
+  useEffect(() => {
+    async function checkClaimSubmission() {
+      if (!user) {
+        setHasSubmittedClaim(false);
+        return;
+      }
+      try {
+        let submitted = false;
+        if (user.mobile) {
+          const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
+          const snapMobile = await getDocs(qMobile);
+          if (!snapMobile.empty) {
+            submitted = true;
+          }
+        }
+        if (!submitted && user.uid) {
+          const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
+          const snapUid = await getDocs(qUid);
+          if (!snapUid.empty) {
+            submitted = true;
+          }
+        }
+        setHasSubmittedClaim(submitted);
+      } catch (err) {
+        console.error("Error checking claim submission status:", err);
+      }
+    }
+    checkClaimSubmission();
+  }, [user]);
 
   const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && (
     user.renewalPending ||
@@ -1704,19 +1735,39 @@ export default function App() {
                     </div>
                   ) : (
                     <>
-                      <Button 
-                        onClick={() => setView('support')}
-                        className="w-full h-18 rounded-[28px] font-black bg-brand-magenta text-white shadow-2xl shadow-brand-magenta/30 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-brand-magenta/40"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
-                           <Info className="w-5 h-5" />
-                        </div>
-                        Financial Info Registry
-                      </Button>
-                      <div className="flex flex-col items-center mt-4 space-y-1">
-                        <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.2em] animate-pulse">Action Required</p>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
-                      </div>
+                      {hasSubmittedClaim ? (
+                        <>
+                          <Button 
+                            onClick={() => setView('support')}
+                            className="w-full h-18 rounded-[28px] font-black bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-emerald-700 cursor-pointer"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
+                               <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            Registry Locked ✓
+                          </Button>
+                          <div className="flex flex-col items-center mt-4 space-y-1">
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">രജിസ്ട്രി പൂർത്തിയായി (Submitted)</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-sans">വിവരങ്ങൾ സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തിയിട്ടുണ്ട്</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Button 
+                            onClick={() => setView('support')}
+                            className="w-full h-18 rounded-[28px] font-black bg-brand-magenta text-white shadow-2xl shadow-brand-magenta/30 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-brand-magenta/40 cursor-pointer"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
+                               <Info className="w-5 h-5" />
+                            </div>
+                            Financial Info Registry
+                          </Button>
+                          <div className="flex flex-col items-center mt-4 space-y-1">
+                            <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.2em] animate-pulse">Action Required</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>

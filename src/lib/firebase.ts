@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -62,13 +62,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 async function testConnection() {
   try {
     // Attempt to read a dummy document to wake up connection
-    await getDocFromServer(doc(db, 'system', 'ping'));
-    console.log("Firestore connection verified.");
+    await getDoc(doc(db, 'system', 'ping'));
+    console.log("Firestore connection initialized.");
   } catch (error) {
     if (error instanceof Error) {
-       console.error("Firestore Error Detailed:", error.message);
+       console.log("Firestore initialization status:", error.message);
        if (error.message.includes('unavailable') || error.message.includes('offline')) {
-         console.warn("Firestore is potentially unreachable. This may be due to browser extensions, network proxy, or temporary server delay.");
+         console.warn("Firestore is running in offline mode. Local queries will serve cached state.");
        }
     }
   }

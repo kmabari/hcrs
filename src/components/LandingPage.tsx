@@ -1831,6 +1831,15 @@ export default function LandingPage({
                         setCheckingClaim(true);
                         setClaimResult(null);
                         try {
+                          // Check if they already submitted a claim
+                          const claimsQ = query(collection(db, 'claims'), where('userMobile', '==', claimMobile.trim()), limit(1));
+                          const claimsSnap = await getDocs(claimsQ);
+                          if (!claimsSnap.empty) {
+                            toast.error('നിങ്ങൾ ഇതിനകം വിവര രജിസ്ട്രി ഫോം സമർപ്പിച്ചിട്ടുള്ളതാണ്. പിന്നീട് പ്രവേശിക്കാൻ സാധിക്കില്ല. (Already Submitted & Blocked)');
+                            setCheckingClaim(false);
+                            return;
+                          }
+
                           const q = query(collection(db, 'users'), where('mobile', '==', claimMobile.trim()), limit(1));
                           const querySnapshot = await getDocs(q);
                           if (!querySnapshot.empty) {
