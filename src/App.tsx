@@ -594,6 +594,11 @@ export default function App() {
   const handleLogout = async () => {
     const loadingToast = toast.loading('Signing out...');
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('hcrs_direct_manual');
+        sessionStorage.removeItem('hcrs_district_intent');
+      }
+      setIsDirectManual(false);
       await signOut(auth);
       setUser(null);
       setMembers([]);

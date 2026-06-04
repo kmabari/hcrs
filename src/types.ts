@@ -44,6 +44,8 @@ export interface UserProfile {
   stateCode?: string;
   districtCode?: string;
   constituencyCode?: string;
+  username?: string;
+  highrichId?: string;
 }
 
 export interface GalleryItem {
