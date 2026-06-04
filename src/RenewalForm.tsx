@@ -42,6 +42,43 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
   const [mirrorIndex, setMirrorIndex] = useState(0);
   const [qrSrc, setQrSrc] = useState(QR_MIRRORS[0]);
 
+  // Check if member has active validity
+  const getMemberValidityInfo = (member: UserProfile) => {
+    if (member.role === 'admin' || member.role === 'operator' || member.isAdmin) {
+      return { hasActiveValidity: true, message: 'താങ്കൾ ഒരു അഡ്മിൻ/ഓപ്പറേറ്റർ ആണ്. പുതുക്കൽ ആവശ്യമില്ല.' };
+    }
+    
+    if (member.renewalPending) {
+      return { hasActiveValidity: false, message: null }; // Wait for admin approval
+    }
+
+    const exp = member.expiryDate || (() => {
+      const reg = member.registrationDate;
+      if (!reg) return null;
+      const regD = reg.toDate ? reg.toDate() : (reg.seconds ? new Date(reg.seconds * 1000) : new Date(reg));
+      if (isNaN(regD.getTime())) return null;
+      const expD = new Date(regD);
+      expD.setFullYear(expD.getFullYear() + 1);
+      return expD;
+    })();
+
+    if (!exp) return { hasActiveValidity: false, message: null };
+
+    const d = exp.toDate ? exp.toDate() : (exp.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+    if (isNaN(d.getTime())) return { hasActiveValidity: false, message: null };
+
+    const isActive = d.getTime() > Date.now();
+    if (isActive) {
+      const dateString = d.toLocaleDateString('en-IN');
+      return { 
+        hasActiveValidity: true, 
+        message: `താങ്കൾക്ക് ഈ വർഷം ${dateString} വരെ വാലിഡിറ്റി ഉണ്ട്. താങ്കൾക്ക് റിന്യൂ ചെയ്യാൻ സമയമായിട്ടില്ല.` 
+      };
+    }
+
+    return { hasActiveValidity: false, message: null };
+  };
+
   useEffect(() => {
     if (initialMobile) {
       const runAutoSearch = async () => {
@@ -198,25 +235,61 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                 <p className="text-[10px] font-black text-foreground/40 tracking-[0.2em] mt-1">{foundMember.membershipId}</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center px-2">
-                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Renewal Fee</span>
-                  <span className="text-xl font-black text-brand-blue">₹100</span>
-                </div>
-                <Button 
-                  onClick={() => setStep('payment')}
-                  className="w-full h-16 rounded-[24px] text-lg font-black shadow-xl shadow-brand-blue/10 bg-brand-blue text-white hover:bg-brand-blue/90"
-                >
-                  Proceed to Payment
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setStep('search')}
-                  className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all"
-                >
-                  Not you? Search again
-                </Button>
-              </div>
+              {(() => {
+                const validity = getMemberValidityInfo(foundMember);
+                if (validity.hasActiveValidity) {
+                  return (
+                    <div className="space-y-6">
+                      <div className="bg-amber-500/10 border border-amber-500/20 p-5 rounded-[24px] text-center space-y-3 shadow-md">
+                        <div className="w-12 h-12 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto border border-amber-500/35">
+                          <ShieldCheck className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <p className="text-sm font-black text-amber-600 leading-relaxed">
+                          {validity.message}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3 pt-2">
+                        <Button 
+                          onClick={() => setStep('search')}
+                          className="w-full h-14 rounded-[20px] text-md font-black bg-brand-blue text-white hover:bg-brand-blue/90 shadow-xl shadow-brand-blue/10"
+                        >
+                          പകരം വേറെ ഐഡി തിരയുക (Search Another)
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          onClick={onBack}
+                          className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all"
+                        >
+                          Return Home
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center px-2">
+                      <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Renewal Fee</span>
+                      <span className="text-xl font-black text-brand-blue">₹100</span>
+                    </div>
+                    <Button 
+                      onClick={() => setStep('payment')}
+                      className="w-full h-16 rounded-[24px] text-lg font-black shadow-xl shadow-brand-blue/10 bg-brand-blue text-white hover:bg-brand-blue/90"
+                    >
+                      Proceed to Payment
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setStep('search')}
+                      className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all"
+                    >
+                      Not you? Search again
+                    </Button>
+                  </div>
+                );
+              })()}
             </CardContent>
           )}
 

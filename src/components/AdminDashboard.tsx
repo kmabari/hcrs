@@ -2758,11 +2758,8 @@ export default function AdminDashboard({
                       <Table>
                         <TableHeader className="bg-slate-50/50">
                           <TableRow className="border-slate-200">
-                            <TableHead className="w-[200px]">District</TableHead>
-                            <TableHead>Assigned Shared Quota</TableHead>
-                            <TableHead>Total Progress</TableHead>
-                            <TableHead>Remaining</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead className="w-[180px]">District (ജില്ല)</TableHead>
+                            <TableHead>Quota Configuration & Real-Time Count (ക്വാട്ടയും തദ്സമയ വിവരങ്ങളും)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -2773,81 +2770,107 @@ export default function AdminDashboard({
                             
                             return (
                               <TableRow key={dist.code} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                                <TableCell>
+                                <TableCell className="align-middle">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center shrink-0">
                                       <MapPin className="w-4 h-4 text-brand-blue" />
                                     </div>
                                     <span className="font-black text-slate-800 uppercase text-xs">{dist.name}</span>
                                   </div>
                                 </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                      <Label className="sr-only">Edit Quota</Label>
-                                      <Input 
-                                        type="number" 
-                                        id={`dist-quota-input-${dist.code}`}
-                                        className="w-24 h-10 rounded-xl font-black text-center pr-8 border-slate-200 focus:border-brand-magenta/40"
-                                        placeholder="0"
-                                        defaultValue={total}
-                                      />
-                                      <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300">LIMIT</div>
+                                <TableCell className="align-middle">
+                                  <div className="flex flex-col lg:flex-row lg:items-center gap-4 py-2">
+                                    {/* Inputs & edit control */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <div className="relative">
+                                        <Label className="sr-only">Edit Quota</Label>
+                                        <Input 
+                                          type="number" 
+                                          id={`dist-quota-input-${dist.code}`}
+                                          className="w-24 h-10 rounded-xl font-black text-center pr-8 border-slate-200 focus:border-brand-magenta/40 bg-slate-50/50"
+                                          placeholder="0"
+                                          defaultValue={total || ''}
+                                        />
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">LIMIT</div>
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        className="h-10 px-4 bg-brand-magenta text-white hover:bg-brand-magenta/90 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/10 active:scale-95 transition-all"
+                                        onClick={() => {
+                                          const input = document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement;
+                                          const val = parseInt(input.value) || 0;
+                                          onUpdateDistrictQuota?.(dist.code, val);
+                                          toast.success(`${dist.name} limit updated to ${val}`);
+                                        }}
+                                      >
+                                        SET LIMIT
+                                      </Button>
+                                      {total > 0 && (
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 px-3 rounded-xl font-black text-[10px] uppercase transition-all"
+                                          onClick={() => {
+                                            onUpdateDistrictQuota?.(dist.code, 0);
+                                            const input = document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement;
+                                            if (input) input.value = '';
+                                            toast.info(`${dist.name} quota set to Unlimited`);
+                                          }}
+                                        >
+                                          Reset
+                                        </Button>
+                                      )}
                                     </div>
-                                    <Button 
-                                      size="sm" 
-                                      className="h-10 px-4 bg-brand-magenta text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/10 active:scale-95 transition-all"
-                                      onClick={() => {
-                                        const input = document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement;
-                                        const val = parseInt(input.value) || 0;
-                                        onUpdateDistrictQuota?.(dist.code, val);
-                                        toast.success(`${dist.name} shared quota updated to ${val}`);
-                                      }}
-                                    >
-                                      UPDATE / SET
-                                    </Button>
+                                    
+                                    {/* Real-time details in badge rows */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-[10px] font-black tracking-wider uppercase text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                                        ക്വാട്ട (Limit): <strong className="text-slate-800 ml-1">{total > 0 ? total : 'Unlimited (പരിധിയില്ല)'}</strong>
+                                      </span>
+                                      
+                                      <span className="text-[10px] font-black tracking-wider uppercase text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                                        ചെയ്തത് (Used): <strong className="text-emerald-700">{used}</strong>
+                                      </span>
+
+                                      {total > 0 ? (
+                                        <span className={cn(
+                                          "text-[10px] font-black tracking-wider uppercase px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5",
+                                          used >= total 
+                                            ? "text-red-600 bg-red-50 border-red-100" 
+                                            : "text-brand-magenta bg-brand-magenta/5 border-brand-magenta/10"
+                                        )}>
+                                          {used >= total ? (
+                                            <>Locked (കഴിഞ്ഞു)</>
+                                          ) : (
+                                            <>ബാക്കി (Balance): <strong className="text-brand-magenta">{total - used}</strong></>
+                                          )}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-black tracking-wider uppercase text-brand-blue bg-brand-blue/5 border border-brand-blue/10 px-2.5 py-1.5 rounded-lg">
+                                          ബാക്കി: Unlimited
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Progress display */}
+                                    {total > 0 && (
+                                      <div className="flex items-center gap-2 w-32 shrink-0">
+                                        <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                                          <div 
+                                            className={cn(
+                                              "h-full transition-all duration-1000",
+                                              percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-orange-500' : 'bg-brand-magenta'
+                                            )}
+                                            style={{ width: `${Math.min(100, percent)}%` }}
+                                          />
+                                        </div>
+                                        <span className={cn(
+                                          "text-[9px] font-black uppercase text-right w-10",
+                                          percent >= 100 ? 'text-red-600' : 'text-slate-500'
+                                        )}>{percent}%</span>
+                                      </div>
+                                    )}
                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col gap-1.5 w-32">
-                                    <div className="flex justify-between items-center text-[9px] font-black uppercase">
-                                      <span className="text-slate-400">{used} Registered</span>
-                                      <span className={percent >= 90 ? 'text-red-500' : 'text-brand-magenta'}>{percent}%</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                      <div 
-                                        className={cn(
-                                          "h-full transition-all duration-1000",
-                                          percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-orange-500' : 'bg-brand-magenta'
-                                        )}
-                                        style={{ width: `${Math.min(100, percent)}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={cn(
-                                    "font-black text-[9px] uppercase tracking-widest",
-                                    total > 0 && used >= total ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
-                                  )}>
-                                    {total > 0 && used >= total ? "Locked" : total > 0 ? `${total - used} Left` : "Unlimited"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {total > 0 && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="text-red-400 hover:text-red-600 h-8 font-bold text-[10px] uppercase"
-                                      onClick={() => {
-                                        onUpdateDistrictQuota?.(dist.code, 0);
-                                        (document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement).value = '0';
-                                        toast.info(`${dist.name} quota removed`);
-                                      }}
-                                    >
-                                      Clear
-                                    </Button>
-                                  )}
                                 </TableCell>
                               </TableRow>
                             );
