@@ -91,6 +91,15 @@ export default function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+
+  useEffect(() => {
+    const handleQuota = () => {
+      setIsQuotaExceeded(true);
+    };
+    window.addEventListener('firestore-quota-exceeded', handleQuota);
+    return () => window.removeEventListener('firestore-quota-exceeded', handleQuota);
+  }, []);
 
   useEffect(() => {
     async function checkClaimSubmission() {
@@ -115,8 +124,12 @@ export default function App() {
           }
         }
         setHasSubmittedClaim(submitted);
-      } catch (err) {
-        console.error("Error checking claim submission status:", err);
+      } catch (err: any) {
+        const errMsg = err?.message || String(err);
+        if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
+          setIsQuotaExceeded(true);
+        }
+        console.warn("Status check notice: Database is running in offline/quota-exceeded mode:", errMsg);
       }
     }
     checkClaimSubmission();
@@ -1499,6 +1512,26 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans antialiased text-foreground selection:bg-brand-blue/20">
+      {isQuotaExceeded && (
+        <div className="bg-amber-500 text-slate-900 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-amber-600/30 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
+          <div className="flex items-center gap-1.5 justify-center">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-950 animate-pulse" />
+            <span>ഡാറ്റാബേസ് കണക്ഷൻ തടസ്സപ്പെട്ടു (Firestore Daily Free Read Quota Crossed).</span>
+          </div>
+          <span className="text-[10px] md:text-xs opacity-95">
+            നാളെ വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ{' '} 
+            <a 
+              href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/ai-studio-2eaab070-9ce1-4d91-bbeb-abf7bacb0528/data?openUpgradeDialog=true" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="underline font-black text-amber-950 hover:text-white transition-colors"
+            >
+              ഇവിടെ ക്ലിക്ക് ചെയ്ത് ബില്ലിംഗ് അപ്ഗ്രേഡ് ചെയ്യുക
+            </a>.
+          </span>
+        </div>
+      )}
+
       {view === 'landing' && (
         <LandingPage 
           announcements={announcements}

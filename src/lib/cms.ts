@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, query, addDoc, deleteDoc, serverTimestamp, orderBy, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
+import { handleFirestoreError, OperationType } from './firebase';
 
 export interface OrgSettings {
   fullName: string;
@@ -111,6 +112,8 @@ export function subscribeToOrgSettings(callback: (settings: OrgSettings) => void
     } else {
       callback(defaultSettings);
     }
+  }, (err) => {
+    handleFirestoreError(err, OperationType.GET, `settings/${SETTINGS_DOC_ID}`);
   });
 }
 
@@ -153,6 +156,8 @@ export function subscribeToGallery(callback: (items: GalleryItem[]) => void) {
       return timeB - timeA;
     });
     callback(items);
+  }, (err) => {
+    handleFirestoreError(err, OperationType.GET, 'gallery');
   });
 }
 
@@ -193,6 +198,8 @@ export function subscribeToGalleryCategories(callback: (categories: string[]) =>
       categories.sort((a, b) => a.localeCompare(b));
       callback(categories);
     }
+  }, (err) => {
+    handleFirestoreError(err, OperationType.GET, 'gallery_categories');
   });
 }
 
@@ -240,6 +247,8 @@ export function subscribeToAnnouncements(callback: (items: Announcement[]) => vo
       ...doc.data()
     })) as Announcement[];
     callback(items);
+  }, (err) => {
+    handleFirestoreError(err, OperationType.GET, 'announcements');
   });
 }
 

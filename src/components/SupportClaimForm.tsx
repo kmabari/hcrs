@@ -129,8 +129,14 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             setAlreadySubmitted(true);
           }
         }
-      } catch (err) {
-        console.error("Error fetching existing claim:", err);
+      } catch (err: any) {
+        const errMsg = err?.message || String(err);
+        if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted') || errMsg.toLowerCase().includes('exhausted')) {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('firestore-quota-exceeded'));
+          }
+        }
+        console.warn("Status check notice: Database is running in offline/quota-exceeded mode:", errMsg);
       } finally {
         setLoading(false);
       }
