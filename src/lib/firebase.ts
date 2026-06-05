@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, memoryLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -29,11 +29,40 @@ const finalConfig = getFirebaseConfig();
 
 const app = initializeApp(finalConfig);
 const secondaryApp = initializeApp(finalConfig, 'Secondary');
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-}, finalConfig.firestoreDatabaseId);
+
+// Gracefully determine which local cache configuration is safe to use.
+// In iframe/sandbox environments, IndexedDB and tab synchronizations 
+// can be blocked by browser security policies and cause connection hangs.
+const getSafeFirestoreSettings = () => {
+  try {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      return { localCache: memoryLocalCache() };
+    }
+    // Proactively verify we can access IndexedDB
+    // Often merely accessing window.indexedDB throws a SecurityError in sandboxed iframes.
+    const _ = window.indexedDB;
+    
+    // Check if we are running in an iframe, and if we are, use simple persistentLocalCache
+    // or skip multi-tab synchronization to avoid cross-frame locking issues.
+    const inIframe = window.self !== window.top;
+    if (inIframe) {
+      return {
+        localCache: persistentLocalCache({}) // Single tab persistence, no multi-tab manager locks
+      };
+    }
+
+    return {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    };
+  } catch (e) {
+    console.warn("IndexedDB access is restricted or threw an error. Falling back to memory cache.", e);
+    return { localCache: memoryLocalCache() };
+  }
+};
+
+export const db = initializeFirestore(app, getSafeFirestoreSettings(), finalConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const storage = getStorage(app);

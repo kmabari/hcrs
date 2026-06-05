@@ -130,6 +130,22 @@ const SECOND_ADMINS = [
   'hcrsthiruvananthapuram@hcrs.society'
 ];
 
+const hasValidity = (u: any) => {
+  if (u.status !== 'active') return false;
+  if (!u.expiryDate) return false;
+  
+  let expDate: Date;
+  if (u.expiryDate.seconds !== undefined) {
+    expDate = new Date(u.expiryDate.seconds * 1000);
+  } else if (u.expiryDate.toDate && typeof u.expiryDate.toDate === 'function') {
+    expDate = u.expiryDate.toDate();
+  } else {
+    expDate = new Date(u.expiryDate);
+  }
+  
+  return expDate.getTime() > Date.now();
+};
+
 const getCategoryLabel = (catId: string) => {
   const mapping: Record<string, string> = {
     'digital': 'Digital Redeem Coupon (ഡിജിറ്റൽ റെഡീം കൂപ്പൺ)',
@@ -375,11 +391,13 @@ export default function AdminDashboard({
   // Custom sidebar active tab and pagination states
   const [activeTab, setActiveTab2] = useState('list');
   const [currentPage, setCurrentPage] = useState(1);
+  const [validActivePage, setValidActivePage] = useState(1);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Automatically reset to page 1 on search or filter changes
   useEffect(() => {
     setCurrentPage(1);
+    setValidActivePage(1);
   }, [searchTerm, districtFilter, statusFilter, sourceFilter]);
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
@@ -788,22 +806,35 @@ export default function AdminDashboard({
     setEditingMember(null);
   };
 
+  const actualMembers = useMemo(() => {
+    return members.filter(m => {
+      const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
+      return !isAnyAdmin && m.status !== 'deleted';
+    });
+  }, [members]);
+
   const stats = useMemo(() => {
+    let total = 0;
     let active = 0;
     let pending = 0;
     let renewals = 0;
     
-    for (const m of members) {
+    for (const m of actualMembers) {
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       if (!matchesDistrict) continue;
 
-      if (m.status === 'active') active++;
-      else if (m.status === 'pending' && !m.renewalPending) pending++;
-      else if (m.renewalPending) renewals++;
+      total++;
+      if (m.status === 'pending' && !m.renewalPending) {
+        pending++;
+      } else if (m.status === 'active' || m.renewalPending) {
+        active++;
+      }
+      
+      if (m.renewalPending) renewals++;
     }
 
-    return { active, pending, renewals };
-  }, [members, districtFilter]);
+    return { total, active, pending, renewals };
+  }, [actualMembers, districtFilter]);
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -843,6 +874,44 @@ export default function AdminDashboard({
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredMembers.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredMembers, currentPage, itemsPerPage]);
+
+  const validActiveCount = useMemo(() => {
+    return members.filter(m => {
+      const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
+      if (isAnyAdmin) return false;
+      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      if (!matchesDistrict) return false;
+      return hasValidity(m);
+    }).length;
+  }, [members, districtFilter]);
+
+  const filteredValidActiveMembers = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    const districtMap = new Map(DISTRICTS.map(d => [d.code, d.name.toLowerCase()]));
+
+    return members.filter(m => {
+      const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
+      if (isAnyAdmin) return false;
+
+      const matchesSearch = !term || 
+                           (m.name && m.name.toLowerCase().includes(term)) || 
+                           (m.mobile && String(m.mobile).includes(term)) ||
+                           (m.membershipId && m.membershipId.toLowerCase().includes(term)) ||
+                           (m.email && m.email.toLowerCase().includes(term)) ||
+                           (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
+                           (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
+                           (m.district && districtMap.get(m.district)?.includes(term));
+      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      
+      return matchesSearch && matchesDistrict && hasValidity(m);
+    });
+  }, [members, searchTerm, districtFilter]);
+
+  const paginatedValidActiveMembers = useMemo(() => {
+    const startIndex = (validActivePage - 1) * itemsPerPage;
+    return filteredValidActiveMembers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredValidActiveMembers, validActivePage, itemsPerPage]);
 
 
   const pendingRequests = useMemo(() => {
@@ -1593,12 +1662,31 @@ export default function AdminDashboard({
       </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <StatsCard title="Total Network" value={members.length} icon={<Users className="w-8 h-8"/>} color="brand-blue" />
-              <StatsCard title="Pending Review" value={members.filter(m => m.status === 'pending' && !m.renewalPending).length} icon={<Clock className="w-8 h-8"/>} color="orange" />
-              <StatsCard title="Renewals" value={members.filter(m => m.renewalPending).length} icon={<Plus className="w-8 h-8"/>} color="brand-magenta" />
-              <StatsCard title="Verified Members" value={members.filter(m => m.status === 'active').length} icon={<CheckCircle2 className="w-8 h-8"/>} color="green" />
-              <StatsCard title="Emergency Cases" value={claimStats.emergencyCount} icon={<ShieldAlert className="w-8 h-8"/>} color="red" />
+            <div className="space-y-6">
+              {/* Membership Statistics Section */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
+                  Membership Statistics (അംഗത്വ വിവരങ്ങൾ)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatsCard title="Total Members (ആകെ അംഗങ്ങൾ)" value={stats.total} icon={<Users className="w-8 h-8"/>} color="brand-blue" />
+                  <StatsCard title="Pending Review (പുതിയ അപേക്ഷകൾ)" value={stats.pending} icon={<Clock className="w-8 h-8"/>} color="orange" />
+                  <StatsCard title="Verified Members (വെരിഫൈഡ് അംഗങ്ങൾ)" value={stats.active} icon={<CheckCircle2 className="w-8 h-8"/>} color="green" />
+                  <StatsCard title="Renewals (റിന്യൂവൽ പെൻഡിങ്)" value={stats.renewals} icon={<Plus className="w-8 h-8"/>} color="brand-magenta" />
+                </div>
+              </div>
+
+              {/* Support Claims & Emergency Section */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
+                  Support Claims & Alerts (സഹായ ധന അപേക്ഷകൾ)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <StatsCard title="Red Claims (റെഡ് അലേർട്ട്)" value={(claimStats.priorityCounts['EMERGENCY RED'] || 0) + (claimStats.priorityCounts['RED'] || 0)} icon={<ShieldAlert className="w-8 h-8"/>} color="red" />
+                  <StatsCard title="Orange Claims (ഓറഞ്ച് അലേർട്ട്)" value={claimStats.priorityCounts['ORANGE'] || 0} icon={<ShieldAlert className="w-8 h-8"/>} color="orange" />
+                  <StatsCard title="Green Claims (ഗ്രീൻ അലേർട്ട്)" value={claimStats.priorityCounts['GREEN'] || 0} icon={<CheckCircle2 className="w-8 h-8"/>} color="green" />
+                </div>
+              </div>
             </div>
 
             {false && isSuperAdmin && countOf2026Members > 0 && (
@@ -1650,6 +1738,9 @@ export default function AdminDashboard({
                   </TabsTrigger>
                   <TabsTrigger value="renewals" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
                     Renewals <Badge className="ml-1.5 bg-orange-100 text-orange-600 border-none text-[8px] px-1.5 py-0">{stats.renewals}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="valid_active" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
+                    Active & Valid (വാലിഡിറ്റിയുള്ളവർ) <Badge className="ml-1.5 bg-green-100 text-green-600 border-none text-[8px] px-1.5 py-0">{validActiveCount}</Badge>
                   </TabsTrigger>
                   <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                     <Settings className="w-3 h-3 text-slate-400" />
@@ -2133,6 +2224,215 @@ export default function AdminDashboard({
                    </div>
                    <p className="text-slate-500 font-medium tracking-tight">No members found matching your search.</p>
                    <p className="text-slate-400 text-sm mt-1">Waiting for new membership applications.</p>
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="valid_active">
+            <Card className="border-none shadow-sm overflow-hidden">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow className="border-slate-200">
+                    <TableHead className="w-[80px]">Photo</TableHead>
+                    <TableHead>Member Info</TableHead>
+                    <TableHead className="hidden lg:table-cell">District/Assly</TableHead>
+                    <TableHead className="hidden md:table-cell">Source</TableHead>
+                    <TableHead className="hidden md:table-cell">ID Details</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="bg-white">
+                  {paginatedValidActiveMembers.map((member) => (
+                    <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                      <TableCell>
+                        <div className="relative group cursor-pointer" onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file && onUpdatePhoto) {
+                              onUpdatePhoto(file, member.uid);
+                            }
+                          };
+                          input.click();
+                        }}>
+                          <Avatar className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50 group-hover:opacity-70 transition-all">
+                            <AvatarImage src={member.photoUrl} alt={member.name} className="object-cover" />
+                            <AvatarFallback className="bg-brand-blue/20 text-brand-blue rounded-lg font-bold">
+                              {(member.name || '?').charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                            <Camera className="w-4 h-4 text-white drop-shadow-md" />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div 
+                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors"
+                          onClick={() => setViewingMember(member)}
+                        >
+                          {member.name}
+                        </div>
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          <div className="text-xs text-slate-500 flex items-center gap-1">
+                            <Smartphone className="w-3 h-3" />
+                            {member.mobile}
+                          </div>
+                          <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
+                            <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-sm font-medium text-slate-700">
+                          {DISTRICTS.find(d => d.code === member.district)?.name || member.district}
+                        </div>
+                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />
+                          {member.assemblyConstituency}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {member.registeredBy ? (
+                          <div className="flex flex-col gap-1">
+                             <Badge variant="outline" className="w-fit text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/20 bg-brand-magenta/5">Manual</Badge>
+                             <div className="text-[10px] font-bold text-slate-400 truncate max-w-[100px]" title={member.registeredByName}>
+                               By: {member.registeredByName || '---'}
+                             </div>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="w-fit text-[9px] font-black uppercase text-brand-blue border-brand-blue/20 bg-brand-blue/5">Online</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="text-xs font-mono font-bold text-brand-blue bg-brand-blue/10 px-2 py-1 rounded inline-block">
+                          {member.membershipId}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
+                          SN: {member.serialNo}
+                        </div>
+                        <div className="text-[9px] text-[#0066FF] font-extrabold mt-1">
+                          Valid Till: {member.expiryDate ? (member.expiryDate.seconds ? new Date(member.expiryDate.seconds * 1000).toLocaleDateString() : new Date(member.expiryDate).toLocaleDateString()) : '---'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                         <div className="space-y-2">
+                             <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2.5 py-0.5 rounded-full font-bold">Active & Valid</Badge>
+                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                sendWAMessage({
+                                  name: member.name,
+                                  mobile: member.mobile,
+                                  uid: member.uid,
+                                  pin: member.pin,
+                                  membershipId: member.membershipId
+                                });
+                              }}
+                              className="h-8 w-8 text-green-600 hover:bg-green-50"
+                              title="Chat on WhatsApp"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setViewingMember(member)}
+                            className="h-8 w-8 text-brand-blue hover:bg-brand-blue/10"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingMember(member)}
+                            className="h-8 w-8 text-slate-600 hover:bg-slate-100"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(member.uid)}
+                              className="h-8 w-8 text-red-500 hover:bg-red-50"
+                              title="Delete Member"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredValidActiveMembers.length > itemsPerPage && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-slate-100 bg-white">
+                  <p className="text-xs font-bold text-slate-500">
+                    Showing {Math.min(filteredValidActiveMembers.length, (validActivePage - 1) * itemsPerPage + 1)}–{Math.min(filteredValidActiveMembers.length, validActivePage * itemsPerPage)} of {filteredValidActiveMembers.length} results
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setValidActivePage(prev => Math.max(1, prev - 1))}
+                      disabled={validActivePage === 1}
+                      className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
+                    >
+                      PREV
+                    </Button>
+                    {Array.from({ length: Math.ceil(filteredValidActiveMembers.length / itemsPerPage) }).map((_, idx) => {
+                      const pNum = idx + 1;
+                      if (pNum === 1 || pNum === Math.ceil(filteredValidActiveMembers.length / itemsPerPage) || Math.abs(validActivePage - pNum) <= 1) {
+                        return (
+                          <Button
+                            key={`page-${pNum}`}
+                            onClick={() => setValidActivePage(pNum)}
+                            variant={validActivePage === pNum ? 'default' : 'outline'}
+                            size="sm"
+                            className={cn(
+                              "w-9 h-9 p-0 font-black rounded-xl text-xs",
+                              validActivePage === pNum ? "bg-brand-magenta text-white hover:bg-brand-magenta/90" : "border-slate-200"
+                            )}
+                          >
+                            {pNum}
+                          </Button>
+                        );
+                      }
+                      if (pNum === 2 || pNum === Math.ceil(filteredValidActiveMembers.length / itemsPerPage) - 1) {
+                        return <span className="text-slate-400 text-xs px-1" key={`ellipsis-${pNum}`}>...</span>;
+                      }
+                      return null;
+                    })}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setValidActivePage(prev => Math.min(Math.ceil(filteredValidActiveMembers.length / itemsPerPage), prev + 1))}
+                      disabled={validActivePage === Math.ceil(filteredValidActiveMembers.length / itemsPerPage)}
+                      className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
+                    >
+                      NEXT
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {filteredValidActiveMembers.length === 0 && (
+                <div className="py-20 text-center bg-white">
+                   <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle className="text-slate-300 w-8 h-8" />
+                   </div>
+                   <p className="text-slate-500 font-medium tracking-tight">No active & valid members found matching your search.</p>
+                   <p className="text-slate-400 text-sm mt-1">Make sure you have approved renewals.</p>
                 </div>
               )}
             </Card>
