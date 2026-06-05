@@ -1,12 +1,39 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-const secondaryApp = initializeApp(firebaseConfig, 'Secondary');
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Support external deployment (Vercel, Netlify, etc.) using custom environment variables
+const getFirebaseConfig = () => {
+  const metaObj = import.meta as any;
+  const envConfig = {
+    apiKey: metaObj.env?.VITE_FIREBASE_API_KEY,
+    authDomain: metaObj.env?.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: metaObj.env?.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: metaObj.env?.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: metaObj.env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: metaObj.env?.VITE_FIREBASE_APP_ID,
+    firestoreDatabaseId: metaObj.env?.VITE_FIREBASE_DATABASE_ID || '(default)'
+  };
+
+  if (envConfig.apiKey && envConfig.projectId) {
+    console.log("Firebase initialized using Vercel/Netlify environment variables config.");
+    return envConfig;
+  }
+
+  return firebaseConfig;
+};
+
+const finalConfig = getFirebaseConfig();
+
+const app = initializeApp(finalConfig);
+const secondaryApp = initializeApp(finalConfig, 'Secondary');
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+}, finalConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const storage = getStorage(app);

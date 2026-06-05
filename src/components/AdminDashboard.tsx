@@ -100,6 +100,8 @@ interface AdminDashboardProps {
   districtQuotasUsed?: Record<string, number>;
   handleLogout: () => void;
   onViewCard?: () => void;
+  onRefreshMembers?: () => void;
+  isSyncingMembers?: boolean;
 }
 
 const MAIN_ADMINS = [
@@ -155,7 +157,9 @@ export default function AdminDashboard({
   districtQuotas = {},
   districtQuotasUsed = {},
   handleLogout,
-  onViewCard
+  onViewCard,
+  onRefreshMembers,
+  isSyncingMembers = false
 }: AdminDashboardProps) {
   const getDistrictCode = (nameOrCode: string) => {
     if (!nameOrCode) return DISTRICTS[0].code;
@@ -1696,6 +1700,18 @@ export default function AdminDashboard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {onRefreshMembers && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isSyncingMembers}
+                        onClick={onRefreshMembers}
+                        className="h-10 px-3.5 gap-1.5 font-bold border-slate-200 text-slate-600 hover:text-brand-blue bg-white hover:bg-slate-50 rounded-xl text-xs cursor-pointer select-none"
+                      >
+                        <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
+                        {isSyncingMembers ? 'Syncing...' : 'Refresh'}
+                      </Button>
+                    )}
                     <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
                       <SelectTrigger className="flex-1 sm:w-[130px] h-10 bg-white border-slate-200 rounded-xl text-xs font-bold disabled:opacity-75">
                         <SelectValue placeholder="District" />

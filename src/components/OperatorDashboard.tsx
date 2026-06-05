@@ -87,6 +87,8 @@ interface OperatorDashboardProps {
   isDirectManual?: boolean;
   isSecondAdmin?: boolean;
   onViewCard?: () => void;
+  onRefreshMembers?: () => void;
+  isSyncingMembers?: boolean;
 }
 
 export default function OperatorDashboard({ 
@@ -100,7 +102,9 @@ export default function OperatorDashboard({
   handleLogout,
   isDirectManual = false,
   isSecondAdmin = false,
-  onViewCard
+  onViewCard,
+  onRefreshMembers,
+  isSyncingMembers = false
 }: OperatorDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -406,9 +410,23 @@ export default function OperatorDashboard({
                     <h3 className="font-sans font-black text-slate-800 uppercase text-sm tracking-tight">District Members List</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase">Showing registered entries in {districtName}</p>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 bg-emerald-50/50 border border-emerald-100 px-3 py-1.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    District Database Access
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    {onRefreshMembers && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isSyncingMembers}
+                        onClick={onRefreshMembers}
+                        className="text-[10px] h-8 px-3 gap-1.5 font-bold border-slate-200 text-slate-600 hover:text-brand-magenta transition-colors bg-white hover:bg-slate-50 cursor-pointer"
+                      >
+                        <RefreshCw className={cn("w-3 h-3 text-slate-500", isSyncingMembers && "animate-spin")} />
+                        {isSyncingMembers ? 'Syncing...' : 'Refresh'}
+                      </Button>
+                    )}
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 bg-emerald-50/50 border border-emerald-100 px-3 py-1.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      District Database Access
+                    </div>
                   </div>
                 </div>
 

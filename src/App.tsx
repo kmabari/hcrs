@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import LandingPage from './components/LandingPage';
 import RegistrationForm from './components/RegistrationForm';
 import RenewalForm from './RenewalForm';
@@ -92,6 +92,53 @@ export default function App() {
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [isSyncingDocs, setIsSyncingDocs] = useState(false);
+
+  const refreshMembersList = useCallback(async (customUser?: UserProfile) => {
+    const activeUser = customUser || user;
+    if (!activeUser) return;
+    const isAdmin = activeUser.role === 'admin' || activeUser.isAdmin;
+    const isOperator = activeUser.role === 'operator';
+    if (!isAdmin && !isOperator) return;
+
+    setIsSyncingDocs(true);
+    const loadingToast = toast.loading('Syncing database entries...');
+    try {
+      let q;
+      const currentEmail = (activeUser.email || '').toLowerCase().trim();
+      if (isAdmin) {
+         const isSuper = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) || !activeUser.district;
+         q = isSuper 
+           ? query(collection(db, 'users')) 
+           : query(collection(db, 'users'), where('district', '==', activeUser.district));
+      } else {
+         q = activeUser.district 
+           ? query(collection(db, 'users'), where('district', '==', activeUser.district))
+           : query(collection(db, 'users'), where('registeredBy', '==', activeUser.uid));
+      }
+
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs
+        .map(doc => ({ uid: doc.id, ...(doc.data() as any) } as UserProfile))
+        .filter(u => {
+          const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
+          return !isMainAdmin;
+        });
+
+      setMembers(list);
+      toast.success('Database entries synchronized successfully.', { id: loadingToast });
+    } catch (err: any) {
+      console.error("Members fetch error during refresh:", err);
+      const errMsg = err?.message || String(err);
+      if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
+        setIsQuotaExceeded(true);
+      }
+      toast.error('Sync failed. Please try again.', { id: loadingToast });
+      handleFirestoreError(err, OperationType.GET, 'users');
+    } finally {
+      setIsSyncingDocs(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleQuota = () => {
@@ -525,32 +572,7 @@ export default function App() {
           }
 
           if (isAdmin || isOperator) {
-            if (!unsubscribeMembers) {
-              let q;
-              if (isAdmin) {
-                 const isSuper = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) || !userData.district;
-                 q = isSuper 
-                   ? query(collection(db, 'users')) 
-                   : query(collection(db, 'users'), where('district', '==', userData.district));
-              } else {
-                 q = userData.district 
-                   ? query(collection(db, 'users'), where('district', '==', userData.district))
-                   : query(collection(db, 'users'), where('registeredBy', '==', authUser.uid));
-              }
-              
-              unsubscribeMembers = onSnapshot(q, (snapshot) => {
-                const list = snapshot.docs
-                  .map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile))
-                  .filter(u => {
-                    const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
-                    return !isMainAdmin;
-                  });
-                  
-                setMembers(list);
-              }, (err) => {
-                console.error("Members fetch error:", err);
-              });
-            }
+             refreshMembersList(userData);
           }
         } else {
           console.warn("Profile document not found for UID:", authUser.uid);
@@ -612,6 +634,7 @@ export default function App() {
         }
       }, (error) => {
         console.error("Profile listen error:", error);
+        handleFirestoreError(error, OperationType.GET, 'users/' + authUser.uid);
         if (isSuperAdminEmail) setView('admin');
         else if (!isMagicLink && view !== 'register') setView('landing');
       });
@@ -972,18 +995,31 @@ export default function App() {
 
       const isBulk = orgSettings?.registrationMode === 'bulk';
 
-      await updateDoc(doc(db, 'users', uid), {
+      const updatePayload: Partial<UserProfile> = {
         status: 'active',
         isApproved: true,
         membershipId: finalId,
-        issueDate: serverTimestamp(),
-        registrationDate: serverTimestamp(), // JOINING/REGISTRATION DATE updated to exact day of activation
         expiryDate: expiry,
         waStatus: isBulk ? 'Pending' : 'Sent',
         stateCode: 'KL',
         districtCode: distCode,
         constituencyCode: assemblyCode
+      };
+
+      await updateDoc(doc(db, 'users', uid), {
+        ...updatePayload,
+        issueDate: serverTimestamp(),
+        registrationDate: serverTimestamp() // JOINING/REGISTRATION DATE updated to exact day of activation
       });
+
+      // Optimistic state update:
+      setMembers(prev => prev.map(m => m.uid === uid ? { 
+        ...m, 
+        ...updatePayload, 
+        issueDate: now, 
+        registrationDate: now 
+      } : m));
+
       toast.success('Member approved successfully', { id: loadingToast });
     } catch (error) {
       toast.error('Approval failed', { id: loadingToast });
@@ -1068,6 +1104,8 @@ export default function App() {
 
       console.log(`Processing offline entry for district: ${distCodeForQuota}, quotaRef: districtQuotas/${distCodeForQuota}`);
 
+      let newlyCreatedUser: UserProfile | null = null;
+
       await runTransaction(db, async (transaction) => {
         // 1. ALL READS FIRST
         const qSnap = await transaction.get(quotaRef);
@@ -1137,7 +1175,13 @@ export default function App() {
           constituencyCode: assemblyCode
         };
         transaction.set(userRef, offlineMemberData);
+        newlyCreatedUser = offlineMemberData;
       });
+
+      if (newlyCreatedUser) {
+        setMembers(prev => [newlyCreatedUser!, ...prev]);
+      }
+
       toast.success('അംഗത്തെ വിജയകരമായി ചേർത്തു (Member added successfully).', { id: loadingToast });
       return uid;
     } catch (error: any) {
@@ -1236,6 +1280,14 @@ export default function App() {
       }
 
       await updateDoc(doc(db, 'users', uid), finalData);
+
+      // Optimistic state update:
+      setMembers(prev => prev.map(m => m.uid === uid ? { 
+        ...m, 
+        ...finalData,
+        issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || m.issueDate)
+      } : m));
+
       toast.success('Successfully updated.', { id: loadingToast });
     } catch (error) {
       toast.error('Update failed.', { id: loadingToast });
@@ -1306,6 +1358,10 @@ export default function App() {
       if (shouldHardDelete) {
         // Complete hard delete from Firestore
         await deleteDoc(userRef);
+        
+        // Optimistic state update: remove permanently
+        setMembers(prev => prev.filter(m => m.uid !== uid));
+        
         toast.success('അംഗത്തെ വിജയകരമായി ഡാറ്റാബേസിൽ നിന്ന് പൂർണ്ണമായും ഒഴിവാക്കി. (Deleted permanently.)', { id: loadingToast });
       } else {
         // Update status to deleted instead of hard delete
@@ -1314,6 +1370,10 @@ export default function App() {
           deletedAt: serverTimestamp(),
           deletedBy: auth.currentUser?.email
         });
+        
+        // Optimistic state update: mark as deleted
+        setMembers(prev => prev.map(m => m.uid === uid ? { ...m, status: 'deleted' } : m));
+        
         toast.success('Member deactivated and hidden.', { id: loadingToast });
       }
       console.log(`${shouldHardDelete ? 'Hard' : 'Soft'}-deleted user successfully: ${uid}`);
@@ -1342,6 +1402,10 @@ export default function App() {
         status: 'pending', // Force re-verification if needed
         pinResetRequested: true
       });
+      
+      // Optimistic state update:
+      setMembers(prev => prev.map(m => m.uid === uid ? { ...m, status: 'pending', pinResetRequested: true } : m));
+      
       toast.success('Password reset request marked. Please contact member.', { id: loadingToast });
     } catch (error) {
       toast.error('Reset failed', { id: loadingToast });
@@ -1917,6 +1981,8 @@ export default function App() {
               districtQuotasUsed={districtQuotasUsed}
               handleLogout={handleLogout}
               onViewCard={() => setView('card')}
+              onRefreshMembers={refreshMembersList}
+              isSyncingMembers={isSyncingDocs}
             />
         </div>
       )}
@@ -1935,6 +2001,8 @@ export default function App() {
             isDirectManual={isDirectManual}
             isSecondAdmin={SECOND_ADMINS.some(email => email.toLowerCase() === (user.email || '').toLowerCase())}
             onViewCard={() => setView('card')}
+            onRefreshMembers={refreshMembersList}
+            isSyncingMembers={isSyncingDocs}
           />
         </div>
       )}
