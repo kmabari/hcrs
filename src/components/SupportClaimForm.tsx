@@ -126,6 +126,20 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [childTotalPending, setChildTotalPending] = useState(0);
   const [childNotes, setChildNotes] = useState('');
 
+  // 4. Claimant State - Spouse (Wife or Husband)
+  const [spouseSelected, setSpouseSelected] = useState(false);
+  const [spouseRelation, setSpouseRelation] = useState<'Wife' | 'Husband' | ''>('');
+  const [spouseName, setSpouseName] = useState('');
+  const [spouseHighrichId, setSpouseHighrichId] = useState('');
+  const [spouseCategories, setSpouseCategories] = useState<string[]>([]);
+  const [spouseOtherCategory, setSpouseOtherCategory] = useState('');
+  const [spouseCategoryDetails, setSpouseCategoryDetails] = useState<Record<string, CategoryDetail>>({});
+  const [spouseNoBreakup, setSpouseNoBreakup] = useState(false);
+  const [spouseTotalPaid, setSpouseTotalPaid] = useState(0);
+  const [spouseTotalReceived, setSpouseTotalReceived] = useState(0);
+  const [spouseTotalPending, setSpouseTotalPending] = useState(0);
+  const [spouseNotes, setSpouseNotes] = useState('');
+
   // General Questions
   const [futurePreference, setFuturePreference] = useState('');
   const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
@@ -222,9 +236,24 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     setChildTotalPending(paid - rec);
   }, [childCategoryDetails, childCategories, childNoBreakup]);
 
+  // Recalculate Totals - Spouse
+  useEffect(() => {
+    if (spouseNoBreakup) return;
+    let paid = 0;
+    let rec = 0;
+    spouseCategories.forEach(cat => {
+      const detail = spouseCategoryDetails[cat] || { paid: 0, received: 0, pending: 0 };
+      paid += Number(detail.paid) || 0;
+      rec += Number(detail.received) || 0;
+    });
+    setSpouseTotalPaid(paid);
+    setSpouseTotalReceived(rec);
+    setSpouseTotalPending(paid - rec);
+  }, [spouseCategoryDetails, spouseCategories, spouseNoBreakup]);
+
   // Helper State Handlers
   const handleCategoryDetailChange = (
-    claimant: 'self' | 'parent' | 'child',
+    claimant: 'self' | 'parent' | 'child' | 'spouse',
     catId: string,
     field: 'paid' | 'received',
     value: string
@@ -232,7 +261,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     const numVal = parseFloat(value) || 0;
     const setter = claimant === 'self' ? setSelfCategoryDetails 
                  : claimant === 'parent' ? setParentCategoryDetails 
-                 : setChildCategoryDetails;
+                 : claimant === 'child' ? setChildCategoryDetails
+                 : setSpouseCategoryDetails;
     
     setter(prev => {
       const current = prev[catId] || { paid: 0, received: 0, pending: 0 };
@@ -243,7 +273,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   };
 
   const handleTotalChange = (
-    claimant: 'self' | 'parent' | 'child',
+    claimant: 'self' | 'parent' | 'child' | 'spouse',
     field: 'paid' | 'received',
     value: string
   ) => {
@@ -264,13 +294,21 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         setParentTotalReceived(numVal);
         setParentTotalPending(parentTotalPaid - numVal);
       }
-    } else {
+    } else if (claimant === 'child') {
       if (field === 'paid') {
         setChildTotalPaid(numVal);
         setChildTotalPending(numVal - childTotalReceived);
       } else {
         setChildTotalReceived(numVal);
         setChildTotalPending(childTotalPaid - numVal);
+      }
+    } else {
+      if (field === 'paid') {
+        setSpouseTotalPaid(numVal);
+        setSpouseTotalPending(numVal - spouseTotalReceived);
+      } else {
+        setSpouseTotalReceived(numVal);
+        setSpouseTotalPending(spouseTotalPaid - numVal);
       }
     }
   };
@@ -281,24 +319,27 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     if (selfSelected) t += selfTotalPaid;
     if (parentSelected) t += parentTotalPaid;
     if (childSelected) t += childTotalPaid;
+    if (spouseSelected) t += spouseTotalPaid;
     return t;
-  }, [selfSelected, selfTotalPaid, parentSelected, parentTotalPaid, childSelected, childTotalPaid]);
+  }, [selfSelected, selfTotalPaid, parentSelected, parentTotalPaid, childSelected, childTotalPaid, spouseSelected, spouseTotalPaid]);
 
   const combinedTotalReceived = useMemo(() => {
     let t = 0;
     if (selfSelected) t += selfTotalReceived;
     if (parentSelected) t += parentTotalReceived;
     if (childSelected) t += childTotalReceived;
+    if (spouseSelected) t += spouseTotalReceived;
     return t;
-  }, [selfSelected, selfTotalReceived, parentSelected, parentTotalReceived, childSelected, childTotalReceived]);
+  }, [selfSelected, selfTotalReceived, parentSelected, parentTotalReceived, childSelected, childTotalReceived, spouseSelected, spouseTotalReceived]);
 
   const combinedTotalPending = useMemo(() => {
     let t = 0;
     if (selfSelected) t += selfTotalPending;
     if (parentSelected) t += parentTotalPending;
     if (childSelected) t += childTotalPending;
+    if (spouseSelected) t += spouseTotalPending;
     return t;
-  }, [selfSelected, selfTotalPending, parentSelected, parentTotalPending, childSelected, childTotalPending]);
+  }, [selfSelected, selfTotalPending, parentSelected, parentTotalPending, childSelected, childTotalPending, spouseSelected, spouseTotalPending]);
 
   const isEmergency = hardshipStatus.some(h => ['bank', 'crisis', 'medical'].includes(h));
 
@@ -311,7 +352,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   }, [isEmergency, futurePreference]);
 
   // Form validations for active claimants
-  const hasAtLeastOneClaimant = selfSelected || parentSelected || childSelected;
+  const hasAtLeastOneClaimant = selfSelected || parentSelected || childSelected || spouseSelected;
   
   const selfValid = !selfSelected || (
     selfName.trim().length > 0 && 
@@ -330,11 +371,18 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     (childNoBreakup || childCategories.length > 0)
   );
 
+  const spouseValid = !spouseSelected || (
+    spouseName.trim().length > 0 && 
+    spouseRelation !== '' && 
+    (spouseNoBreakup || spouseCategories.length > 0)
+  );
+
   const formIsValid = 
     hasAtLeastOneClaimant && 
     selfValid && 
     parentValid && 
     childValid && 
+    spouseValid && 
     futurePreference && 
     hardshipStatus.length > 0 && 
     consentLegal;
@@ -441,6 +489,26 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         await addDoc(collection(db, 'claims'), childClaim);
       }
 
+      // 4. Submit Spouse Claim
+      if (spouseSelected) {
+        const spouseClaim = {
+          ...commonData,
+          relation: spouseRelation,
+          relationLabel: spouseRelation === 'Wife' ? 'ഭാര്യ (Wife)' : 'ഭർത്താവ് (Husband)',
+          userName: spouseName,
+          highrichId: spouseHighrichId,
+          categories: spouseCategories,
+          otherCategory: spouseOtherCategory,
+          categoryDetails: spouseCategoryDetails,
+          noBreakup: spouseNoBreakup,
+          totalPaid: spouseTotalPaid,
+          totalReceived: spouseTotalReceived,
+          totalPending: spouseTotalPending,
+          notes: spouseNotes,
+        };
+        await addDoc(collection(db, 'claims'), spouseClaim);
+      }
+
       setCompleted(true);
       toast.success('നിങ്ങളുടെ വിവരങ്ങൾ വിജയകരമായി സമർപ്പിച്ചിട്ടുണ്ട്.');
     } catch (error) {
@@ -479,7 +547,9 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                      claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
                      claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
                      claim.relation === 'Son' ? 'മകൻ (Son)' :
-                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : claim.relationLabel || claim.relation || 'Self'}
+                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
+                     claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                     claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
                   </Badge>
                 </div>
                 
@@ -1101,6 +1171,184 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                 <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
                   <span>ആകെ മിച്ച തുക:</span>
                   <span className="text-sm font-black text-brand-magenta">₹{childTotalPending.toLocaleString('en-IN')}</span>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* SLOT 4: SPOUSE CLAIM (ഭാര്യ или ഭർത്താവ് - Spouse Claimant) */}
+        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
+          <CardContent className="p-5 md:p-6 space-y-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">4</div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 uppercase">ഭാര്യ / ഭർത്താവ് ക്ലെയിം (Spouse Claimant)</h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">Add Wife or Husband</p>
+                </div>
+              </div>
+              <Checkbox 
+                checked={spouseSelected} 
+                onCheckedChange={(val) => {
+                  setSpouseSelected(!!val);
+                  if (!!val && !spouseRelation) setSpouseRelation('Wife'); // default relationship
+                }} 
+                className="w-5 h-5 border-slate-300" 
+              />
+            </div>
+
+            {spouseSelected && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                {/* Relationship selector - Wife or Husband */}
+                <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 font-medium">
+                   <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">ആ വ്യക്തിയുമായുള്ള ബന്ധം തിരഞ്ഞെടുക്കുക * (Relation - Required)</Label>
+                   <RadioGroup 
+                     value={spouseRelation} 
+                     onValueChange={(val) => setSpouseRelation(val as 'Wife' | 'Husband')} 
+                     className="flex gap-4"
+                   >
+                     <div className="flex items-center gap-2 cursor-pointer">
+                       <RadioGroupItem value="Wife" id="spouse-wife" className="text-brand-magenta" />
+                       <Label htmlFor="spouse-wife" className="text-xs font-bold text-slate-700 cursor-pointer">ഭാര്യ (Wife)</Label>
+                     </div>
+                     <div className="flex items-center gap-2 cursor-pointer">
+                       <RadioGroupItem value="Husband" id="spouse-husband" className="text-brand-magenta" />
+                       <Label htmlFor="spouse-husband" className="text-xs font-bold text-slate-700 cursor-pointer">ഭർത്താവ് (Husband)</Label>
+                     </div>
+                   </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ഭാര്യ / ഭർത്താവിന്റെ പേര് * (Full Name - Required)</Label>
+                    <Input 
+                      value={spouseName} 
+                      onChange={(e) => setSpouseName(e.target.value)} 
+                      placeholder="പേര് നൽകുക (Enter Full Name)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
+                    <Input 
+                      value={spouseHighrichId} 
+                      onChange={(e) => setSpouseHighrichId(e.target.value)} 
+                      placeholder="Enter HR ID if known"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Sub-breakup Selector */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+                   <Checkbox 
+                     id="spouse-no-breakup"
+                     checked={spouseNoBreakup}
+                     onCheckedChange={(val) => setSpouseNoBreakup(!!val)}
+                     className="w-4 h-4"
+                   />
+                   <Label htmlFor="spouse-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
+                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
+                   </Label>
+                </div>
+
+                {/* Breakup Details OR Total manual entries */}
+                {spouseNoBreakup ? (
+                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder="Paid"
+                          value={spouseTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('spouse', 'paid', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder="Received"
+                          value={spouseTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('spouse', 'received', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isSel = spouseCategories.includes(cat.id);
+                        return (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => {
+                              setSpouseCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
+                            }}
+                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                          >
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
+                            {cat.heading}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Detailed Inputs */}
+                    <div className="space-y-3">
+                      {spouseCategories.map(catId => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        return (
+                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
+                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder="Paid" 
+                                value={spouseCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder="Recd." 
+                                value={spouseCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes Input */}
+                <div className="space-y-1.5 pt-2">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
+                  <textarea 
+                    value={spouseNotes} 
+                    onChange={(e) => setSpouseNotes(e.target.value)} 
+                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
+                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                  />
+                </div>
+
+                {/* Amount mini-badge */}
+                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
+                  <span>ആകെ മിച്ച തുക:</span>
+                  <span className="text-sm font-black text-brand-magenta">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
                 </div>
               </motion.div>
             )}

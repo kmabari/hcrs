@@ -1997,6 +1997,39 @@ export default function AdminDashboard({
                           <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
                             <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
                           </div>
+                          
+                          {/* Family claims indicator on Member row */}
+                          {(() => {
+                            const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
+                            if (mClaims.length === 0) return null;
+                            return (
+                              <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[8px] font-black uppercase text-brand-magenta tracking-widest flex items-center gap-1">
+                                    {mClaims.length > 1 ? (
+                                      <>👥 Combo <span className="text-[7px] text-[#FF1493] bg-[#FF1493]/10 px-1 py-0.2 rounded font-black font-mono">({mClaims.length})</span></>
+                                    ) : '📋 Claim'}
+                                  </span>
+                                  <span className="text-[9px] font-black text-brand-magenta font-mono">
+                                    ₹{mClaims.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-0.5 mt-1 border-t border-brand-magenta/10 pt-1">
+                                  {mClaims.slice(0, 3).map((cl, cidx) => (
+                                    <div key={cl.id || cidx} className="flex justify-between items-center text-[9px] font-bold text-slate-600">
+                                      <span className="truncate max-w-[130px] font-extrabold">{cl.userName}</span>
+                                      <span className="text-brand-magenta font-black">₹{cl.totalPending?.toLocaleString('en-IN')}</span>
+                                    </div>
+                                  ))}
+                                  {mClaims.length > 3 && (
+                                    <div className="text-[8px] font-bold text-slate-400 text-right mt-0.5">
+                                      +{mClaims.length - 3} more...
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -2307,6 +2340,39 @@ export default function AdminDashboard({
                           <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
                             <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
                           </div>
+                          
+                          {/* Family claims indicator on Member row */}
+                          {(() => {
+                            const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
+                            if (mClaims.length === 0) return null;
+                            return (
+                              <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[8px] font-black uppercase text-brand-magenta tracking-widest flex items-center gap-1">
+                                    {mClaims.length > 1 ? (
+                                      <>👥 Combo <span className="text-[7px] text-[#FF1493] bg-[#FF1493]/10 px-1 py-0.2 rounded font-black font-mono">({mClaims.length})</span></>
+                                    ) : '📋 Claim'}
+                                  </span>
+                                  <span className="text-[9px] font-black text-brand-magenta font-mono">
+                                    ₹{mClaims.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-0.5 mt-1 border-t border-brand-magenta/10 pt-1">
+                                  {mClaims.slice(0, 3).map((cl, cidx) => (
+                                    <div key={cl.id || cidx} className="flex justify-between items-center text-[9px] font-bold text-slate-650">
+                                      <span className="truncate max-w-[130px] font-extrabold">{cl.userName}</span>
+                                      <span className="text-brand-magenta font-black">₹{cl.totalPending?.toLocaleString('en-IN')}</span>
+                                    </div>
+                                  ))}
+                                  {mClaims.length > 3 && (
+                                    <div className="text-[8px] font-bold text-slate-400 text-right mt-0.5">
+                                      +{mClaims.length - 3} more...
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -3553,6 +3619,13 @@ export default function AdminDashboard({
                         onClick={() => {
                           const ws = XLSX.utils.json_to_sheet(filteredClaims.map(c => ({
                             'Name': c.userName,
+                            'Relation': c.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                                       c.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                       c.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                       c.relation === 'Son' ? 'മകൻ (Son)' :
+                                       c.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
+                                       c.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                                       c.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : (c.relationLabel || c.relation || 'Self'),
                             'Mobile': c.userMobile,
                             'District': c.userDistrict,
                             'HR ID': c.highrichId,
@@ -3588,6 +3661,7 @@ export default function AdminDashboard({
                       <TableHeader className="bg-slate-50">
                         <TableRow>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Member Info</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Relation</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
@@ -3599,21 +3673,36 @@ export default function AdminDashboard({
                           <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
                             <TableCell className="px-6 py-4">
                               <div className="space-y-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
-                                  {claim.relation && (
-                                    <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03]">
-                                      {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                                       claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                       claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                       claim.relation === 'Son' ? 'മകൻ (Son)' :
-                                       claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : claim.relation}
-                                    </Badge>
-                                  )}
-                                </div>
+                                <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
                                 <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
+                                {(() => {
+                                  const comboCount = claims.filter(c => c.userMobile === claim.userMobile).length;
+                                  if (comboCount > 1) {
+                                    return (
+                                      <div className="mt-1">
+                                        <Badge variant="outline" className="text-[8px] h-4.5 font-bold uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20 py-0.5">
+                                          👥 Combo (കോംബോ - {comboCount} Claims)
+                                        </Badge>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 <p className="text-[9px] font-black text-brand-blue uppercase">{claim.membershipId}</p>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {claim.relation && (
+                                <Badge variant="outline" className="text-[9px] h-6 py-1 px-2.5 font-bold uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03] rounded-lg">
+                                  {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                                   claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                   claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                   claim.relation === 'Son' ? 'മകൻ (Son)' :
+                                   claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
+                                   claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                                   claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relation}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>
                                <div className="space-y-1">
@@ -3790,6 +3879,95 @@ export default function AdminDashboard({
                     </div>
                   </div>
                 )}
+
+                {/* Related Support Claims Section */}
+                {(() => {
+                  const mClaims = claims.filter(c => c.uid === viewingMember.uid || (viewingMember.mobile && c.userMobile === viewingMember.mobile));
+                  if (mClaims.length === 0) return null;
+                  return (
+                    <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest flex items-center gap-2">
+                          <ShieldAlert className="w-4 h-4 text-brand-magenta" />
+                          Support Claims submitted ({mClaims.length} Claims) - ക്ലെയിം വിവരങ്ങൾ
+                        </h4>
+                        {mClaims.length > 1 && (
+                          <Badge className="bg-brand-magenta text-white text-[9px] font-black uppercase rounded-lg px-2.5 py-1 border-none">
+                            Combo (കോംബോ കൂട്ടായ്മ)
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3.5">
+                        {mClaims.map((claim, idx) => (
+                          <div key={claim.id || idx} className="bg-white border border-slate-150 p-4 rounded-2xl shadow-xs space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5 flex-wrap">
+                                  {claim.userName}
+                                  <Badge variant="outline" className="text-[8px] h-4.5 py-0 font-extrabold bg-brand-magenta/5 text-brand-magenta border-brand-magenta/20 uppercase rounded">
+                                    {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                                     claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                     claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                     claim.relation === 'Son' ? 'മകൻ (Son)' :
+                                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
+                                     claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                                     claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
+                                  </Badge>
+                                </p>
+                                {claim.highrichId && (
+                                  <span className="text-[10px] font-mono text-brand-blue bg-blue-50/50 font-black px-1.5 py-0.5 rounded mt-1 inline-block">HR ID: {claim.highrichId}</span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <span className={cn(
+                                  "text-[9px] font-extrabold px-2 py-0.5 rounded-md text-white tracking-wider uppercase font-sans border-none inline-block",
+                                  claim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
+                                  claim.priorityStatus === 'RED' ? 'bg-red-500' :
+                                  claim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
+                                )}>
+                                  {claim.priorityStatus || 'GREEN'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-[11px] font-bold">
+                              <div>
+                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-extrabold block">Paid (പണമടച്ചത്)</span>
+                                <span className="text-slate-700 font-black">₹{claim.totalPaid?.toLocaleString('en-IN')}</span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-extrabold block">Received (ലഭിച്ചത്)</span>
+                                <span className="text-green-600 font-black">₹{claim.totalReceived?.toLocaleString('en-IN')}</span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-extrabold block">Pending (ബാക്കി)</span>
+                                <span className="text-brand-magenta font-black">₹{claim.totalPending?.toLocaleString('en-IN')}</span>
+                              </div>
+                            </div>
+
+                            {claim.notes && (
+                              <div className="text-[10px] font-medium text-slate-500 bg-slate-50 p-2 rounded-xl mt-1.5 border border-slate-100">
+                                <span className="font-extrabold text-[8px] text-slate-400 uppercase block tracking-wider mb-0.5">Admin Note (കുറിപ്പ്)</span>
+                                {claim.notes}
+                              </div>
+                            )}
+
+                            {claim.categories && claim.categories.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5 pt-1.5 border-t border-dashed border-slate-100">
+                                {claim.categories.map((cat: string, cIdx: number) => (
+                                  <Badge key={`${cat}-${cIdx}`} variant="outline" className="text-[8px] bg-slate-50 font-semibold border-slate-150 text-slate-650 h-4.5">
+                                    {getCategoryLabel(cat)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <DialogFooter className="gap-3">
                   <Button variant="outline" onClick={() => setViewingMember(null)} className="font-bold flex-1 md:flex-none">Close</Button>
@@ -4509,9 +4687,11 @@ export default function AdminDashboard({
                                    <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03]">
                                       {selectedClaim.relation === 'Self' ? 'സ്വന്തം (Self)' :
                                        selectedClaim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                       selectedClaim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                       selectedClaim.relation === 'Son' ? 'മകൻ (Son)' :
-                                       selectedClaim.relation === 'Daughter' ? 'മകൾ (Daughter)' : selectedClaim.relation}
+                                        selectedClaim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                        selectedClaim.relation === 'Son' ? 'മകൻ (Son)' :
+                                        selectedClaim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
+                                        selectedClaim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                                        selectedClaim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : selectedClaim.relation}
                                    </Badge>
                                 )}
                              </p>
