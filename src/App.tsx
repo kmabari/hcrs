@@ -102,6 +102,16 @@ export default function App() {
     if (!isAdmin && !isOperator) return;
 
     setIsSyncingDocs(true);
+    console.log("refreshMembersList: Querying 'users'. activeUser:", {
+      uid: activeUser?.uid,
+      email: activeUser?.email,
+      role: activeUser?.role,
+      isAdmin: activeUser?.isAdmin,
+      district: activeUser?.district
+    }, "auth.currentUser:", auth.currentUser ? {
+      uid: auth.currentUser.uid,
+      email: auth.currentUser.email
+    } : "null");
     const loadingToast = toast.loading('Syncing database entries...');
     try {
       let q;

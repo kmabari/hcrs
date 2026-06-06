@@ -823,11 +823,11 @@ export default function AdminDashboard({
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       if (!matchesDistrict) continue;
 
-      total++;
       if (m.status === 'pending' && !m.renewalPending) {
         pending++;
       } else if (m.status === 'active' || m.renewalPending) {
         active++;
+        total++; // Verified active/renewal members only
       }
       
       if (m.renewalPending) renewals++;

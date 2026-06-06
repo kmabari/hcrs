@@ -22,7 +22,7 @@ service cloud.firestore {
     function isMainAdmin() {
       return isSignedIn() && 
              request.auth.token.email != null && (
-               request.auth.token.email.lower() in [
+               request.auth.token.email in [
                  'kmabarikiyafoods@gmail.com',
                  'hcrsindia@gmail.com',
                  'admin@hcrs.society',
@@ -35,7 +35,7 @@ service cloud.firestore {
     function isSecondAdmin() {
       return isSignedIn() && 
              request.auth.token.email != null && (
-               request.auth.token.email.lower() in [
+               request.auth.token.email in [
                  'hcrskerala@gmail.com',
                  'hcrskasaragod@hcrs.society',
                  'hcrskannur@hcrs.society',
