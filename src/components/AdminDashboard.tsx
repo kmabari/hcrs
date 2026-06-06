@@ -3562,7 +3562,18 @@ export default function AdminDashboard({
                           <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
                             <TableCell className="px-6 py-4">
                               <div className="space-y-1">
-                                <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
+                                  {claim.relation && (
+                                    <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03]">
+                                      {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                                       claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                       claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                       claim.relation === 'Son' ? 'മകൻ (Son)' :
+                                       claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : claim.relation}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
                                 <p className="text-[9px] font-black text-brand-blue uppercase">{claim.membershipId}</p>
                               </div>
@@ -4442,8 +4453,22 @@ export default function AdminDashboard({
                     {claimUser && (
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-black">
                           <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Full Name</p>
-                             <p className="font-bold text-slate-850 text-sm">{claimUser.name}</p>
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Holder / Claimant (മെമ്പർ / ക്ലെയിം വ്യക്തി)</p>
+                             <p className="font-bold text-slate-850 text-sm flex items-center gap-1.5 flex-wrap">
+                                {claimUser.name}
+                                {selectedClaim?.userName && selectedClaim.userName !== claimUser.name && (
+                                   <span className="text-slate-500 font-bold">({selectedClaim.userName})</span>
+                                )}
+                                {selectedClaim?.relation && (
+                                   <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03]">
+                                      {selectedClaim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                                       selectedClaim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                       selectedClaim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                       selectedClaim.relation === 'Son' ? 'മകൻ (Son)' :
+                                       selectedClaim.relation === 'Daughter' ? 'മകൾ (Daughter)' : selectedClaim.relation}
+                                   </Badge>
+                                )}
+                             </p>
                           </div>
                           <div className="space-y-1">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member ID (മെമ്പർ ഐഡി നമ്പർ)</p>

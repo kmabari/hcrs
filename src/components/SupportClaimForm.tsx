@@ -13,7 +13,10 @@ import {
   ShieldAlert,
   ArrowRight,
   RefreshCw,
-  Info
+  Info,
+  Users,
+  User,
+  Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 
 interface CategoryDetail {
@@ -76,10 +79,54 @@ const HARDSHIPS = [
 ];
 
 export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
+
+  // 1. Claimant State - Self
+  const [selfSelected, setSelfSelected] = useState(true);
+  const [selfName, setSelfName] = useState(user?.name || '');
+  const [selfHighrichId, setSelfHighrichId] = useState('');
+  const [selfCategories, setSelfCategories] = useState<string[]>([]);
+  const [selfOtherCategory, setSelfOtherCategory] = useState('');
+  const [selfCategoryDetails, setSelfCategoryDetails] = useState<Record<string, CategoryDetail>>({});
+  const [selfNoBreakup, setSelfNoBreakup] = useState(false);
+  const [selfTotalPaid, setSelfTotalPaid] = useState(0);
+  const [selfTotalReceived, setSelfTotalReceived] = useState(0);
+  const [selfTotalPending, setSelfTotalPending] = useState(0);
+
+  // 2. Claimant State - Parent (Mother or Father)
+  const [parentSelected, setParentSelected] = useState(false);
+  const [parentRelation, setParentRelation] = useState<'Mother' | 'Father' | ''>('');
+  const [parentName, setParentName] = useState('');
+  const [parentHighrichId, setParentHighrichId] = useState('');
+  const [parentCategories, setParentCategories] = useState<string[]>([]);
+  const [parentOtherCategory, setParentOtherCategory] = useState('');
+  const [parentCategoryDetails, setParentCategoryDetails] = useState<Record<string, CategoryDetail>>({});
+  const [parentNoBreakup, setParentNoBreakup] = useState(false);
+  const [parentTotalPaid, setParentTotalPaid] = useState(0);
+  const [parentTotalReceived, setParentTotalReceived] = useState(0);
+  const [parentTotalPending, setParentTotalPending] = useState(0);
+
+  // 3. Claimant State - Child (Son or Daughter)
+  const [childSelected, setChildSelected] = useState(false);
+  const [childRelation, setChildRelation] = useState<'Son' | 'Daughter' | ''>('');
+  const [childName, setChildName] = useState('');
+  const [childHighrichId, setChildHighrichId] = useState('');
+  const [childCategories, setChildCategories] = useState<string[]>([]);
+  const [childOtherCategory, setChildOtherCategory] = useState('');
+  const [childCategoryDetails, setChildCategoryDetails] = useState<Record<string, CategoryDetail>>({});
+  const [childNoBreakup, setChildNoBreakup] = useState(false);
+  const [childTotalPaid, setChildTotalPaid] = useState(0);
+  const [childTotalReceived, setChildTotalReceived] = useState(0);
+  const [childTotalPending, setChildTotalPending] = useState(0);
+
+  // General Questions
+  const [futurePreference, setFuturePreference] = useState('');
+  const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
+  const [consentLegal, setConsentLegal] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToOrgSettings((settings) => {
@@ -87,86 +134,104 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     });
     return () => unsub();
   }, []);
-  
-  // Form State
-  const [highrichId, setHighrichId] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [otherCategory, setOtherCategory] = useState('');
-  const [categoryDetails, setCategoryDetails] = useState<Record<string, CategoryDetail>>({});
-  const [noBreakup, setNoBreakup] = useState(false);
-  const [totalItems, setTotalItems] = useState({ paid: 0, received: 0, pending: 0 });
-  const [futurePreference, setFuturePreference] = useState('');
-  const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
-  const [existingClaimId, setExistingClaimId] = useState<string | null>(null);
-  const [consentLegal, setConsentLegal] = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
-  // Fetch existing claim for this user to prevent resubmission
+  // Fetch existing claims for this user to check submission status
   useEffect(() => {
-    async function checkExistingClaim() {
+    async function checkExistingClaims() {
       if (!user) return;
       try {
         setLoading(true);
-        let found = false;
+        let docsList: any[] = [];
         
         // Priority 1: Check by mobile number
         if (user.mobile) {
           const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
           const snapMobile = await getDocs(qMobile);
           if (!snapMobile.empty) {
-            setExistingClaimId(snapMobile.docs[0].id);
-            setAlreadySubmitted(true);
-            found = true;
+            docsList = snapMobile.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           }
         }
         
         // Priority 2: Check by UID if not already found
-        if (!found && user.uid) {
+        if (docsList.length === 0 && user.uid) {
           const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
           const snapUid = await getDocs(qUid);
           if (!snapUid.empty) {
-            setExistingClaimId(snapUid.docs[0].id);
-            setAlreadySubmitted(true);
+            docsList = snapUid.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           }
+        }
+
+        if (docsList.length > 0) {
+          setSubmittedClaims(docsList);
+          setAlreadySubmitted(true);
         }
       } catch (err: any) {
-        const errMsg = err?.message || String(err);
-        if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted') || errMsg.toLowerCase().includes('exhausted')) {
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('firestore-quota-exceeded'));
-          }
-        }
-        console.warn("Status check notice: Database is running in offline/quota-exceeded mode:", errMsg);
+        console.warn("Status check notice: Database is running in offline/quota exceeded mode", err);
       } finally {
         setLoading(false);
       }
     }
-    checkExistingClaim();
+    checkExistingClaims();
   }, [user]);
 
-  // Auto Calculations
+  // Recalculate Totals - Self
   useEffect(() => {
-    if (noBreakup) return;
-    
-    let totalPaid = 0;
-    let totalRec = 0;
-    
-    selectedCategories.forEach(cat => {
-      const detail = categoryDetails[cat] || { paid: 0, received: 0, pending: 0 };
-      totalPaid += Number(detail.paid) || 0;
-      totalRec += Number(detail.received) || 0;
+    if (selfNoBreakup) return;
+    let paid = 0;
+    let rec = 0;
+    selfCategories.forEach(cat => {
+      const detail = selfCategoryDetails[cat] || { paid: 0, received: 0, pending: 0 };
+      paid += Number(detail.paid) || 0;
+      rec += Number(detail.received) || 0;
     });
+    setSelfTotalPaid(paid);
+    setSelfTotalReceived(rec);
+    setSelfTotalPending(paid - rec);
+  }, [selfCategoryDetails, selfCategories, selfNoBreakup]);
 
-    setTotalItems({
-      paid: totalPaid,
-      received: totalRec,
-      pending: totalPaid - totalRec
+  // Recalculate Totals - Parent
+  useEffect(() => {
+    if (parentNoBreakup) return;
+    let paid = 0;
+    let rec = 0;
+    parentCategories.forEach(cat => {
+      const detail = parentCategoryDetails[cat] || { paid: 0, received: 0, pending: 0 };
+      paid += Number(detail.paid) || 0;
+      rec += Number(detail.received) || 0;
     });
-  }, [categoryDetails, selectedCategories, noBreakup]);
+    setParentTotalPaid(paid);
+    setParentTotalReceived(rec);
+    setParentTotalPending(paid - rec);
+  }, [parentCategoryDetails, parentCategories, parentNoBreakup]);
 
-  const handleCategoryDetailChange = (catId: string, field: 'paid' | 'received', value: string) => {
+  // Recalculate Totals - Child
+  useEffect(() => {
+    if (childNoBreakup) return;
+    let paid = 0;
+    let rec = 0;
+    childCategories.forEach(cat => {
+      const detail = childCategoryDetails[cat] || { paid: 0, received: 0, pending: 0 };
+      paid += Number(detail.paid) || 0;
+      rec += Number(detail.received) || 0;
+    });
+    setChildTotalPaid(paid);
+    setChildTotalReceived(rec);
+    setChildTotalPending(paid - rec);
+  }, [childCategoryDetails, childCategories, childNoBreakup]);
+
+  // Helper State Handlers
+  const handleCategoryDetailChange = (
+    claimant: 'self' | 'parent' | 'child',
+    catId: string,
+    field: 'paid' | 'received',
+    value: string
+  ) => {
     const numVal = parseFloat(value) || 0;
-    setCategoryDetails(prev => {
+    const setter = claimant === 'self' ? setSelfCategoryDetails 
+                 : claimant === 'parent' ? setParentCategoryDetails 
+                 : setChildCategoryDetails;
+    
+    setter(prev => {
       const current = prev[catId] || { paid: 0, received: 0, pending: 0 };
       const updated = { ...current, [field]: numVal };
       updated.pending = updated.paid - updated.received;
@@ -174,14 +239,63 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     });
   };
 
-  const handleTotalChange = (field: 'paid' | 'received', value: string) => {
+  const handleTotalChange = (
+    claimant: 'self' | 'parent' | 'child',
+    field: 'paid' | 'received',
+    value: string
+  ) => {
     const numVal = parseFloat(value) || 0;
-    setTotalItems(prev => {
-      const updated = { ...prev, [field]: numVal };
-      updated.pending = updated.paid - updated.received;
-      return updated;
-    });
+    if (claimant === 'self') {
+      if (field === 'paid') {
+        setSelfTotalPaid(numVal);
+        setSelfTotalPending(numVal - selfTotalReceived);
+      } else {
+        setSelfTotalReceived(numVal);
+        setSelfTotalPending(selfTotalPaid - numVal);
+      }
+    } else if (claimant === 'parent') {
+      if (field === 'paid') {
+        setParentTotalPaid(numVal);
+        setParentTotalPending(numVal - parentTotalReceived);
+      } else {
+        setParentTotalReceived(numVal);
+        setParentTotalPending(parentTotalPaid - numVal);
+      }
+    } else {
+      if (field === 'paid') {
+        setChildTotalPaid(numVal);
+        setChildTotalPending(numVal - childTotalReceived);
+      } else {
+        setChildTotalReceived(numVal);
+        setChildTotalPending(childTotalPaid - numVal);
+      }
+    }
   };
+
+  // Combined Totals for visual feedback
+  const combinedTotalPaid = useMemo(() => {
+    let t = 0;
+    if (selfSelected) t += selfTotalPaid;
+    if (parentSelected) t += parentTotalPaid;
+    if (childSelected) t += childTotalPaid;
+    return t;
+  }, [selfSelected, selfTotalPaid, parentSelected, parentTotalPaid, childSelected, childTotalPaid]);
+
+  const combinedTotalReceived = useMemo(() => {
+    let t = 0;
+    if (selfSelected) t += selfTotalReceived;
+    if (parentSelected) t += parentTotalReceived;
+    if (childSelected) t += childTotalReceived;
+    return t;
+  }, [selfSelected, selfTotalReceived, parentSelected, parentTotalReceived, childSelected, childTotalReceived]);
+
+  const combinedTotalPending = useMemo(() => {
+    let t = 0;
+    if (selfSelected) t += selfTotalPending;
+    if (parentSelected) t += parentTotalPending;
+    if (childSelected) t += childTotalPending;
+    return t;
+  }, [selfSelected, selfTotalPending, parentSelected, parentTotalPending, childSelected, childTotalPending]);
 
   const isEmergency = hardshipStatus.some(h => ['bank', 'crisis', 'medical'].includes(h));
 
@@ -193,107 +307,231 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     return { label: 'PENDING', color: 'bg-slate-400', text: 'മുൻഗണന തിരഞ്ഞെടുക്കുക (Selection required)' };
   }, [isEmergency, futurePreference]);
 
+  // Form validations for active claimants
+  const hasAtLeastOneClaimant = selfSelected || parentSelected || childSelected;
+  
+  const selfValid = !selfSelected || (
+    selfName.trim().length > 0 && 
+    (selfNoBreakup || selfCategories.length > 0)
+  );
+
+  const parentValid = !parentSelected || (
+    parentName.trim().length > 0 && 
+    parentRelation !== '' && 
+    (parentNoBreakup || parentCategories.length > 0)
+  );
+
+  const childValid = !childSelected || (
+    childName.trim().length > 0 && 
+    childRelation !== '' && 
+    (childNoBreakup || childCategories.length > 0)
+  );
+
+  const formIsValid = 
+    hasAtLeastOneClaimant && 
+    selfValid && 
+    parentValid && 
+    childValid && 
+    futurePreference && 
+    hardshipStatus.length > 0 && 
+    consentLegal;
+
   const handleSubmit = async () => {
+    if (!formIsValid) {
+      toast.error('ദയവായി എല്ലാ ആവശ്യ വിവരങ്ങളും പൂരിപ്പിക്കുക.');
+      return;
+    }
+
     try {
       setLoading(true);
       
-      const claimData = {
+      // Delete any existing claim records first to prevent duplicates
+      if (user.uid) {
+        const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
+        const snapUid = await getDocs(qUid);
+        for (const docSnap of snapUid.docs) {
+          await deleteDoc(docSnap.ref);
+        }
+      } else if (user.mobile) {
+        const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
+        const snapMobile = await getDocs(qMobile);
+        for (const docSnap of snapMobile.docs) {
+          await deleteDoc(docSnap.ref);
+        }
+      }
+
+      const commonData = {
         uid: user.uid,
         membershipId: user.membershipId || 'PENDING',
-        userName: user.name,
         userMobile: user.mobile,
         userDistrict: user.district || '',
         userAddress: user.address || '',
         userConstituency: user.constituency || '',
         userEmail: user.email || '',
         userBloodGroup: user.bloodGroup || '',
-        highrichId,
-        categories: selectedCategories,
-        otherCategory,
-        categoryDetails,
-        noBreakup,
-        totalPaid: totalItems.paid,
-        totalReceived: totalItems.received,
-        totalPending: totalItems.pending,
         futurePreference,
         hardshipStatus,
         isEmergency,
         priorityStatus: priorityInfo.label,
         consentLegal,
-        updatedAt: serverTimestamp(),
-        // Only add createdAt for new submissions
-        ...(existingClaimId ? {} : { createdAt: serverTimestamp() })
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
 
-      if (existingClaimId) {
-        await updateDoc(doc(db, 'claims', existingClaimId), claimData);
-        setCompleted(true);
-        toast.success('നിങ്ങളുടെ വിവരങ്ങൾ വിജയകരമായി അപ്ഡേറ്റ് ചെയ്തിട്ടുണ്ട്.');
-      } else {
-        await addDoc(collection(db, 'claims'), claimData);
-        setCompleted(true);
-        toast.success('നിങ്ങളുടെ വിവരങ്ങൾ വിജയകരമായി സമർപ്പിച്ചിട്ടുണ്ട്.');
+      // 1. Submit Self Claim
+      if (selfSelected) {
+        const selfClaim = {
+          ...commonData,
+          relation: 'Self',
+          relationLabel: 'Self (സ്വന്തം)',
+          userName: selfName || user.name,
+          highrichId: selfHighrichId,
+          categories: selfCategories,
+          otherCategory: selfOtherCategory,
+          categoryDetails: selfCategoryDetails,
+          noBreakup: selfNoBreakup,
+          totalPaid: selfTotalPaid,
+          totalReceived: selfTotalReceived,
+          totalPending: selfTotalPending,
+        };
+        await addDoc(collection(db, 'claims'), selfClaim);
       }
+
+      // 2. Submit Parent Claim
+      if (parentSelected) {
+        const parentClaim = {
+          ...commonData,
+          relation: parentRelation,
+          relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
+          userName: parentName,
+          highrichId: parentHighrichId,
+          categories: parentCategories,
+          otherCategory: parentOtherCategory,
+          categoryDetails: parentCategoryDetails,
+          noBreakup: parentNoBreakup,
+          totalPaid: parentTotalPaid,
+          totalReceived: parentTotalReceived,
+          totalPending: parentTotalPending,
+        };
+        await addDoc(collection(db, 'claims'), parentClaim);
+      }
+
+      // 3. Submit Child Claim
+      if (childSelected) {
+        const childClaim = {
+          ...commonData,
+          relation: childRelation,
+          relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
+          userName: childName,
+          highrichId: childHighrichId,
+          categories: childCategories,
+          otherCategory: childOtherCategory,
+          categoryDetails: childCategoryDetails,
+          noBreakup: childNoBreakup,
+          totalPaid: childTotalPaid,
+          totalReceived: childTotalReceived,
+          totalPending: childTotalPending,
+        };
+        await addDoc(collection(db, 'claims'), childClaim);
+      }
+
+      setCompleted(true);
+      toast.success('നിങ്ങളുടെ വിവരങ്ങൾ വിജയകരമായി സമർപ്പിച്ചിട്ടുണ്ട്.');
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error('Failed to submit form. Please try again.');
+      toast.error('രേഖപ്പെടുത്തുന്നതിൽ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Render Already Submitted View
   if (alreadySubmitted && !completed) {
     return (
-      <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-screen my-auto">
-        <div className="w-20 h-20 bg-rose-50 border border-brand-magenta/30 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-magenta shadow-lg">
-          <ShieldAlert className="w-10 h-10 animate-pulse text-brand-magenta" />
+      <div className="p-8 text-center space-y-6 max-w-lg mx-auto flex flex-col justify-center min-h-screen my-auto">
+        <div className="w-16 h-16 bg-rose-50 border border-brand-magenta/30 rounded-full flex items-center justify-center mx-auto mb-2 text-brand-magenta shadow-lg">
+          <ShieldAlert className="w-8 h-8 animate-pulse text-brand-magenta" />
         </div>
         <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight leading-tight">സമർപ്പണം ഇതിനകം പൂർത്തിയായി!<br/>(Already Submitted)</h2>
-        <p className="text-brand-magenta text-[10px] font-black tracking-widest uppercase">REGISTRY ACCESS SECURELY BLOCKED</p>
+        <p className="text-brand-magenta text-[9px] font-black tracking-widest uppercase">REGISTRY ACCOUNT ACCESS PROTECTED</p>
+
+        {/* List of Registered Claimants */}
+        <div className="space-y-4 text-left mt-4">
+          <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-wider">രജിസ്റ്റർ ചെയ്ത ക്ലെയിമുകൾ (Registered Claims):</h4>
+          <div className="grid grid-cols-1 gap-3">
+            {submittedClaims.map((claim, idx) => (
+              <div key={claim.id || idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-black text-slate-800 block">{claim.userName}</span>
+                    {claim.highrichId && (
+                      <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded mt-1 inline-block">HR ID: {claim.highrichId}</span>
+                    )}
+                  </div>
+                  <Badge className="text-[9px] font-black uppercase bg-brand-magenta/10 text-brand-magenta border-none rounded-lg py-1 px-2.5">
+                    {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                     claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                     claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                     claim.relation === 'Son' ? 'മകൻ (Son)' :
+                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : claim.relationLabel || claim.relation || 'Self'}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1.5 border-t border-slate-200/60 text-[11px] font-bold">
+                  <div>
+                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold">Paid (പണമടച്ചത്)</p>
+                    <p className="text-slate-700 font-black">₹{claim.totalPaid?.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold">Received (ലഭിച്ചത്)</p>
+                    <p className="text-green-600 font-black">₹{claim.totalReceived?.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold">Pending (ബാക്കി)</p>
+                    <p className="text-brand-magenta font-black">₹{claim.totalPending?.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="bg-rose-50/50 border border-brand-magenta/15 p-5 rounded-2xl text-slate-705 font-bold text-xs leading-relaxed text-left space-y-3">
-          <p className="text-slate-700">
-            പ്രിയ അംഗമേ, താങ്കൾ ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് വിവര രജിസ്ട്രി ഫോം വിജയകരമായി ഇതിനകം തന്നെ സമർപ്പിച്ചിട്ടുള്ളതാണ്.
+          <p className="text-slate-700 font-bold text-xs">
+            പ്രിയ അംഗമേ, താങ്കൾ ഈ മെമ്പർഷിപ്പ് വിവരങ്ങൾ വിജയകരമായി ഇതിനകം തന്നെ സമർപ്പിച്ചിട്ടുള്ളതാണ്.
           </p>
-          <p className="text-slate-600">
-            സുരക്ഷാ ക്രമീകരണങ്ങൾ അനുസരിച്ച്, <strong>ഒരു തവണ സമർപ്പിച്ച വിവരങ്ങൾ പിന്നീട് മാറ്റാനോ വീണ്ടും ഫോം പൂരിപ്പിക്കാനോ സാധ്യമല്ല.</strong> ഇത് ഡ്യൂപ്ലിക്കേഷൻ ഒഴിവാക്കാനും ഡാറ്റാ സുരക്ഷിതത്വം ഉറപ്പുവരുത്താനും വേണ്ടിയാണ്.
-          </p>
-          <hr className="border-brand-magenta/10" />
-          <p className="text-[10px] text-slate-400 font-extrabold leading-normal uppercase">
-            You have already submitted your financial details. For security and data integrity reasons, forms cannot be edited or resubmitted once finalized.
+          <p className="text-slate-600 text-xs">
+            ഡാറ്റാ സുരക്ഷിതത്വം ഉറപ്പുവരുത്താൻ പാനലിൽ ഒരു തവണ സമർപ്പിച്ച വിവരങ്ങൾ പിന്നീട് മാറ്റാൻ സാധ്യമല്ല.
           </p>
         </div>
 
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/95 text-white font-bold h-13 shadow-lg active:scale-95 transition-all text-xs">
+        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/95 text-white font-bold shadow-lg active:scale-95 transition-all text-xs">
           തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
         </Button>
       </div>
     );
   }
 
+  // Render Submitted successfully output
   if (completed) {
     return (
-      <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-full my-auto">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-300">
-          <CheckCircle2 className="w-10 h-10 text-green-600 animate-bounce" />
+      <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-screen my-auto">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-green-300 shadow-md">
+          <CheckCircle2 className="w-8 h-8 text-green-600 animate-bounce" />
         </div>
-        <h2 className="text-2xl font-black text-brand-blue uppercase tracking-tight">സമർപ്പണം വിജയകരം (Submitted Successfully)</h2>
-        <p className="text-slate-500 text-[11px] font-bold tracking-widest uppercase">FINANCIAL REGISTRY SUBMISSION COMPLETED</p>
+        <h2 className="text-xl font-black text-brand-blue uppercase tracking-tight">സമർപ്പണം വിജയകരം<br/>(Submitted Successfully)</h2>
+        <p className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">FINANCIAL REGISTRY SUBMISSION COMPLETED</p>
 
         <div className="bg-emerald-50/50 border border-emerald-500/15 p-5 rounded-2xl text-slate-700 font-semibold text-xs leading-relaxed text-left space-y-3">
           <p>
-            പ്രിയ അംഗമേ, താങ്കൾ നൽകിയ വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി.
+            പ്രിയ അംഗമേ, താങ്കൾ നൽകിയ എല്ലാ വ്യക്തികളുടെയും വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി.
           </p>
           <p>
-            നിങ്ങളുടെ സമ്മതപ്രകാരം, <strong>ഇതിന്റെ ഒരു കോപ്പി മാനേജ്മെന്റിനും മറ്റൊരു കോപ്പി ലീഗൽ അഡ്വൈസർക്കും കൈമാറുന്നതാണ്.</strong> ക്ലെയിം വെരിഫിക്കേഷൻ ടീം ഈ വിവരങ്ങൾ തുടർനടപടികൾക്കായി പരിശോധിക്കുന്നതാണ്.
-          </p>
-          <hr className="border-emerald-500/10" />
-          <p className="text-[10px] text-slate-400 font-bold leading-normal uppercase">
-            A copy of this submission will be shared with the management and the company's legal advisor based on your consent for auditing and coordination purposes.
+            സമ്മതപ്രകാരം ഇവ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപടികൾ സ്വീകരിക്കുന്നതാണ്.
           </p>
         </div>
 
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold h-13 shadow-lg active:scale-95 transition-all">
+        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs">
           തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
         </Button>
       </div>
@@ -301,283 +539,579 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white relative">
+    <div className="flex flex-col h-full bg-slate-50 relative pb-28">
       {/* Header */}
-      <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-10">
+      <div className="p-5 border-b flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue">
-            <Info className="w-5 h-5" />
+            <Users className="w-5 h-5 text-brand-blue" />
           </div>
           <div>
-             <h3 className="text-sm font-black text-brand-blue uppercase tracking-tight">Financial Registry</h3>
-             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Member Financial Information Registry</p>
+             <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">ക്ലെയിം രജിസ്ട്രി ഫോം (Claim Registry)</h3>
+             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Register up to 3 direct family members</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0">✕</Button>
+        <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0 font-bold">✕</Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 pb-32 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 max-w-2xl mx-auto w-full">
         
         {/* User Info Read-only */}
-        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 grid grid-cols-2 gap-4 shadow-sm">
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Member Name</p>
-              <p className="text-xs font-bold text-slate-700 truncate">{user.name}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Active Account Member</p>
+              <p className="text-xs font-black text-slate-700 truncate">{user.name}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Mobile Number</p>
-              <p className="text-xs font-bold text-slate-700">{user.mobile}</p>
+              <p className="text-xs font-black text-slate-700">{user.mobile}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Membership ID</p>
-              <p className="text-xs font-bold text-brand-blue truncate">{user.membershipId || 'Wait for approval'}</p>
+              <p className="text-xs font-black text-brand-blue truncate">{user.membershipId || 'Wait for approval'}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Address</p>
-              <p className="text-xs font-bold text-slate-500 truncate">{user.address}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">District</p>
+              <p className="text-xs font-black text-slate-500 truncate">{user.district || 'N/A'}</p>
             </div>
         </div>
 
-        {/* Verification Warning Card / Disclaimer */}
-        <div className="bg-amber-50 border-2 border-amber-200 rounded-[28px] p-5 relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 shrink-0 mt-0.5">
-              <Info className="w-5 h-5 animate-pulse" />
+        {/* Information Notice */}
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-2">
+            <div className="flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="text-[11px] font-black text-amber-800 uppercase tracking-wide">പ്രധാന നിർദ്ദേശം (Warning & Limit Rules)</h4>
+                <p className="text-slate-700 font-bold text-[11px] leading-relaxed">
+                  ഈ ഫോം വഴി <strong>3 വ്യക്തികളുടെ വരെ (അതോടൊപ്പം അച്ഛൻ/അമ്മ അല്ലെങ്കിൽ മകൻ/മകൾ)</strong> വിഹിതങ്ങൾ പരമാവധി ക്ലെയിം ചെയ്യാവുന്നതാണ്. ഓരോ വ്യക്തിയെയും അഡ്മിൻ പാനലിൽ വ്യത്യസ്ത വ്യക്തികളായി കണക്കാക്കി പരിഗണിക്കുന്നതാണ്.
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest leading-none">പ്രധാന വിവരണം (Important Disclaimer)</h4>
-              <p className="text-slate-700 font-bold text-xs leading-relaxed">
-                ഇത് നിങ്ങളുടെ യഥാർത്ഥ കണക്ക് ആയിക്കൊള്ളണമെന്നില്ല. ആവറേജ് മനസ്സിലാക്കാൻ വേണ്ടിയാണ്. നിങ്ങളുടെ കണക്കും കമ്പനിയുടെ ഡാറ്റയും ചെക്ക് ചെയ്തതിനുശേഷം ആ ഡാറ്റ പ്രകാരമുള്ള സംഖ്യയാണ് നിങ്ങൾക്ക് ലഭിക്കാൻ ഉണ്ടാവുകയുള്ളൂ എന്ന് നിങ്ങൾ മനസ്സിലാക്കണം. നിങ്ങളുടെ ഓർമ്മയിലുള്ള സംഖ്യ എഴുതിയാൽ മതിയാകും.
-              </p>
-              <p className="text-[10px] text-amber-600 font-bold uppercase leading-normal">
-                This does not need to be your exact claim amount. It is collected to understand the overall average. The final eligible amount is processed only after verifying records with the company database. State the amounts based on your recollection.
-              </p>
-            </div>
-          </div>
         </div>
 
-        {/* Step 1: ID & Categories */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">1</span>
-            <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">Company Identification</h4>
-          </div>
+        {/* SLOT 1: SELF CLAIM (ആ വ്യക്തി) */}
+        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
+          <CardContent className="p-5 md:p-6 space-y-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">1</div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 uppercase">സ്വന്തം ക്ലെയിം (Self Claimant)</h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">Primary member details</p>
+                </div>
+              </div>
+              <Checkbox 
+                checked={selfSelected} 
+                onCheckedChange={(val) => setSelfSelected(!!val)} 
+                className="w-5 h-5 border-slate-300" 
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Highrich ID Number (Optional)</Label>
-            <Input 
-              placeholder="Enter HR ID if known"
-              value={highrichId}
-              onChange={(e) => setHighrichId(e.target.value)}
-              className="h-12 border-2 border-slate-100 rounded-xl font-bold focus:border-brand-blue/20"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Participation Categories</Label>
-            <div className="grid grid-cols-1 gap-3">
-              {CATEGORIES.map(cat => (
-                <div 
-                  key={cat.id} 
-                  onClick={() => {
-                    setSelectedCategories(prev => 
-                      prev.includes(cat.id) 
-                        ? prev.filter(i => i !== cat.id) 
-                        : [...prev, cat.id]
-                    );
-                  }}
-                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
-                    selectedCategories.includes(cat.id) 
-                      ? 'border-brand-magenta bg-brand-magenta/[0.03] shadow-sm' 
-                      : 'border-slate-100 hover:border-slate-200 bg-white'
-                  }`}
-                >
-                  <Checkbox checked={selectedCategories.includes(cat.id)} className="border-slate-300 pointer-events-none mt-1" />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-black tracking-tight ${cat.headerColor}`}>
-                      {cat.heading}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 mt-0.5 leading-normal">
-                      {cat.sub}
-                    </p>
+            {selfSelected && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">പേര് (Claimant name)</Label>
+                    <Input 
+                      value={selfName} 
+                      onChange={(e) => setSelfName(e.target.value)} 
+                      placeholder="പേര് നൽകുക"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
+                    <Input 
+                      value={selfHighrichId} 
+                      onChange={(e) => setSelfHighrichId(e.target.value)} 
+                      placeholder="Enter HR ID if known"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {selectedCategories.includes('other') && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 border-2 border-slate-100 bg-slate-50/50 p-4 rounded-2xl">
-              <Label className="text-[10px] font-black text-brand-blue uppercase tracking-widest ml-1">നിങ്ങൾക്ക് വിശദമായി വല്ലതും എഴുതി പറയാനുണ്ടെങ്കിൽ ഇവിടെ എഴുതാം (Write in detail here)</Label>
-              <Input 
-                value={otherCategory}
-                onChange={(e) => setOtherCategory(e.target.value)}
-                placeholder="ഇവിടെ എഴുതുക (Write here...)"
-                className="h-12 border-2 border-slate-100 bg-white rounded-xl font-bold focus:border-brand-blue/30"
-              />
-              <p className="text-[9.5px] font-bold text-slate-400 uppercase mt-1">നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ വ്യക്തമായി ഇവിടെ നൽകാം (Enter details here)</p>
-            </motion.div>
-          )}
-        </section>
+                {/* Sub-breakup Selector */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+                   <Checkbox 
+                     id="self-no-breakup"
+                     checked={selfNoBreakup}
+                     onCheckedChange={(val) => setSelfNoBreakup(!!val)}
+                     className="w-4 h-4"
+                   />
+                   <Label htmlFor="self-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
+                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
+                   </Label>
+                </div>
 
-        {/* Section 2: Amounts */}
-        <section className="space-y-6">
-           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">2</span>
-            <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">Amount Details</h4>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center gap-3 mb-4">
-             <Checkbox 
-               id="no-breakup"
-               checked={noBreakup}
-               onCheckedChange={(val) => setNoBreakup(!!val)}
-               className="w-5 h-5"
-             />
-             <Label htmlFor="no-breakup" className="text-xs font-bold text-slate-600 leading-tight">
-               I cannot provide category-wise breakup. (കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല)
-             </Label>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {noBreakup ? (
-              <motion.div key="no-breakup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                <Card className="border-2 border-slate-100 shadow-none">
-                  <CardContent className="p-5 space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Total Amount Paid</Label>
+                {/* Breakup Details OR Total manual entries */}
+                {selfNoBreakup ? (
+                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
-                          placeholder="0"
-                          value={totalItems.paid || ''}
-                          onChange={(e) => handleTotalChange('paid', e.target.value)}
-                          className="pl-9 h-12 bg-white border-slate-200 rounded-xl font-black text-lg"
+                          placeholder="Paid"
+                          value={selfTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('self', 'paid', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Total Received Amount</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
-                          placeholder="0"
-                          value={totalItems.received || ''}
-                          onChange={(e) => handleTotalChange('received', e.target.value)}
-                          className="pl-9 h-12 bg-white border-slate-200 rounded-xl font-black text-lg"
+                          placeholder="Received"
+                          value={selfTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('self', 'received', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
                         />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ) : (
-              <motion.div key="with-breakup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                {selectedCategories.length === 0 ? (
-                  <div className="text-center p-8 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                    <p className="text-xs font-bold text-slate-400">Please select categories above to enter amounts.</p>
                   </div>
                 ) : (
-                  selectedCategories.map(catId => (
-                    <Card key={catId} className="border-2 border-slate-100 shadow-none bg-slate-50/50">
-                      <CardContent className="p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-col min-w-0">
-                            <h5 className={`text-xs font-black tracking-tight ${CATEGORIES.find(c => c.id === catId)?.headerColor || 'text-brand-blue'}`}>
-                              {CATEGORIES.find(c => c.id === catId)?.heading || catId}
-                            </h5>
-                            <span className="text-[10px] font-bold text-slate-400 mt-0.5 truncate leading-none">
-                              {CATEGORIES.find(c => c.id === catId)?.sub}
-                            </span>
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isSel = selfCategories.includes(cat.id);
+                        return (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => {
+                              setSelfCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
+                            }}
+                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                          >
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
+                            {cat.heading}
                           </div>
-                          <Badge variant="outline" className="bg-white text-[10px] font-black">
-                            {((categoryDetails[catId]?.paid || 0) - (categoryDetails[catId]?.received || 0)).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })} Pending
-                          </Badge>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Paid Amount</Label>
-                            <Input 
-                               type="number"
-                               placeholder="Paid"
-                               value={categoryDetails[catId]?.paid || ''}
-                               onChange={(e) => handleCategoryDetailChange(catId, 'paid', e.target.value)}
-                               className="h-10 border-slate-200 font-bold text-brand-blue bg-white"
-                            />
+                        );
+                      })}
+                    </div>
+
+                    {/* Detailed Inputs */}
+                    <div className="space-y-3">
+                      {selfCategories.map(catId => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        return (
+                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
+                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder="Paid" 
+                                value={selfCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('self', catId, 'paid', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder="Recd." 
+                                value={selfCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('self', catId, 'received', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Received</Label>
-                            <Input 
-                               type="number"
-                               placeholder="Rec."
-                               value={categoryDetails[catId]?.received || ''}
-                               onChange={(e) => handleCategoryDetailChange(catId, 'received', e.target.value)}
-                               className="h-10 border-slate-200 font-bold text-green-600 bg-white"
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
+
+                {/* Amount mini-badge */}
+                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
+                  <span>ആകെ മിച്ച തുക:</span>
+                  <span className="text-sm font-black text-brand-magenta">₹{selfTotalPending.toLocaleString('en-IN')}</span>
+                </div>
               </motion.div>
             )}
-          </AnimatePresence>
-        </section>
+          </CardContent>
+        </Card>
 
-        {/* Section 4: Summary */}
-        <section className="bg-brand-blue rounded-[32px] p-6 text-white space-y-6 shadow-2xl shadow-brand-blue/30 overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+        {/* SLOT 2: PARENT CLAIM (മാതാവ് അല്ലെങ്കിൽ പിതാവ്) */}
+        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
+          <CardContent className="p-5 md:p-6 space-y-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">2</div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 uppercase">മാതാവ് / പിതാവ് ക്ലെയിം (Parent Claimant)</h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">Add Mother or Father (Only one parent limit)</p>
+                </div>
+              </div>
+              <Checkbox 
+                checked={parentSelected} 
+                onCheckedChange={(val) => {
+                  setParentSelected(!!val);
+                  if (!!val && !parentRelation) setParentRelation('Mother'); // default relationship
+                }} 
+                className="w-5 h-5 border-slate-300" 
+              />
+            </div>
+
+            {parentSelected && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                {/* Relationship selector - MANDATORY & Restricted to Parent */}
+                <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60">
+                   <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">ആ വ്യക്തിയുമായുള്ള ബന്ധം തിരയുക * (Relation - Required)</Label>
+                   <RadioGroup 
+                     value={parentRelation} 
+                     onValueChange={(val) => setParentRelation(val as 'Mother' | 'Father')} 
+                     className="flex gap-4"
+                   >
+                     <div className="flex items-center gap-2 cursor-pointer">
+                       <RadioGroupItem value="Mother" id="parent-mother" className="text-brand-magenta" />
+                       <Label htmlFor="parent-mother" className="text-xs font-bold text-slate-700 cursor-pointer">അമ്മ (Mother)</Label>
+                     </div>
+                     <div className="flex items-center gap-2 cursor-pointer">
+                       <RadioGroupItem value="Father" id="parent-father" className="text-brand-magenta" />
+                       <Label htmlFor="parent-father" className="text-xs font-bold text-slate-700 cursor-pointer">അച്ഛൻ (Father)</Label>
+                     </div>
+                   </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">മാതാവ് / പിതാവിന്റെ പേര് * (Full Name - Required)</Label>
+                    <Input 
+                      value={parentName} 
+                      onChange={(e) => setParentName(e.target.value)} 
+                      placeholder="പേര് നൽകുക (Enter Full Name)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
+                    <Input 
+                      value={parentHighrichId} 
+                      onChange={(e) => setParentHighrichId(e.target.value)} 
+                      placeholder="Enter HR ID if known"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Sub-breakup Selector */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+                   <Checkbox 
+                     id="parent-no-breakup"
+                     checked={parentNoBreakup}
+                     onCheckedChange={(val) => setParentNoBreakup(!!val)}
+                     className="w-4 h-4"
+                   />
+                   <Label htmlFor="parent-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
+                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
+                   </Label>
+                </div>
+
+                {/* Breakup Details OR Total manual entries */}
+                {parentNoBreakup ? (
+                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder="Paid"
+                          value={parentTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('parent', 'paid', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder="Received"
+                          value={parentTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('parent', 'received', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isSel = parentCategories.includes(cat.id);
+                        return (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => {
+                              setParentCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
+                            }}
+                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                          >
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
+                            {cat.heading}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Detailed Inputs */}
+                    <div className="space-y-3">
+                      {parentCategories.map(catId => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        return (
+                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
+                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder="Paid" 
+                                value={parentCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder="Recd." 
+                                value={parentCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount mini-badge */}
+                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
+                  <span>ആകെ മിച്ച തുക:</span>
+                  <span className="text-sm font-black text-brand-magenta">₹{parentTotalPending.toLocaleString('en-IN')}</span>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* SLOT 3: CHILD CLAIM (മകൻ അല്ലെങ്കിൽ മകൾ) */}
+        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
+          <CardContent className="p-5 md:p-6 space-y-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">3</div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 uppercase">മകൻ / മകൾ ക്ലെയിം (Child Claimant)</h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">Add Daughter or Son (Only one child limit)</p>
+                </div>
+              </div>
+              <Checkbox 
+                checked={childSelected} 
+                onCheckedChange={(val) => {
+                  setChildSelected(!!val);
+                  if (!!val && !childRelation) setChildRelation('Son'); // default relationship
+                }} 
+                className="w-5 h-5 border-slate-300" 
+              />
+            </div>
+
+            {childSelected && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                {/* Relationship selector - MANDATORY & Restricted to Child */}
+                <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 font-medium">
+                   <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">ആ വ്യക്തിയുമായുള്ള ബന്ധം തിരയുക * (Relation - Required)</Label>
+                   <RadioGroup 
+                     value={childRelation} 
+                     onValueChange={(val) => setChildRelation(val as 'Son' | 'Daughter')} 
+                     className="flex gap-4"
+                   >
+                     <div className="flex items-center gap-2 cursor-pointer">
+                       <RadioGroupItem value="Son" id="child-son" className="text-brand-magenta" />
+                       <Label htmlFor="child-son" className="text-xs font-bold text-slate-700 cursor-pointer">മകൻ (Son)</Label>
+                     </div>
+                     <div className="flex items-center gap-2 cursor-pointer">
+                       <RadioGroupItem value="Daughter" id="child-daughter" className="text-brand-magenta" />
+                       <Label htmlFor="child-daughter" className="text-xs font-bold text-slate-700 cursor-pointer">മകൾ (Daughter)</Label>
+                     </div>
+                   </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">മകൻ / മകളുടെ പേര് * (Full Name - Required)</Label>
+                    <Input 
+                      value={childName} 
+                      onChange={(e) => setChildName(e.target.value)} 
+                      placeholder="പേര് നൽകുക (Enter Full Name)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
+                    <Input 
+                      value={childHighrichId} 
+                      onChange={(e) => setChildHighrichId(e.target.value)} 
+                      placeholder="Enter HR ID if known"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Sub-breakup Selector */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+                   <Checkbox 
+                     id="child-no-breakup"
+                     checked={childNoBreakup}
+                     onCheckedChange={(val) => setChildNoBreakup(!!val)}
+                     className="w-4 h-4"
+                   />
+                   <Label htmlFor="child-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
+                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
+                   </Label>
+                </div>
+
+                {/* Breakup Details OR Total manual entries */}
+                {childNoBreakup ? (
+                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder="Paid"
+                          value={childTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('child', 'paid', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder="Received"
+                          value={childTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('child', 'received', e.target.value)}
+                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isSel = childCategories.includes(cat.id);
+                        return (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => {
+                              setChildCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
+                            }}
+                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                          >
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
+                            {cat.heading}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Detailed Inputs */}
+                    <div className="space-y-3">
+                      {childCategories.map(catId => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        return (
+                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
+                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder="Paid" 
+                                value={childCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder="Recd." 
+                                value={childCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
+                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount mini-badge */}
+                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
+                  <span>ആകെ മിച്ച തുക:</span>
+                  <span className="text-sm font-black text-brand-magenta">₹{childTotalPending.toLocaleString('en-IN')}</span>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* COMBINED TOTAL DISPLAY */}
+        <section className="bg-brand-blue rounded-3xl p-6 text-white space-y-6 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
           
           <div className="flex items-center gap-2">
             <LayoutDashboard className="w-5 h-5 text-brand-magenta" />
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Amount Summary (തുക വിവരങ്ങൾ)</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-wider opacity-60">ആകെ തുക വിവരങ്ങൾ (Combined Totals)</h4>
           </div>
 
-          <div className="grid grid-cols-1 gap-6">
-            <div className="flex items-end justify-between border-b border-white/10 pb-4">
-               <div className="space-y-1">
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest text-white">Total Pending Amount</p>
-                  <p className="text-4xl font-black text-brand-magenta tracking-tighter">
-                    ₹{totalItems.pending.toLocaleString('en-IN')}
+          <div className="grid grid-cols-1 gap-4">
+            <div className="flex items-end justify-between border-b border-white/10 pb-3">
+               <div>
+                  <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest text-white">Combined Pending Claim</p>
+                  <p className="text-3xl font-black text-brand-magenta tracking-tight">
+                    ₹{combinedTotalPending.toLocaleString('en-IN')}
                   </p>
                </div>
-               <Badge className="bg-white/10 text-white border-0 text-[10px] py-1 mb-1">Self Declared</Badge>
+               <Badge className="bg-white/10 text-white border-0 text-[10px] py-1 mb-1">Combined</Badge>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-               <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                  <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest mb-1">Total Paid</p>
-                  <p className="text-lg font-black text-white">₹{totalItems.paid.toLocaleString('en-IN')}</p>
+            <div className="grid grid-cols-2 gap-3 pb-1">
+               <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">Total Paid</p>
+                  <p className="text-base font-black text-white">₹{combinedTotalPaid.toLocaleString('en-IN')}</p>
                </div>
-               <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                  <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest mb-1">Total Received</p>
-                  <p className="text-lg font-black text-white">₹{totalItems.received.toLocaleString('en-IN')}</p>
+               <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">Total Received</p>
+                  <p className="text-base font-black text-white">₹{combinedTotalReceived.toLocaleString('en-IN')}</p>
                </div>
             </div>
           </div>
-
-          <p className="text-[9px] text-white/40 italic font-medium leading-relaxed">
-            Note: This information is collected for support coordination and member-side reference. Final verification may require additional confirmation.
-          </p>
         </section>
 
-        {/* Section 5 & 6 */}
-        <section className="space-y-8">
-           {/* Step 3: Preference */}
-           <div className="space-y-6">
+        {/* GENERAL STATEMENT PREFERENCE */}
+        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
+          <CardContent className="p-5 md:p-6 space-y-6">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">3</span>
+                <Heart className="w-5 h-5 text-brand-magenta" />
                 <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">ഭാവിയിലെ താല്പര്യം (Future Preference)</h4>
               </div>
               
               <div className="space-y-3">
                  <p className="text-xs font-bold text-slate-500 leading-relaxed mb-4">
-                   If company operations restart, what is your preference? (കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ താൽപര്യം?)
+                   കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ കുടുംബത്തിന്റെ താൽപര്യം? (Select family preference)
                  </p>
                  <RadioGroup value={futurePreference} onValueChange={setFuturePreference} className="space-y-3">
                     {PREFERENCES.map(pref => (
@@ -591,27 +1125,29 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         onClick={() => setFuturePreference(pref.id)}
                       >
                          <RadioGroupItem value={pref.id} id={pref.id} className="text-brand-magenta" />
-                         <Label htmlFor={pref.id} className="text-xs font-bold text-slate-700 cursor-pointer flex-1">
+                         <Label htmlFor={pref.id} className="text-xs font-bold text-slate-700 cursor-pointer flex-1 leading-normal">
                            {pref.label}
                          </Label>
                       </div>
                     ))}
                  </RadioGroup>
               </div>
-           </div>
+          </CardContent>
+        </Card>
 
-           {/* Step 4: Emergency */}
-           <div className="space-y-6">
+        {/* HARDSHIP STATUS (EMERGENCY STATUS) */}
+        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm bg-white">
+          <CardContent className="p-5 md:p-6 space-y-6">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">4</span>
-                <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">അടിയന്തിര പ്രാധാന്യ വിവരങ്ങൾ (Emergency Status)</h4>
+                <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">ഗുരുതര നിലവിലെ അവസ്ഥ (Hardship / Emergency Status)</h4>
               </div>
 
               <div className="space-y-3">
                  <p className="text-xs font-bold text-slate-500 leading-relaxed mb-4">
-                   Current hardship status (താങ്കളുടെ നിലവിലെ അവസ്ഥ)
+                   നിലവിൽ താങ്കളോ കുടുംബമോ നേരിടുന്ന സാമ്പത്തിക ബുദ്ധിമുട്ടുകൾ തിരഞ്ഞെടുക്കുക (Select economic hardship)
                  </p>
-                 <div className="grid grid-cols-1 gap-3">
+                 <div className="grid grid-cols-1 gap-2.5">
                    {HARDSHIPS.map(hard => (
                      <div 
                        key={hard.id}
@@ -626,10 +1162,10 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                           }
                         }
                        }}
-                       className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                       className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
                          hardshipStatus.includes(hard.id)
                            ? 'border-red-500 bg-red-50'
-                           : 'border-slate-100 hover:border-slate-200'
+                           : 'border-slate-150 hover:border-slate-200'
                        }`}
                      >
                        <Checkbox checked={hardshipStatus.includes(hard.id)} className={`pointer-events-none ${hardshipStatus.includes(hard.id) ? "border-red-500" : ""}`} />
@@ -641,84 +1177,54 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                    ))}
                  </div>
               </div>
-           </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        {/* Priority Status Visualization */}
-        <section className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-6 space-y-4">
-           <div className="flex items-center justify-between">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculated Priority</h4>
-              <Badge className={`${priorityInfo.color} text-white border-0 px-3 py-1 font-black text-[9px]`}>
-                 {priorityInfo.label}
-              </Badge>
-           </div>
-           
-           <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl ${priorityInfo.color} flex items-center justify-center text-white shadow-xl`}>
-                 <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                 <p className="text-xs font-black text-slate-700">{priorityInfo.text}</p>
-                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Automatic Priority Status</p>
-              </div>
-           </div>
-        </section>
-
-        {/* Step 5: Transparency & Sharing Consent */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-brand-blue text-white flex items-center justify-center text-[10px] font-black">5</span>
-            <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest text-[11px]">സമ്മതപത്രം (Sharing Consent)</h4>
-          </div>
-
+        {/* SHARING CONSENT */}
+        <section className="space-y-4">
           <div 
             onClick={() => setConsentLegal(!consentLegal)}
             className={`p-5 rounded-3xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
               consentLegal 
                 ? 'border-emerald-500 bg-emerald-50/40 shadow-sm' 
-                : 'border-slate-100 hover:border-slate-200 bg-white'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
             }`}
           >
-            <Checkbox checked={consentLegal} onCheckedChange={(val) => setConsentLegal(!!val)} className={`w-5 h-5 border-slate-300 mt-1 pointer-events-none ${consentLegal ? 'border-emerald-600 bg-emerald-600 text-white' : ''}`} />
+            <Checkbox checked={consentLegal} onCheckedChange={(val) => setConsentLegal(!!val)} className={`w-5 h-5 border-slate-350 mt-1 pointer-events-none ${consentLegal ? 'border-emerald-600 bg-emerald-600 text-white' : ''}`} />
             <div className="flex-1 min-w-0 space-y-2">
               <p className="text-xs font-bold text-slate-800 leading-relaxed">
-                ഇതിന്റെ ഒരു കോപ്പി മാനേജ്മെന്റിനും ഒരു കോപ്പി ലീഗൽ അഡ്വൈസർക്കും കൈമാറുന്നതാണ്. അതിന് ഞാൻ സമ്മതിക്കുന്നു.
+                ഇതിന്റെ കോപ്പികൾ വെരിഫിക്കേഷനും ഓഡിറ്റിംഗിനുമായി മാനേജ്മെന്റും ലീഗൽ കൗൺസിലറുമായി പങ്കുവെക്കുന്നതിന് ഞാൻ സമ്മതിക്കുന്നു. * (Consent Required)
               </p>
               <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
-                A copy of this form submission will be shared with the management and the company's legal advisor. Do you agree with this?
+                I hereby consent to verify and share these claims with company management and legal advisors.
               </p>
-              <div className="flex gap-2.5 mt-1.5">
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${consentLegal ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
-                  {consentLegal ? 'സമ്മതിച്ചു (Agreed)' : 'സമ്മതമില്ല (Not Agreed - Consent Required)'}
-                </span>
-              </div>
             </div>
           </div>
         </section>
 
       </div>
 
-      {/* Sticky Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-2xl border-t z-20 flex gap-4">
+      {/* STICKY BOTTOM ACTIONS */}
+      <div className="fixed bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-2xl border-t z-20 flex gap-4 max-w-2xl mx-auto rounded-t-3xl shadow-lg border">
         <Button 
           variant="outline" 
           onClick={onClose} 
-          className="h-14 flex-1 rounded-2xl border-slate-200 font-bold text-slate-500"
+          className="h-12 flex-1 rounded-xl border-slate-200 font-semibold text-slate-500"
         >
           Cancel
         </Button>
         <Button 
-          disabled={loading || !futurePreference || hardshipStatus.length === 0 || !consentLegal}
+          disabled={loading || !formIsValid}
           onClick={handleSubmit} 
-          className="h-14 flex-[2] rounded-2xl bg-brand-blue text-white shadow-xl shadow-brand-blue/20 hover:shadow-2xl transition-all font-black text-sm relative overflow-hidden"
+          className="h-12 flex-[2] rounded-xl bg-brand-blue text-white shadow-xl shadow-brand-blue/15 hover:shadow-2xl transition-all font-black text-xs relative overflow-hidden"
         >
           {loading ? (
-            <span className="flex items-center gap-2">
-              <Clock className="w-4 h-4 animate-spin" /> {existingClaimId ? 'Updating...' : 'Submitting...'}
+            <span className="flex items-center gap-2 justify-center">
+              <Clock className="w-4 h-4 animate-spin" /> സുരക്ഷാ റജിസ്റ്റർ സമർപ്പിക്കുന്നു...
             </span>
           ) : (
-            <span className="flex items-center gap-2">
-              {existingClaimId ? 'Update Details (പുതുക്കുക)' : 'Submit Form (സമർപ്പിക്കുക)'} <ArrowRight className="w-5 h-5" />
+            <span className="flex items-center gap-2 justify-center">
+              ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കുക (Submit Claim) <ArrowRight className="w-5 h-5" />
             </span>
           )}
         </Button>
