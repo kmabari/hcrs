@@ -96,6 +96,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [selfTotalPaid, setSelfTotalPaid] = useState(0);
   const [selfTotalReceived, setSelfTotalReceived] = useState(0);
   const [selfTotalPending, setSelfTotalPending] = useState(0);
+  const [selfNotes, setSelfNotes] = useState('');
 
   // 2. Claimant State - Parent (Mother or Father)
   const [parentSelected, setParentSelected] = useState(false);
@@ -109,6 +110,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [parentTotalPaid, setParentTotalPaid] = useState(0);
   const [parentTotalReceived, setParentTotalReceived] = useState(0);
   const [parentTotalPending, setParentTotalPending] = useState(0);
+  const [parentNotes, setParentNotes] = useState('');
 
   // 3. Claimant State - Child (Son or Daughter)
   const [childSelected, setChildSelected] = useState(false);
@@ -122,6 +124,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [childTotalPaid, setChildTotalPaid] = useState(0);
   const [childTotalReceived, setChildTotalReceived] = useState(0);
   const [childTotalPending, setChildTotalPending] = useState(0);
+  const [childNotes, setChildNotes] = useState('');
 
   // General Questions
   const [futurePreference, setFuturePreference] = useState('');
@@ -393,6 +396,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalPaid: selfTotalPaid,
           totalReceived: selfTotalReceived,
           totalPending: selfTotalPending,
+          notes: selfNotes,
         };
         await addDoc(collection(db, 'claims'), selfClaim);
       }
@@ -412,6 +416,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalPaid: parentTotalPaid,
           totalReceived: parentTotalReceived,
           totalPending: parentTotalPending,
+          notes: parentNotes,
         };
         await addDoc(collection(db, 'claims'), parentClaim);
       }
@@ -431,6 +436,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalPaid: childTotalPaid,
           totalReceived: childTotalReceived,
           totalPending: childTotalPending,
+          notes: childNotes,
         };
         await addDoc(collection(db, 'claims'), childClaim);
       }
@@ -724,6 +730,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                   </div>
                 )}
 
+                {/* Notes Input */}
+                <div className="space-y-1.5 pt-2">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
+                  <textarea 
+                    value={selfNotes} 
+                    onChange={(e) => setSelfNotes(e.target.value)} 
+                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
+                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                  />
+                </div>
+
                 {/* Amount mini-badge */}
                 <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
                   <span>ആകെ മിച്ച തുക:</span>
@@ -890,6 +907,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                     </div>
                   </div>
                 )}
+
+                {/* Notes Input */}
+                <div className="space-y-1.5 pt-2">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
+                  <textarea 
+                    value={parentNotes} 
+                    onChange={(e) => setParentNotes(e.target.value)} 
+                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
+                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                  />
+                </div>
 
                 {/* Amount mini-badge */}
                 <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
@@ -1058,6 +1086,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                   </div>
                 )}
 
+                {/* Notes Input */}
+                <div className="space-y-1.5 pt-2">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
+                  <textarea 
+                    value={childNotes} 
+                    onChange={(e) => setChildNotes(e.target.value)} 
+                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
+                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                  />
+                </div>
+
                 {/* Amount mini-badge */}
                 <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
                   <span>ആകെ മിച്ച തുക:</span>
@@ -1075,6 +1114,53 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           <div className="flex items-center gap-2">
             <LayoutDashboard className="w-5 h-5 text-brand-magenta" />
             <h4 className="text-[10px] font-black uppercase tracking-wider opacity-60">ആകെ തുക വിവരങ്ങൾ (Combined Totals)</h4>
+          </div>
+
+          {/* Claimant-wise Breakdown List */}
+          <div className="space-y-2 border-b border-white/10 pb-4">
+            <p className="text-[9px] font-black opacity-55 uppercase tracking-wider text-pink-300">വ്യക്തിഗത തുകകൾ (Individual Claimants Breakdown):</p>
+            <div className="grid grid-cols-1 gap-2 pt-1">
+              {selfSelected && (
+                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
+                  <div>
+                    <span className="text-[10px] font-black text-brand-magenta uppercase">സ്വന്തം (Self)</span>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{selfName || user?.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] opacity-45 block">Pending</span>
+                    <span className="text-sm font-black text-white">₹{selfTotalPending.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
+              {parentSelected && (
+                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
+                  <div>
+                    <span className="text-[10px] font-black text-brand-magenta uppercase">
+                      {parentRelation === 'Mother' ? 'അമ്മ (Mother)' : parentRelation === 'Father' ? 'അച്ഛൻ (Father)' : 'മാതാവ്/പിതാവ് (Parent)'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{parentName}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] opacity-45 block">Pending</span>
+                    <span className="text-sm font-black text-white">₹{parentTotalPending.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
+              {childSelected && (
+                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
+                  <div>
+                    <span className="text-[10px] font-black text-brand-magenta uppercase">
+                      {childRelation === 'Son' ? 'മകൻ (Son)' : childRelation === 'Daughter' ? 'മകൾ (Daughter)' : 'മകൻ/മകൾ (Child)'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{childName}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] opacity-45 block">Pending</span>
+                    <span className="text-sm font-black text-white">₹{childTotalPending.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">

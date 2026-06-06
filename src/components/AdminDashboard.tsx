@@ -412,6 +412,7 @@ export default function AdminDashboard({
   const [editClaimNoBreakup, setEditClaimNoBreakup] = useState(false);
   const [editClaimTotalPaid, setEditClaimTotalPaid] = useState(0);
   const [editClaimTotalReceived, setEditClaimTotalReceived] = useState(0);
+  const [editClaimNotes, setEditClaimNotes] = useState('');
   
   // Category-wise editing states
   const [editClaimCategoryPaid, setEditClaimCategoryPaid] = useState<Record<string, number>>({});
@@ -428,6 +429,7 @@ export default function AdminDashboard({
       setEditClaimNoBreakup(!!editingClaim.noBreakup);
       setEditClaimTotalPaid(editingClaim.totalPaid || 0);
       setEditClaimTotalReceived(editingClaim.totalReceived || 0);
+      setEditClaimNotes(editingClaim.notes || '');
       setEditClaimFuturePreference(editingClaim.futurePreference || '');
       setEditClaimHardshipStatus(editingClaim.hardshipStatus || []);
       
@@ -603,6 +605,7 @@ export default function AdminDashboard({
         futurePreference: editClaimFuturePreference,
         hardshipStatus: editClaimHardshipStatus,
         isEmergency,
+        notes: editClaimNotes,
         priorityStatus,
         updatedAt: serverTimestamp()
       };
@@ -686,7 +689,8 @@ export default function AdminDashboard({
         isApproved: true,
         renewalPending: false,
         issueDate: serverTimestamp(), // Update issue date on renewal approval
-        registrationDate: serverTimestamp(), // Set active registration/joining date of that exact day
+        registrationDate: member.registrationDate || serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
+        renewalDate: serverTimestamp(), // Store renewal date permanently
         expiryDate: expiry,
         paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
       });
@@ -2023,6 +2027,24 @@ export default function AdminDashboard({
                         <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
                           SN: {member.serialNo}
                         </div>
+                        <div className="mt-2 space-y-1 text-[10px] border-t border-slate-100 pt-1.5 font-sans">
+                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Joining Date">
+                            <span className="font-extrabold text-slate-400">Join:</span> 
+                            {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString('en-IN') : (member.registrationDate ? new Date(member.registrationDate).toLocaleDateString('en-IN') : 'N/A')}
+                          </div>
+                          
+                          {member.renewalDate && (
+                            <div className="flex items-center gap-1 text-[#FF1493] font-bold" title="Last Renewed Date">
+                              <span className="font-extrabold text-pink-400">Renewal:</span> 
+                              {member.renewalDate?.toDate ? member.renewalDate.toDate().toLocaleDateString('en-IN') : new Date(member.renewalDate).toLocaleDateString('en-IN')}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Expiry/Validity Date">
+                            <span className="font-extrabold text-slate-400">Expiry:</span> 
+                            {member.expiryDate?.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : (member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('en-IN') : 'N/A')}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                          <div className="space-y-2">
@@ -2315,8 +2337,23 @@ export default function AdminDashboard({
                         <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
                           SN: {member.serialNo}
                         </div>
-                        <div className="text-[9px] text-[#0066FF] font-extrabold mt-1">
-                          Valid Till: {member.expiryDate ? (member.expiryDate.seconds ? new Date(member.expiryDate.seconds * 1000).toLocaleDateString() : new Date(member.expiryDate).toLocaleDateString()) : '---'}
+                        <div className="mt-2 space-y-1 text-[10px] border-t border-slate-100 pt-1.5 font-sans">
+                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Joining Date">
+                            <span className="font-extrabold text-slate-400">Join:</span> 
+                            {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString('en-IN') : (member.registrationDate ? new Date(member.registrationDate).toLocaleDateString('en-IN') : 'N/A')}
+                          </div>
+                          
+                          {member.renewalDate && (
+                            <div className="flex items-center gap-1 text-[#FF1493] font-bold" title="Last Renewed Date">
+                              <span className="font-extrabold text-pink-400">Renewal:</span> 
+                              {member.renewalDate?.toDate ? member.renewalDate.toDate().toLocaleDateString('en-IN') : new Date(member.renewalDate).toLocaleDateString('en-IN')}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Expiry/Validity Date">
+                            <span className="font-extrabold text-slate-400">Expiry:</span> 
+                            {member.expiryDate?.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : (member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('en-IN') : 'N/A')}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -3693,7 +3730,16 @@ export default function AdminDashboard({
                     <div className="space-y-3">
                       <DetailItem label="Member ID" value={viewingMember.membershipId} />
                       <DetailItem label="Serial No" value={viewingMember.serialNo?.toString()} />
-                      <DetailItem label="Reg. Date" value={viewingMember.registrationDate?.toDate ? viewingMember.registrationDate.toDate().toLocaleDateString() : new Date(viewingMember.registrationDate).toLocaleDateString()} />
+                      <DetailItem label="Joining Date" value={viewingMember.registrationDate?.toDate ? viewingMember.registrationDate.toDate().toLocaleDateString('en-IN') : (viewingMember.registrationDate ? new Date(viewingMember.registrationDate).toLocaleDateString('en-IN') : 'N/A')} />
+                      
+                      {viewingMember.renewalDate && (
+                        <DetailItem 
+                          label="Renewal Date" 
+                          value={viewingMember.renewalDate?.toDate ? viewingMember.renewalDate.toDate().toLocaleDateString('en-IN') : new Date(viewingMember.renewalDate).toLocaleDateString('en-IN')} 
+                        />
+                      )}
+                      
+                      <DetailItem label="Expiry Date" value={viewingMember.expiryDate?.toDate ? viewingMember.expiryDate.toDate().toLocaleDateString('en-IN') : (viewingMember.expiryDate ? new Date(viewingMember.expiryDate).toLocaleDateString('en-IN') : 'N/A')} />
                     </div>
                   </div>
                   <div className="space-y-4">
@@ -4572,6 +4618,17 @@ export default function AdminDashboard({
                     )}
                  </div>
 
+                  {selectedClaim.notes && (
+                     <div className="space-y-2 bg-yellow-50/40 border border-yellow-100 p-4 rounded-2xl mb-6">
+                        <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                           Remarks / Notes (അധിക വിവരങ്ങൾ / നോട്ട്)
+                        </h4>
+                        <p className="text-xs font-semibold text-slate-700 whitespace-pre-wrap leading-relaxed">
+                           {selectedClaim.notes}
+                        </p>
+                     </div>
+                  )}
+
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Future Preference</h4>
@@ -4749,6 +4806,17 @@ export default function AdminDashboard({
                         <SelectItem value="continue" className="text-xs">Ready to continue with company based on future plans</SelectItem>
                      </SelectContent>
                   </Select>
+                </div>
+
+                {/* Remarks/Notes Input */}
+                <div className="space-y-1.5 font-sans">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase">Remarks / Notes (അധിക വിവരങ്ങൾ / നോട്ട്)</Label>
+                  <textarea 
+                    value={editClaimNotes} 
+                    onChange={(e) => setEditClaimNotes(e.target.value)} 
+                    placeholder="Enter notes or explanation..."
+                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                  />
                 </div>
 
                 {/* Hardship declaration */}

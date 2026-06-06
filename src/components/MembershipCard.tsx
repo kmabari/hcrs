@@ -183,9 +183,15 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
   const cardDetails = [
     { label: 'Phone', value: member.mobile || 'N/A', icon: Phone },
-    { label: 'Email', value: member.email || 'N/A', icon: Mail },
-    { label: 'Join Date', value: formatDate(member.registrationDate), icon: Award },
-    { label: 'Expiry Date', value: getRenewalDate(member.registrationDate), icon: Clock },
+    ...(member.renewalDate ? [
+      { label: 'Join Date', value: formatDate(member.registrationDate), icon: Award },
+      { label: 'Renewed', value: formatDate(member.renewalDate), icon: Calendar },
+      { label: 'Expiry Date', value: getRenewalDate(member.registrationDate), icon: Clock }
+    ] : [
+      { label: 'Email', value: member.email || 'N/A', icon: Mail },
+      { label: 'Join Date', value: formatDate(member.registrationDate), icon: Award },
+      { label: 'Expiry Date', value: getRenewalDate(member.registrationDate), icon: Clock }
+    ])
   ];
 
   return (
