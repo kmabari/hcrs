@@ -18,9 +18,10 @@ interface MembershipCardProps {
   showCelebration?: boolean;
   isAdmin?: boolean;
   onLogout?: () => void;
+  isReadOnly?: boolean;
 }
 
-export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout }: MembershipCardProps) {
+export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout, isReadOnly = false }: MembershipCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -293,25 +294,29 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
           {/* Profile and Name section with Ring Highlights & Silver Plates */}
           <div className="flex flex-col items-center shrink-0 relative text-center">
             {/* Circular picture formatted inside heavy-beveled silver-chrome ring */}
-            <label className="cursor-pointer group block">
-              <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+            <label className={`${isReadOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'} group block`}>
+              {!isReadOnly && <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />}
               <div className="w-[102px] h-[102px] rounded-full p-1 bg-gradient-to-b from-[#f8fafc] via-[#cbd5e1] to-[#94a3b8] border border-slate-350 shadow-[0_4px_8px_rgba(0,0,0,0.4)] hover:scale-105 transition-transform duration-300">
                 <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center relative border-4 border-white shadow-inner">
                   {previewUrl || member.photoUrl ? (
                     <>
                       <img src={previewUrl || member.photoUrl} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
-                      <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
-                        <Camera size={14} className="text-white" />
-                        <span className="text-[6px] font-black uppercase tracking-wider">Update</span>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
+                          <Camera size={14} className="text-white" />
+                          <span className="text-[6px] font-black uppercase tracking-wider">Update</span>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-440 bg-slate-100 relative">
                       <User size={34} className="text-slate-400 shrink-0" />
-                      <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
-                        <Camera size={14} className="text-white" />
-                        <span className="text-[6px] font-black uppercase tracking-wider">Add Photo</span>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
+                          <Camera size={14} className="text-white" />
+                          <span className="text-[6px] font-black uppercase tracking-wider">Add Photo</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

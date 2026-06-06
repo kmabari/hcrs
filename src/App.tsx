@@ -78,8 +78,9 @@ const getStrictDistrictFromEmail = (email: string): string | null => {
 };
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery'>('loading');
+  const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify'>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [verifiedMember, setVerifiedMember] = useState<UserProfile | null>(null);
   const [members, setMembers] = useState<UserProfile[]>([]);
   const [districtQuotas, setDistrictQuotas] = useState<Record<string, number>>({});
   const [districtQuotasUsed, setDistrictQuotasUsed] = useState<Record<string, number>>({});
@@ -361,9 +362,9 @@ export default function App() {
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const memberData = { uid: docSnap.id, ...docSnap.data() } as UserProfile;
-            setUser(memberData);
-            setView('card');
-            toast.success(`Viewing card for ${memberData.name}`);
+            setVerifiedMember(memberData);
+            setView('verify');
+            toast.success(`മെമ്പർ കാർഡ് വിജയിച്ചു വെരിഫൈ ചെയ്തിട്ടുണ്ട്: ${memberData.name}`);
             
             // Clean up the URL so the ID/route doesn't stay in the address bar
             window.history.replaceState({}, document.title, '/');
@@ -1749,6 +1750,65 @@ export default function App() {
               onClose={() => setView('card')} 
             />
           )}
+        </div>
+      )}
+
+      {view === 'verify' && verifiedMember && (
+        <div className="min-h-screen flex flex-col items-center p-4 pb-20 w-full max-w-lg mx-auto">
+          {/* Dashboard Header with Logo */}
+          <div className="w-full mb-6 flex items-center justify-between bg-emerald-500/10 backdrop-blur-2xl p-5 rounded-3xl border border-emerald-500/20 shadow-2xl">
+            <div className="flex items-center gap-4">
+              <Logo size="sm" />
+              <div>
+                <h1 className="text-[10px] font-black text-foreground tracking-widest uppercase leading-none">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
+                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-[0.2em] mt-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 inline animate-pulse" /> Official Verification Portal
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full flex flex-col items-center">
+            {/* Status Shield Info Plate */}
+            <div className="w-full max-w-sm mb-6 bg-gradient-to-r from-emerald-600/10 to-teal-600/10 border-2 border-emerald-500/35 p-5 rounded-[28px] text-center shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-xl pointer-events-none" />
+              <div className="h-10 w-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3 text-emerald-500">
+                <ShieldCheck className="w-5 h-5 animate-bounce" />
+              </div>
+              <h3 className="text-md font-black text-slate-800 dark:text-white uppercase tracking-tight leading-none">
+                ഒഫീഷ്യൽ മെമ്പർ വെരിഫൈഡ് ✓
+              </h3>
+              <p className="text-[9px] font-black tracking-widest text-emerald-500 uppercase mt-1">HCRS VERIFIED MEMBER IDENTITY</p>
+              
+              <p className="text-slate-600 dark:text-slate-300 font-semibold text-[10px] leading-relaxed mt-2 p-3 bg-white/40 dark:bg-black/20 rounded-xl border border-emerald-500/10 shadow-inner">
+                ഈ ആളുടെ മെമ്പർഷിപ്പ് വിവരങ്ങൾ പൂർണ്ണമായും വെരിഫൈഡ് ആയതുമാണ്.
+                <br/>
+                <span className="text-[8px] text-slate-400 dark:text-slate-400 font-bold block mt-1 uppercase">This member profile and active digital identity are officially authenticated and active on the HCRS platform.</span>
+              </p>
+            </div>
+
+            {/* Read-only Member Card */}
+            <div className="relative">
+              <MembershipCard 
+                member={verifiedMember} 
+                showCelebration={false} 
+                isReadOnly={true}
+              />
+            </div>
+
+            {/* Controls to return home */}
+            <div className="flex flex-col gap-3 w-full max-w-xs mt-8 pb-10">
+              <Button 
+                onClick={() => {
+                  setVerifiedMember(null);
+                  setView('landing');
+                }}
+                className="w-full h-15 rounded-2xl font-black bg-brand-blue hover:bg-brand-blue/95 text-white uppercase tracking-wider shadow-xl flex items-center justify-center gap-2 border-b-4 border-brand-blue/40"
+              >
+                Go to Home Page
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
