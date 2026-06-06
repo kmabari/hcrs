@@ -227,70 +227,76 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         </motion.div>
       )}
 
-      {/* Screenshot Friendly Outer Backdrop Container */}
-      <div className="w-full bg-slate-50/70 p-6 md:p-8 rounded-[36px] border border-slate-200/50 flex flex-col items-center justify-center shadow-inner relative overflow-hidden shrink-0">
-        {/* Abstract vector backgrounds for beautiful depth framing */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-magenta/5 blur-3xl rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-blue/5 blur-3xl rounded-full pointer-events-none" />
-        
-        {/* Core PVC-style ID Card Object */}
+      {/* Screenshot Friendly Outer Backdrop Container - Enhanced with hyper-realistic Wooden Surface Mockup */}
+      <div className="w-full bg-[#3c2517] p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl min-h-[660px]">
+        {/* Deep luxurious wood background, planks and lighting highlight */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#4a3121] to-[#25150c] pointer-events-none" />
+        <div className="absolute inset-0 opacity-[0.22] bg-[repeating-linear-gradient(0deg,#1c0d06_0px,#1c0d06_1px,transparent_1px,transparent_20px)] pointer-events-none" />
+        <div className="absolute inset-0 opacity-[0.12] bg-[repeating-linear-gradient(90deg,transparent_0px,transparent_45px,#000_45px,#000_46px)] pointer-events-none" />
+        {/* Soft radial overlay mimicking high-end restaurant/gallery lamp spot */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.85)_100%)] pointer-events-none" />
+        {/* Glossy varnish light streak reflection */}
+        <div className="absolute -top-[30%] -left-[20%] w-[150%] h-[150%] bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.12] rotate-[22deg] pointer-events-none" />
+
+        {/* Core Premium 3D PVC ID Card with Double Metallic Bevel Frame */}
         <div 
           ref={cardRef} 
-          className="w-[345px] h-[610px] bg-white rounded-[24px] text-slate-800 relative shadow-[0_24px_50px_rgba(0,0,0,0.12)] overflow-hidden font-sans border border-slate-200 flex flex-col justify-between shrink-0 select-none"
+          className="w-[340px] h-[590px] rounded-[24px] text-slate-800 relative overflow-hidden font-sans border-[6px] border-slate-700/85 flex flex-col justify-between shrink-0 select-none shadow-[25px_30px_50px_rgba(0,0,0,0.9)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b]"
         >
           {isExpired && (
-            <div className="absolute inset-0 bg-red-650/15 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
-              <div className="bg-red-600/90 text-white font-black uppercase text-[10px] tracking-[0.2em] px-5 py-2.5 rounded-xl shadow-2xl -rotate-12 border border-red-500/30 flex items-center gap-2 select-none scale-110">
+            <div className="absolute inset-0 bg-red-950/20 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
+              <div className="bg-gradient-to-r from-red-700 to-red-600 text-white font-black uppercase text-[10px] tracking-[0.2em] px-5 py-2.5 rounded-xl shadow-2xl -rotate-12 border border-red-500/30 flex items-center gap-2 select-none scale-105">
                 <Clock className="w-4 h-4 animate-pulse text-white" /> EXPIRED (കാലാവധി കഴിഞ്ഞു)
               </div>
             </div>
           )}
           {!isExpired && member.status === 'pending' && (
-            <div className="absolute inset-0 bg-amber-600/10 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
-              <div className="bg-amber-500/95 text-white font-black uppercase text-[10px] tracking-[0.15em] px-5 py-3 rounded-xl shadow-2xl -rotate-12 border border-amber-400/30 flex flex-col items-center gap-1 text-center select-none scale-105">
+            <div className="absolute inset-0 bg-amber-950/15 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
+              <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black uppercase text-[10px] tracking-[0.15em] px-5 py-3 rounded-xl shadow-2xl -rotate-12 border border-amber-400/30 flex flex-col items-center gap-1 text-center select-none scale-105">
                 <Clock className="w-4 h-4 animate-pulse text-white" />
                 <span>PENDING APPROVAL</span>
                 <span className="text-[9px] font-bold block normal-case">(അപ്രൂവലിനായി കാത്തിരിക്കുന്നു)</span>
               </div>
             </div>
           )}
-          {/* Top Premium Card Margin Strip */}
-          <div className="bg-brand-magenta h-1.5 w-full absolute top-0 left-0 z-30" />
-          
-          {/* Header section with branding & metallic logo frame - centered aligned */}
-          <div className="bg-gradient-to-br from-brand-blue via-brand-blue to-indigo-950 h-[140px] relative px-4 pt-4 shrink-0 flex flex-col items-center justify-center text-center">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/15 blur-xl pointer-events-none" />
-            
-            <div className="bg-white/95 p-1 rounded-full shadow-md w-12 h-12 flex items-center justify-center border border-white/20 shrink-0 relative z-10 mb-1">
-              <img 
-                src="https://i.ibb.co/DHKT5DRn/1000072034-removebg-preview-1.png" 
-                alt="HCRS Official Logo" 
-                className="w-10 h-10 object-contain" 
-                crossOrigin="anonymous" 
-                referrerPolicy="no-referrer"
-              />
+
+          {/* Top Premium Card Margin strip - styled with glossy finish */}
+          <div className="bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055] h-1.5 w-full absolute top-0 left-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.4)]" />
+
+          {/* Header section with HCRS Logo Left + Silver Metallic Embossed Panel Right */}
+          <div className="p-4 pt-5 shrink-0 flex items-center justify-between gap-3 relative">
+            {/* Glossy Chrome Circular Frame for official logo */}
+            <div className="bg-gradient-to-b from-[#ffffff] via-[#e2e8f0] to-[#cbd5e1] p-1 rounded-full shadow-[inset_0_1.5px_2px_rgba(255,255,255,1),0_3px_6px_rgba(0,0,0,0.5)] w-[52px] h-[52px] flex items-center justify-center border border-slate-350 shrink-0">
+              <div className="bg-white rounded-full p-0.5 w-full h-full flex items-center justify-center overflow-hidden">
+                <img 
+                  src="https://i.ibb.co/DHKT5DRn/1000072034-removebg-preview-1.png" 
+                  alt="HCRS Official Logo" 
+                  className="w-10 h-10 object-contain" 
+                  crossOrigin="anonymous" 
+                  referrerPolicy="no-referrer"
+                />
+              </div>
             </div>
-            
-            <div className="relative z-10">
-              <h1 className="text-white text-[10px] font-black leading-none uppercase tracking-tight">
+
+            {/* Premium Silver Metallic Embossed Header Panel */}
+            <div className="flex-1 bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#94a3b8] p-2 rounded-xl border-t border-white/60 border-b border-slate-400 shadow-[inset_0_1.5px_1px_rgba(255,255,255,1),0_2.5px_4px_rgba(0,0,0,0.35)] text-center">
+              <h1 className="text-slate-900 text-[8.5px] font-black leading-tight uppercase tracking-tight">
                 HIGHRICH COMMUNITY REVIVAL SOCIETY
               </h1>
-              <div className="flex items-center justify-center gap-1.5 mt-1">
-                <span className="text-brand-magenta font-black text-[12px] tracking-wider leading-none">HCRS</span>
-                <span className="h-2.5 w-px bg-white/20" />
-                <span className="text-[7.5px] text-slate-200 leading-none font-semibold tracking-wider italic uppercase">
-                  "Together We Grow"
-                </span>
-              </div>
+              <div className="w-full h-[1px] bg-slate-350 my-1" />
+              <p className="text-[7px] text-brand-magenta font-black tracking-widest uppercase leading-none italic">
+                "TOGETHER WE GROW"
+              </p>
             </div>
           </div>
 
-          {/* Profile section with ring highlights */}
-          <div className="flex flex-col items-center shrink-0 relative z-20 -mt-10 mb-1">
-            <label className="cursor-pointer group">
+          {/* Profile and Name section with Ring Highlights & Silver Plates */}
+          <div className="flex flex-col items-center shrink-0 relative text-center">
+            {/* Circular picture formatted inside heavy-beveled silver-chrome ring */}
+            <label className="cursor-pointer group block">
               <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-              <div className="w-[96px] h-[96px] rounded-full p-1 bg-gradient-to-tr from-brand-blue to-brand-magenta shadow-md hover:scale-105 transition-transform duration-300">
-                <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center relative border-4 border-white">
+              <div className="w-[102px] h-[102px] rounded-full p-1 bg-gradient-to-b from-[#f8fafc] via-[#cbd5e1] to-[#94a3b8] border border-slate-350 shadow-[0_4px_8px_rgba(0,0,0,0.4)] hover:scale-105 transition-transform duration-300">
+                <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center relative border-4 border-white shadow-inner">
                   {previewUrl || member.photoUrl ? (
                     <>
                       <img src={previewUrl || member.photoUrl} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
@@ -300,8 +306,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                       </div>
                     </>
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 relative">
-                      <User size={36} className="text-slate-400 shrink-0" />
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-440 bg-slate-100 relative">
+                      <User size={34} className="text-slate-400 shrink-0" />
                       <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
                         <Camera size={14} className="text-white" />
                         <span className="text-[6px] font-black uppercase tracking-wider">Add Photo</span>
@@ -312,131 +318,103 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               </div>
             </label>
 
-            <div className="mt-2.5 text-center px-4 w-full">
-              <h3 className="text-base font-black text-slate-800 uppercase leading-none tracking-tight truncate max-w-[280px] mx-auto">
+            {/* Member Name Embossed Silver Plate */}
+            <div className="mt-2.5 w-[85%] mx-auto bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] py-1 px-3 rounded-lg border-t border-white/70 border-b border-slate-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.3)]">
+              <h3 className="text-[11.5px] font-extrabold text-slate-900 uppercase leading-none tracking-tight truncate max-w-[240px] mx-auto">
                 {member.name}
               </h3>
-              
-              {/* Membership ID Number styled like pure metallic card badges */}
-              <div className="mt-2 inline-flex items-center gap-2 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-105 rounded-md px-4 py-1">
-                <span className="text-[8px] text-brand-blue font-black tracking-wider uppercase">MEMBER ID:</span>
-                <span className="text-sm font-black text-brand-blue font-mono tracking-tight leading-none">
-                  {member.membershipId || 'KL/HCRS/PENDING'}
-                </span>
-              </div>
-              
-              <p className="text-[10px] font-black text-brand-magenta uppercase tracking-widest mt-1.5">
-                {districtName} DISTRICT - {member.constituencyCode || (member.assemblyConstituency ? getAssemblyCode(member.assemblyConstituency) : 'NA')}
-              </p>
+            </div>
+
+            {/* District & Assembly text underneath in elegant label */}
+            <p className="text-[9px] font-black text-brand-magenta uppercase tracking-wider mt-1.5 font-sans">
+              {districtName} DISTRICT - {member.constituencyCode || (member.assemblyConstituency ? getAssemblyCode(member.assemblyConstituency) : 'NA')}
+            </p>
+          </div>
+
+          {/* Member Details Columns Section styled as Stacked Silver Plates */}
+          <div className="px-5 space-y-1.5 py-1 shrink-0">
+            {/* 1. MEMBER ID */}
+            <div className="bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-t border-b border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] rounded-lg p-1.5 flex items-center justify-between text-[#0f172a]">
+              <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500">MEMBER ID</span>
+              <span className="text-[11px] font-black font-mono tracking-tight text-[#0f172a]">{member.membershipId || 'KL/HCRS/PENDING'}</span>
+            </div>
+
+            {/* 2. PHONE */}
+            <div className="bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-t border-b border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] rounded-lg p-1.5 flex items-center justify-between text-[#0f172a]">
+              <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500">PHONE</span>
+              <span className="text-[10.5px] font-black font-mono text-[#0f172a]">{member.mobile || 'N/A'}</span>
+            </div>
+
+            {/* 3. EMAIL */}
+            <div className="bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-t border-b border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] rounded-lg p-1.5 flex items-center justify-between text-[#0f172a]">
+              <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500">EMAIL</span>
+              <span className="text-[9.5px] font-black truncate max-w-[170px] text-right text-[#0f172a]">{member.email || 'N/A'}</span>
+            </div>
+
+            {/* 4. JOIN DATE */}
+            <div className="bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-t border-b border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] rounded-lg p-1.5 flex items-center justify-between text-[#0f172a]">
+              <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500">JOIN DATE</span>
+              <span className="text-[10.5px] font-black font-mono text-[#0f172a]">{formatDate(member.registrationDate)}</span>
+            </div>
+
+            {/* 5. EXPIRY DATE */}
+            <div className="bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-t border-b border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] rounded-lg p-1.5 flex items-center justify-between text-[#0f172a]">
+              <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500">EXPIRY DATE</span>
+              <span className="text-[10.5px] font-black font-mono text-brand-magenta leading-none">{getRenewalDate(member.registrationDate)}</span>
             </div>
           </div>
 
-          {/* Member Details Columns Section */}
-          <div className="px-5 py-1 shrink-0">
-            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2 shadow-inner">
-              {cardDetails.map((detail, idx) => {
-                const IconComponent = detail.icon;
-                return (
-                  <div key={idx} className="flex justify-between items-center text-[10.5px]">
-                    <div className="flex items-center gap-2 text-slate-500 shrink-0">
-                      <IconComponent className="w-3.5 h-3.5 text-brand-blue/75" />
-                      <span className="font-bold text-[8px] uppercase tracking-wider">{detail.label}</span>
-                    </div>
-                    <span className="font-black text-slate-800 truncate pl-4 max-w-[195px] text-right font-mono">
-                      {detail.value}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* Bottom section with QR layout & verified signatures on Silver Panels */}
+          <div className="border-t border-slate-800/50 pt-2 px-4 pb-[11px] shrink-0 flex items-center justify-between gap-2 bg-black/40 relative">
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-brand-blue via-transparent to-[#FF1493] z-10" />
 
-          {/* Bottom section with QR layout & verified signatures */}
-          <div className="border-t border-slate-100 pt-3 px-5 pb-3.5 shrink-0 flex items-center justify-between bg-slate-50/40 relative">
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-brand-blue via-white to-brand-magenta z-10" />
-            
-            {/* Live QR Code verification block */}
-            <div className="flex flex-col items-center">
-              <div className="bg-white p-1 rounded-lg border border-slate-200/80 shadow-xs">
-                <img 
-                  src={qrCodeUrl} 
-                  alt="Verification QR" 
-                  className="w-[50px] h-[50px] object-contain" 
-                  crossOrigin="anonymous" 
-                />
-              </div>
-              <p className={`text-[5.5px] font-black mt-1 uppercase tracking-widest leading-none ${member.status === 'pending' ? 'text-amber-500 animate-pulse' : 'text-slate-400'}`}>
-                {member.status === 'pending' ? 'PROVISIONAL' : 'VERIFIED MEMBER'}
-              </p>
+            {/* Interactive Live Verification QR Code framed in embossed silver plate */}
+            <div className="bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] p-1.5 rounded-xl border border-slate-300 flex flex-col items-center justify-center shrink-0 w-[64px] h-[75px] shadow-[inset_0_1px_1px_white,0_2.5px_4px_rgba(0,0,0,0.4)]">
+              <img 
+                src={qrCodeUrl} 
+                alt="Verification QR" 
+                className="w-[38px] h-[38px] object-contain" 
+                crossOrigin="anonymous" 
+              />
+              <span className="text-[4.5px] font-black text-indigo-950 uppercase mt-1 tracking-widest text-center leading-none">SCAN TO VERIFY</span>
             </div>
 
-            {/* Secretary Signature */}
-            <div className="text-center flex flex-col items-center select-none pt-1">
-              <div className="h-7 flex items-end justify-center pb-0.5">
+            {/* Secretary Signature Silver Panel */}
+            <div className="flex-1 bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] p-1.5 rounded-xl border border-slate-300 flex flex-col justify-between items-center h-[75px] text-center shadow-[inset_0_1px_1px_white,0_2.5px_4px_rgba(0,0,0,0.4)] text-[#0f172a]">
+              <div className="flex-1 flex items-center justify-center">
                 <span 
-                  className="text-[14px] font-normal text-indigo-900 select-none tracking-normal italic"
+                  className="text-[13px] font-normal text-indigo-950 select-none tracking-normal italic leading-none"
                   style={{ fontFamily: "'Brush Script MT', 'Dancing Script', 'Courier New', cursive" }}
                 >
                   Bineesh Kumar
                 </span>
               </div>
-              <div className="w-20 border-t border-slate-350 my-0.5" />
-              <p className="text-[5.5px] font-black text-slate-550 uppercase tracking-wider leading-none">
-                Bineesh Kumar M Alphons
+              <div className="w-full border-t border-slate-350 my-0.5" />
+              <p className="text-[5.5px] font-black text-slate-700 uppercase tracking-tight leading-none truncate max-w-full">
+                Bineesh Kumar
               </p>
-              <p className="text-[5px] font-black text-slate-400 uppercase tracking-widest mt-0.5 leading-none">SECRETARY</p>
+              <p className="text-[4.5px] font-black text-slate-400 uppercase tracking-widest leading-none mt-0.5">SECRETARY</p>
             </div>
 
-            {/* President Signature */}
-            <div className="text-center flex flex-col items-center select-none pt-1">
-              <div className="h-7 flex items-end justify-center pb-0.5">
+            {/* President Signature Silver Panel */}
+            <div className="flex-1 bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] p-1.5 rounded-xl border border-slate-300 flex flex-col justify-between items-center h-[75px] text-center shadow-[inset_0_1px_1px_white,0_2.5px_4px_rgba(0,0,0,0.4)] text-[#0f172a]">
+              <div className="flex-1 flex items-center justify-center">
                 <span 
-                  className="text-[15px] font-normal text-indigo-900 select-none tracking-normal italic"
+                  className="text-[14px] font-normal text-indigo-950 select-none tracking-normal italic leading-none"
                   style={{ fontFamily: "'Brush Script MT', 'Dancing Script', 'Courier New', cursive" }}
                 >
                   M. A. Bari
                 </span>
               </div>
-              <div className="w-20 border-t border-slate-350 my-0.5" />
-              <p className="text-[5.5px] font-black text-slate-550 uppercase tracking-wider leading-none">
-                Mohamed Abdul Bari
+              <div className="w-full border-t border-slate-350 my-0.5" />
+              <p className="text-[5.5px] font-black text-slate-700 uppercase tracking-tight leading-none truncate max-w-full">
+                M. A. Bari
               </p>
-              <p className="text-[5px] font-black text-slate-400 uppercase tracking-widest mt-0.5 leading-none">PRESIDENT</p>
+              <p className="text-[4.5px] font-black text-[#FF1493] uppercase tracking-widest leading-none mt-0.5">PRESIDENT</p>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Sleek Action Controls & Universal Mobile Handlers */}
-      {generatedImage && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="max-w-md w-full bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 space-y-4 border border-slate-200 text-center relative flex flex-col items-center">
-            {/* Success indicator */}
-            <div className="bg-green-50 p-2.5 rounded-full text-green-600 inline-block">
-              <PartyPopper className="w-6 h-6 animate-bounce" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">ചിത്രം തയ്യാറായിട്ടുണ്ട്!</h3>
-              <p className="text-[10px] text-slate-500 font-bold mt-1">
-                താഴെ കാണുന്ന ചിത്രത്തിൽ <span className="text-brand-magenta font-black">അമർത്തിപ്പിടിച്ചു (Long Press)</span> കൊണ്ട് ഫോണിലേക്ക് 'Save' ചെയ്യുകയോ സുഹൃത്തുക്കൾക്ക് വാട്സാപ്പിൽ ഷെയർ ചെയ്യുകയോ ചെയ്യാം. അല്ലെങ്കിൽ ഒരു <span className="text-brand-blue font-black">സ്ക്രീൻഷോട്ട് എടുക്കുക</span>.
-              </p>
-            </div>
-
-            <div className="border border-slate-150 rounded-2xl overflow-hidden shadow-sm max-w-[220px] bg-slate-50">
-              <img src={generatedImage} alt="HCRS Generated Card" className="w-full object-contain" />
-            </div>
-
-            <div className="w-full">
-              <Button 
-                onClick={() => setGeneratedImage(null)}
-                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest"
-              >
-                Close (തിരികെ പോകുക)
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Sleek Action Controls */}
       <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
@@ -445,58 +423,42 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
             {!isScreenshotMode ? (
               <>
                 {/* Visual Instructional Banner */}
-                <div className="bg-amber-50/70 border border-amber-200/50 rounded-2xl p-4 space-y-1.5 text-center shadow-xs">
-                  <div className="flex items-center justify-center gap-1.5 text-amber-700 font-extrabold text-[10px] uppercase tracking-wider">
-                    <Camera className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                    <span>പ്രധാന നിർദ്ദേശം (Important Note)</span>
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-250/60 rounded-[20px] p-4 space-y-2 text-center shadow-xs">
+                  <div className="flex items-center justify-center gap-2 text-amber-700 font-extrabold text-[11px] uppercase tracking-wider">
+                    <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
+                    <span>മെമ്പർഷിപ്പ് കാർഡ് ലഭിക്കാൻ (Instruction)</span>
                   </div>
-                  <p className="text-[10px] font-bold text-slate-605 leading-normal">
-                    മൊബൈൽ ഫോൺ അല്ലെങ്കിൽ വാട്സാപ്പ് ബ്രൗസറിൽ ചിലപ്പോൾ നേരിട്ടുള്ള ഡൗൺലോഡ് തടസ്സപ്പെടാം. അതിനാൽ ദയവായി ഈ <strong className="text-[#FF1493]">കാർഡ് സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു സൂക്ഷിക്കുക.
+                  <p className="text-[11.5px] font-bold text-slate-700 leading-relaxed">
+                    മൊബൈൽ ഫോണുകളിൽ കാർഡ് നേരിട്ട് ഡൗൺലോഡ് ചെയ്യുന്നത് തടസ്സപ്പെടാൻ സാധ്യതയുള്ളതിനാൽ ദയവായി ഈ <strong className="text-[#FF1493] font-black">കാർഡ് നിങ്ങളുടെ ഫോണിൽ ഒരു സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു സൂക്ഷിക്കുക!
+                  </p>
+                  <p className="text-[9px] text-slate-500 font-medium">
+                    (താഴെയുള്ള 'Screenshot Mode' ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ കാർഡ് മാത്രമായി ലഭിക്കും)
                   </p>
                 </div>
 
-                {/* Primary: Screenshot helper button */}
+                {/* Primary Action Button: Screenshot Assist Mode */}
                 <Button 
                   onClick={() => setIsScreenshotMode(true)}
-                  className="w-full h-11 font-black rounded-xl text-xs uppercase tracking-wider shadow-md bg-brand-blue hover:bg-brand-blue/95 text-white flex items-center justify-center gap-2"
+                  className="w-full h-12 font-black rounded-xl text-xs uppercase tracking-wider shadow-md bg-brand-blue hover:bg-brand-blue/95 text-white flex items-center justify-center gap-2 transition-transform active:scale-95"
                 >
-                  <Camera className="w-4 h-4 animate-bounce" /> 📸 Screenshot Mode (കാർഡ് മാത്രം കാണുക)
+                  <Camera className="w-4 h-4 text-white animate-bounce" />
+                  <span>📸 Screenshot Mode (കാർഡ് മാത്രം കാണുക)</span>
                 </Button>
-
-                {/* Secondary: Save picture or direct PDF layout */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    onClick={handleGenerateImage} 
-                    variant="outline" 
-                    className="h-11 rounded-xl font-extrabold text-[9px] uppercase tracking-wider border-slate-250 bg-white text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5"
-                    disabled={isGenerating}
-                  >
-                    <Download className="w-3.5 h-3.5 text-brand-magenta animate-pulse" />
-                    <span>ഫോട്ടോ ആക്കി മാറ്റുക</span>
-                  </Button>
-                  <Button 
-                    onClick={downloadPDF} 
-                    variant="outline" 
-                    className="h-11 rounded-xl font-extrabold text-[9px] uppercase tracking-wider border-slate-250 bg-white text-slate-550 hover:bg-slate-50 flex items-center justify-center gap-1.5"
-                  >
-                    <span>Direct PDF</span>
-                  </Button>
-                </div>
               </>
             ) : (
-              <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 space-y-3 px-6 shadow-2xl">
+              <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 space-y-3 px-6 shadow-2xl text-center">
                 <div className="flex items-center justify-center gap-1.5 text-brand-magenta font-black text-[10px] uppercase tracking-wider">
-                  <Camera className="w-4 h-4 text-brand-magenta animate-spin" />
+                  <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
                   <span>Screenshot Mode Active</span>
                 </div>
-                <p className="text-[10.5px] font-medium text-slate-300 leading-relaxed text-center">
-                  നിങ്ങളുടെ സ്ക്രീനിലുള്ള ബാക്കി ബട്ടണുകൾ എല്ലാം മാറ്റിവെച്ചിട്ടുണ്ട്. ഇപ്പോൾ നിങ്ങൾക്ക് <strong className="text-white font-extrabold">ഒരു സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുക്കാം!
+                <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
+                  മറ്റു ബട്ടണുകൾ എല്ലാം മാറ്റിവെച്ചിട്ടുണ്ട്. കാർഡ് പൂർണ്ണമായി കാണാം. ഇപ്പോൾ നിങ്ങൾക്ക് <strong className="text-white font-extrabold">ഒരു സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുക്കാം.
                 </p>
                 <Button 
                   onClick={() => setIsScreenshotMode(false)}
-                  className="w-full h-10 bg-brand-magenta hover:bg-brand-magenta/90 text-white rounded-xl font-black uppercase text-[9px] tracking-wider"
+                  className="w-full h-11 bg-brand-magenta hover:bg-brand-magenta/90 text-white rounded-xl font-black uppercase text-[10.5px] tracking-wider transition-transform active:scale-95"
                 >
-                  Exit Screenshot Mode (ബാക്ക് പോകുക)
+                  Exit Mode (തിരികെ പേജിലേക്ക് പോകുക)
                 </Button>
               </div>
             )}
