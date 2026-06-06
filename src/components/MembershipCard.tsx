@@ -25,6 +25,26 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateImage = async () => {
+    if (!cardRef.current) return;
+    setIsGenerating(true);
+    const loadingToast = toast.loading('കാർഡ് ഡൗൺലോഡിനായി തയാറാക്കുന്നു...');
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const canvas = await html2canvas(cardRef.current, { scale: 3, useCORS: true, backgroundColor: '#FFFFFF' });
+      const imgData = canvas.toDataURL('image/png');
+      setGeneratedImage(imgData);
+      toast.success('ഫോട്ടോ തെയ്യാറായിട്ടുണ്ട്!', { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error('ചിത്രം തെയ്യാറാക്കാൻ പറ്റിയില്ല. ദയവായി നേരിട്ട് സ്ക്രീൻഷോട്ട് എടുക്കുക.', { id: loadingToast });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   useEffect(() => {
     fetchSettings();
@@ -387,51 +407,96 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         </div>
       </div>
 
+      {/* Sleek Action Controls & Universal Mobile Handlers */}
+      {generatedImage && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="max-w-md w-full bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 space-y-4 border border-slate-200 text-center relative flex flex-col items-center">
+            {/* Success indicator */}
+            <div className="bg-green-50 p-2.5 rounded-full text-green-600 inline-block">
+              <PartyPopper className="w-6 h-6 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">ചിത്രം തയ്യാറായിട്ടുണ്ട്!</h3>
+              <p className="text-[10px] text-slate-500 font-bold mt-1">
+                താഴെ കാണുന്ന ചിത്രത്തിൽ <span className="text-brand-magenta font-black">അമർത്തിപ്പിടിച്ചു (Long Press)</span> കൊണ്ട് ഫോണിലേക്ക് 'Save' ചെയ്യുകയോ സുഹൃത്തുക്കൾക്ക് വാട്സാപ്പിൽ ഷെയർ ചെയ്യുകയോ ചെയ്യാം. അല്ലെങ്കിൽ ഒരു <span className="text-brand-blue font-black">സ്ക്രീൻഷോട്ട് എടുക്കുക</span>.
+              </p>
+            </div>
+
+            <div className="border border-slate-150 rounded-2xl overflow-hidden shadow-sm max-w-[220px] bg-slate-50">
+              <img src={generatedImage} alt="HCRS Generated Card" className="w-full object-contain" />
+            </div>
+
+            <div className="w-full">
+              <Button 
+                onClick={() => setGeneratedImage(null)}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest"
+              >
+                Close (തിരികെ പോകുക)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sleek Action Controls */}
       <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
         {(member.status === 'active' || member.isApproved || isAdmin) && (
           <div className="flex flex-col gap-3">
             {!isScreenshotMode ? (
               <>
-                <div className="text-center space-y-1">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-tight">
-                    ക്രെഡൻഷ്യൽ ശരിയായി റെൻഡർ ആകുന്നില്ലെങ്കിൽ സ്ക്രീൻഷോട്ട് എടുക്കുക
+                {/* Visual Instructional Banner */}
+                <div className="bg-amber-50/70 border border-amber-200/50 rounded-2xl p-4 space-y-1.5 text-center shadow-xs">
+                  <div className="flex items-center justify-center gap-1.5 text-amber-700 font-extrabold text-[10px] uppercase tracking-wider">
+                    <Camera className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                    <span>പ്രധാന നിർദ്ദേശം (Important Note)</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-605 leading-normal">
+                    മൊബൈൽ ഫോൺ അല്ലെങ്കിൽ വാട്സാപ്പ് ബ്രൗസറിൽ ചിലപ്പോൾ നേരിട്ടുള്ള ഡൗൺലോഡ് തടസ്സപ്പെടാം. അതിനാൽ ദയവായി ഈ <strong className="text-[#FF1493]">കാർഡ് സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു സൂക്ഷിക്കുക.
                   </p>
                 </div>
+
+                {/* Primary: Screenshot helper button */}
                 <Button 
-                  onClick={downloadPDF} 
-                  className="w-full h-11 font-black rounded-xl text-xs uppercase tracking-wider shadow-sm bg-brand-blue hover:bg-brand-blue/95 text-white"
+                  onClick={() => setIsScreenshotMode(true)}
+                  className="w-full h-11 font-black rounded-xl text-xs uppercase tracking-wider shadow-md bg-brand-blue hover:bg-brand-blue/95 text-white flex items-center justify-center gap-2"
                 >
-                  <Download className="mr-1.5 w-4 h-4" /> Download Certificate
+                  <Camera className="w-4 h-4 animate-bounce" /> 📸 Screenshot Mode (കാർഡ് മാത്രം കാണുക)
                 </Button>
+
+                {/* Secondary: Save picture or direct PDF layout */}
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
-                    onClick={shareImage} 
+                    onClick={handleGenerateImage} 
                     variant="outline" 
-                    className="h-10 rounded-xl font-bold text-[9px] uppercase tracking-wider border-slate-200 hover:bg-slate-50 bg-white text-brand-blue"
+                    className="h-11 rounded-xl font-extrabold text-[9px] uppercase tracking-wider border-slate-250 bg-white text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5"
+                    disabled={isGenerating}
                   >
-                    <Share2 className="mr-1.5 w-3.5 h-3.5" /> Share Image
+                    <Download className="w-3.5 h-3.5 text-brand-magenta animate-pulse" />
+                    <span>ഫോട്ടോ ആക്കി മാറ്റുക</span>
                   </Button>
                   <Button 
-                    onClick={() => setIsScreenshotMode(true)}
+                    onClick={downloadPDF} 
                     variant="outline" 
-                    className="h-10 rounded-xl font-bold text-[9px] uppercase tracking-wider border-emerald-100 hover:bg-emerald-50 bg-emerald-50/10 text-emerald-600"
+                    className="h-11 rounded-xl font-extrabold text-[9px] uppercase tracking-wider border-slate-250 bg-white text-slate-550 hover:bg-slate-50 flex items-center justify-center gap-1.5"
                   >
-                    <Camera className="mr-1.5 w-3.5 h-3.5" /> Screenshot
+                    <span>Direct PDF</span>
                   </Button>
                 </div>
               </>
             ) : (
-              <div className="bg-slate-100/80 p-4 rounded-xl border border-slate-200/50 space-y-3 text-center">
-                <p className="text-[10px] font-black text-brand-magenta uppercase tracking-wider">Screenshot Assistant Ready</p>
-                <p className="text-[8px] font-semibold text-slate-405 leading-relaxed">
-                  ബട്ടണുകൾ എല്ലാം ഹൈഡ് ചെയ്തിട്ടുണ്ട്. ഇപ്പോൾ നിങ്ങളുടെ ഫോണിൽ സ്ക്രീൻഷോട്ട് എടുക്കാം.
+              <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 space-y-3 px-6 shadow-2xl">
+                <div className="flex items-center justify-center gap-1.5 text-brand-magenta font-black text-[10px] uppercase tracking-wider">
+                  <Camera className="w-4 h-4 text-brand-magenta animate-spin" />
+                  <span>Screenshot Mode Active</span>
+                </div>
+                <p className="text-[10.5px] font-medium text-slate-300 leading-relaxed text-center">
+                  നിങ്ങളുടെ സ്ക്രീനിലുള്ള ബാക്കി ബട്ടണുകൾ എല്ലാം മാറ്റിവെച്ചിട്ടുണ്ട്. ഇപ്പോൾ നിങ്ങൾക്ക് <strong className="text-white font-extrabold">ഒരു സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുക്കാം!
                 </p>
                 <Button 
                   onClick={() => setIsScreenshotMode(false)}
-                  className="w-full h-9 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-black uppercase text-[8px] tracking-widest"
+                  className="w-full h-10 bg-brand-magenta hover:bg-brand-magenta/90 text-white rounded-xl font-black uppercase text-[9px] tracking-wider"
                 >
-                  Exit Camera Mode
+                  Exit Screenshot Mode (ബാക്ക് പോകുക)
                 </Button>
               </div>
             )}

@@ -1748,7 +1748,7 @@ export default function AdminDashboard({
                   </TabsTrigger>
                   <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                     <Settings className="w-3 h-3 text-slate-400" />
-                    Quotas
+                    Settings & Quotas (വാട്സപ്പ് സെറ്റിങ്സ്/കോട്ട)
                   </TabsTrigger>
                   <TabsTrigger value="districts" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                     <Lock className="w-3 h-3 text-slate-400" />
