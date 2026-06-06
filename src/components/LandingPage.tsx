@@ -157,6 +157,7 @@ export default function LandingPage({
   const [checkingClaim, setCheckingClaim] = useState(false);
   const [loggingInClaim, setLoggingInClaim] = useState(false);
   const [claimResult, setClaimResult] = useState<'found' | 'not_found' | 'registered' | null>(null);
+  const [claimUserStatus, setClaimUserStatus] = useState<'active' | 'pending' | 'renewal_pending' | 'expired'>('active');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1832,9 +1833,16 @@ export default function LandingPage({
                         setClaimResult(null);
                         try {
                           // Check if they already submitted a claim
-                          const claimsQ = query(collection(db, 'claims'), where('userMobile', '==', claimMobile.trim()), limit(1));
-                          const claimsSnap = await getDocs(claimsQ);
-                          if (!claimsSnap.empty) {
+                          let claimsSnap;
+                          try {
+                            const claimsQ = query(collection(db, 'claims'), where('userMobile', '==', claimMobile.trim()), limit(1));
+                            claimsSnap = await getDocs(claimsQ);
+                          } catch (err: any) {
+                            console.error("Claims query error:", err);
+                            // If index is missing or query fails, we can log and fallback to continue check
+                          }
+                          
+                          if (claimsSnap && !claimsSnap.empty) {
                             toast.error('നിങ്ങൾ ഇതിനകം വിവര രജിസ്ട്രി ഫോം സമർപ്പിച്ചിട്ടുള്ളതാണ്. പിന്നീട് പ്രവേശിക്കാൻ സാധിക്കില്ല. (Already Submitted & Blocked)');
                             setCheckingClaim(false);
                             return;
@@ -1843,7 +1851,40 @@ export default function LandingPage({
                           const q = query(collection(db, 'users'), where('mobile', '==', claimMobile.trim()), limit(1));
                           const querySnapshot = await getDocs(q);
                           if (!querySnapshot.empty) {
-                            toast.success('മൊബൈൽ നമ്പർ കണ്ടെത്തി! നിങ്ങളുടെ Password (PIN) അടിക്കുക.');
+                            const foundUser = querySnapshot.docs[0].data();
+                            const isPending = foundUser.status === 'pending';
+                            const isRenewalPending = !!foundUser.renewalPending;
+                            
+                            // Check if they are expired
+                            const isUserExpired = isRenewalPending || (() => {
+                              const exp = foundUser.expiryDate;
+                              if (!exp) {
+                                const reg = foundUser.registrationDate;
+                                if (!reg) return false;
+                                const regD = reg.toDate ? reg.toDate() : (reg.seconds ? new Date(reg.seconds * 1000) : new Date(reg));
+                                if (isNaN(regD.getTime())) return false;
+                                const expD = new Date(regD);
+                                expD.setFullYear(expD.getFullYear() + 1);
+                                return expD.getTime() < Date.now();
+                              }
+                              const d = exp.toDate ? exp.toDate() : (exp.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
+                              return isNaN(d.getTime()) ? false : d.getTime() < Date.now();
+                            })();
+
+                            if (isPending) {
+                              setClaimUserStatus('pending');
+                              toast.info('അംഗത്വം അപ്പ്രൂവൽ പ്രക്രിയയിലാണ്! (Membership approval is pending.)');
+                            } else if (isRenewalPending) {
+                              setClaimUserStatus('renewal_pending');
+                              toast.info('അംഗത്വം റിന്യൂവൽ അപ്പ്രൂവൽ പ്രക്രിയയിലാണ്! (Renewal approval is pending.)');
+                            } else if (isUserExpired) {
+                              setClaimUserStatus('expired');
+                              toast.warning('മെമ്പർഷിപ്പ് കാലാവധി കഴിഞ്ഞിരിക്കുന്നു! (Membership validity has expired!)');
+                            } else {
+                              setClaimUserStatus('active');
+                              toast.success('മൊബൈൽ നമ്പർ കണ്ടെത്തി! നിങ്ങളുടെ Password (PIN) അടിക്കുക.');
+                            }
+
                             setClaimResult('registered');
                           } else {
                             toast.info('രജിസ്റ്റർ ചെയ്യാത്ത മൊബൈൽ നമ്പർ! പുതിയ മെമ്പർഷിപ്പിനായി ₹200 പെയ്മെന്റിലേക്ക് ഓട്ടോമാറ്റിക് ആയി മാറുന്നു...');
@@ -1852,9 +1893,10 @@ export default function LandingPage({
                               onRegisterWithMobile?.(claimMobile);
                             }, 1500);
                           }
-                        } catch (e) {
-                          console.error(e);
-                          toast.error('വേരിഫിക്കേഷൻ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.');
+                        } catch (e: any) {
+                          console.error("Verification error:", e);
+                          const errMsg = e?.message || String(e);
+                          toast.error(`വേരിഫിക്കേഷൻ പരാജയപ്പെട്ടു: ${errMsg}. ദയവായി വീണ്ടും ശ്രമിക്കുക.`);
                         } finally {
                           setCheckingClaim(false);
                         }
@@ -1895,6 +1937,55 @@ export default function LandingPage({
                         Change Number
                       </Button>
                     </div>
+
+                    {/* Accurate Status Display */}
+                    {claimUserStatus === 'pending' && (
+                      <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-1.5 text-slate-850 font-semibold text-xs leading-relaxed font-sans">
+                        <div className="flex items-center gap-1.5 text-amber-900 font-extrabold uppercase text-[10px] tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                          അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു (Pending Approval)
+                        </div>
+                        <p className="text-slate-600 font-medium">
+                          നിങ്ങളുടെ പുതിയ മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ അഡ്മിൻ പാനലിൽ വെരിഫിക്കേഷനിലാണ്. അഡ്മിൻ അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കാൻ സാധിക്കുകയുള്ളൂ.
+                        </p>
+                      </div>
+                    )}
+
+                    {claimUserStatus === 'renewal_pending' && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 space-y-1.5 text-slate-850 font-semibold text-xs leading-relaxed font-sans">
+                        <div className="flex items-center gap-1.5 text-orange-900 font-extrabold uppercase text-[10px] tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shrink-0" />
+                          റിന്യൂവൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു (Renewal Pending)
+                        </div>
+                        <p className="text-slate-600 font-medium">
+                          നിങ്ങൾ സബ്മിറ്റ് ചെയ്ത ₹100 റിന്യൂവൽ പേയ്മെന്റ് വെരിഫൈ ചെയ്യാൻ ബാക്കിയാണ്. അഡ്മിൻ ഇത് അപ്പ്രൂവ് ചെയ്തയുടൻ ക്ലെയിം പോർട്ടലിൽ പ്രവേശിക്കാൻ സാധിക്കും.
+                        </p>
+                      </div>
+                    )}
+
+                    {claimUserStatus === 'expired' && (
+                      <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-1.5 text-slate-850 font-semibold text-xs leading-relaxed font-sans">
+                        <div className="flex items-center gap-1.5 text-rose-800 font-extrabold uppercase text-[10px] tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                          മെമ്പർഷിപ്പ് കാലാവധി കഴിഞ്ഞിരിക്കുന്നു (Membership Expired)
+                        </div>
+                        <p className="text-slate-600 font-medium">
+                          നിങ്ങളുടെ മെമ്പർഷിപ്പ് കാലാവധി അവസാനിച്ചിരിക്കുന്നു. ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്താൻ ആദ്യം ലോഗിൻ ചെയ്ത് ₹100 അടച്ചു അംഗത്വം പുതുക്കേണ്ടതുണ്ട്.
+                        </p>
+                      </div>
+                    )}
+
+                    {claimUserStatus === 'active' && (
+                      <div className="bg-green-50/40 border border-green-150 rounded-2xl p-4 space-y-1 my-2 text-slate-800 font-medium text-xs leading-relaxed font-sans">
+                        <div className="flex items-center gap-1.5 text-green-800 font-extrabold uppercase text-[10px] tracking-wider">
+                          <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                          മെമ്പർഷിപ്പ് ആക്ടീവ് ആണ് (Active Official Member)
+                        </div>
+                        <p className="text-slate-500 text-[11px] font-medium leading-normal">
+                          ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്തുന്നതിനായി നിങ്ങളുടെ രഹസ്യ PIN നൽകാവുന്നതാണ്.
+                        </p>
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       <Label className="text-[11px] font-black uppercase text-slate-600 tracking-wider">Security PIN (പാസ്‌വേഡ് അടിക്കുക)</Label>
