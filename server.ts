@@ -86,7 +86,7 @@ ${verifiedCtx}
       if (history && Array.isArray(history)) {
         for (const h of history) {
           contents.push({
-            role: h.role === 'model' || h.role === 'assistant' ? 'model' : 'user',
+            role: (h.role === 'model' || h.role === 'assistant') ? 'model' : 'user',
             parts: [{ text: h.text || h.content || "" }]
           });
         }
@@ -98,9 +98,27 @@ ${verifiedCtx}
         parts: [{ text: message }]
       });
 
+      // Normalize contents to combine/merge consecutive same-role messages
+      const normalizedContents: any[] = [];
+      for (const item of contents) {
+        if (normalizedContents.length > 0 && normalizedContents[normalizedContents.length - 1].role === item.role) {
+          const prevItem = normalizedContents[normalizedContents.length - 1];
+          const prevText = prevItem.parts[0]?.text || "";
+          const currentText = item.parts[0]?.text || "";
+          
+          if (prevText === currentText) {
+            // Drop exact duplicate messages in consecutive turns to avoid double repeats
+            continue;
+          }
+          prevItem.parts[0] = { text: prevText + "\n\n" + currentText };
+        } else {
+          normalizedContents.push(item);
+        }
+      }
+
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: contents,
+        contents: normalizedContents,
         config: {
           systemInstruction: systemInstruction,
           temperature: 0.7,

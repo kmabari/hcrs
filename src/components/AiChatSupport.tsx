@@ -209,7 +209,7 @@ export default function AiChatSupport() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: msgToSend,
-          history: updatedMessages.slice(-8), // Send recent history to stay under token limits
+          history: messages.slice(-8), // Send previous history (which excludes the new active message) to stay under token limits
           verifiedMember: verifiedMember
         })
       });
