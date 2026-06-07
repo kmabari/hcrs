@@ -453,6 +453,25 @@ export default function App() {
 
       console.log("User is authenticated, fetching profile listener for UID:", authUser.uid);
       setLoadingStatus('Syncing Profile...');
+
+      // Fast pre-render/offline fallback from localStorage
+      try {
+        const cached = localStorage.getItem(`hcrs_cached_user_${authUser.uid}`);
+        if (cached) {
+          const cachedData = JSON.parse(cached) as UserProfile;
+          setUser(cachedData);
+          if (view !== 'register' && view !== 'renewal') {
+            const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
+            const isOp = cachedData.role === 'operator';
+            if (isAdm) setView('admin');
+            else if (isOp) setView('operator');
+            else setView('card');
+          }
+        }
+      } catch (e) {
+        console.error("Fast pre-render load failed:", e);
+      }
+
       unsubscribeUser = onSnapshot(doc(db, 'users', authUser.uid), async (docSnap) => {
         let userData: UserProfile | null = null;
         console.log("Profile Snapshot Received. Exists:", docSnap.exists());
@@ -562,6 +581,13 @@ export default function App() {
             if (JSON.stringify(prev) === JSON.stringify(userData)) return prev;
             return userData;
           });
+
+          // Cache resolved user profile in localStorage for offline/quota fallback
+          try {
+            localStorage.setItem(`hcrs_cached_user_${authUser.uid}`, JSON.stringify(userData));
+          } catch (e) {
+            console.error("Failed to cache user profile:", e);
+          }
           
           const isAdmin = userData.role === 'admin' || userData.isAdmin;
           const isOperator = userData.role === 'operator';
@@ -646,6 +672,27 @@ export default function App() {
       }, (error) => {
         console.error("Profile listen error:", error);
         handleFirestoreError(error, OperationType.GET, 'users/' + authUser.uid);
+
+        // Fallback to localStorage on connection/quota error
+        try {
+          const cached = localStorage.getItem(`hcrs_cached_user_${authUser.uid}`);
+          if (cached) {
+            const cachedData = JSON.parse(cached) as UserProfile;
+            setUser(cachedData);
+            if (view !== 'register' && view !== 'renewal') {
+              const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
+              const isOp = cachedData.role === 'operator';
+              if (isAdm) setView('admin');
+              else if (isOp) setView('operator');
+              else setView('card');
+            }
+            toast.success('ഓഫ്‌ലൈൻ/ക്വോട്ട മൂലം താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.');
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to parse cached user on error:", e);
+        }
+
         if (isSuperAdminEmail) setView('admin');
         else if (!isMagicLink && view !== 'register') setView('landing');
       });
