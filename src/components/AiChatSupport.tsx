@@ -37,12 +37,12 @@ export default function AiChatSupport() {
   const [isSending, setIsSending] = useState(false);
   const [isTicketSubmitted, setIsTicketSubmitted] = useState(false);
   const [ticketDetails, setTicketDetails] = useState<string | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll to chat end
+  // Auto scroll to chat end safely without layout shifts or page flickering
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [messages, isSending, isVerifying, isTicketSubmitted]);
 
@@ -65,9 +65,9 @@ export default function AiChatSupport() {
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanPhone = phone.trim().replace(/\s+/g, '');
-    if (!cleanPhone || cleanPhone.length < 10) {
-      toast.error('ദയവായി സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.');
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      toast.error('ദയവായി സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക. (Please enter exactly 10-digit mobile number)');
       return;
     }
 
@@ -84,30 +84,18 @@ export default function AiChatSupport() {
       });
 
       setHasEnteredPhone(true);
+      const userPhoneMsg: Message = { role: 'user', text: `മൊബൈൽ നമ്പർ: ${cleanPhone}` };
+      const nextHistory = [...messages, userPhoneMsg];
+      setMessages(nextHistory);
+
       if (foundMemberObj) {
         setVerifiedMember(foundMemberObj);
         setIsGuest(false);
-        const nameText = foundMemberObj.name || 'പ്രിയ സുഹൃത്തേ';
-        const welcomeText = `സന്തോഷം! താങ്കളുടെ പ്രൊഫൈൽ ഞാൻ കണ്ടെത്തിയിട്ടുണ്ട്. ഹലോ ${nameText}! മുകളിൽ നിങ്ങളുടെ സുരക്ഷയും ആക്റ്റീവ് വിഭരങ്ങളും ഞാൻ ലോഡ് ചെയ്തു. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് വേണ്ടത്? എന്തെങ്കിലും തെറ്റുകൾ തിരുത്താനുണ്ടോ?`;
-        
-        setMessages(prev => [
-          ...prev,
-          { role: 'user', text: `മൊബൈൽ നമ്പർ: ${cleanPhone}` },
-          { role: 'model', text: welcomeText }
-        ]);
-
-        // Dynamically tell the bot about this user's profile info
-        await sendSystemNotificationToAI(foundMemberObj, cleanPhone);
+        await getAndSetGreetingFromAI(foundMemberObj, cleanPhone, nextHistory);
       } else {
         setVerifiedMember(null);
         setIsGuest(true);
-        const welcomeGuestText = `ക്ഷമിക്കണം, ഈ നമ്പറിൽ ( ${cleanPhone} ) രജിസ്റ്റർ ചെയ്ത ഒരു അക്കൗണ്ടും കണ്ടെത്താൻ കഴിഞ്ഞില്ല. താങ്കൾക്ക് അപ്ലിക്കേഷൻ രജിസ്റ്റർ ചെയ്യാൻ താല്പര്യമുണ്ടെങ്കിൽ അതോ മറ്റെന്തെങ്കിലും പൊതുവായ സംശയമാണോ ചോദിക്കാനുള്ളത്?`;
-        
-        setMessages(prev => [
-          ...prev,
-          { role: 'user', text: `മൊബൈൽ നമ്പർ: ${cleanPhone}` },
-          { role: 'model', text: welcomeGuestText }
-        ]);
+        await getAndSetGreetingFromAI(null, cleanPhone, nextHistory);
       }
     } catch (err) {
       console.error('Error verifying phone inside chatbot:', err);
@@ -119,31 +107,20 @@ export default function AiChatSupport() {
     }
   };
 
-  const sendSystemNotificationToAI = async (member: any, phoneNum: string) => {
-    // Send a silent background notification query to Gemini to set actual context
+  const getAndSetGreetingFromAI = async (member: any, phoneNum: string, currentHistory: Message[]) => {
     setIsSending(true);
     try {
-      const systemContext = `
-[SYSTEM NOTE: The database lookup completed successfully for phone ${phoneNum}.
-Here is the active record:
-Name: ${member.name}
-ID: ${member.membershipId || 'Pending Approval'}
-Status: ${member.status}
-IsPaid: ${member.isPaid ? 'Yes' : 'No'}
-IsApproved: ${member.isApproved ? 'Yes' : 'No'}
-District: ${member.district}
-Address: ${member.address}
-Email: ${member.email}
-ProfilePhoto: ${member.photoUrl ? 'Available' : 'Missing'}
-PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
-]. Please greet this user by name, evaluate their status and tell them if they need anything or any corrections.`;
+      const prompt = member 
+        ? `[SYSTEM: User verified mobile: ${phoneNum}. Name: ${member.name}. Mobile: ${member.mobile || 'N/A'}. ID: ${member.membershipId || 'Pending'}. Status: ${member.status}. Introduce yourself warmly to ${member.name}, confirm their account look up is successful, and ask how you can help them today with HCRS.]`
+        : `[SYSTEM: User typed mobile ${phoneNum}, but no profile exists. Politely welcome them as a guest, mention that they are not registered in the database, and ask how you can help them.]`;
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: systemContext,
-          history: messages
+          message: prompt,
+          history: currentHistory.slice(-8),
+          verifiedMember: member
         })
       });
 
@@ -153,9 +130,24 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
           ...prev,
           { role: 'model', text: data.text }
         ]);
+      } else {
+        const fallbackText = member 
+          ? `ഹലോ ${member.name}! താങ്കളുടെ പ്രൊഫൈൽ വിജയകരമായി കണ്ടെത്തിയിട്ടുണ്ട്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് നൽകേണ്ടത്?`
+          : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്താണ് താങ്കൾക്ക് ചോദിക്കാനുള്ളത്?`;
+        setMessages(prev => [
+          ...prev,
+          { role: 'model', text: fallbackText }
+        ]);
       }
     } catch (e) {
       console.error(e);
+      const fallbackText = member 
+        ? `ഹലോ ${member.name}! താങ്കളുടെ പ്രൊഫൈൽ വിജയകരമായി കണ്ടെത്തിയിട്ടുണ്ട്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് നൽകേണ്ടത്?`
+        : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്താണ് താങ്കൾക്ക് ചോദിക്കാനുള്ളത്?`;
+      setMessages(prev => [
+        ...prev,
+        { role: 'model', text: fallbackText }
+      ]);
     } finally {
       setIsSending(false);
     }
@@ -167,6 +159,43 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
     if (!msgToSend.trim()) return;
 
     if (!customMsg) setInputMessage('');
+
+    // Check if the input message is exactly a 10-digit mobile number!
+    const digitOnly = msgToSend.trim().replace(/\D/g, '');
+    if (digitOnly.length === 10 && msgToSend.trim() === digitOnly) {
+      setIsSending(true);
+      try {
+        setPhone(digitOnly);
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('mobile', '==', digitOnly));
+        const querySnapshot = await getDocs(q);
+
+        let foundMemberObj: any = null;
+        querySnapshot.forEach((doc) => {
+          foundMemberObj = { uid: doc.id, ...doc.data() };
+        });
+
+        const userPhoneMsg: Message = { role: 'user', text: `മൊബൈൽ നമ്പർ: ${digitOnly}` };
+        const updatedMessagesWithPhone = [...messages, userPhoneMsg];
+        setMessages(updatedMessagesWithPhone);
+        setHasEnteredPhone(true);
+
+        if (foundMemberObj) {
+          setVerifiedMember(foundMemberObj);
+          setIsGuest(false);
+          await getAndSetGreetingFromAI(foundMemberObj, digitOnly, updatedMessagesWithPhone);
+        } else {
+          setVerifiedMember(null);
+          setIsGuest(true);
+          await getAndSetGreetingFromAI(null, digitOnly, updatedMessagesWithPhone);
+        }
+        return; // Success, intercepted!
+      } catch (err) {
+        console.error('Error verifying phone typed in message box:', err);
+      } finally {
+        setIsSending(false);
+      }
+    }
     
     // Add user message to history
     const updatedMessages = [...messages, { role: 'user', text: msgToSend } as Message];
@@ -174,18 +203,26 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
 
     setIsSending(true);
     try {
-      // Direct call to our backend API endpoint
+      // Direct call to our backend API endpoint passing the current verifiedMember profile
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: msgToSend,
-          history: updatedMessages.slice(-8) // Send recent history to stay under token limits
+          history: updatedMessages.slice(-8), // Send recent history to stay under token limits
+          verifiedMember: verifiedMember
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to query Gemini backend API.');
+        let errMessage = 'Failed to query API';
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errMessage = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errMessage);
       }
 
       const data = await response.json();
@@ -207,11 +244,12 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
         setTicketDetails(msgToSend);
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Chat handleSendMessage error:', err);
+      const displayMsg = err.message || 'എനിക്ക് കണക്ഷൻ ലഭിക്കുന്നില്ല';
       setMessages(prev => [
         ...prev,
-        { role: 'model', text: 'ക്ഷമിക്കണം, എനിക്ക് കണക്ഷൻ ലഭിക്കുന്നില്ല. എന്നാൽ നിങ്ങളുടെ പ്രശ്നങ്ങൾ പരിഹരിക്കാനായി ഞാൻ എപ്പോഴും കൂടെയുണ്ട്.' }
+        { role: 'model', text: `ക്ഷമിക്കണം, എനിക്ക് കണക്ഷൻ ലഭിക്കുന്നില്ല (${displayMsg}). എന്നാൽ നിങ്ങളുടെ പ്രശ്നങ്ങൾ പരിഹരിക്കാനായി ഞാൻ എപ്പോഴും കൂടെയുണ്ട്.` }
       ]);
     } finally {
       setIsSending(false);
@@ -323,8 +361,8 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
               </div>
 
               {/* Verified member quick glance plate */}
-              {verifiedMember && (
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 shrink-0">
+              {verifiedMember ? (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 shrink-0">
                   {verifiedMember.photoUrl ? (
                     <img 
                       src={verifiedMember.photoUrl} 
@@ -345,18 +383,60 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
                       {verifiedMember.membershipId || 'Approval Pending'}
                     </span>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex flex-col items-end gap-1 shrink-0">
                     <span className={`text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                       verifiedMember.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white animate-pulse'
                     }`}>
                       {verifiedMember.status === 'active' ? 'ACTIVE' : verifiedMember.status}
                     </span>
+                    <button
+                      onClick={() => {
+                        setHasEnteredPhone(false);
+                        setVerifiedMember(null);
+                        setIsGuest(false);
+                        setPhone('');
+                        setMessages(prev => [
+                          ...prev,
+                          { role: 'model', text: 'മറ്റൊരു നമ്പർ വെരിഫൈ ചെയ്യാനായി താഴെ പുതിയ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.' }
+                        ]);
+                      }}
+                      className="text-[8px] text-[#0066FF] font-black underline uppercase cursor-pointer hover:opacity-80"
+                    >
+                      Change Number
+                    </button>
                   </div>
+                </div>
+              ) : isGuest && (
+                <div className="bg-amber-50 dark:bg-amber-950/25 p-2.5 px-4 border-b border-amber-100 dark:border-amber-900/40 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                    <span className="text-[10px] text-slate-600 dark:text-slate-300 font-extrabold uppercase mt-0.5">
+                      പ്രൊഫൈൽ ലഭ്യമല്ല (Guest Profile)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setHasEnteredPhone(false);
+                      setVerifiedMember(null);
+                      setIsGuest(false);
+                      setPhone('');
+                      setMessages(prev => [
+                        ...prev,
+                        { role: 'model', text: 'മറ്റൊരു നമ്പർ വെരിഫൈ ചെയ്യാനായി താഴെ പുതിയ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.' }
+                      ]);
+                    }}
+                    className="text-[9px] text-amber-600 dark:text-amber-450 font-black underline uppercase cursor-pointer hover:opacity-80"
+                  >
+                    Change Number
+                  </button>
                 </div>
               )}
 
               {/* Chat messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div 
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto p-4 space-y-4"
+              >
                 {messages.map((m, idx) => (
                   <div
                     key={idx}
@@ -434,13 +514,26 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
                     </div>
                   </div>
                 )}
-
-                <div ref={chatEndRef} />
               </div>
 
               {/* Quick Suggestion Chips */}
               {hasEnteredPhone && !isTicketSubmitted && (
                 <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-2 overflow-x-auto whitespace-nowrap shrink-0 scrollbar-none">
+                  <button
+                    onClick={() => {
+                      setHasEnteredPhone(false);
+                      setVerifiedMember(null);
+                      setIsGuest(false);
+                      setPhone('');
+                      setMessages(prev => [
+                        ...prev,
+                        { role: 'model', text: 'മറ്റൊരു നമ്പർ വെരിഫൈ ചെയ്യാനായി താഴെ പുതിയ കറക്റ്റ് 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.' }
+                      ]);
+                    }}
+                    className="bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-[10px] font-black text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-full border border-rose-200 dark:border-rose-900 cursor-pointer shrink-0"
+                  >
+                    മൊബൈൽ നമ്പർ തിരുത്തുക (Change Phone)
+                  </button>
                   <button
                     onClick={() => handleSendMessage(undefined, 'എന്റെ സ്റ്റാറ്റസ് എന്താണ്?')}
                     className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-[10px] font-extrabold text-slate-700 dark:text-slate-350 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 cursor-pointer shrink-0"
@@ -475,6 +568,7 @@ PaymentProof: ${member.paymentProofUrl ? 'Available' : 'Missing'}
                     <input
                       type="tel"
                       value={phone}
+                      maxLength={10}
                       onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="10 അക്ക മൊബൈൽ നമ്പർ നൽകുക"
                       className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
