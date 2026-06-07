@@ -1776,8 +1776,9 @@ export default function AdminDashboard({
             )}
 
             <Tabs defaultValue="list" className="space-y-6">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                <TabsList className="bg-slate-100/80 backdrop-blur-md border border-slate-200/40 p-1 h-auto flex flex-wrap justify-start items-center rounded-xl w-full lg:w-auto gap-0.5">
+              {/* Row 1: Nav Tabs */}
+              <div className="w-full">
+                <TabsList className="bg-slate-100/80 backdrop-blur-md border border-slate-200/40 p-1.5 !h-auto flex flex-wrap justify-start items-center rounded-2xl w-full gap-1">
                   <TabsTrigger value="list" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
                     Directory <Badge className="ml-1.5 bg-slate-100 text-slate-500 border-none text-[8px] px-1.5 py-0">{stats.active}</Badge>
                   </TabsTrigger>
@@ -1832,43 +1833,51 @@ export default function AdminDashboard({
                     </TabsTrigger>
                   )}
                 </TabsList>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto mt-4 lg:mt-0">
-                  <div className="flex flex-1 items-center gap-2 min-w-[280px]">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
-                      <Input 
-                         placeholder="Search member..." 
-                        className="pl-9 bg-white border-slate-200 h-10 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
+              {/* Row 2: Search & Filter controls */}
+              <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100/80 dark:border-slate-800/60 p-4 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Search Bar */}
+                <div className="flex-1 min-w-[280px]">
+                  <div className="relative w-full">
+                    <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Search member by name, phone or ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
+                      className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-400"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                   </div>
+                </div>
+
+                {/* Filters Row */}
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  {onRefreshMembers && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isSyncingMembers}
+                      onClick={onRefreshMembers}
+                      className="h-11 px-4 gap-2 font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-blue bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
+                      {isSyncingMembers ? 'Syncing...' : 'Refresh'}
+                    </Button>
+                  )}
+                  
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    {onRefreshMembers && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isSyncingMembers}
-                        onClick={onRefreshMembers}
-                        className="h-10 px-3.5 gap-1.5 font-bold border-slate-200 text-slate-600 hover:text-brand-blue bg-white hover:bg-slate-50 rounded-xl text-xs cursor-pointer select-none"
-                      >
-                        <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
-                        {isSyncingMembers ? 'Syncing...' : 'Refresh'}
-                      </Button>
-                    )}
                     <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
-                      <SelectTrigger className="flex-1 sm:w-[130px] h-10 bg-white border-slate-200 rounded-xl text-xs font-bold disabled:opacity-75">
+                      <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold disabled:opacity-75 focus:outline-none">
                         <SelectValue placeholder="District" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         <SelectItem value="all">All districts</SelectItem>
                         {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
+
                     <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                      <SelectTrigger className="flex-1 sm:w-[130px] h-10 bg-white border-slate-200 rounded-xl text-xs font-bold">
+                      <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
                         <SelectValue placeholder="Source" />
                       </SelectTrigger>
                       <SelectContent>
