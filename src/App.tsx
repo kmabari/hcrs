@@ -9,6 +9,7 @@ import ProfileEditForm from './components/ProfileEditForm';
 import { SupportClaimForm } from './components/SupportClaimForm';
 import OperatorDashboard from './components/OperatorDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import AiChatSupport from './components/AiChatSupport';
 import Logo from './Logo';
 import { UserProfile } from './types';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToAnnouncements, Announcement } from './lib/cms';
@@ -2124,6 +2125,7 @@ export default function App() {
         </div>
       )}
 
+      <AiChatSupport />
       <Toaster position="top-center" richColors theme="dark" />
     </div>
   );

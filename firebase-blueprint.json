@@ -99,6 +99,22 @@
         "createdAt": { "type": "string" }
       },
       "required": ["url", "category", "title"]
+    },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "Customer support inquiries lodged automatically by the AI chatbot.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memberName": { "type": "string" },
+        "memberId": { "type": "string" },
+        "phone": { "type": "string" },
+        "issue": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["memberName", "phone", "issue", "status"]
     }
   },
   "firestore": {
@@ -121,6 +137,10 @@
     "gallery": {
       "schema": "GalleryItem",
       "description": "Collection of gallery images."
+    },
+    "support_tickets": {
+      "schema": "SupportTicket",
+      "description": "Automated helper chatbot tickets and notifications for operators."
     }
   }
 }

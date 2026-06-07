@@ -39,7 +39,9 @@ import {
   ImageIcon,
   X,
   Bell,
-  ChevronRight
+  ChevronRight,
+  Headphones,
+  Loader2
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -538,6 +540,51 @@ export default function AdminDashboard({
   const [claimDistrictFilter, setClaimDistrictFilter] = useState('all');
   const [claimPriorityFilter, setClaimPriorityFilter] = useState('all');
   const [claimCategoryFilter, setClaimCategoryFilter] = useState('all');
+
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [supportTicketsLoading, setSupportTicketsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setSupportTicketsLoading(true);
+    const q = query(collection(db, 'support_tickets'), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      setSupportTickets(data);
+      setSupportTicketsLoading(false);
+    }, (err: any) => {
+      console.error("Support tickets fetch error:", err);
+      // Suppress or handle empty collection
+      setSupportTickets([]);
+      setSupportTicketsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleResolveSupportTicket = async (ticketId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'pending' ? 'resolved' : 'pending';
+    const msg = nextStatus === 'resolved' ? 'ടിക്കറ്റ് പരിഹരിച്ചതായി രേഖപ്പെടുത്തി!' : 'ടിക്കറ്റ് വീണ്ടും പെൻഡിങ് ആക്കി!';
+    const loadingToast = toast.loading('സ്റ്റാറ്റസ് മാറ്റുന്നു...');
+    try {
+      await updateDoc(doc(db, 'support_tickets', ticketId), { status: nextStatus });
+      toast.success(msg, { id: loadingToast });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('സ്റ്റാറ്റസ് റീസെറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.', { id: loadingToast });
+    }
+  };
+
+  const handleDeleteSupportTicket = async (ticketId: string) => {
+    if (!window.confirm('ഈ സപ്പോർട്ട് ഇൻക്വയറി ടിക്കറ്റ് ഡിലീറ്റ് ചെയ്യണമെന്നുറപ്പാണോ?')) return;
+    const loadingToast = toast.loading('ഡിലീറ്റ് ചെയ്യുന്നു...');
+    try {
+      await deleteDoc(doc(db, 'support_tickets', ticketId));
+      toast.success('ടിക്കറ്റ് വിജയകരമായി ഡിലീറ്റ് ചെയ്തു.', { id: loadingToast });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('ഡിലീറ്റ് പരാജയപ്പെട്ടു.', { id: loadingToast });
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -1761,6 +1808,10 @@ export default function AdminDashboard({
                   <TabsTrigger value="fast_entry" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                     <UserPlus className="w-3 h-3 text-brand-magenta" />
                     Fast Entry
+                  </TabsTrigger>
+                  <TabsTrigger value="tickets" className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                    <Headphones className="w-3 h-3 text-emerald-500" />
+                    AI Support Inquiries <Badge className="ml-1.5 bg-emerald-500 text-white border-none text-[8px] px-1.5 py-0">{supportTickets.filter(t => t.status === 'pending').length}</Badge>
                   </TabsTrigger>
                   {(isSuperAdmin || user?.role === 'admin') && (
                     <TabsTrigger value="bulk_import" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
@@ -3767,6 +3818,135 @@ export default function AdminDashboard({
                     </div>
                   )}
                </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="tickets">
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Support Inquiries</p>
+                  <h3 className="text-3xl font-black text-slate-800">{supportTickets.length}</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-2">Logged automatically by AI chatbot</p>
+                </Card>
+                <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pending Admin Action</p>
+                  <h3 className="text-3xl font-black text-amber-500">{supportTickets.filter(t => t.status === 'pending').length}</h3>
+                  <p className="text-[9px] font-bold text-amber-400 uppercase mt-2">Requires manual correction or review</p>
+                </Card>
+                <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
+                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Resolved Cases</p>
+                  <h3 className="text-3xl font-black text-emerald-600">{supportTickets.filter(t => t.status === 'resolved').length}</h3>
+                  <p className="text-[9px] font-bold text-emerald-400 uppercase mt-2">Resolved and closed requests</p>
+                </Card>
+              </div>
+
+              {/* Tickets Table Card */}
+              <Card className="border-2 border-slate-100 bg-white rounded-3xl shadow-sm overflow-hidden animate-in fade-in duration-300">
+                <CardHeader className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-sm font-black text-slate-800 uppercase tracking-wider">AI വഴികാട്ടി സപ്പോർട്ട് അപേക്ഷകൾ</CardTitle>
+                    <CardDescription className="text-xs text-slate-400 font-semibold mt-1">
+                      പേര് തെറ്റുകൾ, ഫോട്ടോ മാറ്റങ്ങൾ, അല്ലെങ്കിൽ റസീപ്റ്റ് പ്രോബ്ലം കസ്റ്റമർ ചാറ്റിൽ നിന്ന് നേരിട്ട് റിപ്പോർട്ട് ചെയ്തവ.
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                
+                {supportTicketsLoading ? (
+                  <div className="py-20 text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-400">സപ്പോർട്ട് വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                  </div>
+                ) : supportTickets.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <Headphones className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">ഇതുവരെ അപേക്ഷകൾ ഒന്നും വന്നിട്ടില്ല</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader className="bg-slate-50 border-b border-slate-100">
+                        <TableRow>
+                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Member / Name</TableHead>
+                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Mobile Number / WhatsApp</TableHead>
+                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Issue / വിഷയം</TableHead>
+                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">AI Chat Logs / Summary</TableHead>
+                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Submitted Date</TableHead>
+                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Status & Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {supportTickets.map((ticket) => (
+                          <TableRow key={ticket.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                            <TableCell className="p-4">
+                              <p className="font-extrabold text-xs text-slate-800 uppercase">{ticket.memberName}</p>
+                              <span className="text-[10px] font-bold text-slate-400 block mt-0.5">{ticket.memberId || 'N/A'}</span>
+                            </TableCell>
+                            <TableCell className="p-4 font-mono text-xs font-semibold text-slate-600">
+                              <a href={`tel:${ticket.phone}`} className="hover:underline">{ticket.phone}</a>
+                            </TableCell>
+                            <TableCell className="p-4">
+                              <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${
+                                ticket.issue === 'Spelling Correction' ? 'bg-amber-100 text-amber-800' :
+                                ticket.issue === 'Photo Re-upload' ? 'bg-indigo-100 text-indigo-800' :
+                                ticket.issue === 'Receipt Verification Error' ? 'bg-teal-100 text-teal-800' :
+                                'bg-slate-100 text-slate-800'
+                              }`}>
+                                {ticket.issue}
+                              </span>
+                            </TableCell>
+                            <TableCell className="p-4 max-w-xs">
+                              <p className="text-xs font-semibold text-slate-600 leading-normal line-clamp-3" title={ticket.aiSummary}>
+                                {ticket.aiSummary}
+                              </p>
+                            </TableCell>
+                            <TableCell className="p-4 text-xs font-semibold text-slate-500">
+                              {ticket.timestamp ? new Date(ticket.timestamp).toLocaleString() : 'N/A'}
+                            </TableCell>
+                            <TableCell className="p-4">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant={ticket.status === 'resolved' ? 'outline' : 'default'}
+                                  size="sm"
+                                  onClick={() => handleResolveSupportTicket(ticket.id, ticket.status)}
+                                  className={`h-8 font-extrabold text-[10px] uppercase tracking-wider rounded-lg border-2 ${
+                                    ticket.status === 'resolved'
+                                      ? 'border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
+                                      : 'bg-amber-500 hover:bg-amber-600 text-white border-transparent'
+                                  }`}
+                                >
+                                  {ticket.status === 'resolved' ? 'RESOLVED ✅' : 'PENDING ⏳'}
+                                </Button>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const encodedText = encodeURIComponent(`ഹലോ ${ticket.memberName}, താങ്കൾ സപ്പോർട്ട് ചാറ്റ് വഴി സമർപ്പിച്ച "${ticket.issue}" എന്ന സഹായ അപേക്ഷ ഇപ്പോൾ ഞങ്ങൾ പരിശോധിക്കുകയാണ്...`);
+                                    window.open(`https://wa.me/91${ticket.phone}?text=${encodedText}`, '_blank');
+                                  }}
+                                  className="h-8 border-slate-200 text-slate-600 hover:text-green-600 px-2.5 rounded-lg text-[10px]"
+                                >
+                                  WhatsApp
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteSupportTicket(ticket.id)}
+                                  className="h-8 text-slate-400 hover:text-red-500 hover:bg-slate-100/50 p-2 rounded-lg cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </Card>
             </div>
           </TabsContent>
         </Tabs>

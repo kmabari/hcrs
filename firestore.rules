@@ -218,5 +218,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && (resource.data.uid == request.auth.uid || isOperator());
       allow delete: if isAdmin();
     }
+
+    // --- Collection: support_tickets ---
+    match /support_tickets/{ticketId} {
+      allow read: if isOperator();
+      allow create: if true; // Allows offline and standard guest and authenticated reports
+      allow update: if isOperator();
+      allow delete: if isAdmin();
+    }
   }
 }
