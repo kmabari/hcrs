@@ -116,9 +116,13 @@ ${verifiedCtx}
         }
       }
 
+      // Ensure contents starts with a 'user' role. If the first message(s) are 'model', skip them.
+      const firstUserIndex = normalizedContents.findIndex(item => item.role === 'user');
+      const apiContents = firstUserIndex !== -1 ? normalizedContents.slice(firstUserIndex) : normalizedContents;
+
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: normalizedContents,
+        contents: apiContents,
         config: {
           systemInstruction: systemInstruction,
           temperature: 0.7,
