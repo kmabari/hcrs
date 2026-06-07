@@ -17,7 +17,7 @@ import {
   Undo2
 } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, limit } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 interface Message {
@@ -75,7 +75,7 @@ export default function AiChatSupport() {
     try {
       // Query users collection to check if profile exists
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('mobile', '==', cleanPhone));
+      const q = query(usersRef, where('mobile', '==', cleanPhone), limit(1));
       const querySnapshot = await getDocs(q);
 
       let foundMemberObj: any = null;
@@ -167,7 +167,7 @@ export default function AiChatSupport() {
       try {
         setPhone(digitOnly);
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('mobile', '==', digitOnly));
+        const q = query(usersRef, where('mobile', '==', digitOnly), limit(1));
         const querySnapshot = await getDocs(q);
 
         let foundMemberObj: any = null;
