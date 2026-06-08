@@ -107,12 +107,31 @@ export default function AiChatSupport() {
     }
   };
 
+  const handleSkipPhoneVerification = async () => {
+    setIsGuest(true);
+    setVerifiedMember(null);
+    setPhone('');
+    setHasEnteredPhone(true);
+
+    const guestUserMsg: Message = { role: 'user', text: 'HCRS പൊതുവിവരങ്ങൾ അറിയാൻ താത്പര്യപ്പെടുന്നു (View General Info)' };
+    const nextHistory = [...messages, guestUserMsg];
+    setMessages(nextHistory);
+
+    await getAndSetGreetingFromAI(null, '', nextHistory);
+  };
+
   const getAndSetGreetingFromAI = async (member: any, phoneNum: string, currentHistory: Message[]) => {
     setIsSending(true);
     try {
       const prompt = member 
         ? `[SYSTEM: User verified mobile: ${phoneNum}. Name: ${member.name}. Mobile: ${member.mobile || 'N/A'}. ID: ${member.membershipId || 'Pending'}. Status: ${member.status}. Introduce yourself warmly to ${member.name}, confirm their account look up is successful, and ask how you can help them today with HCRS.]`
-        : `[SYSTEM: User typed mobile ${phoneNum}, but no profile exists. Politely welcome them as a guest, mention that they are not registered in the database, and ask how you can help them.]`;
+        : !phoneNum
+          ? `[SYSTEM: Welcome them warmly as a general public visitor. Tell them they can ask any general questions about HCRS (Highrich Community Revival Society), such as:
+1. എങ്ങനെയൊരു പുതിയ മെമ്പർഷിപ്പ് എടുക്കാം? (How to join membership)
+2. എന്താണ് ഈ സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങളും ഉദ്ദേശങ്ങളും? (Aim & purpose of HCRS)
+3. എന്തൊക്കെയാണ് നിങ്ങൾ അവർക്ക് കൊടുക്കുന്ന സർവീസുകൾ? (Services HCRS provides)
+തോളോട് തോൾ ചേർന്ന് മലയാളത്തിൽ വളരെ വ്യക്തമായും സന്തോഷത്തോടും കൂടെ മറുപടി പറയുക. മുകളിലുള്ള മൊബൈൽ നമ്പർ വെരിഫിക്കേഷൻ വഴി മാത്രമേ ഡീറ്റെയിൽസ് പരിശോധിക്കാൻ സാധിക്കൂ എന്ന കാര്യം ഓപ്ഷണലായി ഓർമ്മിപ്പിക്കാം.]`
+          : `[SYSTEM: User typed mobile ${phoneNum}, but no profile exists. Politely welcome them as a guest, mention that they are not registered in the database, and ask how you can help them.]`;
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -132,8 +151,10 @@ export default function AiChatSupport() {
         ]);
       } else {
         const fallbackText = member 
-          ? `ഹലോ ${member.name}! താങ്കളുടെ പ്രൊഫൈൽ വിജയകരമായി കണ്ടെത്തിയിട്ടുണ്ട്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് നൽകേണ്ടത്?`
-          : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്താണ് താങ്കൾക്ക് ചോദിക്കാനുള്ളത്?`;
+          ? `ഹലോ ${member.name}! താങ്കളുടെ പ്രൊഫൈൽ വിജയകരമായി കണ്ടെത്തിയിട്ടുണ്ട്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് നൽകേണ്ടത്? (ഹോംപേജിലെ വിവരങ്ങൾ കാണാൻ താങ്കൾക്ക് അസിസ്റ്റന്റുമായി തുടർന്ന് സംസാരിക്കാം)`
+          : !phoneNum
+            ? `ഹലോ സുഹൃത്തേ! HCRS സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങളും ഉദ്ദേശങ്ങളും സർവീസുകളും എന്തൊക്കെയാണെന്ന് അറിയാനാണോ താങ്കൾ താല്പര്യപ്പെടുന്നത്? എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?`
+            : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്നിരുന്നാലും സംഘടനയെക്കുറിച്ചുള്ള പൊതുവായ സംശയങ്ങൾ പരിഹരിക്കാൻ ഇവിടെ ചോദിക്കാവുന്നതാണ്.`;
         setMessages(prev => [
           ...prev,
           { role: 'model', text: fallbackText }
@@ -143,7 +164,9 @@ export default function AiChatSupport() {
       console.error(e);
       const fallbackText = member 
         ? `ഹലോ ${member.name}! താങ്കളുടെ പ്രൊഫൈൽ വിജയകരമായി കണ്ടെത്തിയിട്ടുണ്ട്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് നൽകേണ്ടത്?`
-        : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്താണ് താങ്കൾക്ക് ചോദിക്കാനുള്ളത്?`;
+        : !phoneNum
+          ? `ഹലോ സുഹൃത്തേ! HCRS സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങളും ഉദ്ദേശങ്ങളും സർവീസുകളും എന്തൊക്കെയാണെന്ന് അറിയാനാണോ താങ്കൾ താല്പര്യപ്പെടുന്നത്? എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?`
+          : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്നിരുന്നാലും സംഘടനയെക്കുറിച്ചുള്ള പൊതുവായ സംശയങ്ങൾ പരിഹരിക്കാൻ ഇവിടെ ചോദിക്കാവുന്നതാണ്.`;
       setMessages(prev => [
         ...prev,
         { role: 'model', text: fallbackText }
@@ -247,9 +270,10 @@ export default function AiChatSupport() {
     } catch (err: any) {
       console.error('Chat handleSendMessage error:', err);
       const displayMsg = err.message || 'എനിക്ക് കണക്ഷൻ ലഭിക്കുന്നില്ല';
+      const warningPrompt = `ക്ഷമിക്കണം, എനിക്ക് ലൈവ് കണക്ഷൻ ലഭിക്കുന്നില്ല (${displayMsg}).\n\n💡 നിങ്ങളിപ്പോൾ ആപ്ലിക്കേഷൻ സെക്യൂർ ഫ്രെയിമിലാണ് കാണുന്നത്. ചില ബ്രൗസറുകൾ (പ്രത്യേകിച്ച് Safari/iPhone/iOS) ഇങ്ങനെയുള്ള പ്ലാറ്റ്‌ഫോം കുക്കികൾ ബ്ലോക്ക് ചെയ്യാറുണ്ട്. ഇതിന് പരിഹാരമായി ഏറ്റവും മുകളിലുള്ള 'Authenticate / Open in New Tab' അമർത്തുക അല്ലെങ്കിൽ മറ്റൊരു ബ്രൗസർ (Chrome/Edge) ഉപയോഗിക്കുക.`;
       setMessages(prev => [
         ...prev,
-        { role: 'model', text: `ക്ഷമിക്കണം, എനിക്ക് കണക്ഷൻ ലഭിക്കുന്നില്ല (${displayMsg}). എന്നാൽ നിങ്ങളുടെ പ്രശ്നങ്ങൾ പരിഹരിക്കാനായി ഞാൻ എപ്പോഴും കൂടെയുണ്ട്.` }
+        { role: 'model', text: warningPrompt }
       ]);
     } finally {
       setIsSending(false);
@@ -564,29 +588,43 @@ export default function AiChatSupport() {
               {/* Dynamic input bar */}
               <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 {!hasEnteredPhone ? (
-                  <form onSubmit={handlePhoneSubmit} className="flex gap-2">
-                    <input
-                      type="tel"
-                      value={phone}
-                      maxLength={10}
-                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="10 അക്ക മൊബൈൽ നമ്പർ നൽകുക"
-                      className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                  <div className="flex flex-col gap-3">
+                    <form onSubmit={handlePhoneSubmit} className="flex gap-2 w-full">
+                      <input
+                        type="tel"
+                        value={phone}
+                        maxLength={10}
+                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="10 അക്ക മൊബൈൽ നമ്പർ നൽകുക"
+                        className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isVerifying}
+                        className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-extrabold text-xs uppercase px-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isVerifying ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <UserCheck className="w-4 h-4" /> Verify
+                          </>
+                        )}
+                      </button>
+                    </form>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="h-[1px] bg-slate-100 dark:bg-slate-850 flex-1"></span>
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide px-1">അല്ലെങ്കിൽ (OR)</span>
+                      <span className="h-[1px] bg-slate-100 dark:bg-slate-855 flex-1"></span>
+                    </div>
                     <button
-                      type="submit"
-                      disabled={isVerifying}
-                      className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-extrabold text-xs uppercase px-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      type="button"
+                      onClick={handleSkipPhoneVerification}
+                      className="w-full py-2.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/45 text-[11px] font-black uppercase text-center transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
-                      {isVerifying ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <UserCheck className="w-4 h-4" /> Verify
-                        </>
-                      )}
+                      <Bot className="w-4 h-4 text-emerald-500" /> ഫോൺ നമ്പർ ഇല്ലാതെ തുടരുക (Skip & Chat as Public)
                     </button>
-                  </form>
+                  </div>
                 ) : (
                   <form
                     onSubmit={(e) => {

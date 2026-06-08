@@ -1775,7 +1775,7 @@ export default function AdminDashboard({
               </div>
             )}
 
-            <Tabs defaultValue="list" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={(val) => setActiveTab2(val)} className="space-y-6">
               {/* Row 1: Nav Tabs */}
               <div className="w-full">
                 <TabsList className="bg-slate-100/80 backdrop-blur-md border border-slate-200/40 p-1.5 !h-auto flex flex-wrap justify-start items-center rounded-2xl w-full gap-1">
@@ -1836,59 +1836,61 @@ export default function AdminDashboard({
               </div>
 
               {/* Row 2: Search & Filter controls */}
-              <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100/80 dark:border-slate-800/60 p-4 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {/* Search Bar */}
-                <div className="flex-1 min-w-[280px]">
-                  <div className="relative w-full">
-                    <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                    <Input 
-                      placeholder="Search member by name, phone or ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
-                      className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-400"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+              {['list', 'deleted', 'requests', 'renewals', 'valid_active', 'quotas', 'districts', 'claims'].includes(activeTab) && (
+                <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100/80 dark:border-slate-800/60 p-4 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {/* Search Bar */}
+                  <div className="flex-1 min-w-[280px]">
+                    <div className="relative w-full">
+                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                      <Input 
+                        placeholder="Search member by name, phone or ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
+                        className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-400"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filters Row */}
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                    {onRefreshMembers && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isSyncingMembers}
+                        onClick={onRefreshMembers}
+                        className="h-11 px-4 gap-2 font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-blue bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all"
+                      >
+                        <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
+                        {isSyncingMembers ? 'Syncing...' : 'Refresh'}
+                      </Button>
+                    )}
+                    
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
+                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold disabled:opacity-75 focus:outline-none">
+                          <SelectValue placeholder="District" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto">
+                          <SelectItem value="all">All districts</SelectItem>
+                          {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
+                          <SelectValue placeholder="Source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Total Entry</SelectItem>
+                          <SelectItem value="online">Online Direct</SelectItem>
+                          <SelectItem value="manual">Operator/Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-
-                {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  {onRefreshMembers && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isSyncingMembers}
-                      onClick={onRefreshMembers}
-                      className="h-11 px-4 gap-2 font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-blue bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all"
-                    >
-                      <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
-                      {isSyncingMembers ? 'Syncing...' : 'Refresh'}
-                    </Button>
-                  )}
-                  
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
-                      <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold disabled:opacity-75 focus:outline-none">
-                        <SelectValue placeholder="District" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60 overflow-y-auto">
-                        <SelectItem value="all">All districts</SelectItem>
-                        {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                      <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
-                        <SelectValue placeholder="Source" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Total Entry</SelectItem>
-                        <SelectItem value="online">Online Direct</SelectItem>
-                        <SelectItem value="manual">Operator/Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
+              )}
 
               <TabsContent value="fast_entry">
                 <FastMemberEntry 
