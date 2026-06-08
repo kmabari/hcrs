@@ -158,6 +158,7 @@ export default function LandingPage({
   const [loggingInClaim, setLoggingInClaim] = useState(false);
   const [claimResult, setClaimResult] = useState<'found' | 'not_found' | 'registered' | null>(null);
   const [claimUserStatus, setClaimUserStatus] = useState<'active' | 'pending' | 'renewal_pending' | 'expired'>('active');
+  const [userHasSubmittedClaim, setUserHasSubmittedClaim] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1834,19 +1835,18 @@ export default function LandingPage({
                         try {
                           // Check if they already submitted a claim
                           let claimsSnap;
+                          let submitted = false;
                           try {
                             const claimsQ = query(collection(db, 'claims'), where('userMobile', '==', claimMobile.trim()), limit(1));
                             claimsSnap = await getDocs(claimsQ);
+                            if (claimsSnap && !claimsSnap.empty) {
+                              submitted = true;
+                            }
                           } catch (err: any) {
                             console.error("Claims query error:", err);
                             // If index is missing or query fails, we can log and fallback to continue check
                           }
-                          
-                          if (claimsSnap && !claimsSnap.empty) {
-                            toast.error('നിങ്ങൾ ഇതിനകം വിവര രജിസ്ട്രി ഫോം സമർപ്പിച്ചിട്ടുള്ളതാണ്. പിന്നീട് പ്രവേശിക്കാൻ സാധിക്കില്ല. (Already Submitted & Blocked)');
-                            setCheckingClaim(false);
-                            return;
-                          }
+                          setUserHasSubmittedClaim(submitted);
 
                           const q = query(collection(db, 'users'), where('mobile', '==', claimMobile.trim()), limit(1));
                           const querySnapshot = await getDocs(q);
@@ -1914,7 +1914,7 @@ export default function LandingPage({
                         <ShieldCheck className="w-8 h-8 animate-pulse" />
                       </div>
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">
-                        நிலവിലുള്ള ഒഫീഷ്യൽ മെമ്പർ!
+                        നിലവിലുള്ള ഒഫീഷ്യൽ മെമ്പർ!
                       </h3>
                       <p className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider mt-2">Please enter Secure PIN to access your ID Card and Information Registry.</p>
                     </div>
@@ -1976,14 +1976,28 @@ export default function LandingPage({
                     )}
 
                     {claimUserStatus === 'active' && (
-                      <div className="bg-green-50/40 border border-green-150 rounded-2xl p-4 space-y-1 my-2 text-slate-800 font-medium text-xs leading-relaxed font-sans">
-                        <div className="flex items-center gap-1.5 text-green-800 font-extrabold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                          മെമ്പർഷിപ്പ് ആക്ടീവ് ആണ് (Active Official Member)
+                      <div className="space-y-3">
+                        <div className="bg-green-50/40 border border-green-150 rounded-2xl p-4 space-y-1 my-2 text-slate-800 font-medium text-xs leading-relaxed font-sans">
+                          <div className="flex items-center gap-1.5 text-green-800 font-extrabold uppercase text-[10px] tracking-wider">
+                            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                            മെമ്പർഷിപ്പ് ആക്ടീവ് ആണ് (Active Official Member)
+                          </div>
+                          <p className="text-slate-500 text-[11px] font-medium leading-normal">
+                            ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്തുന്നതിനായി നിങ്ങളുടെ രഹസ്യ PIN നൽകാവുന്നതാണ്.
+                          </p>
                         </div>
-                        <p className="text-slate-500 text-[11px] font-medium leading-normal">
-                          ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്തുന്നതിനായി നിങ്ങളുടെ രഹസ്യ PIN നൽകാവുന്നതാണ്.
-                        </p>
+
+                        {userHasSubmittedClaim && (
+                          <div className="bg-amber-50 border-2 border-amber-200 text-amber-900 rounded-2xl p-4 space-y-1.5 text-xs font-semibold animate-pulse shadow-sm">
+                            <p className="font-extrabold text-[11px] text-amber-850 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 block" />
+                              പ്രധാന അറിയിപ്പ് (Important Notice)
+                            </p>
+                            <p className="leading-relaxed text-slate-705 font-bold text-xs">
+                              താങ്കളുടെ ഫോൺ വഴിയുള്ള സപ്പോർട്ട് ക്ലൈം ഫോം വിജയകരമായി ഫിൽ ചെയ്തു കഴിഞ്ഞതാണ്. ഇനി നിങ്ങളുടെ കുടുംബത്തിലെ പരമാവധി മൂന്ന് (3) പേർക്ക് കൂടി മാത്രമേ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ അവസരമുള്ളൂ.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 

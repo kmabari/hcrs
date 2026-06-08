@@ -145,6 +145,12 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
   const [consentLegal, setConsentLegal] = useState(false);
 
+  // Computed booleans for already submitted slots
+  const hasSelf = useMemo(() => submittedClaims.some(c => c.relation === 'Self'), [submittedClaims]);
+  const hasParent = useMemo(() => submittedClaims.some(c => ['Mother', 'Father'].includes(c.relation)), [submittedClaims]);
+  const hasChild = useMemo(() => submittedClaims.some(c => ['Son', 'Daughter'].includes(c.relation)), [submittedClaims]);
+  const hasSpouse = useMemo(() => submittedClaims.some(c => ['Wife', 'Husband'].includes(c.relation)), [submittedClaims]);
+
   useEffect(() => {
     const unsub = subscribeToOrgSettings((settings) => {
       setOrgSettings(settings);
@@ -180,7 +186,41 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
         if (docsList.length > 0) {
           setSubmittedClaims(docsList);
-          setAlreadySubmitted(true);
+          
+          const hasSelfDb = docsList.some(c => c.relation === 'Self');
+          const hasParentDb = docsList.some(c => ['Mother', 'Father'].includes(c.relation));
+          const hasChildDb = docsList.some(c => ['Son', 'Daughter'].includes(c.relation));
+          const hasSpouseDb = docsList.some(c => ['Wife', 'Husband'].includes(c.relation));
+          
+          if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
+            setAlreadySubmitted(true);
+          } else {
+            setAlreadySubmitted(false);
+            
+            // Uncheck submitted categories to prevent duplicate actions
+            setSelfSelected(false);
+            setParentSelected(false);
+            setChildSelected(false);
+            setSpouseSelected(false);
+            
+            // Select the first non-submitted category in list
+            if (!hasSelfDb) {
+              setSelfSelected(true);
+            } else if (!hasParentDb) {
+              setParentSelected(true);
+            } else if (!hasChildDb) {
+              setChildSelected(true);
+            } else if (!hasSpouseDb) {
+              setSpouseSelected(true);
+            }
+          }
+        } else {
+          setSubmittedClaims([]);
+          setAlreadySubmitted(false);
+          setSelfSelected(true);
+          setParentSelected(false);
+          setChildSelected(false);
+          setSpouseSelected(false);
         }
       } catch (err: any) {
         console.warn("Status check notice: Database is running in offline/quota exceeded mode", err);
@@ -396,20 +436,31 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     try {
       setLoading(true);
       
-      // Delete any existing claim records first to prevent duplicates
-      if (user.uid) {
-        const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
-        const snapUid = await getDocs(qUid);
-        for (const docSnap of snapUid.docs) {
-          await deleteDoc(docSnap.ref);
+      const deleteExistingForCategory = async (relations: string[]) => {
+        try {
+          if (user.uid) {
+            const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
+            const snapUid = await getDocs(qUid);
+            for (const docSnap of snapUid.docs) {
+              const d = docSnap.data();
+              if (relations.includes(d.relation)) {
+                await deleteDoc(docSnap.ref);
+              }
+            }
+          } else if (user.mobile) {
+            const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
+            const snapMobile = await getDocs(qMobile);
+            for (const docSnap of snapMobile.docs) {
+              const d = docSnap.data();
+              if (relations.includes(d.relation)) {
+                await deleteDoc(docSnap.ref);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error deleting matching key:", err);
         }
-      } else if (user.mobile) {
-        const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
-        const snapMobile = await getDocs(qMobile);
-        for (const docSnap of snapMobile.docs) {
-          await deleteDoc(docSnap.ref);
-        }
-      }
+      };
 
       const commonData = {
         uid: user.uid,
@@ -430,7 +481,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       };
 
       // 1. Submit Self Claim
-      if (selfSelected) {
+      if (selfSelected && !hasSelf) {
+        await deleteExistingForCategory(['Self']);
         const selfClaim = {
           ...commonData,
           relation: 'Self',
@@ -450,7 +502,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       }
 
       // 2. Submit Parent Claim
-      if (parentSelected) {
+      if (parentSelected && !hasParent) {
+        await deleteExistingForCategory(['Mother', 'Father']);
         const parentClaim = {
           ...commonData,
           relation: parentRelation,
@@ -470,7 +523,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       }
 
       // 3. Submit Child Claim
-      if (childSelected) {
+      if (childSelected && !hasChild) {
+        await deleteExistingForCategory(['Son', 'Daughter']);
         const childClaim = {
           ...commonData,
           relation: childRelation,
@@ -490,7 +544,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       }
 
       // 4. Submit Spouse Claim
-      if (spouseSelected) {
+      if (spouseSelected && !hasSpouse) {
+        await deleteExistingForCategory(['Wife', 'Husband']);
         const spouseClaim = {
           ...commonData,
           relation: spouseRelation,
@@ -572,12 +627,16 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           </div>
         </div>
 
-        <div className="bg-rose-50/50 border border-brand-magenta/15 p-5 rounded-2xl text-slate-705 font-bold text-xs leading-relaxed text-left space-y-3">
-          <p className="text-slate-700 font-bold text-xs">
-            പ്രിയ അംഗമേ, താങ്കൾ ഈ മെമ്പർഷിപ്പ് വിവരങ്ങൾ വിജയകരമായി ഇതിനകം തന്നെ സമർപ്പിച്ചിട്ടുള്ളതാണ്.
+        <div className="bg-emerald-50 border-2 border-emerald-200 p-5 rounded-2xl text-slate-800 font-bold text-xs leading-relaxed text-left space-y-3">
+          <p className="text-emerald-950 font-extrabold text-sm flex items-center gap-1.5 leading-none mb-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 inline-block" />
+            അറിയിപ്പ് (Important Notice):
           </p>
-          <p className="text-slate-600 text-xs">
-            ഡാറ്റാ സുരക്ഷിതത്വം ഉറപ്പുവരുത്താൻ പാനലിൽ ഒരു തവണ സമർപ്പിച്ച വിവരങ്ങൾ പിന്നീട് മാറ്റാൻ സാധ്യമല്ല.
+          <p className="text-slate-800 font-extrabold text-xs leading-relaxed">
+            താങ്കളുടെയും കുടുംബാംഗങ്ങളുടെയും 4 ഫോമുകളും വിജയകരമായി സമർപ്പിച്ചിട്ടുള്ളതാണ്. വിവരങ്ങൾ ഡിലീറ്റ് ചെയ്യുകയോ എഡിറ്റ് ചെയ്യുകയോ ചെയ്യണമെങ്കിൽ ദയവായി അഡ്മിനുമായി ബന്ധപ്പെടുക.
+          </p>
+          <p className="text-slate-500 font-medium text-[10.5px] leading-normal uppercase">
+            All 4 claim forms have been successfully submitted. If you need to modify or delete your submissions, please contact an administrator.
           </p>
         </div>
 
@@ -665,7 +724,59 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             </div>
         </div>
 
+        {/* Previously Submitted Claims and remaining count notice */}
+        {submittedClaims.length > 0 && (
+          <div className="space-y-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-sm space-y-1.5">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-wide">രജിസ്ട്രേഷൻ പുരോഗതി (Registry Status)</h4>
+                    <p className="text-slate-700 font-bold text-[11px] leading-relaxed">
+                      താങ്കളുടെ <strong>{submittedClaims.length} ക്ലെയിം ഫോം(കൾ)</strong> ഇതിനകം സമർപ്പിച്ചിട്ടുള്ളതാണ്.
+                      {submittedClaims.length < 4 ? (
+                        <> കുടുംബത്തിലെ ബാക്കി <strong>{4 - submittedClaims.length} വ്യക്തികൾക്കുള്ള ഫോം കൂടി</strong> താഴെ പൂരിപ്പിച്ചു സബ്മിറ്റ് ചെയ്യാവുന്നതാണ്.</>
+                      ) : (
+                        <> എല്ലാ അവസരങ്ങളും പരമാവധി ഉപയോഗിച്ചു കഴിഞ്ഞു.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3">
+              <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5 leading-none">
+                <Users className="w-3.5 h-3.5 text-blue-600" />
+                റജിസ്റ്റർ ചെയ്ത കുടുംബാംഗങ്ങൾ (Registered Claims)
+              </h4>
+              <div className="grid grid-cols-1 gap-2.5">
+                {submittedClaims.map((claim, idx) => (
+                  <div key={claim.id || idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex justify-between items-center text-xs font-bold text-slate-700 shadow-xs">
+                    <div>
+                      <p className="font-extrabold text-slate-800 text-[11.5px] leading-tight">{claim.userName}</p>
+                      <p className="text-[9px] font-bold text-slate-405 mt-0.5 uppercase tracking-wider">
+                        {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                         claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                         claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                         claim.relation === 'Son' ? 'മകൻ (Son)' :
+                         claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
+                         claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                         claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">Pending Amount</p>
+                      <p className="text-xs font-black text-brand-magenta">₹{claim.totalPending?.toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SLOT 1: SELF CLAIM (ആ വ്യക്തി) */}
+        {!hasSelf && (
         <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
           <CardContent className="p-5 md:p-6 space-y-6">
             <div className="flex items-center justify-between border-b pb-4">
@@ -820,8 +931,10 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* SLOT 2: PARENT CLAIM (മാതാവ് അല്ലെങ്കിൽ പിതാവ്) */}
+        {!hasParent && (
         <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
           <CardContent className="p-5 md:p-6 space-y-6">
             <div className="flex items-center justify-between border-b pb-4">
@@ -998,8 +1111,10 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* SLOT 3: CHILD CLAIM (മകൻ അല്ലെങ്കിൽ മകൾ) */}
+        {!hasChild && (
         <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
           <CardContent className="p-5 md:p-6 space-y-6">
             <div className="flex items-center justify-between border-b pb-4">
@@ -1176,8 +1291,10 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             )}
           </CardContent>
         </Card>
+        )}
 
-        {/* SLOT 4: SPOUSE CLAIM (ഭാര്യ или ഭർത്താവ് - Spouse Claimant) */}
+        {/* SLOT 4: SPOUSE CLAIM (ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവ് - Spouse Claimant) */}
+        {!hasSpouse && (
         <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
           <CardContent className="p-5 md:p-6 space-y-6">
             <div className="flex items-center justify-between border-b pb-4">
@@ -1354,6 +1471,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* COMBINED TOTAL DISPLAY */}
         <section className="bg-brand-blue rounded-3xl p-6 text-white space-y-6 shadow-xl relative overflow-hidden">

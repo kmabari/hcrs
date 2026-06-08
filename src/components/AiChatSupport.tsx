@@ -46,16 +46,6 @@ export default function AiChatSupport() {
     }
   }, [messages, isSending, isVerifying, isTicketSubmitted]);
 
-  // Initiate Chatbot with greeting message
-  const initChat = () => {
-    setMessages([
-      {
-        role: 'model',
-        text: 'ഹലോ! ഞാൻ വഴികാട്ടി AI അസിസ്റ്റന്റ് ആണ്. നിങ്ങൾക്ക് എന്തു സഹായമാണ് വേണ്ടത്? നിങ്ങളുടെ മെമ്പർഷിപ്പ് വിഭരങ്ങൾ പരിശോധിക്കാനായി ദയവായി നിങ്ങളുടെ 10 അക്ക മൊബൈൽ നമ്പർ താഴെ നൽകുക.'
-      }
-    ]);
-  };
-
   const handleOpen = () => {
     setIsOpen(true);
     if (messages.length === 0) {
@@ -107,6 +97,148 @@ export default function AiChatSupport() {
     }
   };
 
+  // Initiate Chatbot with greeting message
+  const initChat = () => {
+    setMessages([
+      {
+        role: 'model',
+        text: `ഹലോ സുഹൃത്തേ! HCRS (ഹൈറിച്ച് കമ്മ്യൂണിറ്റി റിവൈവൽ സൊസൈറ്റി) 'വഴികാട്ടി AI' അസിസ്റ്റന്റിലേക്ക് സ്വാഗതം. 🤝
+
+പൊതുവിവരങ്ങളായ മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ രീതികൾ, സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങൾ, ലഭ്യമാകുന്ന സർവീസുകൾ എന്നിവയ്ക്ക് മൊബൈൽ നമ്പർ നൽകേണ്ടതില്ല! താഴെയുള്ള ചോദ്യങ്ങൾ ഉപയോഗിച്ചോ തത്സമയമോ ചോദിക്കാവുന്നതാണ്.
+
+എന്നാൽ നിങ്ങളുടെ വ്യക്തിഗത അക്കൗണ്ട് വിവരങ്ങളോ സപ്പോർട്ട് ക്ലൈം സ്റ്റാറ്റസോ പരിശോധിക്കാനാണ് താല്പര്യമെങ്കിൽ താഴെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകി വെരിഫൈ ചെയ്യുക.`
+      }
+    ]);
+  };
+
+  // Ultra-robust Client-Side Malayalam FAQ & Core-Logic Assistant
+  const generateLocalFallbackResponse = (userQuery: string, member: any): string => {
+    const query = userQuery.toLowerCase().trim();
+    
+    const isMatch = (keywords: string[]) => {
+      return keywords.some(k => query.includes(k));
+    };
+    
+    if (isMatch(['മെമ്പർഷിപ്പ്', 'മെമ്പർ', 'ചേരാൻ', 'എടുക്കാൻ', 'പുതിയ', 'രജിസ്റ്റർ', 'രജിസ്ട്രേഷൻ', 'രജിസ്ട്രി', 'register', 'membership', 'join', 'fee', 'ഫീസ്'])) {
+      return `📝 **HCRS-ൽ എങ്ങനെയൊരു പുതിയ മെമ്പർഷിപ്പ് എടുക്കാം?**
+
+HCRS വെബ്‌സൈറ്റിന്റെ മെയിൻ ഹോംപേജിലുള്ള **'Register'** ഓപ്ഷൻ വഴി വളരെ ലളിതമായി ആർക്കും ഇവിടെ പുതിയ മെമ്പർഷിപ്പ് എടുക്കാവുന്നതാണ്. ഇതിനായുള്ള ഘട്ടങ്ങൾ താഴെ പറയുന്നവയാണ്:
+
+1. **വ്യക്തിഗത വിവരങ്ങൾ നൽകുക:** നിങ്ങളുടെ പേര്, സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ, ഇമെയിൽ വിലാസം എന്നിവ കൃത്യമായി നൽകുക. (കുടുംബാംഗങ്ങളെ പിന്നീട് പാനലിൽ ലോഗിൻ ചെയ്ത ശേഷം ആഡ് ചെയ്യാവുന്നതാണ്).
+2. **ഫോട്ടോയും ഒപ്പും അപ്‌ലോഡ് ചെയ്യുക:** നിങ്ങളുടെ പേഴ്സണൽ പാസ്‌പോർട്ട് സൈസ് പ്രൊഫൈൽ ഫോട്ടോയും നിങ്ങളുടെ ഒപ്പും സെലക്ട് ചെയ്യുക.
+3. **പെയ്‌മെന്റ് വിവരങ്ങൾ:** ബാങ്ക് അക്കൗണ്ടിലേക്ക് നിശ്ചിത ട്രാൻസാക്ഷൻ തുകയടച്ച ശേഷം ആ ഇടപാടിന്റെ രസീത് പ്രൂഫ് (Receipt Photo/Screenshot) ഇവിടെ അപ്‌ലോഡ് ചെയ്യേണ്ടതുണ്ട്.
+4. **രജിസ്ട്രേഷൻ സമർപ്പിക്കുക:** വിവരങ്ങൾ കൺഫേം ചെയ്ത ശേഷം സബ്മിറ്റ് ചെയ്യുക.
+
+തുടർന്ന് അഡ്മിൻ പാനലിൽ നിന്ന് നിങ്ങളുടെ അപേക്ഷയും പെയ്മെന്റും ജില്ലാ മാനേജർ/അഡ്മിൻ പരിശോധിച്ച് അപ്രൂവ് ചെയ്ത ശേഷം നിങ്ങളുടെ വാട്സാപ്പിലേക്ക്/ഫോണിലേക്ക് ഒഫീഷ്യൽ 6-അക്ക ലോഗിൻ പിൻ (PIN) നമ്പർ ലഭിക്കും. അതിനു ശേഷം നിങ്ങൾക്ക് വിജയകരമായി ലോഗിൻ ചെയ്യാൻ സാധിക്കും. ലോഗിൻ ചെയ്ത ശേഷം നിങ്ങൾക്ക് ലൈവ് മെമ്പർഷിപ്പ് കാർഡ് പ്രിന്റ് ചെയ്യാം!`;
+    }
+    
+    if (isMatch(['ലക്ഷ്യം', 'ലക്ഷ്യങ്ങൾ', 'ഉദ്ദേശം', 'ഉദ്ദേശങ്ങൾ', 'purpose', 'aim', 'objectives', 'society', 'എന്താണ്', 'എന്താ'])) {
+      return `🎯 **HCRS സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങളും ഉദ്ദേശങ്ങളും:**
+
+ഹൈറിച്ച് (Highrich) കമ്മ്യൂണിറ്റിക്ക് ശാക്തീകരണവും കൈത്താങ്ങും നൽകുക, മുൻകാലങ്ങളിലുള്ള കമ്മ്യൂണിറ്റി മെമ്പർമാരുടെ ഡിജിറ്റൽ ക്ലൈമുകൾ ചിട്ടയോടെ പരിഹരിക്കാനുള്ള സുതാര്യമായ ഒരു വേദി ഒരുക്കുക എന്നിവയാണ് **ഹൈറിച്ച് കമ്മ്യൂണിറ്റി റിവൈവൽ സൊസൈറ്റി (HCRS)** യുടെ പ്രധാന ലക്ഷ്യം.
+
+* **കൂപ്പൺ റീഡീമിംഗ് സപ്പോർട്ട്:** മുൻകാലങ്ങളിൽ കുടുങ്ങിക്കിടക്കുന്ന മെമ്പർമാരുടെ റെഡീം കൂപ്പണുകൾ, OTT അഡ്വാൻസുകൾ, മറ്റു കോൺസൈൻമെന്റ് തുകകൾ എന്നിവ കൃത്യമായി ഇൻവെന്ററി ചെയ്യുകയും റിവൈവൽ ആനുകൂല്യങ്ങളും പെയ്‌മെന്റുകളും ലഭ്യമാക്കുകയുമാണ് ഇതിന്റെ പ്രധാന ഉദ്ദേശം.
+* **കൂട്ടായ സുതാര്യത:** അഡ്മിൻ - ഡിസ്ട്രിക്റ്റ് ലെവലിലുള്ള സൂപ്പർവൈസർമാർ വഴി সাধারণക്കാരായ മെമ്പർമാരുടെ പ്രശ്നങ്ങൾ വളരെ വിശ്വസനീയമായും ഓൺലൈനായും തീർപ്പാക്കുക എന്നതാണ് സംഘടന വിഭാവനം ചെയ്യുന്നത്.`;
+    }
+    
+    if (isMatch(['സർവീസ്', 'സർവീസുകൾ', 'സേവനം', 'സേവനങ്ങൾ', 'services', 'service', 'സൌകര്യം', 'സൗകര്യം', 'സൗകര്യങ്ങൾ'])) {
+      return `💼 **HCRS-ലൂടെ ലഭിക്കുന്ന പ്രധാന സേവനങ്ങൾ (Key Services):**
+
+1. **ഡിപെൻഡന്റ് ക്ലൈം ഫെസിലിറ്റി (Dependent Claims):** ഒരൊറ്റ ലോഗിൻ സെഷനിലൂടെ തന്റെ കുടുംബാംഗങ്ങളായ പരмаവധി 3 ഡിപെൻഡന്റ് മെമ്പർമാരെക്കൂടി (അച്ഛൻ, അമ്മ, ഭാര്യ, മക്കൾ) ആഡ് ചെയ്യാനും ഒന്നിച്ച് വളരെ വേഗത്തിൽ ക്ലൈം ഇൻഫർമേഷൻ സമർപ്പിക്കാനുമുള്ള സൗകര്യം.
+2. **ഡിജിറ്റൽ മെമ്പർഷിപ്പ് ഐഡന്റിറ്റി കാർഡ്:** ഫുൾ കളർ ഡിസൈനിൽ ഉള്ള നിങ്ങളുടെ ഡിജിറ്റൽ മെമ്പർഷിപ്പ് ഐഡന്റിറ്റി കാർഡ് ലൈവായി കാണാനും നിങ്ങളുടെ മൊബൈലിലേക്ക് ഡൗൺലോഡ് ചെയ്യാനും പ്രിന്റ് ചെയ്യാനുമുള്ള ലോഗിൻ സൗകര്യം.
+3. **ഓൺലൈൻ പ്രൊഫൈൽ തിരുത്തൽ (Support Tickets):** അക്കൗണ്ടിലുള്ള നിങ്ങളുടെ വിവരങ്ങൾ തെറ്റിയാൽ നേരിട്ട് ജില്ലാ മാനേജർക്കോ അഡ്മിനോ ടിക്കറ്റ് സമർപ്പിക്കാനും അതിന്റെ മുൻഗണന ഓൺലൈനായി ട്രാക്ക് ചെയ്യാനുമുള്ള സംവിധാനം.
+4. **റിന്യൂവൽ പെയ്മെന്റ് സിസ്റ്റം:** കാലഹരണപ്പെടുന്ന മെമ്പർഷിപ്പുകൾ ലളിതമായി റിന്യൂ ചെയ്യാനും തത്സമയ പെയ്മെന്റ് പ്രൂഫ് കൺട്രോൾസ് ചെയ്യാനുമുള്ള സൗകര്യം.`;
+    }
+    
+    if (isMatch(['ക്ലൈം', 'claim', 'ഫോം', 'സമർപ്പിക്കുക', 'വരുമാനം', 'തുക', 'പണം'])) {
+      return `📋 **ക്ലൈം ഫോം സമർപ്പിക്കുന്നതിനുള്ള പ്രധാന നിയമങ്ങൾ:**
+
+* ആദ്യം ഒഫീഷ്യൽ അക്കൗണ്ടിലേക്ക് നിങ്ങളുടെ മൊബൈൽ നമ്പറും 6 അക്ക ലോഗിൻ പിൻ നമ്പറും നൽകി ലോഗിൻ ചെയ്യുക.
+* തുടർന്ന് നിങ്ങളുടെ ഡാഷ്‌ബോർഡിലുള്ള **'Support Claim Form'** ക്ലിക്ക് ചെയ്യുക.
+* കൂട്ടായ ക്ലൈമുകൾക്ക് ഒരൊറ്റ അക്കൗണ്ടിൽ നിന്ന് തന്നെ നിങ്ങൾക്കൊപ്പം പരമാവധി 3 കുടുംബാംഗങ്ങളെക്കൂടി (Dependents) സെലക്ട് ചെയ്യാം.
+* **അтиപ്രധാനം:** യാതൊരു ചെക്ക് ലീഫുകളും ഇന്നിവിടെ അപ്ലോഡ് ചെയ്യാൻ ആവശ്യമില്ല. ഇൻവെസ്റ്റ്മെന്റ് വിവരങ്ങൾ ഒഫീഷ്യൽ റെക്കോർഡ് ഇല്ലാതെ തന്നെ പൂർണ്ണ സുതാര്യതയോടു കൂടെ ഇവിടെ സ്വയം പ്രഖ്യാപിച്ചു റെക്കോർഡ് ചെയ്യുക മാത്രമാണ് ചെയ്യുന്നത്.`;
+    }
+    
+    if (isMatch(['പിൻ', 'pin', 'പാസ്‌വേഡ്', 'password', 'മറന്നു', 'ലോഗിൻ', 'login'])) {
+      return `🔑 **🔑 ലോഗിൻ പിൻ (PIN) സംബന്ധിച്ച വിവരങ്ങൾ:**
+
+* രജിസ്ട്രേഷൻ സമയത്ത് സമർപ്പിച്ച വിവരങ്ങളും പെയ്മെന്റും നിങ്ങളുടെ ജില്ലാ മാനേജർ അല്ലെങ്കിൽ ഒഫീഷ്യൽ അഡ്മിൻ പരിശോധിച്ച് അപ്രൂവ് ചെയ്ത് കഴിഞ്ഞാൽ മാത്രമേ നിങ്ങളുടെ പ്രൊഫൈൽ ആക്റ്റീവ് ആവുകയും 6 അക്ക ലോഗിൻ പിൻ ലഭ്യമാവുകയും ചെയ്യുകയുള്ളൂ.
+* പ്രൊഫൈൽ അപ്രൂവ് ആയിരിക്കുകയും പിൻ ലഭിക്കാതിരിക്കുകയോ മറന്നുപോവുകയോ ചെയ്തെങ്കിൽ, നിങ്ങളുടെ ജില്ലാ മാനേജരുമായോ അല്ലെങ്കിൽ നേരിട്ട് സപ്പോർട്ട് വഴിയോ ബന്ധപ്പെട്ട് പുതിയ ലോഗിൻ പിൻ റീസെറ്റ് ചെയ്ത് ലഭ്യമാക്കാവുന്നതാണ്.`;
+    }
+    
+    if (member) {
+      return `ഹലോ ${member.name}! താങ്കൾ വിജയകരമായി HCRS മെമ്പർഷിപ്പ് പ്രൊഫൈൽ കണ്ടെത്തി ലോഗിൻ ചെയ്തിട്ടുണ്ട്. 
+
+താങ്കളുടെ മെമ്പർഷിപ്പ് ഐഡി: **${member.membershipId || 'വെരിഫിക്കേഷൻ സ്റ്റേജിലാണ്'}** ആണ്. സ്റ്റാറ്റസ്: **${member.status || 'Active'}** ആണ്.
+
+താങ്കൾക്ക് ക്ലൈമുകൾ സമർപ്പിക്കാനോ അക്കൗണ്ടിൽ പേര് തിരുത്താനുള്ള അപേക്ഷകൾ ജില്ലാ മാനേജർക്ക് നൽകാനോ ഈ ചാറ്റിലൂടെയോ ഡാഷ്‌ബോർഡ് വഴിയോ സാധിക്കും. മറ്റെന്തെങ്കിലും പൊതുവായ വിവരങ്ങൾ അറിയേണ്ടതുണ്ടോ സുഹൃത്തേ?`;
+    }
+    
+    return `HCRS 'വഴികാട്ടി AI' അസിസ്റ്റന്റിലേക്ക് സ്വാഗതം! 🤝
+
+താങ്കൾ പൊതുവായ വിവരങ്ങളാണ് അന്വേഷിക്കുന്നതെന്ന് കരുതുന്നു. പൊതുവായ വിവരങ്ങൾ ലഭ്യമാക്കാൻ താല്പര്യപ്പെടുന്നെങ്കിൽ താഴെയുള്ള ചോദ്യങ്ങളിൽ ഒന്ന് ക്ലിക്ക് ചെയ്യുകയോ അല്ലെങ്കിൽ നേരിട്ടോ ചോദിക്കാവുന്നതാണ്:
+
+1. **'എങ്ങനെയൊരു പുതിയ മെമ്പർഷിപ്പ് എടുക്കാം?'** - (📝 പുതിയ രജിസ്ട്രേഷൻ രീതികൾ)
+2. **'എന്താണ് HCRS സൊസൈറ്റിയുടെ ലക്ഷ്യം?'** - (🎯 സൊസൈറ്റിയുടെ ഉദ്ദേശങ്ങളും ക്ലൈം ആനുകൂല്യങ്ങളും)
+3. **'നിങ്ങൾ നൽകുന്ന പ്രധാന സേവനങ്ങൾ?'** - (💼 പ്രധാന അഡ്വാൻറ്റേജുകളും ഡിപെൻഡന്റ് സൗകര്യങ്ങളും)
+
+നിങ്ങളുടെ വ്യക്തിഗത അക്കൗണ്ട് പരിശോധിക്കാനാണ് താങ്കൾ ഇവിടെ വന്നതെങ്കിൽ, മുകളിലുള്ള വരികളിൽ നിങ്ങളുടെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകി വെരിഫൈ ചെയ്യാവുന്നതാണ്. 😊`;
+  };
+
+  const handleQuickPublicQuestion = async (questionText: string) => {
+    setIsGuest(true);
+    setVerifiedMember(null);
+    setPhone('');
+    setHasEnteredPhone(true);
+
+    const userMsg: Message = { role: 'user', text: questionText };
+    const nextHistory = [...messages, userMsg];
+    setMessages(nextHistory);
+
+    setIsSending(true);
+    try {
+      let dataText = '';
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: questionText,
+            history: messages.slice(-8),
+            verifiedMember: null
+          })
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            throw new Error('HtmlRedirect');
+          }
+          const data = await response.json();
+          dataText = data.text;
+        } else {
+          throw new Error('APIError');
+        }
+      } catch (err) {
+        console.warn('Fallback to local assistant resolver:', err);
+        dataText = generateLocalFallbackResponse(questionText, null);
+      }
+
+      setMessages(prev => [
+        ...prev,
+        { role: 'model', text: dataText }
+      ]);
+    } catch (e) {
+      console.error(e);
+      setMessages(prev => [
+        ...prev,
+        { role: 'model', text: generateLocalFallbackResponse(questionText, null) }
+      ]);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleSkipPhoneVerification = async () => {
     setIsGuest(true);
     setVerifiedMember(null);
@@ -133,33 +265,41 @@ export default function AiChatSupport() {
 തോളോട് തോൾ ചേർന്ന് മലയാളത്തിൽ വളരെ വ്യക്തമായും സന്തോഷത്തോടും കൂടെ മറുപടി പറയുക. മുകളിലുള്ള മൊബൈൽ നമ്പർ വെരിഫിക്കേഷൻ വഴി മാത്രമേ ഡീറ്റെയിൽസ് പരിശോധിക്കാൻ സാധിക്കൂ എന്ന കാര്യം ഓപ്ഷണലായി ഓർമ്മിപ്പിക്കാം.]`
           : `[SYSTEM: User typed mobile ${phoneNum}, but no profile exists. Politely welcome them as a guest, mention that they are not registered in the database, and ask how you can help them.]`;
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: prompt,
-          history: currentHistory.slice(-8),
-          verifiedMember: member
-        })
-      });
+      let dataText = '';
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: prompt,
+            history: currentHistory.slice(-8),
+            verifiedMember: member
+          })
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(prev => [
-          ...prev,
-          { role: 'model', text: data.text }
-        ]);
-      } else {
-        const fallbackText = member 
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            throw new Error('HtmlRedirect');
+          }
+          const data = await response.json();
+          dataText = data.text;
+        } else {
+          throw new Error('ResponseNotOk');
+        }
+      } catch (err) {
+        console.warn('Greeting fetch failed/redirected, using local representation.', err);
+        dataText = member 
           ? `ഹലോ ${member.name}! താങ്കളുടെ പ്രൊഫൈൽ വിജയകരമായി കണ്ടെത്തിയിട്ടുണ്ട്. നിങ്ങൾക്ക് എന്ത് സഹായമാണ് നൽകേണ്ടത്? (ഹോംപേജിലെ വിവരങ്ങൾ കാണാൻ താങ്കൾക്ക് അസിസ്റ്റന്റുമായി തുടർന്ന് സംസാരിക്കാം)`
           : !phoneNum
             ? `ഹലോ സുഹൃത്തേ! HCRS സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങളും ഉദ്ദേശങ്ങളും സർവീസുകളും എന്തൊക്കെയാണെന്ന് അറിയാനാണോ താങ്കൾ താല്പര്യപ്പെടുന്നത്? എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?`
             : `ഹലോ സുഹൃത്തേ, നൽകിയ നമ്പറിൽ പ്രൊഫൈൽ ഒന്നും കണ്ടെത്തിയില്ല. എന്നിരുന്നാലും സംഘടനയെക്കുറിച്ചുള്ള പൊതുവായ സംശയങ്ങൾ പരിഹരിക്കാൻ ഇവിടെ ചോദിക്കാവുന്നതാണ്.`;
-        setMessages(prev => [
-          ...prev,
-          { role: 'model', text: fallbackText }
-        ]);
       }
+
+      setMessages(prev => [
+        ...prev,
+        { role: 'model', text: dataText }
+      ]);
     } catch (e) {
       console.error(e);
       const fallbackText = member 
@@ -226,30 +366,35 @@ export default function AiChatSupport() {
 
     setIsSending(true);
     try {
-      // Direct call to our backend API endpoint passing the current verifiedMember profile
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: msgToSend,
-          history: messages.slice(-8), // Send previous history (which excludes the new active message) to stay under token limits
-          verifiedMember: verifiedMember
-        })
-      });
+      let responseText = '';
+      try {
+        // Direct call to our backend API endpoint passing the current verifiedMember profile
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: msgToSend,
+            history: messages.slice(-8), // Send previous history (which excludes the new active message) to stay under token limits
+            verifiedMember: verifiedMember
+          })
+        });
 
-      if (!response.ok) {
-        let errMessage = 'Failed to query API';
-        try {
-          const errData = await response.json();
-          if (errData && errData.error) {
-            errMessage = errData.error;
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            throw new Error('HtmlRedirect');
           }
-        } catch (_) {}
-        throw new Error(errMessage);
+          const data = await response.json();
+          responseText = data.text;
+        } else {
+          throw new Error('APIError');
+        }
+      } catch (err) {
+        console.warn('API chat failed or was intercepted, using offline FAQ fallback resolver:', err);
+        responseText = generateLocalFallbackResponse(msgToSend, verifiedMember);
       }
 
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: 'model', text: data.text }]);
+      setMessages(prev => [...prev, { role: 'model', text: responseText }]);
 
       // Check if user is asking for corrections, photoupdate or receipt update in the text
       const lowerText = msgToSend.toLowerCase();
@@ -620,10 +765,40 @@ export default function AiChatSupport() {
                     <button
                       type="button"
                       onClick={handleSkipPhoneVerification}
-                      className="w-full py-2.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/45 text-[11px] font-black uppercase text-center transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-2 px-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/45 text-[10px] font-black uppercase text-center transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <Bot className="w-4 h-4 text-emerald-500" /> ഫോൺ നമ്പർ ഇല്ലാതെ തുടരുക (Skip & Chat as Public)
+                      <Bot className="w-3.5 h-3.5 text-emerald-500" /> ഫോൺ നമ്പർ ഇല്ലാതെ മലയാളത്തിൽ നേരിട്ട് ചോദിക്കുക (Public Chat)
                     </button>
+
+                    <div className="flex flex-col gap-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-900 pt-2.5">
+                      <div className="text-[8px] text-slate-400 dark:text-slate-500 font-extrabold uppercase text-center tracking-wider mb-1">
+                        താഴെയുള്ള പൊതു സംശയങ്ങൾ ക്ലിക്ക് ചെയ്ത് അറിയാം
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPublicQuestion('എങ്ങനെയൊരു പുതിയ മെമ്പർഷിപ്പ് എടുക്കാം?')}
+                        className="w-full text-left py-2 px-3 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 hover:bg-emerald-500/10 border border-emerald-500/10 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>📝 എങ്ങനെയൊരു പുതിയ മെമ്പർഷിപ്പ് എടുക്കാം?</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPublicQuestion('എന്താണ് ഈ സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങളും ഉദ്ദേശങ്ങളും?')}
+                        className="w-full text-left py-2 px-3 rounded-xl bg-indigo-500/5 dark:bg-indigo-500/10 hover:bg-indigo-500/10 border border-indigo-500/10 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>🎯 എന്താണ് ഈ സൊസൈറ്റിയുടെ ലക്ഷ്യങ്ങൾ?</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-indigo-500" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPublicQuestion('എന്തൊക്കെയാണ് നിങ്ങൾ നൽകുന്ന പ്രധാന സർവീസുകൾ?')}
+                        className="w-full text-left py-2 px-3 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 hover:bg-amber-500/10 border border-amber-500/10 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-bold transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>💼 ഒഫീഷ്യൽ സർവീസുകൾ എന്തൊക്കെയാണ്?</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <form
