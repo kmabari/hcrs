@@ -93,6 +93,8 @@ export default function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
+  const [submittedClaimsCount, setSubmittedClaimsCount] = useState(0);
+  const [claimRefreshTrigger, setClaimRefreshTrigger] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
 
@@ -164,6 +166,7 @@ export default function App() {
     async function checkClaimSubmission() {
       if (!user) {
         setHasSubmittedClaim(false);
+        setSubmittedClaimsCount(0);
         return;
       }
       try {
@@ -175,23 +178,58 @@ export default function App() {
         const queryPromises = [];
 
         if (activeUid) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid)))
+              .catch(err => {
+                console.warn("checkClaimSubmission activeUid query notice:", err);
+                return null;
+              })
+          );
         }
         if (offlineUid) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid)))
+              .catch(err => {
+                console.warn("checkClaimSubmission offlineUid query notice:", err);
+                return null;
+              })
+          );
         }
         if (cleanMobile) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile)))
+              .catch(err => {
+                console.warn("checkClaimSubmission cleanMobile query notice:", err);
+                return null;
+              })
+          );
         }
         const numericMobile = Number(cleanMobile);
         if (cleanMobile && !isNaN(numericMobile)) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile)))
+              .catch(err => {
+                console.warn("checkClaimSubmission numericMobile query notice:", err);
+                return null;
+              })
+          );
         }
 
         const snaps = await Promise.all(queryPromises);
-        const submitted = snaps.some(snap => !snap.empty);
+        
+        // Count unique claim ID keys
+        const claimIds = new Set<string>();
+        snaps.forEach(snap => {
+          if (snap && !snap.empty) {
+            snap.docs.forEach(docSnap => {
+              claimIds.add(docSnap.id);
+            });
+          }
+        });
 
-        setHasSubmittedClaim(submitted);
+        const count = claimIds.size;
+        setSubmittedClaimsCount(count);
+        setHasSubmittedClaim(count > 0);
       } catch (err: any) {
         const errMsg = err?.message || String(err);
         if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
@@ -201,7 +239,7 @@ export default function App() {
       }
     }
     checkClaimSubmission();
-  }, [user]);
+  }, [user, claimRefreshTrigger]);
 
   const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && (
     user.renewalPending ||
@@ -1804,7 +1842,10 @@ export default function App() {
           ) : (
             <SupportClaimForm 
               user={user} 
-              onClose={() => setView('card')} 
+              onClose={() => {
+                setClaimRefreshTrigger(prev => prev + 1);
+                setView('card');
+              }} 
             />
           )}
         </div>
@@ -1959,7 +2000,7 @@ export default function App() {
                     </div>
                   ) : (
                     <>
-                      {hasSubmittedClaim ? (
+                      {submittedClaimsCount >= 4 ? (
                         <>
                           <Button 
                             onClick={() => setView('support')}
@@ -1968,11 +2009,27 @@ export default function App() {
                             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
                                <ShieldCheck className="w-5 h-5" />
                             </div>
-                            Registry Locked ✓
+                            Registry Saved ✓
                           </Button>
                           <div className="flex flex-col items-center mt-4 space-y-1">
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">രജിസ്ട്രി പൂർത്തിയായി (Submitted)</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-sans">വിവരങ്ങൾ സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തിയിട്ടുണ്ട്</p>
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">രജിസ്ട്രി പൂർത്തിയായി (4/4 Submitted)</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-sans">കുടുംബത്തിലെ എല്ലാവരുടെയും വിവരങ്ങൾ രേഖപ്പെടുത്തി</p>
+                          </div>
+                        </>
+                      ) : submittedClaimsCount > 0 ? (
+                        <>
+                          <Button 
+                            onClick={() => setView('support')}
+                            className="w-full h-18 rounded-[28px] font-black bg-amber-500 text-white shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 border-b-4 border-amber-600 cursor-pointer"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
+                               <Info className="w-5 h-5 animate-pulse" />
+                            </div>
+                            Registry Status: {submittedClaimsCount}/4 Saved
+                          </Button>
+                          <div className="flex flex-col items-center mt-4 space-y-1">
+                            <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">കൂടുതൽ വിവരങ്ങൾ നൽകാം (Slots Open)</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-sans">{submittedClaimsCount} വ്യക്തികളുടെ വിവരങ്ങൾ നൽകി. ബാക്കി ചെയ്യാം.</p>
                           </div>
                         </>
                       ) : (

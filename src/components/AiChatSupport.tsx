@@ -113,8 +113,175 @@ export default function AiChatSupport() {
 
   // Ultra-robust Client-Side Malayalam FAQ & Core-Logic Assistant
   const generateLocalFallbackResponse = (userQuery: string, member: any): string => {
-    const query = userQuery.toLowerCase().trim();
+    const query = (userQuery || "").toLowerCase().trim();
     
+    // Exact and approximate matched Q&A pairs requested by user
+    if (query.includes('what is hcrs?') || query.includes('what is hcrs')) {
+      return `Highrich Community Revival Society (HCRS) is a registered non-profit society established in 2025 to support the Highrich community through welfare, community development, and revival initiatives.`;
+    }
+    if (query.includes('hcrs എന്താണ്') || query.includes('എന്താണ് hcrs') || query.includes('എന്താണ് എച്ച് സി ആർ എസ്')) {
+      return `ഹൈറിച്ച് കമ്മューണിറ്റി റിവൈവൽ സൊസൈറ്റി (HCRS) 2025-ൽ രൂപീകരിക്കപ്പെട്ട ഒരു രജിസ്റ്റർ ചെയ്ത ലാഭേച്ഛയില്ലാത്ത സൊസൈറ്റിയാണ്.`;
+    }
+    if (query.includes('is hcrs a company') || query.includes('hcrs company')) {
+      return `No. HCRS is a registered society and not a company.`;
+    }
+    if (query.includes('hcrs ഒരു കമ്പനിയാണോ') || query.includes('കമ്പനിയാണോ')) {
+      return `അല്ല. HCRS ഒരു രജിസ്റ്റർ ചെയ്ത സൊസൈറ്റിയാണ്.`;
+    }
+    if (query.includes('how can i become a member') || query.includes('how to join') || query.includes('become a member')) {
+      return `You can apply through the official HCRS website membership registration page.`;
+    }
+    if (query.includes('എങ്ങനെ മെമ്പർ ആകാം') || query.includes('എങ്ങനെ അംഗമാകാം') || query.includes('എങ്ങനെ ചേരാം')) {
+      return `ഔദ്യോഗിക HCRS വെബ്സൈറ്റിലെ Membership Registration വഴി അപേക്ഷിക്കാം.`;
+    }
+    if (query.includes('ഫീസ് എത്രയാണ്') || query.includes('മെമ്പർഷിപ്പ് ഫീസ്') || query.includes('membership fee') || query.includes('registration fee')) {
+      return `HCRS മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ ഫീസ് ₹200 ആണ്.`;
+    }
+    if (query.includes('ആർക്കെല്ലാം കഴിയും') || query.includes('മെമ്പർഷിപ്പ് എടുക്കാൻ ആർക്കെല്ലാം') || query.includes('who can join')) {
+      return `ഹൈറിച്ച് കമ്മ്യൂണിറ്റിയുമായി ബന്ധപ്പെട്ട ആർക്കും HCRS മെമ്പർഷിപ്പ് എടുക്കാവുന്നതാണ്.`;
+    }
+    if (query.includes('കാലത്തേക്ക് സാധുവാണ്') || query.includes('കാലാവധി എത്ര') || query.includes('ഹൗ ലോങ്ങ് ഈസ് മെമ്പർഷിപ്പ്') || query.includes('how long is membership valid')) {
+      return `മെമ്പർഷിപ്പ് ഒരു വർഷത്തേക്കാണ്. ഓരോ വർഷവും ₹100 നൽകി Renewal ചെയ്യേണ്ടതാണ്.`;
+    }
+    if (query.includes('എന്തൊക്കെ വിവരങ്ങൾ വേണം') || query.includes('രജിസ്റ്റർ ചെയ്യാൻ എന്തൊക്കെ വേണം') || query.includes('what details are needed to register') || query.includes('requirements for membership')) {
+      return `പേര്, മൊബൈൽ നമ്പർ, ജില്ല, മണ്ഡലം എന്നീ വിവരങ്ങൾ മാത്രം നൽകുക.`;
+    }
+    if (query.includes('ഫീസ് എങ്ങനെ അടയ്ക്കാം') || query.includes('എങ്ങനെ ഫീസ് അടയ്ക്കാം') || query.includes('how to pay membership fee') || query.includes('how to pay fee')) {
+      return `Registration Form-ൽ കാണുന്ന QR Code Scan ചെയ്ത് Payment നടത്തുക.`;
+    }
+    if (query.includes('ചെയ്ത ശേഷം എന്താണ് ചെയ്യേണ്ടത്') || query.includes('രസീത് നൽകിയ ശേഷം') || query.includes('what to do after payment') || query.includes('after paying fee')) {
+      return `Transaction ID, Date, Time എന്നിവ ഫോമിൽ നൽകി Submit ചെയ്യണം.`;
+    }
+    if (query.includes('ഉടനെ മെമ്പർഷിപ്പ് ലഭിക്കുമോ') || query.includes('പെട്ടെന്ന് അപ്രൂവ് ആകുമോ') || query.includes('will i get membership immediately')) {
+      return `ഇല്ല. ആദ്യം അഡ്മിൻ പരിശോധനയും Approval-വും പൂർത്തിയാകണം.`;
+    }
+    if (query.includes('എങ്ങനെ ലോഗിൻ ചെയ്യാം') || query.includes('എങ്ങനെ login ചെയ്യാം') || query.includes('how to login after approval')) {
+      return `നിങ്ങളുടെ Mobile Number Username ആയി ഉപയോഗിക്കുക.\n\nPassword:\n123456`;
+    }
+    if (query.includes('എങ്ങനെ ഐഡി കാർഡ് കാണാം') || query.includes('ഐഡി കാർഡ് എങ്ങനെ ലഭിക്കും') || query.includes('how to view membership card') || query.includes('how to download id card') || query.includes('എനിക്ക് മെമ്പർഷിപ്പ് കാർഡ് എങ്ങനെ ലഭിക്കും')) {
+      return `Mobile Number, Password ഉപയോഗിച്ച് Login ചെയ്താൽ Digital Membership Card കാണാം.`;
+    }
+    if (query.includes('മെമ്പർഷിപ്പ് പുതുക്കൽ') || query.includes('മെമ്പർഷിപ്പ് renewal') || query.includes('membership renewal എങ്ങനെ') || query.includes('how to do membership renewal')) {
+      return `Website-ൽ Renewal എന്ന Menu-ൽ Click ചെയ്ത് Registration സമയത്ത് ചെയ്ത അതേ നടപടിക്രമം പിന്തുടരുക.`;
+    }
+    if (query.includes('website address') || query.includes('വെബ്സൈറ്റ് അഡ്രസ്') || query.includes('hcrs website link') || query.includes('വെബ്‌സൈറ്റ് എന്താണ്')) {
+      return `Website സന്ദർശിക്കാൻ:\nwww.hcrs.in`;
+    }
+    if (query.includes('website-ൽ എങ്ങനെ login ചെയ്യാം') || query.includes('വെബ്സൈറ്റിൽ എങ്ങനെ ലോഗിൻ') || query.includes('login to website')) {
+      return `Website-ൽ Login Page തുറന്ന് Mobile Number, Password നൽകി Login ചെയ്യുക.`;
+    }
+    if (query.includes('കേസുമായി ബന്ധപ്പെട്ട') || query.includes('കേസ് വിവരങ്ങൾ എവിടെ') || query.includes('where to see case updates') || query.includes('where to find court updates')) {
+      return `Website Home Page-ൽ പ്രധാനപ്പെട്ട Updates പ്രസിദ്ധീകരിക്കുന്നതാണ്.`;
+    }
+    if (query.includes('revival updates') || query.includes('റിവൈവൽ അപ്ഡേറ്റ്') || query.includes('where to find revival updates')) {
+      return `Home Page, Official Announcements Section, News Updates Section എന്നിവ പരിശോധിക്കുക.`;
+    }
+    if (query.includes('member financial information registry എന്താണ്') || query.includes('ഫിനാൻഷ്യൽ ഇൻഫർമേഷൻ രജിസ്ട്രി എന്താണ്') || query.includes('what is member financial information registry')) {
+      return `Highrich Community അംഗങ്ങളുടെ സാമ്പത്തിക വിവരങ്ങൾ ശേഖരിക്കുന്ന സംവിധാനമാണ്.`;
+    }
+    if (query.includes('എന്തിനാണ് ഈ വിവരങ്ങൾ ശേഖരിക്കുന്നത്') || query.includes('എന്തിനാണ് സാമ്പത്തിക വിവരങ്ങൾ') || query.includes('why collect financial data')) {
+      return `ഭാവിയിൽ സാഹചര്യം അനുകൂലമായാൽ അംഗങ്ങളുടെ സാമ്പത്തിക സ്ഥിതിയും ആവശ്യകതകളും മുൻഗണനകളും മനസ്സിലാക്കുന്നതിനായാണ് വിവരശേഖരണം.`;
+    }
+    if (query.includes('financial information registry എവിടെ') || query.includes('രജിസ്ട്രി എവിടെയാണ്') || query.includes('where is financial registry')) {
+      return `Website-ൽ "Member Financial Information Registry" എന്ന Menu-ൽ ലഭ്യമാണ്.`;
+    }
+    if (query.includes('എന്തൊക്കെ വിവരങ്ങൾ നൽകാം') || query.includes('ഫിനാൻഷ്യൽ വിവരങ്ങൾ എന്തൊക്കെ നൽകണം') || query.includes('what info can be submitted in financial registry')) {
+      return `നിങ്ങളുടെ Highrich സംബന്ധമായ സാമ്പത്തിക വിവരങ്ങളും കുടുംബത്തിലെ പരമാവധി മൂന്ന് അംഗങ്ങളുടെ വിവരങ്ങളും ചേർക്കാം.`;
+    }
+    if (query.includes('വിവരങ്ങൾ നൽകുന്നത് നിർബന്ധമാണോ') || query.includes('നിർബന്ധമാണോ') || query.includes('is it compulsory to submit financial data')) {
+      return `നിർബന്ധമല്ല. എന്നാൽ കൃത്യമായ ഡാറ്റ ലഭിക്കുന്നത് ഭാവി ആസൂത്രണങ്ങൾക്ക് സഹায়കരമാണ്.`;
+    }
+    if (query.includes('പണം ലഭിക്കുമോ') || query.includes('സബ്മിറ്റ് ചെയ്താൽ പണം തിരികെ കിട്ടുമോ') || query.includes('will i get money back') || query.includes('will i receive payments after registry')) {
+      return `ഇല്ല. ഇത് വിവരശേഖരണ സംവിധാനം മാത്രമാണ്. ഇത് ഒരു Payment Guarantee അല്ല.`;
+    }
+    if (query.includes('എനിക്ക് എന്ത് ചെയ്യണം') || query.includes('എനിക്ക് എന്ത് ചെയ്യണം?') || query.includes('എന്ത് ചെയ്യണം') || query.includes('what should i do')) {
+      return `നിങ്ങളുടെ ആവശ്യത്തിനനുസരിച്ച് താഴെ പറയുന്ന സ്റ്റെപ്പുകൾ പിന്തുടരുക:
+
+1. **മെമ്പർഷിപ്പ് എടുക്കുന്നതിന് (Registration):** വെബ്‌സൈറ്റിലെ 'Register' ഓപ്ഷൻ തുറന്ന് നിങ്ങളുടെ പേര്, ജില്ല, മണ്ഡലം എന്നിവ നൽകി രജിസ്റ്റർ ചെയ്യുക. അപേക്ഷ സമർപ്പിച്ചതിന് ശേഷം അഡ്മിൻ അപ്രൂവ് ചെയ്യുന്നതോടെ നിങ്ങളുടെ ലോഗിൻ പിൻ ലഭിക്കും.
+2. **മെമ്പർഷിപ്പ് പുതുക്കുന്നതിന് (Renewal):** വെബ്‌സൈറ്റിൽ 'Renewal' മെനു സന്ദർശിച്ച് മുൻപ് ചെയ്ത അതേ രീതിയിൽ പെയ്മെന്റ് പ്രൂഫ് സമർപ്പിച്ചു പുതുക്കാം.
+3. **ലോഗിൻ ചെയ്യുന്നതിന് (Login):** ലോഗിൻ പേജിൽ നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡും (123456) നൽകി ലോഗിൻ ചെയ്യുക. അപ്രൂവലിന് ശേഷം നിങ്ങൾക്ക് ലോഗിൻ ചെയ്യാം.
+4. **അപ്ഡേറ്റുകൾ അറിയാൻ (Case/News updates):** കേസുമായി ബന്ധപ്പെട്ട വിവരങ്ങൾക്ക് ഹോം പേജ് നേരിっと സന്ദർശിക്കുക.
+5. **സാമ്പത്തിക വിവരങ്ങൾ നൽകാൻ (Financial registry):** വെബ്‌സൈറ്റിൽ കാണുന്ന 'Member Financial Information Registry' എന്ന മെനു മുഖേന വിവരങ്ങൾ നൽകാം.`;
+    }
+    if (query.includes('what are the benefits of membership') || query.includes('benefits of membership') || query.includes('membership benefits')) {
+      return `Members receive access to community programs, welfare initiatives, digital ID cards, and society activities.`;
+    }
+    if (query.includes('മെമ്പർഷിപ്പിന്റെ ഗുണങ്ങൾ') || query.includes('ഗുണങ്ങൾ എന്തൊക്കെയാണ്') || query.includes('ഗുണങ്ങൾ എന്ത്')) {
+      return `വെൽഫെയർ പദ്ധതികൾ, കമ്മ്യൂണിറ്റി പ്രവർത്തനങ്ങൾ, ഡിജിറ്റൽ ഐഡി കാർഡ്, സൊസൈറ്റി പ്രവർത്തനങ്ങളിൽ പങ്കാളിത്തം എന്നിവ ലഭിക്കും.`;
+    }
+    if (query.includes('how do i get my membership card') || query.includes('how to get membership card') || query.includes('get my membership card')) {
+      return `After approval, you can log in and download your digital membership card.`;
+    }
+    if (query.includes('മെമ്പർഷിപ്പ് കാർഡ് എങ്ങനെ ലഭിക്കും') || query.includes('കാർഡ് എങ്ങനെ ലഭിക്കും') || query.includes('മെമ്പർഷിപ്പ് കാർഡ് എങ്ങനെ')) {
+      return `അംഗീകാരം ലഭിച്ച ശേഷം ലോഗിൻ ചെയ്ത് ഡിജിറ്റൽ കാർഡ് കാണാം.`;
+    }
+    if (query.includes('can i change my mobile number') || query.includes('change my mobile number') || query.includes('change mobile number')) {
+      return `No. Mobile numbers can only be changed by authorized administrators.`;
+    }
+    if (query.includes('മൊബൈൽ നമ്പർ എനിക്ക് മാറ്റാനാകുമോ') || query.includes('മൊബൈൽ നമ്പർ മാറ്റാൻ') || query.includes('ഫോൺ നമ്പർ മാറ്റാൻ')) {
+      return `ഇല്ല. അധികൃത അഡ്മിന്മാർക്ക് മാത്രമേ മാറ്റാൻ കഴിയൂ.`;
+    }
+    if (query.includes('can i change my name') || query.includes('change my name') || query.includes('can i change name')) {
+      return `No. Name changes require administrator verification.`;
+    }
+    if (query.includes('പേര് മാറ്റാനാകുമോ') || query.includes('പേര് മാറ്റാൻ') || query.includes('പേര് തിരുത്താൻ')) {
+      return `ഇല്ല. അഡ്മിൻ പരിശോധനയ്ക്ക് ശേഷമേ മാറ്റം സാധ്യമാകൂ.`;
+    }
+    if (query.includes('member financial information registry') || query.includes('financial information registry') || query.includes('information registry')) {
+      return `It is a data collection system used to understand member financial situations and welfare requirements.`;
+    }
+    if (query.includes('member financial information registry എന്താണ്') || query.includes('ധനകാര്യ വിവര ശേഖരണം')) {
+      return `അംഗങ്ങളുടെ സാമ്പത്തിക സാഹചര്യങ്ങളും ആവശ്യങ്ങളും മനസ്സിലാക്കാൻ ഉപയോഗിക്കുന്ന വിവര ശേഖരണ സംവിധാനമാണ്.`;
+    }
+    if (query.includes('is it a claim settlement system') || query.includes('is it a claim settlement') || query.includes('claim settlement system')) {
+      return `No. It is only an information registry and not a payment settlement platform.`;
+    }
+    if (query.includes('ഇത് ക്ലെയം സെറ്റിൽമെന്റ് സംവിധാനമാണോ') || query.includes('ഇത് ക്ലെയിം സെറ്റിൽമെന്റ്') || query.includes('ക്ലെയിം സെറ്റിൽമെന്റ് സംവിധാനം')) {
+      return `അല്ല. ഇത് വിവര ശേഖരണ സംവിധാനം മാത്രമാണ്.`;
+    }
+    if (query.includes('does hcrs guarantee any payment') || query.includes('guarantee any payment') || query.includes('guarantee payment')) {
+      return `No. HCRS does not guarantee any payment or financial recovery.`;
+    }
+    if (query.includes('hcrs പണം ഉറപ്പ് നൽകുമോ') || query.includes('പണം ഉറപ്പ് നൽകുമോ') || query.includes('തുക ഉറപ്പ് നൽകുമോ')) {
+      return `ഇല്ല. HCRS ഒരു സാമ്പത്തിക തിരിച്ചടവും ഉറപ്പ് നൽകുന്നില്ല.`;
+    }
+    if (query.includes('role of district committees') || query.includes('district committee role') || query.includes('district committees')) {
+      return `District Committees coordinate membership, welfare activities, and local programs.`;
+    }
+    if (query.includes('ജില്ലാ കമ്മിറ്റിയുടെ ചുമതല എന്താണ്') || query.includes('ജില്ലാ കമ്മിറ്റി') || query.includes('ജില്ലാ കമ്മറ്റി')) {
+      return `മെമ്പർഷിപ്പ്, വെൽഫെയർ പ്രവർത്തനങ്ങൾ, പ്രാദേശിക പരിപാടികൾ എന്നിവ ഏകോപിപ്പിക്കുന്നു.`;
+    }
+    if (query.includes('role of mandalam committees') || query.includes('mandalam committee role') || query.includes('mandalam committees')) {
+      return `Mandalam Committees coordinate local members and field-level activities.`;
+    }
+    if (query.includes('മണ്ഡലം കമ്മിറ്റിയുടെ ചുമതല എന്താണ്') || query.includes('മണ്ഡലം കമ്മിറ്റി') || query.includes('മണ്ഡലം കമ്മറ്റി')) {
+      return `പ്രാദേശിക അംഗങ്ങളെയും പ്രവർത്തനങ്ങളെയും ഏകോപിപ്പിക്കുന്നു.`;
+    }
+    if (query.includes('does hcrs provide legal advice') || query.includes('provide legal advice') || query.includes('legal advice')) {
+      return `No. Please consult a qualified advocate for legal advice.`;
+    }
+    if (query.includes('hcrs നിയമോപദേശം നൽകുമോ') || query.includes('നിയമോപദേശം നൽകുമോ') || query.includes('നിയമോപദേശം')) {
+      return `ഇല്ല. നിയമോപദേശത്തിന് യോഗ്യനായ അഭിഭാഷകനെ സമീപിക്കുക.`;
+    }
+    if (query.includes('how can i contact hcrs') || query.includes('how to contact hcrs') || query.includes('contact hcrs')) {
+      return `Contact your District Committee or use the official website contact page.`;
+    }
+    if (query.includes('hcrs-നെ എങ്ങനെ ബന്ധപ്പെടാം') || query.includes('എങ്ങനെ ബന്ധപ്പെടാം') || query.includes('ബന്ധപ്പെടാൻ')) {
+      return `ജില്ലാ കമ്മിറ്റിയെയോ ഔദ്യോഗിക വെബ്സൈറ്റിലെ Contact Page-യെയോ ഉപയോഗിക്കുക.`;
+    }
+    if (query.includes('does hcrs conduct welfare activities') || query.includes('conduct welfare activities') || query.includes('welfare activities')) {
+      return `Yes. HCRS supports welfare, education, medical assistance, and community service initiatives.`;
+    }
+    if (query.includes('hcrs വെൽഫെയർ പ്രവർത്തനങ്ങൾ നടത്തുന്നുണ്ടോ') || query.includes('വെൽഫെയർ പ്രവർത്തനം')) {
+      return `ഉണ്ട്. വിദ്യാഭ്യാസം, ആരോഗ്യസഹായം, വെൽഫെയർ പ്രവർത്തനങ്ങൾ എന്നിവ നടത്തുന്നു.`;
+    }
+    if (query.includes('what is the mission of hcrs') || query.includes('mission of hcrs') || query.includes('hcrs mission')) {
+      return `To support affected families, strengthen the community, and promote lawful community development.`;
+    }
+    if (query.includes('hcrs-ന്റെ ദൗത്യം എന്താണ്') || query.includes('HCRS-ന്റെ ദൗത്യം') || query.includes('ദൗത്യം എന്താണ്') || query.includes('ദൗത്യം എന്ത്')) {
+      return `ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്ക്കുകയും സമൂഹത്തെ ശക്തിപ്പെടുത്തുകയും ചെയ്യുക.`;
+    }
+
     const isMatch = (keywords: string[]) => {
       return keywords.some(k => query.includes(k));
     };

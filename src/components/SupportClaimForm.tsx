@@ -176,23 +176,47 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
         // 1. Query by active UID
         if (activeUid) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid)))
+              .catch(err => {
+                console.warn("checkExistingClaims activeUid query notice:", err);
+                return null;
+              })
+          );
         }
 
         // 2. Query by offline UID
         if (offlineUid) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid)))
+              .catch(err => {
+                console.warn("checkExistingClaims offlineUid query notice:", err);
+                return null;
+              })
+          );
         }
 
         // 3. Query by userMobile (string)
         if (cleanMobile) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile)))
+              .catch(err => {
+                console.warn("checkExistingClaims cleanMobile query notice:", err);
+                return null;
+              })
+          );
         }
 
         // 4. Query by userMobile (numeric)
         const numericMobile = Number(cleanMobile);
         if (cleanMobile && !isNaN(numericMobile)) {
-          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile))));
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile)))
+              .catch(err => {
+                console.warn("checkExistingClaims numericMobile query notice:", err);
+                return null;
+              })
+          );
         }
 
         // Execute all queries in parallel for high speed and robustness
@@ -200,7 +224,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         
         // Collate and deduplicate docs
         for (const snap of snaps) {
-          if (!snap.empty) {
+          if (snap && !snap.empty) {
             snap.docs.forEach(docSnap => {
               claimsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
             });
@@ -695,6 +719,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
   // Render Submitted successfully output
   if (completed) {
+    const totalFilledNow = (() => {
+      let count = submittedClaims.length;
+      if (selfSelected && !hasSelf) count++;
+      if (parentSelected && !hasParent) count++;
+      if (childSelected && !hasChild) count++;
+      if (spouseSelected && !hasSpouse) count++;
+      return count;
+    })();
+
+    const remainingSlots = 4 - totalFilledNow;
+
     return (
       <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-screen my-auto">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-green-300 shadow-md">
@@ -703,12 +738,24 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         <h2 className="text-xl font-black text-brand-blue uppercase tracking-tight">സമർപ്പണം വിജയകരം<br/>(Submitted Successfully)</h2>
         <p className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">FINANCIAL REGISTRY SUBMISSION COMPLETED</p>
 
-        <div className="bg-emerald-50/50 border border-emerald-500/15 p-5 rounded-2xl text-slate-700 font-semibold text-xs leading-relaxed text-left space-y-3">
-          <p>
-            പ്രിയ അംഗമേ, താങ്കൾ നൽകിയ എല്ലാ വ്യക്തികളുടെയും വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി.
+        <div className="bg-emerald-50/50 border border-emerald-500/15 p-5 rounded-2xl text-slate-705 font-bold text-xs leading-relaxed text-left space-y-3 shadow-inner">
+          <p className="text-emerald-950 font-black text-sm">
+            പ്രിയ അംഗമേ,
           </p>
-          <p>
-            സമ്മതപ്രകാരം ഇവ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപടികൾ സ്വീകരിക്കുന്നതാണ്.
+          <p className="text-slate-700 font-bold">
+            താങ്കൾ സമർപ്പിച്ച വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി. {totalFilledNow > 0 && `ഇതുവരെ ആകെ ${totalFilledNow} വ്യക്തികളുടെ വിവരങ്ങൾ നൽകിയിട്ടുണ്ട്.`}
+          </p>
+          {remainingSlots > 0 ? (
+            <p className="text-amber-800 bg-amber-50/70 p-3 rounded-xl border border-amber-100 mt-2 font-black leading-relaxed">
+              താങ്കളുടെ കുടുംബാംഗങ്ങൾക്കായി ബാക്കിയുള്ള <strong>{remainingSlots} പേരുടെ ക്ലെയിം ഫോമുകൾ</strong> എപ്പോൾ വേണമെങ്കിലും പൂരിപ്പിച്ചു സമർപ്പിക്കാവുന്നതാണ്!
+            </p>
+          ) : (
+            <p className="text-emerald-800 bg-emerald-100/50 p-3 rounded-xl border border-emerald-200 mt-2 font-black">
+              താങ്കളുടെ ലോഗിൻ വഴിയുള്ള പരമാവധി 4 ക്ലെയിം കാർഡുകളും പൂർണ്ണമായി സമർപ്പിച്ചു കഴിഞ്ഞു.
+            </p>
+          )}
+          <p className="text-[10px] text-slate-500 font-medium leading-normal mt-2 pt-1 border-t border-slate-100">
+            സമ്മതപ്രകാരം വിവരങ്ങൾ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപടികൾ സ്വീകരിക്കുന്നതാണ്.
           </p>
         </div>
 

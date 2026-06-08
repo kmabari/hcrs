@@ -213,9 +213,23 @@ service cloud.firestore {
 
     // --- Collection: claims ---
     match /claims/{claimId} {
-      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isOperator());
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.uid == request.auth.uid || isOperator());
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
+        isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.uid == request.auth.uid ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         request.resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
+      allow update: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
+        isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
       allow delete: if isAdmin();
     }
 
