@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 
 interface CategoryDetail {
@@ -164,23 +164,69 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       if (!user) return;
       try {
         setLoading(true);
-        let docsList: any[] = [];
         
-        // Priority 1: Check by mobile number
-        if (user.mobile) {
-          const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
-          const snapMobile = await getDocs(qMobile);
-          if (!snapMobile.empty) {
-            docsList = snapMobile.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const rawMobile = String(user.mobile || '').replace(/\D/g, '');
+        const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
+        const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
+        const activeUid = user.uid || '';
+
+        // Prepare our parallel query promises
+        const queryPromises = [];
+        const claimsMap = new Map<string, any>();
+
+        // 1. Query by active UID
+        if (activeUid) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid))));
+        }
+
+        // 2. Query by offline UID
+        if (offlineUid) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid))));
+        }
+
+        // 3. Query by userMobile (string)
+        if (cleanMobile) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile))));
+        }
+
+        // 4. Query by userMobile (numeric)
+        const numericMobile = Number(cleanMobile);
+        if (cleanMobile && !isNaN(numericMobile)) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile))));
+        }
+
+        // Execute all queries in parallel for high speed and robustness
+        const snaps = await Promise.all(queryPromises);
+        
+        // Collate and deduplicate docs
+        for (const snap of snaps) {
+          if (!snap.empty) {
+            snap.docs.forEach(docSnap => {
+              claimsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+            });
           }
         }
-        
-        // Priority 2: Check by UID if not already found
-        if (docsList.length === 0 && user.uid) {
-          const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
-          const snapUid = await getDocs(qUid);
-          if (!snapUid.empty) {
-            docsList = snapUid.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        let docsList = Array.from(claimsMap.values());
+
+        // --- DYNAMIC CLAIM UID AUTO-HEALING ---
+        // If they logged in and are active, heal claims registered with 'offline_' prefix
+        if (activeUid && !activeUid.startsWith('offline_') && docsList.length > 0) {
+          for (const claim of docsList) {
+            if (claim.uid !== activeUid) {
+              console.log(`Auto-healing offline claim ID "${claim.id}" UID: ${claim.uid} -> ${activeUid}`);
+              try {
+                await updateDoc(doc(db, 'claims', claim.id), {
+                  uid: activeUid,
+                  userMobile: cleanMobile || claim.userMobile || ''
+                });
+                // Update local memory reference
+                claim.uid = activeUid;
+                if (cleanMobile) claim.userMobile = cleanMobile;
+              } catch (err) {
+                console.warn("Failed to background auto-heal claim UID:", err);
+              }
+            }
           }
         }
 
@@ -223,7 +269,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           setSpouseSelected(false);
         }
       } catch (err: any) {
-        console.warn("Status check notice: Database is running in offline/quota exceeded mode", err);
+        console.warn("Status check notice: Database query error", err);
       } finally {
         setLoading(false);
       }

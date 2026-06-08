@@ -167,28 +167,37 @@ export default function App() {
         return;
       }
       try {
-        let submitted = false;
-        if (user.mobile) {
-          const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
-          const snapMobile = await getDocs(qMobile);
-          if (!snapMobile.empty) {
-            submitted = true;
-          }
+        const rawMobile = String(user.mobile || '').replace(/\D/g, '');
+        const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
+        const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
+        const activeUid = user.uid || '';
+
+        const queryPromises = [];
+
+        if (activeUid) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid))));
         }
-        if (!submitted && user.uid) {
-          const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
-          const snapUid = await getDocs(qUid);
-          if (!snapUid.empty) {
-            submitted = true;
-          }
+        if (offlineUid) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid))));
         }
+        if (cleanMobile) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile))));
+        }
+        const numericMobile = Number(cleanMobile);
+        if (cleanMobile && !isNaN(numericMobile)) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile))));
+        }
+
+        const snaps = await Promise.all(queryPromises);
+        const submitted = snaps.some(snap => !snap.empty);
+
         setHasSubmittedClaim(submitted);
       } catch (err: any) {
         const errMsg = err?.message || String(err);
         if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
           setIsQuotaExceeded(true);
         }
-        console.warn("Status check notice: Database is running in offline/quota-exceeded mode:", errMsg);
+        console.warn("Status check notice: Database query notice:", errMsg);
       }
     }
     checkClaimSubmission();
