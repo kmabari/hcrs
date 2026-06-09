@@ -491,8 +491,8 @@ export default function LifeMembersPanel({ members, adminUser }: LifeMembersPane
 
       {/* Detail card viewer Modal */}
       {viewingMember && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4 overflow-y-auto animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative w-full max-w-lg shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-start sm:items-center justify-center z-[100] p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 relative w-full max-w-lg shadow-2xl my-auto">
             <button 
               onClick={() => setViewingMember(null)}
               className="absolute right-4 top-4 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 p-2 rounded-full transition-colors z-50Close"

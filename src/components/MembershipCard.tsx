@@ -52,16 +52,38 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const handleGenerateImage = async () => {
     if (!cardRef.current) return;
     setIsGenerating(true);
-    const loadingToast = toast.loading('കാർഡ് ഡൗൺലോഡിനായി തയാറാക്കുന്നു...');
+    const loadingToast = toast.loading('മെമ്പർഷിപ്പ് കാർഡ് ഡൗൺലോഡിനായി തയാറാക്കുന്നു...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const canvas = await html2canvas(cardRef.current, { scale: 3, useCORS: true, backgroundColor: '#FFFFFF' });
+      await new Promise(resolve => setTimeout(resolve, 350));
+      // Focus on card element precisely
+      const canvas = await html2canvas(cardRef.current, { 
+        scale: 3, 
+        useCORS: true, 
+        backgroundColor: null,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 340,
+        windowHeight: 590
+      });
       const imgData = canvas.toDataURL('image/png');
       setGeneratedImage(imgData);
-      toast.success('ഫോട്ടോ തെയ്യാറായിട്ടുണ്ട്!', { id: loadingToast });
-    } catch (error) {
-      console.error(error);
-      toast.error('ചിത്രം തെയ്യാറാക്കാൻ പറ്റിയില്ല. ദയവായി നേരിട്ട് സ്ക്രീൻഷോട്ട് എടുക്കുക.', { id: loadingToast });
+      
+      // Attempt immediate direct browser download
+      try {
+        const link = document.createElement('a');
+        link.download = `HCRS_CARD_${member.name.trim().replace(/\s+/g, '_')}.png`;
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('കാർഡ് വിജയകരമായി ഫോണിലേക്ക് ഡൗൺലോഡ് ചെയ്‌തിട്ടുണ്ട്!', { id: loadingToast });
+      } catch (innerErr) {
+        console.warn("Direct file anchor download skipped/failed, showing fallback preview:", innerErr);
+        toast.success('ഫോട്ടോ തയാറായിട്ടുണ്ട്! താഴെ തെളിഞ്ഞു വരുന്ന ചിത്രത്തിൽ അമർത്തിപ്പിടിച്ചു ഗാലറിയിലേക്ക് സേവ് ചെയ്യാം.', { id: loadingToast });
+      }
+    } catch (error: any) {
+      console.error("Screenshot generation error:", error);
+      toast.error('ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. ദയവായി നേരിട്ട് സ്ക്രീൻഷോട്ട് എടുക്കുക.', { id: loadingToast });
     } finally {
       setIsGenerating(false);
     }
@@ -251,7 +273,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       {/* Screenshot Friendly Outer Backdrop Container - Enhanced with hyper-realistic Wooden Surface Mockup */}
       <div 
         ref={containerRef}
-        className="w-full bg-[#3c2517] p-2.5 sm:p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl min-h-[660px]"
+        style={{ minHeight: `${630 * scale}px` }}
+        className="w-full bg-[#3c2517] p-2.5 sm:p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl transition-all duration-300"
       >
         {/* Deep luxurious wood background, planks and lighting highlight */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#4a3121] to-[#25150c] pointer-events-none" />
@@ -306,22 +329,22 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
           return (
             <div 
               style={{ 
-                width: '340px', 
+                width: `${340 * scale}px`, 
                 height: `${590 * scale}px`, 
                 position: 'relative', 
-                overflow: 'hidden',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'flex-start'
+                overflow: 'hidden'
               }}
-              className="transition-all duration-150 shrink-0 select-none"
+              className="transition-all duration-150 shrink-0 select-none mx-auto flex items-center justify-center rounded-[24px]"
             >
               <div 
                 style={{ 
                   transform: `scale(${scale})`, 
-                  transformOrigin: 'top center',
+                  transformOrigin: 'top left',
                   position: 'absolute',
-                  top: 0
+                  top: 0,
+                  left: 0,
+                  width: '340px',
+                  height: '590px'
                 }}
               >
                 <div 
@@ -524,6 +547,51 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         })()}
       </div>
 
+      {/* Fallback Long-Press Image Section (Shown when card PNG is successfully compiled) */}
+      {generatedImage && (
+        <div className="w-full bg-slate-900/95 text-white p-5 rounded-3xl border border-slate-800 space-y-3 px-6 shadow-2xl text-center animate-in slide-in-from-bottom duration-300">
+          <div className="flex items-center justify-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
+            <Award className="w-4 h-4 text-amber-500 animate-bounce" />
+            <span>നിങ്ങളുടെ മെമ്പർഷിപ്പ് കാർഡ് തെയ്യാറാണ്!</span>
+          </div>
+          <p className="text-[11px] font-bold text-slate-350 leading-relaxed">
+            ചില ഫോണുകളിൽ ഡയറക്റ്റ് ഫയൽ ഡൗൺലോഡ് ബ്ലോക്ക് ചെയ്തേക്കാം. അത് ഒഴിവാക്കാൻ <span className="text-[#FF1493] font-extrabold">താഴെ കാണുന്ന ചിത്രത്തിൽ ഞെക്കിപ്പിടിച്ച് (Long Press)</span> "Download / Save Image" ക്ലിക്ക് ചെയ്യുക!
+          </p>
+          <div className="flex justify-center py-2 max-w-full overflow-hidden">
+            <img 
+              src={generatedImage} 
+              alt="Generated HCRS Card" 
+              className="w-[200px] rounded-xl border-2 border-slate-700 shadow-xl self-center" 
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              size="sm"
+              onClick={() => {
+                const link = document.createElement('a');
+                link.download = `HCRS_CARD_${member.name.trim().replace(/\s+/g, '_')}.png`;
+                link.href = generatedImage!;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast.success('ഫയൽ ഡൗൺലോഡ് വീണ്ടും ആരംഭിച്ചു!');
+              }}
+              className="flex-1 h-9 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-lg font-black text-[10px] uppercase"
+            >
+              📥 Download Again
+            </Button>
+            <Button 
+              size="sm"
+              variant="outline"
+              onClick={() => setGeneratedImage(null)}
+              className="h-9 hover:bg-slate-800 border-slate-700 text-slate-300 rounded-lg font-black text-[10px] uppercase"
+            >
+              Hide Preview
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Sleek Action Controls */}
       <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
         {(member.status === 'active' || member.isApproved || isAdmin) && (
@@ -534,46 +602,66 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-250/60 rounded-[20px] p-4 space-y-2 text-center shadow-xs">
                   <div className="flex items-center justify-center gap-2 text-amber-700 font-extrabold text-[11px] uppercase tracking-wider">
                     <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
-                    <span>മെമ്പർഷിപ്പ് കാർഡ് ലഭിക്കാൻ (Instruction)</span>
+                    <span>കാർഡ് ലഭിക്കാനുള്ള വഴികൾ (Ways to Save Card)</span>
                   </div>
-                  <p className="text-[11.5px] font-bold text-slate-700 leading-relaxed">
-                    മൊബൈൽ ഫോണുകളിൽ കാർഡ് നേരിട്ട് ഡൗൺലോഡ് ചെയ്യുന്നത് തടസ്സപ്പെടാൻ സാധ്യതയുള്ളതിനാൽ ദയവായി ഈ <strong className="text-[#FF1493] font-black">കാർഡ് നിങ്ങളുടെ ഫോണിൽ ഒരു സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു സൂക്ഷിക്കുക!
-                  </p>
-                  <p className="text-[9px] text-slate-500 font-medium">
-                    (താഴെയുള്ള 'Screenshot Mode' ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ കാർഡ് മാത്രമായി ലഭിക്കും)
+                  <p className="text-[11.5px] font-bold text-slate-750 leading-relaxed">
+                    മൊബൈൽ ഫോണുകളിൽ കാർഡ് ഡൗൺലോഡ് ചെയ്യാനും, അതല്ലെങ്കിൽ മുഴുവനായി കണ്ടു സ്ക്രീൻഷോട്ട് എടുക്കാനും താഴെയുള്ള ബട്ടണുകൾ ഉപയോഗിക്കുക.
                   </p>
                 </div>
 
-                {/* Primary Action Button: Screenshot Assist Mode */}
-                <Button 
-                  onClick={() => setIsScreenshotMode(true)}
-                  className="w-full h-12 font-black rounded-xl text-xs uppercase tracking-wider shadow-md bg-brand-blue hover:bg-brand-blue/95 text-white flex items-center justify-center gap-2 transition-transform active:scale-95"
-                >
-                  <Camera className="w-4 h-4 text-white animate-bounce" />
-                  <span>📸 Screenshot Mode (കാർഡ് മാത്രം കാണുക)</span>
-                </Button>
+                {/* TWO CORE BUTTONS IN MAIN VIEW: 1. Download Card Image, 2. ScreenShot Mode */}
+                <div className="grid grid-cols-1 gap-2.5">
+                  <Button 
+                    onClick={handleGenerateImage}
+                    disabled={isGenerating}
+                    className="w-full h-12 font-black rounded-xl text-xs uppercase tracking-wider shadow-md bg-[#0054A6] hover:bg-[#004ca0] text-white flex items-center justify-center gap-2 transition-transform active:scale-95 border border-blue-500/10"
+                  >
+                    <Download className={`w-4 h-4 text-white ${isGenerating ? 'animate-spin' : 'animate-bounce'}`} />
+                    <span>📥 Save Card to Gallery (കാർഡ് ഡൗൺലോഡ് ചെയ്യുക)</span>
+                  </Button>
+
+                  <Button 
+                    onClick={() => setIsScreenshotMode(true)}
+                    variant="outline"
+                    className="w-full h-12 font-black rounded-xl text-xs uppercase tracking-wider shadow-sm border-slate-300 hover:bg-slate-50 text-slate-800 flex items-center justify-center gap-2 transition-transform active:scale-95"
+                  >
+                    <Camera className="w-4 h-4 text-slate-700" />
+                    <span>📸 Screenshot Mode (കാർഡ് മാത്രം കാണുക)</span>
+                  </Button>
+                </div>
               </>
             ) : (
-              <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 space-y-3 px-6 shadow-2xl text-center">
-                <div className="flex items-center justify-center gap-1.5 text-brand-magenta font-black text-[10px] uppercase tracking-wider">
+              <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 space-y-4 px-6 shadow-2xl text-center">
+                <div className="flex items-center justify-center gap-1.5 text-brand-magenta font-black text-xs uppercase tracking-wider">
                   <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
                   <span>Screenshot Mode Active</span>
                 </div>
-                <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
-                  മറ്റു ബട്ടണുകൾ എല്ലാം മാറ്റിവെച്ചിട്ടുണ്ട്. കാർഡ് പൂർണ്ണമായി കാണാം. ഇപ്പോൾ നിങ്ങൾക്ക് <strong className="text-white font-extrabold">ഒരു സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുക്കാം.
+                <p className="text-[11.5px] font-bold text-slate-200 leading-relaxed">
+                  ഫോണിൽ ഒരു <strong className="text-white font-extrabold">സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുക്കാൻ അനുയോജ്യമായ രീതിയിൽ അലൈൻമെന്റ് ശരിയാക്കിയിട്ടുണ്ട്. അതല്ലെങ്കിൽ താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്തു കാർഡ് നേരിട്ട് ഡൗൺലോഡ് ചെയ്യുക.
                 </p>
-                <Button 
-                  onClick={() => setIsScreenshotMode(false)}
-                  className="w-full h-11 bg-brand-magenta hover:bg-brand-magenta/90 text-white rounded-xl font-black uppercase text-[10.5px] tracking-wider transition-transform active:scale-95"
-                >
-                  Exit Mode (തിരികെ പേജിലേക്ക് പോകുക)
-                </Button>
+
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    onClick={handleGenerateImage}
+                    disabled={isGenerating}
+                    className="w-full h-11 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl font-black uppercase text-[10.5px] tracking-wider transition-all"
+                  >
+                    <Download className="w-4 h-4 mr-1 inline" /> {isGenerating ? 'Processing...' : 'Direct Download Card'}
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setIsScreenshotMode(false)}
+                    className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black uppercase text-[10.5px] tracking-wider transition-all"
+                  >
+                    Exit Mode (തിരികെ പേജിലേക്ക് പോകുക)
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         )}
         {!isScreenshotMode && onLogout && (
-          <div className="pt-6 flex justify-center w-full">
+          <div className="pt-2 flex justify-center w-full">
             <Button 
                variant="ghost" 
                onClick={onLogout} 
