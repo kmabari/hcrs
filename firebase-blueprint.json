@@ -17,6 +17,7 @@
         "assemblyConstituency": { "type": "string" },
         "bloodGroup": { "type": "string" },
         "membershipType": { "type": "string", "enum": ["Annual", "Life"] },
+        "membership_type": { "type": "string", "enum": ["LIFE_MEMBER", "ADHOC_MEMBER"] },
         "photoUrl": { "type": "string", "description": "URL to profile photo in Firebase Storage" },
         "paymentProofUrl": { "type": "string", "description": "URL to payment screenshot in Firebase Storage" },
         "registrationDate": { "type": "string", "format": "date-time" },

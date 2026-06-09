@@ -440,6 +440,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           serialNo: serial,
           membershipId,
           waStatus: 'Pending',
+          membership_type: 'ADHOC_MEMBER',
         };
 
         await setDoc(memberRef, saveData);

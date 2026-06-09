@@ -1067,7 +1067,8 @@ export default function App() {
             waStatus: 'Pending',
             stateCode: 'KL',
             districtCode: memberDistCode.toUpperCase(),
-            constituencyCode: assemblyCode.toUpperCase()
+            constituencyCode: assemblyCode.toUpperCase(),
+            membership_type: 'ADHOC_MEMBER'
           };
           transaction.set(userRef, newMemberData);
         });
@@ -1290,7 +1291,8 @@ export default function App() {
           waStatus: isBulk ? 'Pending' : 'Sent',
           stateCode: 'KL',
           districtCode: memberDistCode,
-          constituencyCode: assemblyCode
+          constituencyCode: assemblyCode,
+          membership_type: 'ADHOC_MEMBER'
         };
         transaction.set(userRef, offlineMemberData);
         newlyCreatedUser = offlineMemberData;

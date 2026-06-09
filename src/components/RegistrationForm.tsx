@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പേര് നൽകുക'),
@@ -49,6 +50,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
   });
   const [mirrorIndex, setMirrorIndex] = React.useState(0);
   const [qrSrc, setQrSrc] = React.useState(QR_MIRRORS[0]);
+  const [agreeAdhoc, setAgreeAdhoc] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -66,6 +68,10 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreeAdhoc) {
+      toast.error('Please accept the Adhoc Membership agreement / രജിസ്റ്റർ ചെയ്യുന്നതിനായി അഡ്ഹോക്ക് മെമ്പർഷിപ്പ് നിബന്ധനകൾ അംഗീകരിക്കുക');
+      return;
+    }
     const isValid = await form.trigger();
     if (isValid) {
       setStep('payment');
@@ -257,10 +263,38 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     </p>
                   </div>
 
+                  {/* Adhoc Membership Acceptance Checklist */}
+                  <div 
+                    onClick={() => setAgreeAdhoc(!agreeAdhoc)}
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+                        agreeAdhoc 
+                          ? 'border-brand-magenta bg-brand-magenta/5 shadow-sm' 
+                          : 'border-rose-300 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
+                    }`}
+                  >
+                    <Checkbox 
+                      checked={agreeAdhoc} 
+                      onCheckedChange={(val) => setAgreeAdhoc(!!val)} 
+                      className={`w-5 h-5 mt-0.5 pointer-events-none ${
+                        agreeAdhoc 
+                          ? 'border-brand-magenta bg-brand-magenta text-white' 
+                          : 'border-rose-400 bg-white'
+                      }`} 
+                    />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className={`text-[11px] font-bold leading-relaxed ${agreeAdhoc ? 'text-slate-800' : 'text-rose-950 font-extrabold'}`}>
+                        I wish to continue as an Adhoc Member of the Highrich Community Revival Society (HCRS) and agree to abide by the Society Rules, Regulations and Terms & Conditions. *
+                      </p>
+                      <p className="text-[9.5px] text-slate-400 font-bold uppercase leading-normal">
+                        (ഞാൻ ഹൈറിച്ച് കമ്മ്യൂണിറ്റി റിവൈവൽ സൊസൈറ്റിയുടെ (HCRS) അഡ്ഹോക്ക് മെമ്പറായി തുടരാൻ ആഗ്രഹിക്കുന്നു സൊസൈറ്റി നിയമങ്ങളും റൂളുകളും നിബന്ധനകളും പാലിക്കാൻ നന്മയോടും താല്പര്യത്തോടും കൂടി സമ്മതിക്കുന്നു.)
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Move to Step 2 Button */}
                   <Button 
                     type="submit" 
-                    disabled={district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district]}
+                    disabled={!agreeAdhoc || (district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])}
                     className="w-full h-13 rounded-2xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 uppercase tracking-widest bg-gradient-to-r from-brand-blue to-indigo-600 text-white disabled:opacity-50 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:translate-y-0"
                   >
                     {(district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])

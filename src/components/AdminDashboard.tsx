@@ -7,6 +7,7 @@ import BrandingManager from './BrandingManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import { 
+  Crown,
   Users, 
   Search, 
   Filter, 
@@ -52,6 +53,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import MembershipCard from './MembershipCard';
 import FastMemberEntry from './FastMemberEntry';
+import LifeMembersPanel from './LifeMembersPanel';
 import Logo from '../Logo';
 import { 
   Table, 
@@ -65,8 +67,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '@/src/lib/imageUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -340,6 +344,7 @@ export default function AdminDashboard({
   });
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedProof, setSelectedProof] = useState<string | null>(null);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   
@@ -915,10 +920,15 @@ export default function AdminDashboard({
       } else if (sourceFilter === 'manual') {
         matchesSource = !!m.registeredBy;
       }
+
+      let matchesCategory = true;
+      if (categoryFilter !== 'all') {
+        matchesCategory = (m.membership_type || 'ADHOC_MEMBER') === categoryFilter;
+      }
       
-      return matchesSearch && matchesDistrict && matchesStatus && matchesSource;
+      return matchesSearch && matchesDistrict && matchesStatus && matchesSource && matchesCategory;
     });
-  }, [members, searchTerm, districtFilter, statusFilter, sourceFilter]);
+  }, [members, searchTerm, districtFilter, statusFilter, sourceFilter, categoryFilter]);
 
   const itemsPerPage = 10;
   const paginatedMembers = useMemo(() => {
@@ -932,9 +942,14 @@ export default function AdminDashboard({
       if (isAnyAdmin) return false;
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       if (!matchesDistrict) return false;
-      return hasValidity(m);
+
+      let matchesCategory = true;
+      if (categoryFilter !== 'all') {
+        matchesCategory = (m.membership_type || 'ADHOC_MEMBER') === categoryFilter;
+      }
+      return matchesCategory && hasValidity(m);
     }).length;
-  }, [members, districtFilter]);
+  }, [members, districtFilter, categoryFilter]);
 
   const filteredValidActiveMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -955,9 +970,14 @@ export default function AdminDashboard({
                            (m.district && districtMap.get(m.district)?.includes(term));
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       
-      return matchesSearch && matchesDistrict && hasValidity(m);
+      let matchesCategory = true;
+      if (categoryFilter !== 'all') {
+        matchesCategory = (m.membership_type || 'ADHOC_MEMBER') === categoryFilter;
+      }
+      
+      return matchesSearch && matchesDistrict && matchesCategory && hasValidity(m);
     });
-  }, [members, searchTerm, districtFilter]);
+  }, [members, searchTerm, districtFilter, categoryFilter]);
 
   const paginatedValidActiveMembers = useMemo(() => {
     const startIndex = (validActivePage - 1) * itemsPerPage;
@@ -1814,6 +1834,12 @@ export default function AdminDashboard({
                     <Headphones className="w-3 h-3 text-emerald-500" />
                     AI Support Inquiries <Badge className="ml-1.5 bg-emerald-500 text-white border-none text-[8px] px-1.5 py-0">{supportTickets.filter(t => t.status === 'pending').length}</Badge>
                   </TabsTrigger>
+                  {isSuperAdmin && (
+                    <TabsTrigger value="life_members" className="data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                      <Crown className="w-3 h-3 text-amber-500" />
+                      Life Members
+                    </TabsTrigger>
+                  )}
                   {(isSuperAdmin || user?.role === 'admin') && (
                     <TabsTrigger value="bulk_import" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                       <Download className="w-3 h-3 text-slate-400" />
@@ -1887,10 +1913,28 @@ export default function AdminDashboard({
                           <SelectItem value="manual">Operator/Admin</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
+                          <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Category</SelectItem>
+                          <SelectItem value="LIFE_MEMBER">Life Members</SelectItem>
+                          <SelectItem value="ADHOC_MEMBER">Adhoc Members</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
               )}
+
+              <TabsContent value="life_members">
+                <LifeMembersPanel 
+                  members={members} 
+                  adminUser={user} 
+                />
+              </TabsContent>
 
               <TabsContent value="fast_entry">
                 <FastMemberEntry 
@@ -2046,10 +2090,19 @@ export default function AdminDashboard({
                       </TableCell>
                       <TableCell>
                         <div 
-                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors"
+                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors flex items-center gap-1.5 flex-wrap"
                           onClick={() => setViewingMember(member)}
                         >
-                          {member.name}
+                          <span>{member.name}</span>
+                          {(member.membership_type || 'ADHOC_MEMBER') === 'LIFE_MEMBER' ? (
+                            <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                              ⭐ LIFE MEMBER
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                              ADHOC MEMBER
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-col gap-0.5 mt-1">
                           <div className="text-xs text-slate-500 flex items-center gap-1">
@@ -2389,10 +2442,19 @@ export default function AdminDashboard({
                       </TableCell>
                       <TableCell>
                         <div 
-                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors"
+                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors flex items-center gap-1.5 flex-wrap"
                           onClick={() => setViewingMember(member)}
                         >
-                          {member.name}
+                          <span>{member.name}</span>
+                          {(member.membership_type || 'ADHOC_MEMBER') === 'LIFE_MEMBER' ? (
+                            <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                              ⭐ LIFE MEMBER
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                              ADHOC MEMBER
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-col gap-0.5 mt-1">
                           <div className="text-xs text-slate-500 flex items-center gap-1">
@@ -3993,11 +4055,24 @@ export default function AdminDashboard({
                       </div>
                     </div>
                   <div className="flex-1 space-y-2 w-full">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-black text-slate-900">{viewingMember.name}</h3>
-                      <Badge className={viewingMember.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
-                        {viewingMember.status.toUpperCase()}
-                      </Badge>
+                    <div className="flex flex-col gap-1.5 justify-start">
+                      <div className="flex items-center justify-between gap-4">
+                        <h3 className="text-2xl font-black text-slate-900">{viewingMember.name}</h3>
+                        <Badge className={viewingMember.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
+                          {viewingMember.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {(viewingMember.membership_type || 'ADHOC_MEMBER') === 'LIFE_MEMBER' ? (
+                          <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                            ⭐ LIFE MEMBER
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            ADHOC MEMBER
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
                        <DetailItem label="Mobile" value={viewingMember.mobile} icon={<Smartphone className="w-4 h-4" />} />

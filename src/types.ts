@@ -13,6 +13,7 @@ export interface UserProfile {
   gender?: string;
   dob?: string;
   membershipType?: 'Annual' | 'Life';
+  membership_type?: 'LIFE_MEMBER' | 'ADHOC_MEMBER';
   photoUrl?: string;
   paymentProofUrl?: string;
   transactionId?: string;

@@ -112,6 +112,7 @@ service cloud.firestore {
              (!hasField(data, 'isAdmin') || data.isAdmin is bool) &&
              (!hasField(data, 'quota') || data.quota is int) &&
              (!hasField(data, 'quotaUsed') || data.quotaUsed is int) &&
+             (!hasField(data, 'membership_type') || data.membership_type in ['LIFE_MEMBER', 'ADHOC_MEMBER']) &&
              (!hasField(data, 'status') || data.status in ['pending', 'active', 'offline', 'disabled', 'deleted']);
     }
 
@@ -146,11 +147,11 @@ service cloud.firestore {
       
       allow create: if ((isSignedIn() && isOwner(userId) && isValidId(userId)) || isOperator()) && 
                     isValidUser(incoming()) &&
-                    (isOperator() || (incoming().get('isAdmin', false) == false && incoming().get('role', 'member') == 'member'));
+                    (isOperator() || (incoming().get('isAdmin', false) == false && incoming().get('role', 'member') == 'member' && incoming().get('membership_type', 'ADHOC_MEMBER') == 'ADHOC_MEMBER'));
 
       allow update: if isValidUser(incoming()) && (
         // Action 1: Admin/Operator Update
-        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'photoUrl', 'details']) || isAdmin())) ||
+        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details']) || isAdmin())) ||
         
         // Action 2: User Profile Edit (Self) - restricted fields
         (isSignedIn() && isOwner(userId) && 
