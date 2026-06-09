@@ -23,11 +23,31 @@ interface MembershipCardProps {
 
 export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout, isReadOnly = false }: MembershipCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect;
+        const targetWidth = 340;
+        // Leave tiny margin spacing inside the wrapper padding
+        if (width < targetWidth) {
+          setScale(width / targetWidth);
+        } else {
+          setScale(1);
+        }
+      }
+    });
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const handleGenerateImage = async () => {
     if (!cardRef.current) return;
@@ -216,7 +236,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   ];
 
   return (
-    <div className="flex flex-col items-center gap-8 p-4 selection:bg-brand-blue/10 animate-in fade-in zoom-in duration-500 w-full max-w-md mx-auto">
+    <div className="flex flex-col items-center gap-8 p-1 sm:p-4 selection:bg-brand-blue/10 animate-in fade-in zoom-in duration-500 w-full max-w-md mx-auto">
       {showCelebration && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-2 mt-2">
           <div className="bg-brand-blue/5 text-brand-blue px-5 py-1.5 rounded-full text-[10px] font-black border border-brand-blue/10 inline-flex items-center gap-1.5 uppercase tracking-widest">
@@ -229,7 +249,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       )}
 
       {/* Screenshot Friendly Outer Backdrop Container - Enhanced with hyper-realistic Wooden Surface Mockup */}
-      <div className="w-full bg-[#3c2517] p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl min-h-[660px]">
+      <div 
+        ref={containerRef}
+        className="w-full bg-[#3c2517] p-2.5 sm:p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl min-h-[660px]"
+      >
         {/* Deep luxurious wood background, planks and lighting highlight */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#4a3121] to-[#25150c] pointer-events-none" />
         <div className="absolute inset-0 opacity-[0.22] bg-[repeating-linear-gradient(0deg,#1c0d06_0px,#1c0d06_1px,transparent_1px,transparent_20px)] pointer-events-none" />
@@ -282,9 +305,29 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
           return (
             <div 
-              ref={cardRef} 
-              className={`w-[340px] h-[590px] rounded-[24px] text-slate-800 relative overflow-hidden font-sans flex flex-col justify-between shrink-0 select-none ${cardBorderClass}`}
+              style={{ 
+                width: '340px', 
+                height: `${590 * scale}px`, 
+                position: 'relative', 
+                overflow: 'hidden',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start'
+              }}
+              className="transition-all duration-150 shrink-0 select-none"
             >
+              <div 
+                style={{ 
+                  transform: `scale(${scale})`, 
+                  transformOrigin: 'top center',
+                  position: 'absolute',
+                  top: 0
+                }}
+              >
+                <div 
+                  ref={cardRef} 
+                  className={`w-[340px] h-[590px] rounded-[24px] text-slate-800 relative overflow-hidden font-sans flex flex-col justify-between shrink-0 select-none ${cardBorderClass}`}
+                >
               {isExpired && (
                 <div className="absolute inset-0 bg-red-950/20 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
                   <div className="bg-gradient-to-r from-red-700 to-red-600 text-white font-black uppercase text-[10px] tracking-[0.2em] px-5 py-2.5 rounded-xl shadow-2xl -rotate-12 border border-red-500/30 flex items-center gap-2 select-none scale-105">
@@ -472,6 +515,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                     M. A. Bari
                   </p>
                   <p className={`text-[4.5px] font-black uppercase tracking-widest leading-none mt-0.5 ${isLifeMember ? 'text-amber-850' : 'text-[#FF1493]'}`}>PRESIDENT</p>
+                </div>
+              </div>
                 </div>
               </div>
             </div>
