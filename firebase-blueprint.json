@@ -51,6 +51,7 @@
         "hardshipStatus": { "type": "array" },
         "isEmergency": { "type": "boolean" },
         "priorityStatus": { "type": "string" },
+        "tokenNo": { "type": "integer" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },

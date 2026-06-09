@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import html2canvas from 'html2canvas';
 import { 
   Building2, 
   ChevronRight, 
@@ -16,7 +17,11 @@ import {
   Info,
   Users,
   User,
-  Heart
+  Heart,
+  Camera,
+  Download,
+  Sparkles,
+  PartyPopper
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 
 interface CategoryDetail {
@@ -84,6 +89,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
+  const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, number>>({});
 
   // 1. Claimant State - Self
   const [selfSelected, setSelfSelected] = useState(true);
@@ -497,6 +503,58 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     hardshipStatus.length > 0 && 
     consentLegal;
 
+  const getPersonDetails = (relKey: string) => {
+    let name = "";
+    let relationLabel = "";
+    
+    if (relKey === 'Self') {
+      name = selfName || user.name;
+      relationLabel = "സ്വന്തം (Self)";
+    } else if (relKey === 'Mother' || relKey === 'Father' || relKey === 'Parent' || relKey === parentRelation) {
+      name = parentName;
+      relationLabel = parentRelation === 'Mother' ? "അമ്മ (Mother)" : "അച്ഛൻ (Father)";
+    } else if (relKey === 'Son' || relKey === 'Daughter' || relKey === 'Child' || relKey === childRelation) {
+      name = childName;
+      relationLabel = childRelation === 'Son' ? "മകൻ (Son)" : "മകൾ (Daughter)";
+    } else if (relKey === 'Wife' || relKey === 'Husband' || relKey === 'Spouse' || relKey === spouseRelation) {
+      name = spouseName;
+      relationLabel = spouseRelation === 'Wife' ? "ഭാര്യ (Wife)" : "ഭർത്താവ് (Husband)";
+    } else {
+      name = user.name;
+      relationLabel = relKey;
+    }
+    
+    return { name, relationLabel };
+  };
+
+  const downloadTokenCard = async (relId: string, tokenVal: number, personName: string) => {
+    const cardElement = document.getElementById(`token-card-${relId}`);
+    if (!cardElement) {
+      toast.error('ടോക്കൺ കാർഡ് കണ്ടെത്താൻ സാധിച്ചില്ല.');
+      return;
+    }
+    const loadingToast = toast.loading('ടോക്കൺ കാർഡ് ചിത്രം ഡൌൺലോഡിനായി തയ്യാറാക്കുന്നു...');
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const canvas = await html2canvas(cardElement, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#090D16'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `HCRS_Token_${tokenVal}_${personName.replace(/\s+/g, '_')}.png`;
+      link.href = imgData;
+      link.click();
+      
+      toast.success('ടോക്കൺ കാർഡ് വിജയകരമായി ഗാലറിയിലേക്ക് സേവ് ചെയ്തിട്ടുണ്ട്! 📸', { id: loadingToast });
+    } catch (error) {
+      console.error('Error generating token card image:', error);
+      toast.error('ചിത്രം തെയ്യാറാക്കാൻ പറ്റിയില്ല. ദയവായി നേരിട്ട് സ്ക്രീൻഷോട്ട് എടുക്കുക.', { id: loadingToast });
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formIsValid) {
       toast.error('ദയവായി എല്ലാ ആവശ്യ വിവരങ്ങളും പൂരിപ്പിക്കുക.');
@@ -550,8 +608,38 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         updatedAt: serverTimestamp()
       };
 
+      // Calculate how many claims are being submitted in this batch
+      let claimsToSubmitCount = 0;
+      if (selfSelected && !hasSelf) claimsToSubmitCount++;
+      if (parentSelected && !hasParent) claimsToSubmitCount++;
+      if (childSelected && !hasChild) claimsToSubmitCount++;
+      if (spouseSelected && !hasSpouse) claimsToSubmitCount++;
+
+      let baseTokenNo = 0;
+      const assignedTokens: Record<string, number> = {};
+
+      if (claimsToSubmitCount > 0) {
+        const systemTotalsRef = doc(db, 'system', 'totals');
+        await runTransaction(db, async (transaction) => {
+          const sysDoc = await transaction.get(systemTotalsRef);
+          let currentCounter = 0;
+          if (sysDoc.exists()) {
+            currentCounter = sysDoc.data().claimsCounter || 0;
+          }
+          baseTokenNo = currentCounter;
+          transaction.set(systemTotalsRef, {
+            claimsCounter: currentCounter + claimsToSubmitCount
+          }, { merge: true });
+        });
+      }
+
+      let offset = 0;
+
       // 1. Submit Self Claim
       if (selfSelected && !hasSelf) {
+        offset++;
+        const tokenVal = baseTokenNo + offset;
+        assignedTokens['Self'] = tokenVal;
         await deleteExistingForCategory(['Self']);
         const selfClaim = {
           ...commonData,
@@ -567,12 +655,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: selfTotalReceived,
           totalPending: selfTotalPending,
           notes: selfNotes,
+          tokenNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), selfClaim);
       }
 
       // 2. Submit Parent Claim
       if (parentSelected && !hasParent) {
+        offset++;
+        const tokenVal = baseTokenNo + offset;
+        const relType = parentRelation || 'Parent';
+        assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Mother', 'Father']);
         const parentClaim = {
           ...commonData,
@@ -588,12 +681,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: parentTotalReceived,
           totalPending: parentTotalPending,
           notes: parentNotes,
+          tokenNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), parentClaim);
       }
 
       // 3. Submit Child Claim
       if (childSelected && !hasChild) {
+        offset++;
+        const tokenVal = baseTokenNo + offset;
+        const relType = childRelation || 'Child';
+        assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Son', 'Daughter']);
         const childClaim = {
           ...commonData,
@@ -609,12 +707,17 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: childTotalReceived,
           totalPending: childTotalPending,
           notes: childNotes,
+          tokenNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), childClaim);
       }
 
       // 4. Submit Spouse Claim
       if (spouseSelected && !hasSpouse) {
+        offset++;
+        const tokenVal = baseTokenNo + offset;
+        const relType = spouseRelation || 'Spouse';
+        assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Wife', 'Husband']);
         const spouseClaim = {
           ...commonData,
@@ -630,9 +733,12 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: spouseTotalReceived,
           totalPending: spouseTotalPending,
           notes: spouseNotes,
+          tokenNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), spouseClaim);
       }
+
+      setNewlyAssignedTokens(assignedTokens);
 
       setCompleted(true);
       toast.success('നിങ്ങളുടെ വിവരങ്ങൾ വിജയകരമായി സമർപ്പിച്ചിട്ടുണ്ട്.');
@@ -667,29 +773,34 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded mt-1 inline-block">HR ID: {claim.highrichId}</span>
                     )}
                   </div>
-                  <Badge className="text-[9px] font-black uppercase bg-brand-magenta/10 text-brand-magenta border-none rounded-lg py-1 px-2.5">
-                    {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                     claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                     claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                     claim.relation === 'Son' ? 'മകൻ (Son)' :
-                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
-                     claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                     claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
-                  </Badge>
+                  <div className="text-right flex flex-col items-end gap-1.5 shrink-0">
+                    <Badge className="text-[9px] font-black uppercase bg-brand-magenta/10 text-brand-magenta border-none rounded-lg py-1 px-2.5 leading-none">
+                      {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                       claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                       claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                       claim.relation === 'Son' ? 'മകൻ (Son)' :
+                       claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
+                       claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                       claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
+                    </Badge>
+                    <span className="text-[10px] font-black text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded border border-blue-100 font-mono inline-block">
+                      Token #{claim.tokenNo || 'N/A'}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1.5 border-t border-slate-200/60 text-[11px] font-bold">
                   <div>
-                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold">Paid (പണമടച്ചത്)</p>
-                    <p className="text-slate-700 font-black">₹{claim.totalPaid?.toLocaleString('en-IN')}</p>
+                    <span className="text-[9px] font-bold text-slate-400 block uppercase">Paid</span>
+                    <span className="text-slate-700 font-extrabold">₹{claim.totalPaid?.toLocaleString('en-IN') || 0}</span>
                   </div>
                   <div>
-                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold">Received (ലഭിച്ചത്)</p>
-                    <p className="text-green-600 font-black">₹{claim.totalReceived?.toLocaleString('en-IN')}</p>
+                    <span className="text-[9px] font-bold text-slate-400 block uppercase">Received</span>
+                    <span className="text-green-600 font-extrabold">₹{claim.totalReceived?.toLocaleString('en-IN') || 0}</span>
                   </div>
-                  <div>
-                    <p className="text-[8px] text-slate-400 uppercase tracking-wider font-extrabold">Pending (ബാക്കി)</p>
-                    <p className="text-brand-magenta font-black">₹{claim.totalPending?.toLocaleString('en-IN')}</p>
+                  <div className="text-right">
+                    <span className="text-[9px] font-bold text-slate-400 block uppercase">Pending</span>
+                    <span className="text-brand-magenta font-extrabold">₹{claim.totalPending?.toLocaleString('en-IN') || 0}</span>
                   </div>
                 </div>
               </div>
@@ -697,20 +808,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           </div>
         </div>
 
-        <div className="bg-emerald-50 border-2 border-emerald-200 p-5 rounded-2xl text-slate-800 font-bold text-xs leading-relaxed text-left space-y-3">
-          <p className="text-emerald-950 font-extrabold text-sm flex items-center gap-1.5 leading-none mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 inline-block" />
-            അറിയിപ്പ് (Important Notice):
-          </p>
-          <p className="text-slate-800 font-extrabold text-xs leading-relaxed">
-            താങ്കളുടെയും കുടുംബാംഗങ്ങളുടെയും 4 ഫോമുകളും വിജയകരമായി സമർപ്പിച്ചിട്ടുള്ളതാണ്. വിവരങ്ങൾ ഡിലീറ്റ് ചെയ്യുകയോ എഡിറ്റ് ചെയ്യുകയോ ചെയ്യണമെങ്കിൽ ദയവായി അഡ്മിനുമായി ബന്ധപ്പെടുക.
-          </p>
-          <p className="text-slate-500 font-medium text-[10.5px] leading-normal uppercase">
-            All 4 claim forms have been successfully submitted. If you need to modify or delete your submissions, please contact an administrator.
-          </p>
-        </div>
-
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/95 text-white font-bold shadow-lg active:scale-95 transition-all text-xs">
+        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
           തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
         </Button>
       </div>
@@ -731,36 +829,164 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     const remainingSlots = 4 - totalFilledNow;
 
     return (
-      <div className="p-8 text-center space-y-6 max-w-md mx-auto flex flex-col justify-center min-h-screen my-auto">
+      <div className="p-6 text-center space-y-6 max-w-md mx-auto flex flex-col justify-start min-h-screen my-auto pb-24 overflow-y-auto">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-green-300 shadow-md">
           <CheckCircle2 className="w-8 h-8 text-green-600 animate-bounce" />
         </div>
-        <h2 className="text-xl font-black text-brand-blue uppercase tracking-tight">സമർപ്പണം വിജയകരം<br/>(Submitted Successfully)</h2>
-        <p className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">FINANCIAL REGISTRY SUBMISSION COMPLETED</p>
+        <h2 className="text-xl font-black text-brand-blue uppercase tracking-tight leading-tight">
+          സമർപ്പണം വിജയകരം<br/>
+          <span className="text-xs font-bold text-slate-500 block mt-1 tracking-wide uppercase">(Claim Submitted Successfully)</span>
+        </h2>
+
+        {/* Beautiful Premium Token Cards Section */}
+        {Object.keys(newlyAssignedTokens).length > 0 && (
+          <div className="space-y-8 mt-4">
+            {/* Elegant warning instructions banner styled like a high-end metal card */}
+            <div className="bg-gradient-to-r from-amber-50 to-[#FFF8DC] border border-amber-300/60 rounded-2xl p-4 text-center shadow-xs">
+              <div className="flex items-center justify-center gap-2 text-amber-700 font-extrabold text-[11px] mb-1.5 uppercase tracking-wider">
+                <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
+                <span>ടോക്കൺ ലഭിക്കാൻ നിർദ്ദേശം (Warning & Help)</span>
+              </div>
+              <p className="text-[11.5px] font-bold text-slate-700 leading-relaxed">
+                ഭാവി ആവശ്യങ്ങൾക്കായി താഴെ നൽകിയിട്ടുള്ള നിങ്ങളുടെ <strong className="text-brand-magenta font-black">ഓരോ ടോക്കൺ കാർഡും ഡൗൺലോഡ് ചെയ്യുകയോ സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു ഫോൺ ഗാലറിയിൽ സൂക്ഷിക്കുകയോ ചെയ്യുക സുഹൃത്തേ!
+              </p>
+            </div>
+
+            {Object.entries(newlyAssignedTokens).map(([rel, token]) => {
+              const { name: pName, relationLabel } = getPersonDetails(rel);
+              
+              return (
+                <div key={rel} className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+                  {/* Beautiful 3D PVC Style Premium Token Card */}
+                  <div 
+                    id={`token-card-${rel}`}
+                    className="w-[340px] h-[525px] rounded-[24px] text-white relative overflow-hidden font-sans border-[6px] border-slate-700 flex flex-col justify-between shrink-0 select-none shadow-[15px_20px_35px_rgba(0,0,0,0.85)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b] p-5 pt-6"
+                    style={{ contentVisibility: 'auto' }}
+                  >
+                    {/* Top gradient strip */}
+                    <div className="bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055] h-1.5 w-full absolute top-0 left-0 z-30" />
+                    
+                    {/* Security Lines Texture overlay */}
+                    <div className="absolute inset-0 opacity-[0.06] bg-[repeating-linear-gradient(0deg,#fff_0px,#fff_1px,transparent_1px,transparent_18px)] pointer-events-none" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,20,147,0.14),transparent_70%)] pointer-events-none" />
+
+                    {/* Header: Logo & Branding */}
+                    <div className="flex items-center justify-between gap-2.5 shrink-0 border-b border-slate-800/60 pb-3">
+                      <div className="bg-white rounded-full p-1 w-10 h-10 flex items-center justify-center shadow-[inset_0_1px_2px_rgba(0,0,0,0.3),0_2px_4px_rgba(0,0,0,0.2)] shrink-0">
+                        <img 
+                          src="https://i.ibb.co/DHKT5DRn/1000072034-removebg-preview-1.png" 
+                          alt="HCRS Seal" 
+                          className="w-8 h-8 object-contain" 
+                          crossOrigin="anonymous" 
+                        />
+                      </div>
+                      <div className="text-left flex-1">
+                        <h1 className="text-[8.5px] font-black tracking-tight leading-tight uppercase text-slate-150">
+                          HIGHRICH COMMUNITY REVIVAL SOCIETY
+                        </h1>
+                        <p className="text-[6.5px] text-[#FF1493] font-black tracking-widest uppercase leading-none italic mt-0.5">
+                          FINANCIAL REGISTRY PREMIUM TOKEN
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Ribbon Subtitle */}
+                    <div className="text-center my-0.5 shrink-0">
+                      <span className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-extrabold text-[8px] uppercase tracking-[0.14em] px-3 py-1 rounded-full inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5 animate-pulse" /> Verified Claim Submission
+                      </span>
+                    </div>
+
+                    {/* Giant Golden Metal Token Display Block */}
+                    <div className="my-2.5 p-5 rounded-2xl bg-gradient-to-b from-slate-950 to-black border border-slate-800/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.95),0_4px_15px_rgba(255,20,147,0.15)] text-center flex flex-col justify-center items-center relative">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.015] to-transparent pointer-events-none" />
+                      
+                      <p className="text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 font-sans">
+                        യുവർ ടോക്കൺ നമ്പർ
+                      </p>
+                      <h2 className="text-[#FF1493] text-5xl font-black tracking-tighter drop-shadow-[0_4px_10px_rgba(255,20,147,0.55)] font-mono my-2.5">
+                        #{token}
+                      </h2>
+                      <div className="w-[50%] h-[1.5px] bg-gradient-to-r from-transparent via-[#FF1493]/30 to-transparent my-1" />
+                      <p className="text-[8.5px] text-[#FF1493] font-mono tracking-widest font-black uppercase mt-1">
+                        PREMIUM CLAIM SECURITY ID #0{token}
+                      </p>
+                    </div>
+
+                    {/* Custom Member Details styled as elegant glass plate */}
+                    <div className="space-y-1.5 shrink-0 bg-white/5 p-3.5 rounded-xl border border-white/5 text-[11px] font-bold">
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">പേര് (Name)</span>
+                        <span className="text-white truncate max-w-[170px] uppercase font-black">{pName}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">ബന്ധം (Relation)</span>
+                        <span className="text-brand-magenta font-black">{relationLabel}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">മെമ്പർ ID (Membership ID)</span>
+                        <span className="text-slate-200 font-black font-mono">{user.membershipId || 'KL/HCRS/PENDING'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">സെക്യൂർ ചെയ്ത ദിവസം (Date)</span>
+                        <span className="text-[#00BFFF] font-black font-mono">{new Date().toLocaleDateString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    {/* Security Signatures bottom row */}
+                    <div className="flex justify-between items-center border-t border-slate-800/60 pt-2.5 shrink-0 text-center">
+                      <div className="text-left">
+                        <p className="text-[5px] font-bold text-slate-505 font-mono tracking-widest leading-none">SECURITY CODE</p>
+                        <p className="text-[7.5px] font-black text-brand-magenta font-mono tracking-tight mt-0.5">SHA-{token}F{token}X92</p>
+                      </div>
+                      <div className="bg-slate-900/50 border border-slate-800 px-2 py-1 rounded">
+                        <span className="text-[#00BFFF] text-[5.5px] font-black uppercase tracking-widest">STATUS: SAVED</span>
+                      </div>
+                      <div>
+                        <p className="text-[5.5px] font-black text-slate-500 uppercase tracking-widest leading-none">AUTHORIZED BY</p>
+                        <p className="text-[7px] font-extrabold text-slate-300 mt-0.5 italic">HCRS Board Cell</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* High Quality Download trigger button */}
+                  <Button 
+                    onClick={() => downloadTokenCard(rel, token as number, pName)}
+                    className="w-[340px] h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-400/20"
+                  >
+                    <Download className="w-4 h-4 text-white animate-bounce" />
+                    <span>📸 ടോക്കൺ ഗെയിം ഓട്ടോ സേവ് ചെയ്യുക</span>
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="bg-emerald-50/50 border border-emerald-500/15 p-5 rounded-2xl text-slate-705 font-bold text-xs leading-relaxed text-left space-y-3 shadow-inner">
           <p className="text-emerald-950 font-black text-sm">
             പ്രിയ അംഗമേ,
           </p>
-          <p className="text-slate-700 font-bold">
+          <p className="text-slate-700 font-bold leading-relaxed">
             താങ്കൾ സമർപ്പിച്ച വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി. {totalFilledNow > 0 && `ഇതുവരെ ആകെ ${totalFilledNow} വ്യക്തികളുടെ വിവരങ്ങൾ നൽകിയിട്ടുണ്ട്.`}
           </p>
+          
           {remainingSlots > 0 ? (
             <p className="text-amber-800 bg-amber-50/70 p-3 rounded-xl border border-amber-100 mt-2 font-black leading-relaxed">
               താങ്കളുടെ കുടുംബാംഗങ്ങൾക്കായി ബാക്കിയുള്ള <strong>{remainingSlots} പേരുടെ ക്ലെയിം ഫോമുകൾ</strong> എപ്പോൾ വേണമെങ്കിലും പൂരിപ്പിച്ചു സമർപ്പിക്കാവുന്നതാണ്!
             </p>
           ) : (
-            <p className="text-emerald-800 bg-emerald-100/50 p-3 rounded-xl border border-emerald-200 mt-2 font-black">
+            <p className="text-emerald-800 bg-emerald-100/50 p-4 rounded-xl border border-emerald-200 mt-2 font-black">
               താങ്കളുടെ ലോഗിൻ വഴിയുള്ള പരമാവധി 4 ക്ലെയിം കാർഡുകളും പൂർണ്ണമായി സമർപ്പിച്ചു കഴിഞ്ഞു.
             </p>
           )}
           <p className="text-[10px] text-slate-500 font-medium leading-normal mt-2 pt-1 border-t border-slate-100">
-            സമ്മതപ്രകാരം വിവരങ്ങൾ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപടികൾ സ്വീകരിക്കുന്നതാണ്.
+            സമ്മതപ്രകാരം വിവരങ്ങൾ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപдികൾ സ്വീകരിക്കുന്നതാണ്.
           </p>
         </div>
 
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs">
-          തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
+        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
+          തിриകെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
         </Button>
       </div>
     );
@@ -857,9 +1083,14 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                          claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[8px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">Pending Amount</p>
-                      <p className="text-xs font-black text-brand-magenta">₹{claim.totalPending?.toLocaleString('en-IN')}</p>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 font-mono">
+                        Token #{claim.tokenNo || 'N/A'}
+                      </span>
+                      <div>
+                        <p className="text-[8px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">Pending Amount</p>
+                        <p className="text-xs font-black text-brand-magenta">₹{claim.totalPending?.toLocaleString('en-IN')}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
