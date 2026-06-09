@@ -141,6 +141,19 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     
     try {
       if (!foundMember) return;
+
+      // Check for duplicate Transaction ID to prevent double-submitting a duplicate screenshot/ID
+      const inputTxId = transactionId.toString().toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+      if (inputTxId && !['CASH/OFFLINE', 'MANUAL_OFFLINE', 'CASH', 'OFFLINE', 'FREE'].includes(inputTxId)) {
+        toast.loading('Checking transaction ID... / ട്രാൻസാക്ഷൻ ഐഡി പരിശോധിക്കുന്നു...', { id: loadingToast });
+        const usersRef = collection(db, 'users');
+        const txQuery1 = query(usersRef, where('transactionId', '==', inputTxId), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
+        const txQuery2 = query(usersRef, where('renewalTransactionId', '==', inputTxId), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
+        const [txSnap1, txSnap2] = await Promise.all([getDocs(txQuery1), getDocs(txQuery2)]);
+        if (!txSnap1.empty || !txSnap2.empty) {
+          throw new Error('ഈ ട്രാൻസാക്ഷൻ ഐഡി ഇതിനകം തന്നെ സിസ്റ്റത്തിൽ ഉപയോഗിച്ചതാണ്. ദയവായി ശരിയായ മറ്റൊരു ഐഡി നൽകുക. (This Transaction ID is already used in our system. Please enter a unique transaction ID.)');
+        }
+      }
       
       const memberRef = doc(db, 'users', foundMember.uid);
       await updateDoc(memberRef, {

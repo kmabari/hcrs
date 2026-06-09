@@ -89,7 +89,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
-  const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, number>>({});
+  const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
 
   // 1. Claimant State - Self
   const [selfSelected, setSelfSelected] = useState(true);
@@ -527,7 +527,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
     return { name, relationLabel };
   };
 
-  const downloadTokenCard = async (relId: string, tokenVal: number, personName: string) => {
+  const downloadTokenCard = async (relId: string, tokenVal: string | number, personName: string) => {
     const cardElement = document.getElementById(`token-card-${relId}`);
     if (!cardElement) {
       toast.error('ടോക്കൺ കാർഡ് കണ്ടെത്താൻ സാധിച്ചില്ല.');
@@ -616,7 +616,11 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       if (spouseSelected && !hasSpouse) claimsToSubmitCount++;
 
       let baseTokenNo = 0;
-      const assignedTokens: Record<string, number> = {};
+      const assignedTokens: Record<string, string> = {};
+
+      const isRed = priorityInfo.label === 'EMERGENCY RED' || priorityInfo.label === 'RED';
+      const isOrange = priorityInfo.label === 'ORANGE';
+      const prefix = isRed ? 'R' : isOrange ? 'O' : 'G';
 
       if (claimsToSubmitCount > 0) {
         const systemTotalsRef = doc(db, 'system', 'totals');
@@ -624,12 +628,31 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           const sysDoc = await transaction.get(systemTotalsRef);
           let currentCounter = 0;
           if (sysDoc.exists()) {
-            currentCounter = sysDoc.data().claimsCounter || 0;
+            const data = sysDoc.data();
+            if (prefix === 'R') {
+              currentCounter = data.redClaimsCounter || 0;
+            } else if (prefix === 'O') {
+              currentCounter = data.orangeClaimsCounter || 0;
+            } else if (prefix === 'G') {
+              currentCounter = data.greenClaimsCounter || 0;
+            } else {
+              currentCounter = data.claimsCounter || 0;
+            }
           }
           baseTokenNo = currentCounter;
-          transaction.set(systemTotalsRef, {
-            claimsCounter: currentCounter + claimsToSubmitCount
-          }, { merge: true });
+          
+          const updates: any = {};
+          if (prefix === 'R') {
+            updates.redClaimsCounter = currentCounter + claimsToSubmitCount;
+          } else if (prefix === 'O') {
+            updates.orangeClaimsCounter = currentCounter + claimsToSubmitCount;
+          } else if (prefix === 'G') {
+            updates.greenClaimsCounter = currentCounter + claimsToSubmitCount;
+          } else {
+            updates.claimsCounter = currentCounter + claimsToSubmitCount;
+          }
+          
+          transaction.set(systemTotalsRef, updates, { merge: true });
         });
       }
 
@@ -638,7 +661,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       // 1. Submit Self Claim
       if (selfSelected && !hasSelf) {
         offset++;
-        const tokenVal = baseTokenNo + offset;
+        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
         assignedTokens['Self'] = tokenVal;
         await deleteExistingForCategory(['Self']);
         const selfClaim = {
@@ -663,7 +686,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       // 2. Submit Parent Claim
       if (parentSelected && !hasParent) {
         offset++;
-        const tokenVal = baseTokenNo + offset;
+        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
         const relType = parentRelation || 'Parent';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Mother', 'Father']);
@@ -689,7 +712,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       // 3. Submit Child Claim
       if (childSelected && !hasChild) {
         offset++;
-        const tokenVal = baseTokenNo + offset;
+        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
         const relType = childRelation || 'Child';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Son', 'Daughter']);
@@ -715,7 +738,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       // 4. Submit Spouse Claim
       if (spouseSelected && !hasSpouse) {
         offset++;
-        const tokenVal = baseTokenNo + offset;
+        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
         const relType = spouseRelation || 'Spouse';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Wife', 'Husband']);
@@ -951,7 +974,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
                   {/* High Quality Download trigger button */}
                   <Button 
-                    onClick={() => downloadTokenCard(rel, token as number, pName)}
+                    onClick={() => downloadTokenCard(rel, token as string, pName)}
                     className="w-[340px] h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-400/20"
                   >
                     <Download className="w-4 h-4 text-white animate-bounce" />
@@ -1878,97 +1901,162 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         </section>
 
         {/* GENERAL STATEMENT PREFERENCE */}
-        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
-          <CardContent className="p-5 md:p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-brand-magenta" />
-                <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">ഭാവിയിലെ താല്പര്യം (Future Preference)</h4>
+        <Card className={`border-2 rounded-3xl shadow-sm overflow-hidden bg-white transition-all duration-300 ${
+          !futurePreference 
+            ? 'border-rose-450 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+            : 'border-emerald-200 bg-white'
+        }`}>
+          <CardContent className="p-5 md:p-6 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-brand-magenta animate-pulse" />
+                  <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">ഭാവിയിലെ താല്പര്യം (Future Preference)</h4>
+                </div>
+                {!futurePreference ? (
+                  <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
+                    ⚠️ തിരഞ്ഞെടുക്കൽ നിർബന്ധം (Required)
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> പൂർത്തിയായി (Selected)
+                  </Badge>
+                )}
               </div>
               
               <div className="space-y-3">
-                 <p className="text-xs font-bold text-slate-500 leading-relaxed mb-4">
-                   കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ കുടുംബത്തിന്റെ താൽപര്യം? (Select family preference)
+                 <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                   കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ കുടുംബത്തിന്റെ താൽപര്യം? (Select family preference) *
                  </p>
                  <RadioGroup value={futurePreference} onValueChange={setFuturePreference} className="space-y-3">
-                    {PREFERENCES.map(pref => (
-                      <div 
-                        key={pref.id}
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                          futurePreference === pref.id 
-                            ? 'border-brand-magenta bg-brand-magenta/5' 
-                            : 'border-slate-100 hover:border-slate-200'
-                        }`}
-                        onClick={() => setFuturePreference(pref.id)}
-                      >
-                         <RadioGroupItem value={pref.id} id={pref.id} className="text-brand-magenta" />
-                         <Label htmlFor={pref.id} className="text-xs font-bold text-slate-700 cursor-pointer flex-1 leading-normal">
-                           {pref.label}
-                         </Label>
-                      </div>
-                    ))}
+                    {PREFERENCES.map(pref => {
+                      const isSelected = futurePreference === pref.id;
+                      return (
+                        <div 
+                          key={pref.id}
+                          className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                            isSelected 
+                              ? 'border-brand-magenta bg-brand-magenta/5 shadow-sm scale-[1.01]' 
+                              : 'border-slate-150 hover:border-slate-250 bg-slate-50/50'
+                          }`}
+                          onClick={() => setFuturePreference(pref.id)}
+                        >
+                           <RadioGroupItem value={pref.id} id={pref.id} className="text-brand-magenta w-4.5 h-4.5" />
+                           <Label htmlFor={pref.id} className={`text-xs font-extrabold cursor-pointer flex-1 leading-normal ${
+                             isSelected ? 'text-brand-magenta' : 'text-slate-800'
+                           }`}>
+                             {pref.label}
+                           </Label>
+                        </div>
+                      );
+                    })}
                  </RadioGroup>
               </div>
           </CardContent>
         </Card>
 
         {/* HARDSHIP STATUS (EMERGENCY STATUS) */}
-        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm bg-white">
-          <CardContent className="p-5 md:p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">ഗുരുതര നിലവിലെ അവസ്ഥ (Hardship / Emergency Status)</h4>
+        <Card className={`border-2 rounded-3xl shadow-sm overflow-hidden bg-white transition-all duration-300 ${
+          hardshipStatus.length === 0 
+            ? 'border-rose-450 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+            : 'border-emerald-200 bg-white'
+        }`}>
+          <CardContent className="p-5 md:p-6 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider font-sans">നിലവിലെ ബുദ്ധിമുട്ടുകൾ (Hardship Status)</h4>
+                </div>
+                {hardshipStatus.length === 0 ? (
+                  <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
+                    ⚠️ തിരഞ്ഞെടുക്കൽ നിർബന്ധം (Required)
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> പൂർത്തിയായി (Selected)
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-3">
-                 <p className="text-xs font-bold text-slate-500 leading-relaxed mb-4">
-                   നിലവിൽ താങ്കളോ കുടുംബമോ നേരിടുന്ന സാമ്പത്തിക ബുദ്ധിമുട്ടുകൾ തിരഞ്ഞെടുക്കുക (Select economic hardship)
+                 <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                   നിലവിൽ താങ്കളോ കുടുംബമോ നേരിടുന്ന ബുദ്ധിമുട്ടുകൾ തിരഞ്ഞെടുക്കുക (Select economic hardship) *
                  </p>
                  <div className="grid grid-cols-1 gap-2.5">
-                   {HARDSHIPS.map(hard => (
-                     <div 
-                       key={hard.id}
-                       onClick={() => {
-                        if (hardshipStatus.includes(hard.id)) {
-                          setHardshipStatus(prev => prev.filter(i => i !== hard.id));
-                        } else {
-                          if (hard.id === 'none') {
-                            setHardshipStatus(['none']);
-                          } else {
-                            setHardshipStatus(prev => [...prev.filter(i => i !== 'none'), hard.id]);
-                          }
-                        }
-                       }}
-                       className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
-                         hardshipStatus.includes(hard.id)
-                           ? 'border-red-500 bg-red-50'
-                           : 'border-slate-150 hover:border-slate-200'
-                       }`}
-                     >
-                       <Checkbox checked={hardshipStatus.includes(hard.id)} className={`pointer-events-none ${hardshipStatus.includes(hard.id) ? "border-red-500" : ""}`} />
-                       <Label className="text-xs font-bold text-slate-700 cursor-pointer flex-1 leading-relaxed">{hard.label}</Label>
-                       {['bank', 'crisis', 'medical'].includes(hard.id) && (
-                         <ShieldAlert className="w-4 h-4 text-red-500" />
-                       )}
-                     </div>
-                   ))}
+                   {HARDSHIPS.map(hard => {
+                     const isSelected = hardshipStatus.includes(hard.id);
+                     return (
+                       <div 
+                         key={hard.id}
+                         onClick={() => {
+                           if (isSelected) {
+                             setHardshipStatus(prev => prev.filter(i => i !== hard.id));
+                           } else {
+                             if (hard.id === 'none') {
+                               setHardshipStatus(['none']);
+                             } else {
+                               setHardshipStatus(prev => [...prev.filter(i => i !== 'none'), hard.id]);
+                             }
+                           }
+                         }}
+                         className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
+                           isSelected
+                             ? 'border-red-550 bg-red-50/40 shadow-sm'
+                             : 'border-slate-150 hover:border-slate-250 bg-slate-50/50'
+                         }`}
+                       >
+                         <Checkbox 
+                           checked={isSelected} 
+                           className={`pointer-events-none w-4.5 h-4.5 ${
+                             isSelected ? "border-red-600 bg-red-600 text-white" : "border-slate-300"
+                           }`} 
+                         />
+                         <Label className={`text-xs font-extrabold cursor-pointer flex-1 leading-relaxed ${
+                           isSelected ? 'text-red-700 font-bold' : 'text-slate-800'
+                         }`}>{hard.label}</Label>
+                         {['bank', 'crisis', 'medical'].includes(hard.id) && (
+                           <ShieldAlert className={`w-4 h-4 ${isSelected ? 'text-red-600 animate-bounce' : 'text-slate-400'}`} />
+                         )}
+                       </div>
+                     );
+                   })}
                  </div>
               </div>
           </CardContent>
         </Card>
 
         {/* SHARING CONSENT */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <div 
             onClick={() => setConsentLegal(!consentLegal)}
             className={`p-5 rounded-3xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
               consentLegal 
                 ? 'border-emerald-500 bg-emerald-50/40 shadow-sm' 
-                : 'border-slate-200 hover:border-slate-300 bg-white'
+                : 'border-rose-455 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:border-rose-300'
             }`}
           >
-            <Checkbox checked={consentLegal} onCheckedChange={(val) => setConsentLegal(!!val)} className={`w-5 h-5 border-slate-350 mt-1 pointer-events-none ${consentLegal ? 'border-emerald-600 bg-emerald-600 text-white' : ''}`} />
-            <div className="flex-1 min-w-0 space-y-2">
-              <p className="text-xs font-bold text-slate-800 leading-relaxed">
+            <Checkbox 
+              checked={consentLegal} 
+              onCheckedChange={(val) => setConsentLegal(!!val)} 
+              className={`w-5 h-5 mt-1 pointer-events-none ${
+                consentLegal 
+                  ? 'border-emerald-600 bg-emerald-600 text-white' 
+                  : 'border-rose-400 bg-white'
+              }`} 
+            />
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">സമ്മതപത്രം (Consent Declaration) *</span>
+                {!consentLegal ? (
+                  <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] px-1.5 py-0 rounded animate-bounce">
+                    ⚠️ സമ്മതം ആവശ്യമാണ് (Tick required)
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-500 text-white font-black text-[9px] px-1.5 py-0 rounded flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> പൂർത്തിയായി
+                  </Badge>
+                )}
+              </div>
+              <p className={`text-xs font-bold leading-relaxed ${consentLegal ? 'text-slate-800' : 'text-rose-900 font-extrabold'}`}>
                 ഇതിന്റെ കോപ്പികൾ വെരിഫിക്കേഷനും ഓഡിറ്റിംഗിനുമായി മാനേജ്മെന്റും ലീഗൽ കൗൺസിലറുമായി പങ്കുവെക്കുന്നതിന് ഞാൻ സമ്മതിക്കുന്നു. * (Consent Required)
               </p>
               <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
