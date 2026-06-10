@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
 import { DISTRICTS, CONSTITUENCIES, BLOOD_GROUPS, getAssemblyCode } from '@/src/constants';
@@ -20,32 +20,50 @@ interface LifeMembersPanelProps {
 }
 
 export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: LifeMembersPanelProps) {
-  // Filter for currently active Life Members
+  // Load ALL life members globally from firestore in real-time
+  const [globalLifeMembers, setGlobalLifeMembers] = useState<UserProfile[]>([]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'users'),
+      where('membership_type', '==', 'LIFE_MEMBER')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: UserProfile[] = [];
+      snapshot.forEach(doc => {
+        list.push({ uid: doc.id, ...(doc.data() as any) });
+      });
+      setGlobalLifeMembers(list);
+    }, (error) => {
+      console.error("Error listening to global life members:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Filter for currently active Life Members (using global list)
   const lifeMembers = useMemo(() => {
-    return members.filter(m => m.membership_type === 'LIFE_MEMBER');
-  }, [members]);
+    return globalLifeMembers;
+  }, [globalLifeMembers]);
 
   // Outstanding count
-  const lifeCount = lifeMembers.length;
+  const lifeCount = globalLifeMembers.length;
   const isLimitReached = lifeCount >= 23;
 
   // Set of occupied serials parsed from membershipId (last 3 digits) or custom serialNo field
   const occupiedSerials = useMemo(() => {
     const serials = new Set<number>();
-    members.forEach(m => {
-      if (m.membership_type === 'LIFE_MEMBER') {
-        if (m.serialNo && typeof m.serialNo === 'number') {
-          serials.add(m.serialNo);
-        } else if (m.membershipId) {
-          const parts = m.membershipId.split('-');
-          const lastPart = parts[parts.length - 1];
-          const num = parseInt(lastPart, 10);
-          if (!isNaN(num)) serials.add(num);
-        }
+    globalLifeMembers.forEach(m => {
+      if (m.serialNo && typeof m.serialNo === 'number') {
+        serials.add(m.serialNo);
+      } else if (m.membershipId) {
+        const parts = m.membershipId.split('-');
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart, 10);
+        if (!isNaN(num)) serials.add(num);
       }
     });
     return serials;
-  }, [members]);
+  }, [globalLifeMembers]);
 
   // Form States
   const [name, setName] = useState('');
@@ -76,8 +94,8 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
   const [isCardScreenshotActive, setIsCardScreenshotActive] = useState(false);
 
   const viewingMember = useMemo(() => {
-    return members.find(m => m.uid === viewingMemberId) || null;
-  }, [viewingMemberId, members]);
+    return globalLifeMembers.find(m => m.uid === viewingMemberId) || null;
+  }, [viewingMemberId, globalLifeMembers]);
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
