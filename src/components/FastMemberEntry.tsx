@@ -120,8 +120,11 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         'mabarikiyafoods@gmail.com'
       ];
       const adminEmail = (adminUser?.email || '').toLowerCase().trim();
-      const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === adminEmail);
-      const countsTowardQuota = !isMainAdmin;
+      const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === adminEmail) ||
+                          (adminUser?.role === 'admin' && !adminUser?.district) ||
+                          (adminUser?.mobile === '9645934571');
+      const isLifeMember = false;
+      const countsTowardQuota = !isMainAdmin && !isLifeMember;
 
       const distQuota = districtQuotas[district];
       const usedDistQuota = districtQuotasUsed[district] || 0;

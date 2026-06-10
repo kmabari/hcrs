@@ -51,6 +51,8 @@ import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToGaller
 import { STATIC_GALLERY_IMAGES } from '../constants';
 import { cn } from '@/lib/utils';
 import Logo from '../Logo';
+import { useI18n } from '../lib/i18n';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export function extractDirectImageUrl(url: string | undefined): string {
   if (!url) return '';
@@ -99,6 +101,7 @@ export default function LandingPage({
   onLoginDirect 
 }: LandingPageProps) {
   const [stage, setStage] = useState<'landing' | 'guidelines' | 'claim_check'>('landing');
+  const { t, lang } = useI18n();
   const [agreed, setAgreed] = useState(false);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -211,27 +214,32 @@ export default function LandingPage({
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue transition-colors">Home</button>
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue transition-colors">
+              {t('nav_home', 'Home')}
+            </button>
             <button onClick={onGalleryClick} className="text-[11px] font-black uppercase tracking-widest text-brand-magenta hover:opacity-80 transition-opacity flex items-center gap-1.5">
-              Archives
+              {t('nav_archives', 'Archives')}
               <span className="w-2 h-2 rounded-full bg-brand-magenta animate-pulse" />
             </button>
-            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue transition-colors">Contact</button>
+            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue transition-colors">
+              {t('nav_contact', 'Contact')}
+            </button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            <LanguageSwitcher />
             <Button 
               variant="outline" 
               onClick={onLoginClick}
               className="text-[11px] font-black uppercase tracking-widest text-slate-800 border-2 border-slate-200/80 hover:bg-slate-100 rounded-xl h-10 px-4 transition-all"
             >
-              Sign In
+              {t('nav_sign_in', 'Sign In')}
             </Button>
             <Button 
               className="bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl px-5 h-10 font-black uppercase text-[11px] tracking-widest shadow-md hover:translate-y-[-1px] active:translate-y-0 transition-all border border-brand-blue"
               onClick={onRenew}
             >
-              Get ID Card
+              {t('nav_get_id_card', 'Get ID Card')}
             </Button>
           </div>
         </div>
@@ -269,7 +277,7 @@ export default function LandingPage({
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
               </div>
               <span className="font-extrabold text-[10px] md:text-xs text-slate-300 uppercase tracking-[0.18em] font-mono">
-                Govt. Registered Society • Reg No: TSR/TC/20/2025
+                {t('hero_reg_badge', 'Govt. Registered Society • Reg No: TSR/TC/93/2025')}
               </span>
             </motion.div>
 
@@ -286,13 +294,13 @@ export default function LandingPage({
             {/* Main Title & Subtitle */}
             <div className="max-w-4xl space-y-6 mb-12">
               <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight uppercase leading-[1.1] [text-shadow:0_2px_10px_rgba(0,0,0,0.5)]">
-                HIGHRICH COMMUNITY<br />
+                {t('hero_title_1', 'HIGHRICH COMMUNITY')}<br />
                 <span className="bg-gradient-to-r from-brand-blue via-violet-400 to-[#FF1493] bg-clip-text text-transparent">
-                  REVIVAL SOCIETY
+                  {t('hero_title_2', 'REVIVAL SOCIETY')}
                 </span> (HCRS)
               </h1>
               <p className="text-slate-300 font-bold text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-                A Registered Society Committed To Reviving & Supporting The Highrich Community
+                {t('hero_subtitle', 'A Registered Society Committed To Reviving & Supporting The Highrich Community')}
               </p>
             </div>
 
@@ -302,35 +310,35 @@ export default function LandingPage({
             {/* Core Pillars / Professional Icons Grid */}
             <div className="w-full max-w-5xl">
               <p className="text-[10px] md:text-xs font-black text-brand-magenta uppercase tracking-[0.25em] mb-6">
-                Our Core Pillars • പ്രധാന ലക്ഷ്യങ്ങൾ
+                {t('hero_core_pillars', 'Our Core Pillars')}
               </p>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-left">
                 {[
                   {
-                    title: "Community",
-                    titleMl: "കമ്മ്യൂണിറ്റി ബന്ധങ്ങൾ",
-                    desc: "Fostering kinship, solidarity and mutual group communication among all members.",
+                    key: "community",
+                    titleDefault: "Community Welfare",
+                    descDefault: "Fostering kinship, solidarity and mutual group communication among all members.",
                     icon: Users,
                     color: "text-blue-400 bg-blue-500/10 border-blue-500/20"
                   },
                   {
-                    title: "Revival",
-                    titleMl: "പുനരുജ്ജീവനം",
-                    desc: "Rebuilding confidence, establishing dynamic development channels, and restoring trust.",
+                    key: "revival",
+                    titleDefault: "Revival Efforts",
+                    descDefault: "Rebuilding community confidence, outlining dynamic revival strategies, and restoring legal clarity.",
                     icon: Sparkles,
                     color: "text-amber-400 bg-amber-500/10 border-amber-500/20"
                   },
                   {
-                    title: "Support",
-                    titleMl: "സഹായ പദ്ധതികൾ",
-                    desc: "Active social welfare initiatives, medical assistance and continuous guidance programs.",
+                    key: "support",
+                    titleDefault: "Medical & Social Support",
+                    descDefault: "Active social welfare initiatives, essential educational support, and continuous medical aid guidance.",
                     icon: HeartHandshake,
                     color: "text-rose-400 bg-rose-500/10 border-rose-500/20"
                   },
                   {
-                    title: "Legal Protection",
-                    titleMl: "നിയമ സംരക്ഷണം",
-                    desc: "Providing lawful help mechanisms, structured guidance, and rights advocacy frameworks.",
+                    key: "legal",
+                    titleDefault: "Legal Assistance",
+                    descDefault: "Providing lawful help mechanisms, structured representation, and protecting member interests in forums.",
                     icon: Shield,
                     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25"
                   }
@@ -338,25 +346,22 @@ export default function LandingPage({
                   const IconComponent = pillar.icon;
                   return (
                     <motion.div
-                      key={pillar.title}
+                      key={pillar.key}
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 + i * 0.1 }}
-                      className="bg-slate-900/60 border border-slate-850 rounded-[28px] p-6 hover:border-slate-700/80 transition-all group hover:bg-slate-900 duration-300 flex flex-col justify-between"
+                      className="bg-slate-900/60 border border-slate-850 rounded-[28px] p-6 hover:border-slate-700/80 transition-all group hover:bg-slate-900 duration-300 flex flex-col justify-between animate-fade-in"
                     >
                       <div>
                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${pillar.color} mb-4 shrink-0 group-hover:scale-110 transition-transform`}>
                           <IconComponent className="w-5 h-5" />
                         </div>
                         <h3 className="text-white font-extrabold text-sm md:text-base leading-tight uppercase">
-                          {pillar.title}
+                          {t(`pillar_${pillar.key}_title`, pillar.titleDefault)}
                         </h3>
-                        <p className="text-[10px] text-brand-magenta font-black uppercase tracking-wider mt-0.5 mb-3">
-                          {pillar.titleMl}
-                        </p>
                       </div>
-                      <p className="text-slate-400 text-xs font-semibold leading-relaxed mt-2">
-                        {pillar.desc}
+                      <p className="text-slate-400 text-xs font-semibold leading-relaxed mt-2.5">
+                        {t(`pillar_${pillar.key}_desc`, pillar.descDefault)}
                       </p>
                     </motion.div>
                   );

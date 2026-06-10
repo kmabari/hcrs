@@ -28,7 +28,9 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
     'mabarikiyafoods@gmail.com'
   ];
   const adminEmail = (adminUser?.email || '').toLowerCase().trim();
-  const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === adminEmail);
+  const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === adminEmail) ||
+                      (adminUser?.role === 'admin' && !adminUser?.district) ||
+                      (adminUser?.mobile === '9645934571');
 
   const [editingSerialMember, setEditingSerialMember] = useState<UserProfile | null>(null);
   const [selectedNewSerial, setSelectedNewSerial] = useState<number | null>(null);
@@ -871,11 +873,16 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                             <Button
                               size="sm"
                               variant="destructive"
+                              disabled={m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER'}
                               onClick={() => handleDeleteDuplicate(m.uid, m.mobile)}
-                              className="h-8 text-[10px] font-black uppercase tracking-wider px-3 rounded-lg bg-red-600 hover:bg-red-750 flex items-center gap-1 text-white"
+                              className={`h-8 text-[10px] font-black uppercase tracking-wider px-3 rounded-lg flex items-center gap-1 text-white ${
+                                (m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER')
+                                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                                  : 'bg-red-600 hover:bg-red-750'
+                              }`}
                             >
                               <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                              Delete Duplicate Record
+                              {(m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER') ? 'Life Member (Locked/Safe)' : 'Delete Duplicate Record'}
                             </Button>
                           </div>
                         </div>

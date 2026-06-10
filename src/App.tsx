@@ -1184,7 +1184,12 @@ export default function App() {
       // Use the admin's district for quota if they are an operator/second admin
       const currentEmail = (user?.email || '').toLowerCase().trim();
       const isSecondAdmin = SECOND_ADMINS.some(e => e.toLowerCase() === currentEmail);
-      const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail);
+      const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) ||
+                          (user?.role === 'admin' && !user?.district) ||
+                          (user?.mobile === '9645934571');
+      const isLifeMember = (values.membership_type || values.membershipType || '').toUpperCase() === 'LIFE_MEMBER';
+      const countsTowardQuota = !isMainAdmin && !isLifeMember;
+
       const isAdminAccount = values.role === 'admin';
       const adminDist = (user?.role === 'operator' || isSecondAdmin || isAdminAccount) 
         ? (values.district || user?.district)
@@ -1193,8 +1198,6 @@ export default function App() {
       const distCodeForQuota = getDistrictCode(adminDist || values.district || 'MLP');
       const districtQuota = districtQuotas[distCodeForQuota];
       const usedDistrictQuota = districtQuotasUsed[distCodeForQuota] || 0;
-
-      const countsTowardQuota = !isMainAdmin;
 
       console.log(`AddOffline Quota Check: ${distCodeForQuota} -> ${usedDistrictQuota}/${districtQuota} (countsTowardQuota: ${countsTowardQuota})`);
 
@@ -1625,14 +1628,14 @@ export default function App() {
           const code = m.district.toUpperCase();
           
           // Exclude Life Members
-          const mType = (m.membership_type || '').toUpperCase();
+          const mType = (m.membership_type || m.membershipType || '').toUpperCase();
           if (mType === 'LIFE_MEMBER') return;
           
           // Exclude explicitly not counted
           if (m.isQuotaCounted === false) return;
           
-          // Exclude online self-registrations (no registeredBy)
-          if (!m.registeredBy) return;
+          // Exclude online self-registrations
+          if (!m.registeredBy || m.registeredBy === 'online' || m.registeredByName === 'Online Registration') return;
           
           // Exclude direct entries made by Main Admins
           const creatorName = (m.registeredByName || '').toLowerCase();

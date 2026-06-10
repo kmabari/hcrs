@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import BrandingManager from './BrandingManager';
+import LanguageManager from './LanguageManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import { 
@@ -1852,6 +1853,12 @@ export default function AdminDashboard({
                       Branding & CMS
                     </TabsTrigger>
                   )}
+                  {!isSecondary && (
+                    <TabsTrigger value="language" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                      <Globe className="w-3 h-3 text-brand-magenta" />
+                      Language Manager
+                    </TabsTrigger>
+                  )}
                   {(isSuperAdmin || user?.role === 'admin') && (
                     <TabsTrigger value="gallery_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                       <ImageIcon className="w-3 h-3 text-slate-400" />
@@ -1959,6 +1966,10 @@ export default function AdminDashboard({
 
               <TabsContent value="branding">
                 <BrandingManager />
+              </TabsContent>
+
+              <TabsContent value="language">
+                <LanguageManager />
               </TabsContent>
 
               <TabsContent value="renewals">

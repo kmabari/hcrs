@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/form';
 
 import Logo from '../Logo';
+import { useI18n } from '../lib/i18n';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Enter Username or Mobile Number'),
@@ -35,6 +37,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = false }: LoginFormProps) {
+  const { t } = useI18n();
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -94,6 +97,11 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none" />
 
+      {/* Floating Language Switcher */}
+      <div className="absolute top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -106,10 +114,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
             <Logo className="scale-110 mx-auto" />
           </div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">
-            Portal Access
+            {t('login_title', 'Account Login')}
           </h2>
           <p className="text-[10px] font-black text-brand-magenta mt-2.5 uppercase tracking-widest leading-none">
-            Highrich Community Revival Society
+            {t('hero_title_1', 'HIGHRICH COMMUNITY')} {t('hero_title_2', 'REVIVAL SOCIETY')}
           </p>
         </div>
 
@@ -121,10 +129,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                Member Authentication
+                {t('login_title', 'Account Login')}
               </h3>
               <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mt-1 leading-none">
-                Operator / District / Member Gateway
+                {t('hero_title_1', 'HIGHRICH COMMUNITY')}
               </p>
             </div>
           </div>
@@ -137,7 +145,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
                     <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">
-                      Mobile / Email / Username
+                      {t('label_mobile', 'Mobile Number')}
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
@@ -145,7 +153,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                         <Input 
                           {...field} 
                           type="text" 
-                          placeholder="********** or admin@hcrs.com" 
+                          placeholder="**********" 
                           disabled={isLoading}
                           className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
@@ -163,7 +171,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                   <FormItem className="space-y-1.5">
                     <div className="flex justify-between items-center mb-1 bg-transparent px-1">
                       <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
-                        Secure code (PIN)
+                        {t('form_password', 'Password')}
                       </FormLabel>
                       <button 
                         type="button" 
@@ -171,7 +179,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                         onClick={handleForgotPassword}
                         className="text-[10px] text-brand-magenta hover:text-brand-magenta/80 hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50"
                       >
-                        Reset Password
+                        {t('btn_reset_password', 'Reset Password')}
                       </button>
                     </div>
                     <FormControl>
@@ -197,7 +205,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 disabled={isLoading}
                 className="w-full h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/15 hover:shadow-brand-magenta/25 transition-all hover:translate-y-[-1px] active:translate-y-0 group uppercase tracking-widest bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95"
               >
-                {isLoading ? 'Processing Access...' : 'Verify Credentials'}
+                {isLoading ? t('btn_processing', 'Processing...') : t('login_btn', 'Log In')}
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />}
               </Button>
             </form>
@@ -213,7 +221,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
             className="text-slate-400 hover:text-slate-600 font-extrabold uppercase tracking-widest text-[10px] hover:bg-white/40 rounded-2xl px-6 h-11 transition-all"
           >
             <ArrowLeft className="mr-1.5 w-4 h-4" />
-            Return to Landing Portal
+            {t('btn_back_home', 'Go to Home Page')}
           </Button>
 
           <div className="pt-4 border-t border-slate-200/60 w-full flex justify-center">
