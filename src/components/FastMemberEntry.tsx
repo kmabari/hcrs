@@ -112,9 +112,20 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       }
 
       // 2. DISTRICT QUOTA CHECK
+      const MAIN_ADMINS = [
+        'kmabarikiyafoods@gmail.com',
+        'hcrsindia@gmail.com',
+        'admin@hcrs.society',
+        '9645934571@hcrs.society',
+        'mabarikiyafoods@gmail.com'
+      ];
+      const adminEmail = (adminUser?.email || '').toLowerCase().trim();
+      const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === adminEmail);
+      const countsTowardQuota = !isMainAdmin;
+
       const distQuota = districtQuotas[district];
       const usedDistQuota = districtQuotasUsed[district] || 0;
-      if (distQuota !== undefined && distQuota > 0 && usedDistQuota >= distQuota) {
+      if (countsTowardQuota && distQuota !== undefined && distQuota > 0 && usedDistQuota >= distQuota) {
         toast.error(`അനുവദിച്ച എൻട്രികളുടെ പരിധി കവിഞ്ഞു! (District quota exhausted for ${district}: ${usedDistQuota}/${distQuota})`, { id: loadingToast });
         setIsSubmitting(false);
         return;
@@ -167,25 +178,27 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
       await runTransaction(db, async (transaction) => {
         // Reads
-        const qSnap = await transaction.get(quotaRef);
+        const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
         const metaDoc = await transaction.get(metadataRef);
 
         // Quota increment logic in transaction
-        if (qSnap.exists()) {
-          const qData = qSnap.data();
-          if (qData.total && qData.total > 0 && (qData.used || 0) >= qData.total) {
-            throw new Error(`QUOTA_EXHAUSTED`);
+        if (countsTowardQuota) {
+          if (qSnap && qSnap.exists()) {
+            const qData = qSnap.data();
+            if (qData.total && qData.total > 0 && (qData.used || 0) >= qData.total) {
+              throw new Error(`QUOTA_EXHAUSTED`);
+            }
+            transaction.update(quotaRef, { used: increment(1) });
+          } else {
+            // Initialize district quota if not exists
+            const distName = DISTRICTS.find(d => d.code === district)?.name || district;
+            transaction.set(quotaRef, {
+              id: district,
+              districtName: distName,
+              total: 500,
+              used: 1
+            });
           }
-          transaction.update(quotaRef, { used: increment(1) });
-        } else {
-          // Initialize district quota if not exists
-          const distName = DISTRICTS.find(d => d.code === district)?.name || district;
-          transaction.set(quotaRef, {
-            id: district,
-            districtName: distName,
-            total: 500,
-            used: 1
-          });
         }
 
         // Serial check logic
@@ -231,7 +244,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           waStatus: 'Pending',
           stateCode: 'KL',
           districtCode: getDistrictCode(district).toUpperCase(),
-          constituencyCode: getAssemblyCode(mandalam).toUpperCase()
+          constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
+          isQuotaCounted: countsTowardQuota
         };
 
         transaction.set(userRef, newProfile);

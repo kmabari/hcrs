@@ -20,6 +20,66 @@ interface LifeMembersPanelProps {
 }
 
 export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: LifeMembersPanelProps) {
+  const MAIN_ADMINS = [
+    'kmabarikiyafoods@gmail.com',
+    'hcrsindia@gmail.com',
+    'admin@hcrs.society',
+    '9645934571@hcrs.society',
+    'mabarikiyafoods@gmail.com'
+  ];
+  const adminEmail = (adminUser?.email || '').toLowerCase().trim();
+  const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === adminEmail);
+
+  const [editingSerialMember, setEditingSerialMember] = useState<UserProfile | null>(null);
+  const [selectedNewSerial, setSelectedNewSerial] = useState<number | null>(null);
+  const [isUpdatingSerial, setIsUpdatingSerial] = useState(false);
+
+  const handleUpdateSerial = async () => {
+    if (!editingSerialMember || selectedNewSerial === null) {
+      toast.error("ദയവായി ഒരു സീരിയൽ നമ്പർ തിരഞ്ഞെടുക്കുക.");
+      return;
+    }
+
+    if (selectedNewSerial < 1 || selectedNewSerial > 23) {
+      toast.error("സാധുവായ സീരിയൽ നമ്പർ തിരഞ്ഞെടുക്കുക (01 - 23).");
+      return;
+    }
+
+    const isTaken = globalLifeMembers.some(
+      (m) => m.uid !== editingSerialMember.uid && m.serialNo === selectedNewSerial
+    );
+    if (isTaken) {
+      toast.error(`സീരിയൽ നമ്പർ ${selectedNewSerial} ഇതിനകം മറ്റൊരു മെമ്പറിന് നൽകിയിട്ടുള്ളതാണ്.`);
+      return;
+    }
+
+    setIsUpdatingSerial(true);
+    const loadingToast = toast.loading('സീരിയൽ നമ്പർ മാറ്റുന്നു...');
+
+    try {
+      const dCode = (editingSerialMember.district || 'MLP').toUpperCase();
+      const assembly = editingSerialMember.assemblyConstituency || 'Kottakkal';
+      const aCode = getAssemblyCode(assembly).toUpperCase();
+      const serialStr = String(selectedNewSerial).padStart(3, '0');
+      const newMembershipId = `HCRS-LIFE-KL-${dCode}-${aCode}-${serialStr}`;
+
+      const memberRef = doc(db, 'users', editingSerialMember.uid);
+      await setDoc(memberRef, {
+        serialNo: selectedNewSerial,
+        membershipId: newMembershipId
+      }, { merge: true });
+
+      toast.success('സീരിയൽ നമ്പർ വിജയകരമായി മാറ്റിയിരിക്കുന്നു!', { id: loadingToast });
+      setEditingSerialMember(null);
+      setSelectedNewSerial(null);
+    } catch (error: any) {
+      console.error("Error updating serial number:", error);
+      toast.error('സീരിയൽ മാറ്റാൻ സാധിച്ചില്ല: ' + error.message, { id: loadingToast });
+    } finally {
+      setIsUpdatingSerial(false);
+    }
+  };
+
   // Load ALL life members globally from firestore in real-time
   const [globalLifeMembers, setGlobalLifeMembers] = useState<UserProfile[]>([]);
 
@@ -522,6 +582,19 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {isMainAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingSerialMember(m);
+                                setSelectedNewSerial(m.serialNo || null);
+                              }}
+                              className="bg-blue-50 border-blue-200 hover:bg-blue-100 text-blue-800 text-[10px] font-black uppercase h-8 px-2.5 rounded-lg flex items-center gap-1"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" /> Change Serial
+                            </Button>
+                          )}
                           {/* Action Button: View premium ID card */}
                           <Button
                             variant="outline"
@@ -586,6 +659,85 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Change Serial Modal for Main Admin */}
+      {editingSerialMember && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 relative w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="font-black text-slate-800 text-sm uppercase tracking-tight flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-600" />
+              Change Serial Number
+            </h3>
+            <p className="text-xs text-slate-500 font-bold mt-1 leading-normal">
+              {editingSerialMember.name} (ID: {editingSerialMember.membershipId}) എന്ന അംഗത്തിന്റെ സീരിയൽ നമ്പർ മാറ്റുക.
+            </p>
+
+            <div className="my-5 space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black uppercase text-slate-600 block">
+                  Select New Serial Number (01 to 23)
+                </Label>
+                <div className="grid grid-cols-6 gap-2 pt-2">
+                  {Array.from({ length: 23 }, (_, index) => {
+                    const sn = index + 1;
+                    const isTaken = globalLifeMembers.some(m => m.uid !== editingSerialMember.uid && m.serialNo === sn);
+                    const isSelected = selectedNewSerial === sn;
+                    const isCurrent = editingSerialMember.serialNo === sn;
+
+                    return (
+                      <button
+                        key={sn}
+                        type="button"
+                        disabled={isTaken || isUpdatingSerial}
+                        onClick={() => setSelectedNewSerial(sn)}
+                        className={`text-xs font-mono font-black h-9 rounded-lg flex flex-col items-center justify-center border-2 transition-all relative ${
+                          isTaken 
+                            ? 'bg-slate-100 border-slate-200 text-slate-450 cursor-not-allowed line-through' 
+                            : isSelected 
+                              ? 'bg-blue-650 border-blue-700 text-white font-extrabold shadow-md scale-105' 
+                              : isCurrent
+                                ? 'bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200'
+                                : 'bg-white border-slate-200 hover:bg-blue-50 hover:border-blue-400 text-slate-700'
+                        }`}
+                      >
+                        <span>{String(sn).padStart(2, '0')}</span>
+                        {isCurrent && (
+                          <span className="absolute -top-1.5 -right-1 text-[8px] bg-amber-500 text-white font-black px-1 rounded-full scale-75">
+                            Curr
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isUpdatingSerial}
+                onClick={() => {
+                  setEditingSerialMember(null);
+                  setSelectedNewSerial(null);
+                }}
+                className="flex-1 h-11 text-xs font-bold uppercase text-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={isUpdatingSerial || selectedNewSerial === null || selectedNewSerial === editingSerialMember.serialNo}
+                onClick={handleUpdateSerial}
+                className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider"
+              >
+                {isUpdatingSerial ? 'Updating...' : 'Save Serial'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

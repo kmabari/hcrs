@@ -1606,6 +1606,18 @@ export default function App() {
     try {
       const counts: Record<string, number> = {};
       DISTRICTS.forEach(d => counts[d.code] = 0);
+
+      // Fetch actual Main Admins UIDs from database to exclude them dynamically
+      const mainAdminUids = new Set<string>();
+      try {
+        const qAdmin = query(collection(db, 'users'), where('email', 'in', MAIN_ADMINS));
+        const adminSnap = await getDocs(qAdmin);
+        adminSnap.forEach(docSnap => {
+          mainAdminUids.add(docSnap.id.toLowerCase());
+        });
+      } catch (err) {
+        console.error("Error fetching main admin uids:", err);
+      }
       
       // Calculate from local members list
       members.forEach(m => {
@@ -1613,7 +1625,8 @@ export default function App() {
           const code = m.district.toUpperCase();
           
           // Exclude Life Members
-          if (m.membership_type === 'LIFE_MEMBER') return;
+          const mType = (m.membership_type || '').toUpperCase();
+          if (mType === 'LIFE_MEMBER') return;
           
           // Exclude explicitly not counted
           if (m.isQuotaCounted === false) return;
@@ -1628,11 +1641,14 @@ export default function App() {
           if (
             creatorUid === 'super_admin' || 
             creatorUid === 'admin' || 
+            mainAdminUids.has(creatorUid) ||
             creatorName.includes('super admin') || 
             creatorName === 'admin' ||
             creatorName.includes('kmabarikiya') ||
             creatorName.includes('hcrsindia') ||
-            creatorName.includes('mabarikiya')
+            creatorName.includes('mabarikiya') ||
+            creatorName.includes('9645934571') ||
+            MAIN_ADMINS.some(email => creatorName.includes(email.split('@')[0]))
           ) {
             return;
           }
