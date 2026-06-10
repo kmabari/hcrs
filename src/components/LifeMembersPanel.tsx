@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
 import { DISTRICTS, CONSTITUENCIES, BLOOD_GROUPS, getAssemblyCode } from '@/src/constants';
@@ -33,24 +33,32 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
   const [editingSerialMember, setEditingSerialMember] = useState<UserProfile | null>(null);
   const [selectedNewSerial, setSelectedNewSerial] = useState<number | null>(null);
   const [isUpdatingSerial, setIsUpdatingSerial] = useState(false);
+  const [isBypassActive, setIsBypassActive] = useState(false);
+  const [customSerialInput, setCustomSerialInput] = useState<string>('');
 
   const handleUpdateSerial = async () => {
-    if (!editingSerialMember || selectedNewSerial === null) {
-      toast.error("ദയവായി ഒരു സീരിയൽ നമ്പർ തിരഞ്ഞെടുക്കുക.");
+    if (!editingSerialMember) return;
+
+    const serialToUse = isBypassActive ? parseInt(customSerialInput, 10) : selectedNewSerial;
+
+    if (serialToUse === null || serialToUse === undefined || isNaN(serialToUse)) {
+      toast.error("ദയവായി സാധുവായ ഒരു സീരിയൽ നമ്പർ നൽകുക.");
       return;
     }
 
-    if (selectedNewSerial < 1 || selectedNewSerial > 23) {
+    if (!isBypassActive && (serialToUse < 1 || serialToUse > 23)) {
       toast.error("സാധുവായ സീരിയൽ നമ്പർ തിരഞ്ഞെടുക്കുക (01 - 23).");
       return;
     }
 
-    const isTaken = globalLifeMembers.some(
-      (m) => m.uid !== editingSerialMember.uid && m.serialNo === selectedNewSerial
-    );
-    if (isTaken) {
-      toast.error(`സീരിയൽ നമ്പർ ${selectedNewSerial} ഇതിനകം മറ്റൊരു മെമ്പറിന് നൽകിയിട്ടുള്ളതാണ്.`);
-      return;
+    if (!isBypassActive) {
+      const isTaken = globalLifeMembers.some(
+        (m) => m.uid !== editingSerialMember.uid && m.serialNo === serialToUse
+      );
+      if (isTaken) {
+        toast.error(`സീരിയൽ നമ്പർ ${serialToUse} ഇതിനകം മറ്റൊരു മെമ്പറിന് നൽകിയിട്ടുള്ളതാണ്.`);
+        return;
+      }
     }
 
     setIsUpdatingSerial(true);
@@ -60,18 +68,20 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
       const dCode = (editingSerialMember.district || 'MLP').toUpperCase();
       const assembly = editingSerialMember.assemblyConstituency || 'Kottakkal';
       const aCode = getAssemblyCode(assembly).toUpperCase();
-      const serialStr = String(selectedNewSerial).padStart(3, '0');
+      const serialStr = String(serialToUse).padStart(3, '0');
       const newMembershipId = `HCRS-LIFE-KL-${dCode}-${aCode}-${serialStr}`;
 
       const memberRef = doc(db, 'users', editingSerialMember.uid);
       await setDoc(memberRef, {
-        serialNo: selectedNewSerial,
+        serialNo: serialToUse,
         membershipId: newMembershipId
       }, { merge: true });
 
       toast.success('സീരിയൽ നമ്പർ വിജയകരമായി മാറ്റിയിരിക്കുന്നു!', { id: loadingToast });
       setEditingSerialMember(null);
       setSelectedNewSerial(null);
+      setCustomSerialInput('');
+      setIsBypassActive(false);
     } catch (error: any) {
       console.error("Error updating serial number:", error);
       toast.error('സീരിയൽ മാറ്റാൻ സാധിച്ചില്ല: ' + error.message, { id: loadingToast });
@@ -152,6 +162,77 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
   // Profile Card trigger modal
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
   const [isCardScreenshotActive, setIsCardScreenshotActive] = useState(false);
+
+  // Duplicate Check Engine
+  const [dupSearchMobile, setDupSearchMobile] = useState('9447537303');
+  const [searchedDupMembers, setSearchedDupMembers] = useState<UserProfile[]>([]);
+  const [isSearchingDup, setIsSearchingDup] = useState(false);
+
+  const duplicatePhoneGroups = useMemo(() => {
+    const groups: Record<string, UserProfile[]> = {};
+    globalLifeMembers.forEach(m => {
+      const ph = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!ph || ph.length < 10) return;
+      if (!groups[ph]) groups[ph] = [];
+      groups[ph].push(m);
+    });
+
+    const duplicateGroupsList: { mobile: string; members: UserProfile[] }[] = [];
+    Object.entries(groups).forEach(([mobile, list]) => {
+      if (list.length > 1) {
+        duplicateGroupsList.push({ mobile, members: list });
+      }
+    });
+    return duplicateGroupsList;
+  }, [globalLifeMembers]);
+
+  const handleSearchDuplicateByMobile = async (mob: string) => {
+    const clean = mob.trim().replace(/\D/g, '');
+    if (clean.length !== 10) {
+      toast.error("10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.");
+      return;
+    }
+    setIsSearchingDup(true);
+    try {
+      const q = query(collection(db, 'users'), where('mobile', '==', clean));
+      const snap = await getDocs(q);
+      const results: UserProfile[] = [];
+      snap.forEach(docSnap => {
+        results.push({ uid: docSnap.id, ...(docSnap.data() as any) });
+      });
+      setSearchedDupMembers(results);
+      if (results.length === 0) {
+        toast.info("ഈ നമ്പറിൽ ആരും കാണുന്നില്ല.");
+      } else if (results.length === 1) {
+        toast.info("തനിപ്പകർപ്പുകൾ ഒന്നും കാണാനില്ല (1 അംഗം മാത്രം).");
+      } else {
+        toast.success(`${results.length} തനിപ്പകർപ്പുകൾ കണ്ടെത്തി!`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("തിരച്ചിൽ പരാജയപ്പെട്ടു: " + e.message);
+    } finally {
+      setIsSearchingDup(false);
+    }
+  };
+
+  const handleDeleteDuplicate = async (uidToDelete: string, mobileToCheck: string) => {
+    if (!window.confirm("ഈ റെക്കോർഡ് ഇല്ലാതാക്കാൻ നിങ്ങൾ തീർച്ചയായും ആഗ്രഹിക്കുന്നുണ്ടോ? തനിപ്പകർപ്പിൽ ഒരെണ്ണം മാത്രം ബാക്കി വെച്ച് മറ്റുള്ളവ ഡിലീറ്റ് ചെയ്യുക.")) {
+      return;
+    }
+    const loadingToast = toast.loading('മെമ്പർ റെക്കോർഡ് ഇല്ലാതാക്കുന്നു...');
+    try {
+      await deleteDoc(doc(db, 'users', uidToDelete));
+      toast.success("റെക്കോർഡ് വിജയകരമായി നീക്കം ചെയ്തു!", { id: loadingToast });
+      
+      if (mobileToCheck) {
+        handleSearchDuplicateByMobile(mobileToCheck);
+      }
+    } catch (err: any) {
+      console.error("Error deleting duplicate:", err);
+      toast.error("ഡിലീറ്റ് ചെയ്യാൻ സാധിച്ചില്ല: " + err.message, { id: loadingToast });
+    }
+  };
 
   const viewingMember = useMemo(() => {
     return globalLifeMembers.find(m => m.uid === viewingMemberId) || null;
@@ -663,6 +744,152 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
         </div>
       )}
 
+      {/* 🔍 Duplicate Resolver Component for Main Admins */}
+      {isMainAdmin && (
+        <Card className="border border-red-200 bg-red-50/10 shadow-sm rounded-3xl mt-6 overflow-hidden">
+          <CardHeader className="bg-red-50/50 border-b border-red-100 p-5">
+            <CardTitle className="text-red-800 flex items-center gap-2 text-base font-black uppercase tracking-tight">
+              <ShieldCheck className="w-5 h-5 text-red-650 animate-pulse" />
+              Duplicate Resolver Center (തനിപ്പകർപ്പുകൾ നീക്കം ചെയ്യാം)
+            </CardTitle>
+            <CardDescription className="text-xs font-bold text-slate-500">
+              ഒരു വ്യക്തി ഒന്നിൽ കൂടുതൽ തവണ രജിസ്റ്റർ ചെയ്തിട്ടുണ്ടെങ്കിൽ, ഒരെണ്ണം മാത്രം ബാക്കി നിർത്തി മറ്റുള്ളവ നീക്കം ചെയ്യാം.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            
+            {/* Quick check automated report */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase text-slate-800 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                Automated Duplicate Tracker (ലൈഫ് മെമ്പേഴ്‌സ് മാത്രം)
+              </h4>
+              
+              {duplicatePhoneGroups.length === 0 ? (
+                <div className="p-4 bg-green-50 border border-green-100 rounded-2xl text-[11px] text-green-700 font-bold">
+                  ✓ ക്രമക്കേടുകൾ ഒന്നും കണ്ടില്ല! ലൈഫ് മെമ്പർ ലിസ്റ്റിൽ ആവർത്തിച്ചുള്ള കോൺടാക്റ്റുകൾ ഒന്നുമില്ല.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {duplicatePhoneGroups.map((group) => (
+                    <div key={group.mobile} className="border border-amber-200 bg-white p-4 rounded-2xl space-y-3 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-black bg-amber-150 text-amber-950 px-2 rounded-full py-0.5">
+                          Mobile: {group.mobile} ({group.members.length} repetitions)
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setDupSearchMobile(group.mobile);
+                            handleSearchDuplicateByMobile(group.mobile);
+                          }}
+                          className="h-7 text-[10px] font-black uppercase border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100"
+                        >
+                          Show duplicates to clear
+                        </Button>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-bold">
+                        ഈ നമ്പറിൽ ആവർത്തിച്ചു വന്നിരിക്കുന്നവർ: {group.members.map(m => m.name).join(', ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Manual check query engine */}
+            <div className="space-y-3 pt-3 border-t border-slate-100">
+              <h4 className="text-xs font-black uppercase text-slate-800">
+                Search & Resolve duplicate records (ഏതൊരു അക്കൗണ്ടും പരിശോധിക്കാം)
+              </h4>
+              <p className="text-[10px] text-slate-500 font-bold leading-normal">
+                താഴെ മൊബൈൽ നമ്പർ എന്റർ ചെയ്ത് അന്വേഷിച്ചാൽ, ആ മൊബൈലിലുള്ള എല്ലാ ഡോക്യുമെന്റുകളും കാണാം. അതിൽ ഒരെണ്ണം മാത്രം നിർത്തി ഡബിൾ വന്ന മറ്റ് ഫേക്ക് കോപ്പികൾ ഡിലീറ്റ് ചെയ്യാം.
+              </p>
+              
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  maxLength={10}
+                  placeholder="10-digit phone number (eg: 9447537303)"
+                  value={dupSearchMobile}
+                  onChange={(e) => setDupSearchMobile(e.target.value)}
+                  className="max-w-xs h-10 text-xs font-mono font-bold"
+                />
+                <Button
+                  onClick={() => handleSearchDuplicateByMobile(dupSearchMobile)}
+                  disabled={isSearchingDup}
+                  className="bg-slate-850 hover:bg-slate-900 text-white text-xs font-black uppercase px-5 rounded-lg"
+                >
+                  {isSearchingDup ? 'Searching...' : 'Check For Duplicates'}
+                </Button>
+              </div>
+
+              {searchedDupMembers.length > 0 && (
+                <div className="mt-4 border border-slate-200 rounded-2xl bg-slate-50/50 p-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center justify-between text-xs font-black uppercase text-slate-700 pb-2 border-b border-slate-200">
+                    <span>Records Found ({searchedDupMembers.length})</span>
+                    <span className="text-[10px] text-amber-600 font-bold normal-case">
+                      തനിപ്പകർപ്പിൽ ഒരെണ്ണം മാത്രം ബാക്കി വെച്ച് മറ്റുള്ളവ ഡിലീറ്റ് ചെയ്യുക.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {searchedDupMembers.map((m) => {
+                      const distName = DISTRICTS.find(d => d.code === m.district)?.name || m.district;
+                      return (
+                        <div key={m.uid} className="bg-white border border-slate-200 p-3.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-3xs relative overflow-hidden">
+                          {m.membership_type === 'LIFE_MEMBER' && (
+                            <div className="absolute top-2 right-2 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tight">
+                              Life Member
+                            </div>
+                          )}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              {m.photoUrl ? (
+                                <img src={m.photoUrl} className="w-8 h-8 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                                  {m.name?.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <h5 className="text-xs font-black text-slate-800 truncate max-w-[150px]">{m.name}</h5>
+                                <p className="text-[9px] font-mono text-slate-400 font-bold">{m.uid}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-slate-600 pt-1.5 font-sans font-medium">
+                              <div><strong>ID:</strong> <span className="font-mono text-[9px]">{m.membershipId || 'N/A'}</span></div>
+                              <div><strong>District:</strong> {distName}</div>
+                              <div><strong>Serial:</strong> {m.serialNo || 'N/A'}</div>
+                              <div><strong>Mobile:</strong> {m.mobile}</div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteDuplicate(m.uid, m.mobile)}
+                              className="h-8 text-[10px] font-black uppercase tracking-wider px-3 rounded-lg bg-red-600 hover:bg-red-750 flex items-center gap-1 text-white"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                              Delete Duplicate Record
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </CardContent>
+        </Card>
+      )}
+
       {/* Change Serial Modal for Main Admin */}
       {editingSerialMember && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
@@ -676,44 +903,88 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
             </p>
 
             <div className="my-5 space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-black uppercase text-slate-600 block">
-                  Select New Serial Number (01 to 23)
-                </Label>
-                <div className="grid grid-cols-6 gap-2 pt-2">
-                  {Array.from({ length: 23 }, (_, index) => {
-                    const sn = index + 1;
-                    const isTaken = globalLifeMembers.some(m => m.uid !== editingSerialMember.uid && m.serialNo === sn);
-                    const isSelected = selectedNewSerial === sn;
-                    const isCurrent = editingSerialMember.serialNo === sn;
-
-                    return (
-                      <button
-                        key={sn}
-                        type="button"
-                        disabled={isTaken || isUpdatingSerial}
-                        onClick={() => setSelectedNewSerial(sn)}
-                        className={`text-xs font-mono font-black h-9 rounded-lg flex flex-col items-center justify-center border-2 transition-all relative ${
-                          isTaken 
-                            ? 'bg-slate-100 border-slate-200 text-slate-450 cursor-not-allowed line-through' 
-                            : isSelected 
-                              ? 'bg-blue-650 border-blue-700 text-white font-extrabold shadow-md scale-105' 
-                              : isCurrent
-                                ? 'bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200'
-                                : 'bg-white border-slate-200 hover:bg-blue-50 hover:border-blue-400 text-slate-700'
-                        }`}
-                      >
-                        <span>{String(sn).padStart(2, '0')}</span>
-                        {isCurrent && (
-                          <span className="absolute -top-1.5 -right-1 text-[8px] bg-amber-500 text-white font-black px-1 rounded-full scale-75">
-                            Curr
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+              {/* Bylaw manual override switch */}
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 shadow-3xs">
+                <div className="space-y-0.5">
+                  <span className="text-[11px] font-black uppercase text-slate-700 tracking-tight block">
+                    Bylaw Manual Override
+                  </span>
+                  <span className="text-[9.5px] text-slate-450 font-bold block leading-tight">
+                    വിലക്കുകളും ഡ്യൂപ്ലിക്കേറ്റ് പരിശോധനകളും ഒഴിവാക്കുക
+                  </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMode = !isBypassActive;
+                    setIsBypassActive(nextMode);
+                    if (nextMode) {
+                      setCustomSerialInput(editingSerialMember.serialNo ? String(editingSerialMember.serialNo) : '');
+                    }
+                  }}
+                  className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none ${isBypassActive ? 'bg-blue-600' : 'bg-slate-300'}`}
+                >
+                  <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${isBypassActive ? 'translate-x-5' : ''}`} />
+                </button>
               </div>
+
+              {isBypassActive ? (
+                <div className="space-y-2 p-3.5 bg-blue-50/50 border border-blue-200 rounded-2xl animate-in slide-in-from-top-2 duration-200">
+                  <Label className="text-xs font-black uppercase text-blue-900 block">
+                    Enter Manual Serial number (01 to 999+)
+                  </Label>
+                  <p className="text-[10px] text-blue-700 font-bold leading-normal">
+                    നിങ്ങൾക്ക് ഇവിടെ ബൈലോ അനുസരിച്ച് ഏത് നമ്പറും (ഉദാ: 24, 25, 50, 100) നൽകാനും ഡ്യൂപ്ലിക്കേറ്റ് പരിശോധന മറികടക്കാനും സാധിക്കും.
+                  </p>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={customSerialInput}
+                    onChange={(e) => setCustomSerialInput(e.target.value)}
+                    placeholder="ഉദാഹരണം: 24"
+                    className="h-10 text-slate-800 bg-white border-blue-250 focus-visible:ring-blue-500 font-mono font-bold"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-black uppercase text-slate-600 block">
+                    Select New Serial Number (01 to 23)
+                  </Label>
+                  <div className="grid grid-cols-6 gap-2 pt-2">
+                    {Array.from({ length: 23 }, (_, index) => {
+                      const sn = index + 1;
+                      const isTaken = globalLifeMembers.some(m => m.uid !== editingSerialMember.uid && m.serialNo === sn);
+                      const isSelected = selectedNewSerial === sn;
+                      const isCurrent = editingSerialMember.serialNo === sn;
+
+                      return (
+                        <button
+                          key={sn}
+                          type="button"
+                          disabled={isTaken || isUpdatingSerial}
+                          onClick={() => setSelectedNewSerial(sn)}
+                          className={`text-xs font-mono font-black h-9 rounded-lg flex flex-col items-center justify-center border-2 transition-all relative ${
+                            isTaken 
+                              ? 'bg-slate-100 border-slate-200 text-slate-450 cursor-not-allowed line-through' 
+                              : isSelected 
+                                ? 'bg-blue-650 border-blue-700 text-white font-extrabold shadow-md scale-105' 
+                                : isCurrent
+                                  ? 'bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200'
+                                  : 'bg-white border-slate-200 hover:bg-blue-50 hover:border-blue-400 text-slate-700'
+                          }`}
+                        >
+                          <span>{String(sn).padStart(2, '0')}</span>
+                          {isCurrent && (
+                            <span className="absolute -top-1.5 -right-1 text-[8px] bg-amber-500 text-white font-black px-1 rounded-full scale-75">
+                              Curr
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -724,6 +995,8 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                 onClick={() => {
                   setEditingSerialMember(null);
                   setSelectedNewSerial(null);
+                  setCustomSerialInput('');
+                  setIsBypassActive(false);
                 }}
                 className="flex-1 h-11 text-xs font-bold uppercase text-slate-700"
               >
@@ -731,7 +1004,13 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
               </Button>
               <Button
                 type="button"
-                disabled={isUpdatingSerial || selectedNewSerial === null || selectedNewSerial === editingSerialMember.serialNo}
+                disabled={
+                  isUpdatingSerial || 
+                  (isBypassActive 
+                    ? !customSerialInput || parseInt(customSerialInput, 10) === editingSerialMember.serialNo
+                    : (selectedNewSerial === null || selectedNewSerial === editingSerialMember.serialNo)
+                  )
+                }
                 onClick={handleUpdateSerial}
                 className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider"
               >
