@@ -19,9 +19,10 @@ interface MembershipCardProps {
   isAdmin?: boolean;
   onLogout?: () => void;
   isReadOnly?: boolean;
+  onScreenshotModeChange?: (active: boolean) => void;
 }
 
-export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout, isReadOnly = false }: MembershipCardProps) {
+export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout, isReadOnly = false, onScreenshotModeChange }: MembershipCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -30,6 +31,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    onScreenshotModeChange?.(isScreenshotMode);
+  }, [isScreenshotMode, onScreenshotModeChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;

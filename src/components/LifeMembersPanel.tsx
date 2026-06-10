@@ -16,11 +16,12 @@ import MembershipCard from './MembershipCard';
 interface LifeMembersPanelProps {
   members: UserProfile[];
   adminUser: any;
+  onUpdatePhoto?: (file: File, uid: string) => void;
 }
 
 const LIFE_MANDALAMS = ["Kottakkal", "Tanur", "Tirurangadi", "Vengara", "Malappuram", "Nilambur"];
 
-export default function LifeMembersPanel({ members, adminUser }: LifeMembersPanelProps) {
+export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: LifeMembersPanelProps) {
   // Filter for currently active Life Members
   const lifeMembers = useMemo(() => {
     return members.filter(m => m.membership_type === 'LIFE_MEMBER');
@@ -61,7 +62,12 @@ export default function LifeMembersPanel({ members, adminUser }: LifeMembersPane
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile Card trigger modal
-  const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
+  const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
+  const [isCardScreenshotActive, setIsCardScreenshotActive] = useState(false);
+
+  const viewingMember = useMemo(() => {
+    return members.find(m => m.uid === viewingMemberId) || null;
+  }, [viewingMemberId, members]);
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -474,7 +480,7 @@ export default function LifeMembersPanel({ members, adminUser }: LifeMembersPane
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setViewingMember(m)}
+                            onClick={() => setViewingMemberId(m.uid)}
                             className="bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-800 text-[10px] font-black uppercase h-8 px-2.5 rounded-lg flex items-center gap-1"
                           >
                             <Crown className="w-3 h-3 text-amber-500" /> View Card
@@ -491,34 +497,49 @@ export default function LifeMembersPanel({ members, adminUser }: LifeMembersPane
 
       {/* Detail card viewer Modal */}
       {viewingMember && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-start sm:items-center justify-center z-[100] p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 relative w-full max-w-lg shadow-2xl my-auto">
-            <button 
-              onClick={() => setViewingMember(null)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 p-2 rounded-full transition-colors z-50Close"
-            >
-              <Trash2 className="w-4 h-4 rotate-45" /> {/* Use rotating trash can for cancel effect or generic Close icon */}
-            </button>
-            <div className="text-center mb-4 pt-2">
-              <h3 className="font-black text-amber-400 text-sm uppercase tracking-wider flex items-center justify-center gap-1.5">
-                <Crown className="w-4 h-4 text-amber-500 animate-spin" />
-                FOUNDING LIFE MEMBER CARD
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">പ്രീമിയം ഗോൾഡ് ഡിസൈൻ ഡിജിറ്റൽ സർട്ടിഫിക്കറ്റ്/ഐഡി</p>
-            </div>
+        <div className={`fixed inset-0 bg-black/80 backdrop-blur-xs flex items-start sm:items-center justify-center z-[100] overflow-y-auto animate-in fade-in duration-300 ${isCardScreenshotActive ? 'p-0' : 'p-2 sm:p-4'}`}>
+          <div className={isCardScreenshotActive 
+            ? "bg-transparent border-none p-0 relative w-full max-w-lg shadow-none my-auto transition-all duration-300 flex flex-col items-center justify-center" 
+            : "bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 relative w-full max-w-lg shadow-2xl my-auto transition-all duration-300"
+          }>
+            {!isCardScreenshotActive && (
+              <>
+                <button 
+                  onClick={() => setViewingMemberId(null)}
+                  className="absolute right-4 top-4 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 p-2 rounded-full transition-colors z-50"
+                >
+                  <Trash2 className="w-4 h-4 rotate-45" />
+                </button>
+                <div className="text-center mb-4 pt-2">
+                  <h3 className="font-black text-amber-400 text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 font-sans">
+                    <Crown className="w-4 h-4 text-amber-500 animate-spin" />
+                    FOUNDING LIFE MEMBER CARD
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">പ്രീമിയം ഗോൾഡ് ഡിസൈൻ ഡിജിറ്റൽ സർട്ടിഫിക്കറ്റ്/ഐഡി</p>
+                </div>
+              </>
+            )}
             
-            <div className="flex justify-center my-4 overflow-x-auto">
-              <MembershipCard member={viewingMember} isReadOnly={true} showCelebration={false} />
+            <div className={`flex justify-center overflow-x-auto ${isCardScreenshotActive ? 'my-0 w-full animate-pulse-once' : 'my-4'}`}>
+              <MembershipCard 
+                member={viewingMember} 
+                isReadOnly={false} 
+                onUpdatePhoto={onUpdatePhoto ? (file) => onUpdatePhoto(file, viewingMember.uid) : undefined}
+                onScreenshotModeChange={setIsCardScreenshotActive}
+                showCelebration={false} 
+              />
             </div>
 
-            <div className="mt-4 flex justify-center">
-              <Button 
-                onClick={() => setViewingMember(null)}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase px-8 py-2.5 rounded-xl transition-all"
-              >
-                Close View
-              </Button>
-            </div>
+            {!isCardScreenshotActive && (
+              <div className="mt-4 flex justify-center">
+                <Button 
+                  onClick={() => setViewingMemberId(null)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase px-8 py-2.5 rounded-xl transition-all"
+                >
+                  Close View
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

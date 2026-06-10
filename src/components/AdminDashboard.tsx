@@ -1933,6 +1933,7 @@ export default function AdminDashboard({
                 <LifeMembersPanel 
                   members={members} 
                   adminUser={user} 
+                  onUpdatePhoto={onUpdatePhoto}
                 />
               </TabsContent>
 
