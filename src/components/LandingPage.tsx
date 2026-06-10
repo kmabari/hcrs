@@ -618,7 +618,7 @@ export default function LandingPage({
                           }}
                           className="bg-gradient-to-r from-[#FF1493] to-indigo-600 text-white font-black text-xs px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-magenta/20 flex-1 sm:flex-initial"
                         >
-                          അടുത്ത അപ്ഡേഷൻ (NEXT)
+                          {t('btn_next_update', "അടുത്ത അപ്ഡേഷൻ (NEXT)")}
                           <ChevronRight className="w-4 h-4 text-white" />
                         </Button>
                       </div>
@@ -639,12 +639,14 @@ export default function LandingPage({
                     <UserPlus className="w-8 h-8" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">New Membership</h2>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+                      {t('card_new_membership_title', 'New Membership')}
+                    </h2>
                     <span className="inline-flex mt-2 bg-pink-50 text-brand-magenta border border-pink-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
-                      ന്യൂ മെമ്പർഷിപ്പ് • ₹200
+                      {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
                     </span>
                     <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
-                      Register as an official active member to gain community credentials.
+                      {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
                     </p>
                   </div>
                 </div>
@@ -652,7 +654,7 @@ export default function LandingPage({
                   onClick={() => setStage('guidelines')}
                   className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/15 hover:shadow-brand-magenta/25 bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
                 >
-                  Register Now
+                  {t('card_new_membership_btn', 'Register Now')}
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -666,12 +668,14 @@ export default function LandingPage({
                     <RefreshCw className="w-8 h-8" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Renew card</h2>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+                      {t('card_renew_membership_title', 'Renew card')}
+                    </h2>
                     <span className="inline-flex mt-2 bg-blue-50 text-brand-blue border border-blue-100 font-black text-[10px] tracking-wider uppercase px-3.5 py-1 rounded-full">
-                      അംഗത്വം പുതുക്കൽ • ₹100
+                      {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
                     </span>
                     <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
-                      Renew your existing membership card easily with quick online processing.
+                      {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
                     </p>
                   </div>
                 </div>
@@ -679,7 +683,7 @@ export default function LandingPage({
                   onClick={onRenew}
                   className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 bg-gradient-to-r from-brand-blue to-indigo-600 text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
                 >
-                  Renew Card Now
+                  {t('card_renew_membership_btn', 'Renew Card Now')}
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -693,17 +697,19 @@ export default function LandingPage({
                     <Info className="w-8 h-8 text-brand-blue" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight uppercase">Member Financial Information Registry</h2>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight uppercase">
+                      {t('card_registry_title', 'Member Financial Information Registry')}
+                    </h2>
                     <div className="flex flex-col gap-1 items-center mt-2">
                       <span className="inline-flex bg-brand-blue/5 text-brand-blue border border-brand-blue/10 font-bold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
-                        Verified Information Collection
+                        {t('card_registry_badge', 'Verified Information Collection')}
                       </span>
                       <span className="text-[10px] font-extrabold text-[#FF1493] uppercase tracking-wider mt-0.5">
-                        Verified Member Information Collection Portal
+                        {t('card_registry_sub_badge', 'Verified Member Information Collection Portal')}
                       </span>
                     </div>
                     <p className="text-slate-500 font-bold text-xs mt-4 leading-relaxed max-w-[280px]">
-                      This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.
+                      {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
                     </p>
                   </div>
                 </div>
@@ -715,7 +721,7 @@ export default function LandingPage({
                   }}
                   className="w-full mt-6 h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 bg-gradient-to-r from-brand-blue to-[#FF1493] text-white hover:opacity-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest hover:translate-y-[-1.5px] active:translate-y-0"
                 >
-                  Access Registry Portal
+                  {t('card_registry_btn', 'Access Registry Portal')}
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -1667,7 +1673,7 @@ export default function LandingPage({
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-2xl font-black flex items-center gap-3 text-slate-900 uppercase tracking-tight">
                     <ShieldCheck className="w-7 h-7 text-brand-magenta" />
-                    Registry Guidelines
+                    {t('guidelines_title', 'Registry Guidelines')}
                   </CardTitle>
                   <Button 
                     variant="ghost" 
@@ -1681,11 +1687,11 @@ export default function LandingPage({
               <CardContent className="space-y-8 pt-10 pb-6 px-8 md:px-10">
                 <div className="space-y-6 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
                   {[
-                    "Membership is strictly open only to citizens supportive of the HCRS core objectives.",
-                    "Digital identity credentials are dynamically generated after verified payment & approval.",
-                    "Intentional submission of falsified credentials constitutes permanent blacklisting.",
-                    "The Digital identity card is a secure dynamic property issued in Kerala division.",
-                    "All registration and member registry verification fees are completely non-refundable."
+                    t('rule_1', 'Membership is strictly open only to citizens supportive of the HCRS core objectives.'),
+                    t('rule_2', 'Digital identity credentials are dynamically generated after verified payment & approval.'),
+                    t('rule_3', 'Intentional submission of falsified credentials constitutes permanent blacklisting.'),
+                    t('rule_4', 'The Digital identity card is a secure dynamic property issued in Kerala division.'),
+                    t('rule_5', 'All registration and member registry verification fees are completely non-refundable.')
                   ].map((text, idx) => (
                     <div key={idx} className="flex gap-4 items-start group">
                       <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md border border-slate-950">
@@ -1710,7 +1716,7 @@ export default function LandingPage({
                     htmlFor="terms" 
                     className="text-[11px] font-black uppercase tracking-wider cursor-pointer select-none text-slate-600 leading-relaxed"
                   >
-                    I agree to the terms and hereby proceed to the public registry.
+                    {t('guidelines_agree_checkbox', 'I agree to the terms and hereby proceed to the public registry.')}
                   </Label>
                 </div>
               </CardContent>
@@ -1720,7 +1726,7 @@ export default function LandingPage({
                   disabled={!agreed}
                   onClick={onAccept}
                 >
-                  Proceed to registry form
+                  {t('guidelines_btn_proceed', 'Proceed to registry form')}
                 </Button>
               </CardFooter>
             </Card>

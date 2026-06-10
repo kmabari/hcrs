@@ -413,6 +413,355 @@ export const staticTranslations: TranslationDictionary = {
     ml: "പ്രിയ സുഹൃത്തേ, താങ്കളുടെ അപേക്ഷ വെരിഫിക്കേഷനായി എച്ച്.സി.ആർ.എസ് അഡ്മിൻ ടീമിന് കൈമാറിയിട്ടുണ്ട്. പരിശോധന കഴിഞ്ഞാലുടൻ കൃത്യമായ മറുപടി ലഭിക്കുന്നതാണ്.",
     en: "Your request has been forwarded to the HCRS Admin Team for verification. Please wait for verification and response.",
     hi: "आपका अनुरोध सत्यापन के लिए एचसीआरएस एडमिन टीम को भेज दिया गया है। कृपया सत्यापन और प्रतिक्रिया की प्रतीक्षा करें।"
+  },
+  
+  // Action Bento Grid Cards
+  "card_new_membership_title": {
+    ml: "പുതിയ അംഗത്വം (New Membership)",
+    en: "New Membership",
+    hi: "नई सदस्यता"
+  },
+  "card_new_membership_badge": {
+    ml: "ന്യൂ മെമ്പർഷിപ്പ് • ₹200",
+    en: "New Membership • ₹200",
+    hi: "नई सदस्यता • ₹200"
+  },
+  "card_new_membership_desc": {
+    ml: "സൊസൈറ്റിയിൽ ഔദ്യോഗികമായി രജിസ്റ്റർ ചെയ്ത് ഡിജിറ്റൽ തിരിച്ചറിയൽ കാർഡും മറ്റ് ആനുകൂല്യങ്ങളും നേടുക.",
+    en: "Register as an official active member to gain community credentials and benefits.",
+    hi: "आधिकारिक सक्रिय सदस्य के रूप में पंजीकरण करें और डिजिटल पहचान पत्र प्राप्त करें।"
+  },
+  "card_new_membership_btn": {
+    ml: "ഇപ്പോൾ രജിസ്റ്റർ ചെയ്യുക",
+    en: "Register Now",
+    hi: "अभी पंजीकरण करें"
+  },
+  "card_renew_membership_title": {
+    ml: "കാർഡ് പുതുക്കുക (Renew Card)",
+    en: "Renew card",
+    hi: "कार्ड का नवीनीकरण करें"
+  },
+  "card_renew_membership_badge": {
+    ml: "അംഗത്വം പുതുക്കൽ • ₹100",
+    en: "Membership Renewal • ₹100",
+    hi: "सदस्यता नवीनीकरण • ₹100"
+  },
+  "card_renew_membership_desc": {
+    ml: "നിങ്ങളുടെ നിലവിലുള്ള അംഗത്വ കാർഡ് ലളിതമായ ഓൺലൈൻ പ്രക്രിയയിലൂടെ വേഗത്തിൽ പുതുക്കുക.",
+    en: "Renew your existing membership card easily with quick online processing.",
+    hi: "त्वरित ऑनलाइन प्रक्रिया के साथ अपने मौजूदा सदस्यता कार्ड का नवीनीकरण करें।"
+  },
+  "card_renew_membership_btn": {
+    ml: "കാർഡ് ഇപ്പോൾ പുതുക്കുക",
+    en: "Renew Card Now",
+    hi: "अभी नवीनीकरण करें"
+  },
+  "card_registry_title": {
+    ml: "സാമ്പത്തിക വിവര രജിസ്ട്രി",
+    en: "Member Financial Information Registry",
+    hi: "सदस्य वित्तीय सूचना रजिस्ट्री"
+  },
+  "card_registry_badge": {
+    ml: "വെരിഫൈഡ് വിവര ശേഖരണം",
+    en: "Verified Information Collection",
+    hi: "सत्यापित सूचना संग्रह"
+  },
+  "card_registry_sub_badge": {
+    ml: "അംഗങ്ങളുടെ വിവര ശേഖരണ പോർട്ടൽ",
+    en: "Verified Member Information Collection Portal",
+    hi: "सत्यापित सदस्य सूचना संग्रह पोर्टल"
+  },
+  "card_registry_desc": {
+    ml: "മെമ്പർമാരുടെ നഷ്ടപരിഹാര ആസൂത്രണം, മുൻഗണനാ ക്രമത്തിലുള്ള ധനസഹായങ്ങൾ എന്നിവയ്ക്കായി ശേഖരിക്കുന്ന വിവരങ്ങൾ.",
+    en: "This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.",
+    hi: "यह पोर्टल योजना, समन्वय और सहायता के लिए सदस्यों से वित्तीय जानकारी एकत्र करने और सत्यापित करने के लिए है।"
+  },
+  "card_registry_btn": {
+    ml: "രജിസ്ട്രി പോർട്ടൽ സന്ദർശിക്കുക",
+    en: "Access Registry Portal",
+    hi: "रजिस्ट्री पोर्टल खोलें"
+  },
+  "btn_next_update": {
+    ml: "അടുത്ത അപ്ഡേഷൻ (NEXT)",
+    en: "Next Update",
+    hi: "अगला अपडेट"
+  },
+  "guidelines_title": {
+    ml: "രജിസ്ട്രി മാർഗ്ഗനിർദ്ദേശങ്ങൾ (Guidelines)",
+    en: "Registry Guidelines",
+    hi: "रजिस्ट्री दिशानिर्देश"
+  },
+  "rule_1": {
+    ml: "HCRS ഔദ്യോഗിക ലക്ഷ്യങ്ങളെയും പുനരുജ്ജീവന ശ്രമങ്ങളെയും പിന്തുണയ്ക്കുന്ന പൗരന്മാർക്ക് മാത്രമാണ് അംഗത്വം.",
+    en: "Membership is strictly open only to citizens supportive of the HCRS core objectives.",
+    hi: "सदस्यता केवल एचसीआरएस के मुख्य उद्देश्यों का समर्थन करने वाले नागरिकों के लिए है।"
+  },
+  "rule_2": {
+    ml: "പെയ്മെന്റും അഡ്മിൻ അപ്പ്രൂവലും പൂർത്തിയായതിനുശേഷം തിരിച്ചറിയൽ കാർഡുകൾ ഡൗൺലോഡ് ചെയ്യാം.",
+    en: "Digital identity credentials are dynamically generated after verified payment & approval.",
+    hi: "भुगतान और व्यवस्थापक अनुमोदन के बाद डिजिटल पहचान पत्र उत्पन्न होता है।"
+  },
+  "rule_3": {
+    ml: "തെറ്റായ വിവരങ്ങളോ വ്യാജ രസീതുകളോ സമർപ്പിക്കുന്ന അംഗങ്ങളെ സ്ഥിരമായി ബ്ലാക്ക്‌ലിസ്റ്റ് ചെയ്യുന്നതാണ്.",
+    en: "Intentional submission of falsified credentials constitutes permanent blacklisting.",
+    hi: "गलत या जाली जानकारी जमा करने पर सदस्यता स्थायी रूप से रद्द कर दी जाएगी।"
+  },
+  "rule_4": {
+    ml: "ഡിജിറ്റൽ ഐഡി കാർഡ് കേരള ഡിവിഷനു കീഴിൽ നൽകുന്ന ഔദ്യോഗിക സുരക്ഷിത ഡിജിറ്റൽ പ്രൊപ്പർട്ടിയാണ്.",
+    en: "The Digital identity card is a secure dynamic property issued in Kerala division.",
+    hi: "डिजिटल पहचान पत्र केरल डिवीजन के तहत जारी की जाने वाली एक सुरक्षित डिजिटल संपत्ति है।"
+  },
+  "rule_5": {
+    ml: "രജിസ്ട്രേഷൻ ഫീസുകളും വെരിഫിക്കേഷൻ ചാർജുകളും യാതൊരു കാരണവശാലും റീഫണ്ട് ചെയ്യുന്നതല്ല.",
+    en: "All registration and member registry verification fees are completely non-refundable.",
+    hi: "सभी पंजीकरण और सदस्य सत्यापन शुल्क पूरी तरह से गैर-वापसी योग्य हैं।"
+  },
+  "guidelines_agree_checkbox": {
+    ml: "മേൽപ്പറഞ്ഞ നിബന്ധനകൾ ഞാൻ വായിച്ചു മനസ്സിലാക്കി അംഗീകരിക്കുന്നു.",
+    en: "I agree to the terms and hereby proceed to the public registry.",
+    hi: "मैं उपरोक्त शर्तों से सहमत हूँ और सार्वजनिक रजिस्ट्री में आगे बढ़ना चाहता हूँ।"
+  },
+  "guidelines_btn_proceed": {
+    ml: "രജിസ്ട്രേഷൻ ഫോമിലേക്ക് തുടരുക",
+    en: "Proceed to registry form",
+    hi: "पंजीकरण फॉर्म पर जाएं"
+  },
+  "reg_title": {
+    ml: "മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ (Registration)",
+    en: "Membership Registration",
+    hi: "सदस्यता पंजीकरण"
+  },
+  "reg_fast_title": {
+    ml: "വേഗതയേറിയ രജിസ്ട്രേഷൻ",
+    en: "Fast Registration",
+    hi: "त्वरित पंजीकरण"
+  },
+  "reg_step_1_desc": {
+    ml: "സുരക്ഷിത രജിസ്ട്രേഷൻ പോർട്ടൽ • സ്റ്റെപ്പ് 1",
+    en: "Secure Registration Node • Step 1",
+    hi: "सुरक्षित पंजीकरण पोर्टल • चरण 1"
+  },
+  "reg_payment_title": {
+    ml: "മെമ്പർഷിപ്പ് ഫീസ് പെയ്മെന്റ്",
+    en: "Membership Payment",
+    hi: "सदस्यता भुगतान"
+  },
+  "reg_step_2_desc": {
+    ml: "ട്രഷറി പോർട്ടൽ • സ്റ്റെപ്പ് 2",
+    en: "Treasury Portal • Step 2",
+    hi: "ट्रेजरी पोर्टल • चरण 2"
+  },
+
+  // Added Renewal translation keys
+  "renewal_title": {
+    ml: "മെമ്പർഷിപ്പ് പുതുക്കൽ (Renewal)",
+    en: "Membership Renewal",
+    hi: "सदस्यता नवीनीकरण"
+  },
+  "renewal_search_label": {
+    ml: "ഐഡിയോ ഫോൺ നമ്പറോ നൽകുക",
+    en: "Search ID or Mobile",
+    hi: "आईडी या मोबाइल खोजें"
+  },
+  "renewal_find_btn": {
+    ml: "അംഗത്വം കണ്ടെത്തുക",
+    en: "Find Profile",
+    hi: "प्रोफ़ाइल ढूंढें"
+  },
+  "renewal_looking_up": {
+    ml: "തിരയുന്നു...",
+    en: "Looking up...",
+    hi: "खोज रहा है..."
+  },
+  "renewal_return_home_btn": {
+    ml: "തിരികെ പോവുക (Return Home)",
+    en: "Return Home",
+    hi: "मुख्य पृष्ठ पर जाएं"
+  },
+  "renewal_search_another": {
+    ml: "പകരം വേറെ ഐഡി തിരയുക (Search Another)",
+    en: "Search Another ID",
+    hi: "अन्य आईडी खोजें"
+  },
+  "renewal_fee_label": {
+    ml: "പുതുക്കൽ ഫീസ് (Renewal Fee)",
+    en: "Renewal Fee",
+    hi: "नवीनीकरण शुल्क"
+  },
+  "renewal_not_you": {
+    ml: "നിങ്ങളല്ലേ? വീണ്ടും തിരയുക",
+    en: "Not you? Search again",
+    hi: "आप नहीं हैं? फिर खोजें"
+  },
+  "renewal_complete_btn": {
+    ml: "പുതുക്കൽ അപേക്ഷ സമർപ്പിക്കുക",
+    en: "Complete Renewal Application",
+    hi: "नवीनीकरण आवेदन पूरा करें"
+  },
+  "renewal_submitting": {
+    ml: "സമർപ്പിക്കുന്നു...",
+    en: "Submitting request...",
+    hi: "जमा किया जा रहा है..."
+  },
+  "reg_fullname_label": {
+    ml: "പൂർണ്ണമായ പേര് (Full Name)",
+    en: "Full Name",
+    hi: "पूरा नाम"
+  },
+  "reg_fullname_placeholder": {
+    ml: "നിങ്ങളുടെ ഔദ്യോഗിക പേര് നൽകുക",
+    en: "Enter your full legal name",
+    hi: "अपना पूरा वैध नाम दर्ज करें"
+  },
+  "reg_mobile_label": {
+    ml: "ഫോൺ നമ്പർ (Mobile Number)",
+    en: "Mobile Number",
+    hi: "मोबाइल नंबर"
+  },
+  "reg_state_label": {
+    ml: "സംസ്ഥാനം (State)",
+    en: "State",
+    hi: "राज्य"
+  },
+  "reg_state_placeholder": {
+    ml: "സംസ്ഥാനം തിരഞ്ഞെടുക്കുക",
+    en: "Select State",
+    hi: "राज्य चुनें"
+  },
+  "reg_district_label": {
+    ml: "ജില്ല (District)",
+    en: "District",
+    hi: "ज़िला"
+  },
+  "reg_district_placeholder": {
+    ml: "ജില്ല തിരഞ്ഞെടുക്കുക",
+    en: "Select District",
+    hi: "ज़िला चुनें"
+  },
+  "reg_constituency_label": {
+    ml: "മണ്ഡലം (Assembly Constituency)",
+    en: "Assembly Constituency",
+    hi: "विधानसभा क्षेत्र"
+  },
+  "reg_constituency_placeholder": {
+    ml: "മണ്ഡലം തിരഞ്ഞെടുക്കുക",
+    en: "Select Assembly constituency",
+    hi: "विधानसभा क्षेत्र चुनें"
+  },
+  "reg_constituency_select_dist_first": {
+    ml: "ആദ്യം ജില്ല തിരഞ്ഞെടുക്കുക",
+    en: "Select District first",
+    hi: "पहले ज़िला चुनें"
+  },
+  "reg_terms_note": {
+    ml: "നിങ്ങൾ വിജയകരമായി രജിസ്റ്റർ ചെയ്താൽ, നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡ് '123456' ഉം ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം. തുടർന്ന് പ്രൊഫൈൽ എഡിറ്റ് ചെയ്ത് നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ പൂർത്തീകരിക്കാവുന്നതാണ്.",
+    en: "Once registered successfully, you can log in using your mobile number and default password '123456' to update other details.",
+    hi: "सफलतापूर्वक पंजीकरण होने पर, आप अन्य जानकारी अपडेट करने के लिए अपने मोबाइल नंबर और डिफ़ॉल्ट पासवर्ड '123456' का उपयोग करके लॉग इन कर सकते हैं।"
+  },
+  "reg_agreement_text": {
+    ml: "ഞാൻ ഹൈറിച്ച് കമ്മ്യൂണിറ്റി റിവൈവൽ സൊസൈറ്റിയുടെ (HCRS) അഡ്ഹോക്ക് മെമ്പറായി തുടരാൻ ആഗ്രഹിക്കുന്നു സൊസൈറ്റി നിയമങ്ങളും റൂളുകളും നിബന്ധനകളും പാലിക്കാൻ നന്മയോടും താല്പര്യത്തോടും കൂടി സമ്മതിക്കുന്നു.",
+    en: "I wish to continue as an Adhoc Member of Highrich Community Revival Society (HCRS) and agree to abide by the Rules and Terms.",
+    hi: "मैं हाईरिच कम्युनिटी रिवाइवल सोसाइटी (HCRS) के एडहॉक सदस्य के रूप में बने रहना चाहता हूं और नियमों का पालन करने के लिए सहमत हूं।"
+  },
+  "reg_quota_exhausted": {
+    ml: "ക്വാട്ട കഴിഞ്ഞു (Quota Exhausted)",
+    en: "Quota Exhausted",
+    hi: "कोटा समाप्त"
+  },
+  "reg_proceed_to_payment": {
+    ml: "പേയ്മെന്റിലേക്ക് പോവുക (Proceed to Payment)",
+    en: "Proceed to Payment",
+    hi: "भुगतान पर आगे बढ़ें"
+  },
+  "reg_upi_qr_title": {
+    ml: "പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)",
+    en: "UPI Payment QR Code",
+    hi: "यूपीआई भुगतान क्यूआर कोड"
+  },
+  "reg_upi_scan_instruction": {
+    ml: "താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക:",
+    en: "Scan the QR code below using GPay, PhonePe, or Paytm to pay ₹200 for 1-Year National Active Membership:",
+    hi: "1-वर्षीय राष्ट्रीय सक्रिय सदस्यता के लिए ₹200 का भुगतान करने हेतु नीचे दिए गए क्यूआर कोड को स्कैन करें:"
+  },
+  "reg_upi_scan_box_text": {
+    ml: "ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക",
+    en: "Scan this QR and pay ₹200",
+    hi: "इस क्यूआर को स्कैन करें और ₹200 का भुगतान करें"
+  },
+  "reg_payment_date_label": {
+    ml: "അടച്ച തീയതി (Payment Date)",
+    en: "Payment Date",
+    hi: "भुगतान की तिथि"
+  },
+  "reg_payment_time_label": {
+    ml: "അടച്ച സമയം (Payment Time)",
+    en: "Payment Time",
+    hi: "भुगतान का समय"
+  },
+  "reg_use_current_btn": {
+    ml: "ഇപ്പോൾ (Use Current)",
+    en: "Use Current",
+    hi: "अभी (वर्तमान समय चुनें)"
+  },
+  "reg_current_time_info": {
+    ml: "തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:",
+    en: "Click to set date and time to current moment:",
+    hi: "तिथि और समय को वर्तमान क्षण पर सेट करने के लिए क्लिक करें:"
+  },
+  "reg_txnid_label": {
+    ml: "ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)",
+    en: "Enter Transaction ID / UTR",
+    hi: "लेनदेन आईडी (Transaction ID) दर्ज करें"
+  },
+  "reg_txnid_note": {
+    ml: "* അടച്ച തുകയുടെ ശരിയായ യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാന്സാക്ഷൻ ഐഡിയോ ഇവിടെ നൽകുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.",
+    en: "* Please enter correct UPI Reference or Transaction ID of the payment. Admin will activate your profile upon verification.",
+    hi: "* कृपया भुगतान का सही यूपीआई संदर्भ या लेनदेन आईडी दर्ज करें। सत्यापन के बाद व्यवस्थापक आपके प्रोफाइल को सक्रिय करेगा।"
+  },
+  "reg_complete_btn": {
+    ml: "രജിസ്റ്റർ ചെയ്യുക (Complete Registration)",
+    en: "Complete Registration",
+    hi: "पंजीकरण पूरा करें"
+  },
+  "reg_go_back_btn": {
+    ml: "വിവരങ്ങൾ തിരുത്തുക (Go Back)",
+    en: "Go Back / Edit Details",
+    hi: "वापस जाएं / विवरण संपादित करें"
+  },
+  "renewal_search_placeholder": {
+    ml: "ഉദാ: KL/MLP/KTK/1001 അല്ലെങ്കിൽ ഫോൺ നമ്പർ",
+    en: "e.g. KL/MLP/KTK/1001 or mobile number",
+    hi: "उदा.: KL/MLP/KTK/1001 या मोबाइल नंबर"
+  },
+  "search_loading": {
+    ml: "തിരയുന്നു...",
+    en: "Looking up...",
+    hi: "खोजा जा रहा है..."
+  },
+  "find_profile_btn": {
+    ml: "പ്രൊഫൈൽ കണ്ടെത്തുക (Find Profile)",
+    en: "Find Profile",
+    hi: "प्रोफ़ाइल ढूंढें"
+  },
+  "return_home_btn": {
+    ml: "തിരികെ പോവുക (Return Home)",
+    en: "Return Home",
+    hi: "मुख्य पृष्ठ पर लौटें"
+  },
+  "renewal_upi_scan_instruction": {
+    ml: "താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക:",
+    en: "Scan the QR code below using GPay, PhonePe, or Paytm to pay ₹100 for 1-Year Membership Renewal:",
+    hi: "1-वर्षीय सदस्यता नवीनीकरण के लिए ₹100 का भुगतान करने हेतु नीचे दिए गए क्यूआर कोड को स्कैन करें:"
+  },
+  "renewal_upi_scan_box_text": {
+    ml: "ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക",
+    en: "Scan this QR and pay ₹100",
+    hi: "इस क्यूआर को स्कैन करें और ₹100 का भुगतान करें"
+  },
+  "renewal_txnid_note": {
+    ml: "* ഇവിടെ ശരിയായ യു.പി.ഐ നമ്പർ അല്ലെങ്കിൽ റഫറൻസ് നമ്പറുകൾ നൽകി പുതുക്കൽ പൂർത്തിയാക്കുക. വെരിഫിക്കേഷന് ശേഷം അംഗത്വം സജീവമാകും.",
+    en: "* Please enter correct UPI Number or Reference ID here to complete renewal. Your membership will be active after verification.",
+    hi: "* नवीनीकरण पूरा करने के लिए कृपया यहाँ सही यूपीआई नंबर या संदर्भ आईडी दर्ज करें। सत्यापन के बाद आपकी सदस्यता सक्रिय हो जाएगी।"
   }
 };
 

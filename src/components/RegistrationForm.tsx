@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../lib/i18n';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -38,6 +39,7 @@ const QR_MIRRORS = [
 ];
 
 export default function RegistrationForm({ onSubmit, districtQuotas = {}, districtQuotasUsed = {}, initialMobile }: RegistrationFormProps) {
+  const { t } = useI18n();
   const [step, setStep] = React.useState<'details' | 'payment'>('details');
   const [transactionId, setTransactionId] = React.useState('');
   const [paymentDate, setPaymentDate] = React.useState(() => {
@@ -110,7 +112,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
           <div className="inline-block p-3 bg-white shadow-premium rounded-[26px] mb-4 border border-slate-100 transition-all hover:scale-105">
             <Logo className="scale-105 mx-auto" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">Membership Registration</h2>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">{t('reg_title', 'Membership Registration')}</h2>
           <p className="text-brand-magenta text-[10px] font-black tracking-widest mt-2 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
         </div>
 
@@ -123,19 +125,19 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm">
                     <User className="w-5 h-5" />
                   </div>
-                  Fast Registration
+                  {t('reg_fast_title', 'Fast Registration')}
                 </>
               ) : (
                 <>
                   <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm">
                     <Receipt className="w-5 h-5" />
                   </div>
-                  Membership Payment
+                  {t('reg_payment_title', 'Membership Payment')}
                 </>
               )}
             </CardTitle>
             <CardDescription className="text-slate-400 font-black uppercase tracking-widest text-[9px] mt-2">
-              {step === 'details' ? 'Secure Registration Node • Step 1' : 'Treasury Portal • Step 2'}
+              {step === 'details' ? t('reg_step_1_desc', 'Secure Registration Node • Step 1') : t('reg_step_2_desc', 'Treasury Portal • Step 2')}
             </CardDescription>
           </CardHeader>
 
@@ -147,13 +149,13 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     {/* Name Input */}
                     <FormField control={form.control} name="name" render={({ field, fieldState }) => (
                       <FormItem className="space-y-1.5">
-                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">Full Name (പൂർണ്ണമായ പേര്)</FormLabel>
+                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_fullname_label', "Full Name (പൂർണ്ണമായ പേര്)")}</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
                             <Input 
                               {...field} 
-                              placeholder="Enter your full legal name" 
+                              placeholder={t('reg_fullname_placeholder', "Enter your full legal name")} 
                               className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500 focus:border-red-500' : ''}`} 
                             />
                           </div>
@@ -165,7 +167,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     {/* Phone Input */}
                     <FormField control={form.control} name="mobile" render={({ field, fieldState }) => (
                       <FormItem className="space-y-1.5">
-                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">Mobile Number (ഫോൺ നമ്പർ)</FormLabel>
+                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_mobile_label', "Mobile Number (ഫോൺ നമ്പർ)")}</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
@@ -188,13 +190,13 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     {/* State Select */}
                     <FormField control={form.control} name="state" render={({ field, fieldState }) => (
                       <FormItem className="space-y-1.5">
-                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">State (സംസ്ഥാനം)</FormLabel>
+                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_state_label', "State (സംസ്ഥാനം)")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
                               <div className="flex items-center gap-2">
                                 <Landmark className={`w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
-                                <SelectValue placeholder="Select State" />
+                                <SelectValue placeholder={t('reg_state_placeholder', "Select State")} />
                               </div>
                             </SelectTrigger>
                           </FormControl>
@@ -210,7 +212,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       {/* District */}
                       <FormField control={form.control} name="district" render={({ field, fieldState }) => (
                         <FormItem className="col-span-1 space-y-1.5">
-                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">District (ജില്ല)</FormLabel>
+                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_district_label', "District (ജില്ല)")}</FormLabel>
                           <Select 
                             onValueChange={(val) => {
                               field.onChange(val);
@@ -220,7 +222,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                           >
                             <FormControl>
                               <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
-                                <SelectValue placeholder="Select District" />
+                                <SelectValue placeholder={t('reg_district_placeholder', "Select District")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-h-60">
@@ -234,7 +236,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       {/* Assembly Constituency */}
                       <FormField control={form.control} name="assemblyConstituency" render={({ field, fieldState }) => (
                         <FormItem className="col-span-1 space-y-1.5">
-                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">Assembly Constituency (മണ്ഡലം)</FormLabel>
+                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_constituency_label', "Assembly Constituency (മണ്ഡലം)")}</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             value={field.value || ""}
@@ -242,7 +244,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                           >
                             <FormControl>
                               <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
-                                <SelectValue placeholder={district ? "Select Assembly" : "Select District first"} />
+                                <SelectValue placeholder={district ? t('reg_constituency_placeholder', "Select Assembly") : t('reg_constituency_select_dist_first', "Select District first")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-h-60">
@@ -259,7 +261,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <div className="border-t border-slate-100 pt-6 flex items-start gap-3.5">
                     <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                     <p className="text-[10.5px] text-slate-500 font-bold uppercase leading-relaxed">
-                      നിങ്ങൾ വിജയകരമായി രജിസ്റ്റർ ചെയ്താൽ, നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡ് '123456' ഉം ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം. തുടർന്ന് പ്രൊഫൈൽ എഡിറ്റ് ചെയ്ത് നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ പൂർത്തീകരിക്കാവുന്നതാണ്.
+                      {t('reg_terms_note', "നിങ്ങൾ വിജയകരമായി രജിസ്റ്റർ ചെയ്താൽ, നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡ് '123456' ഉം ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം. തുടർന്ന് പ്രൊഫൈൽ എഡിറ്റ് ചെയ്ത് നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ പൂർത്തീകരിക്കാവുന്നതാണ്.")}
                     </p>
                   </div>
 
@@ -283,10 +285,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     />
                     <div className="flex-1 min-w-0 space-y-1">
                       <p className={`text-[11px] font-bold leading-relaxed ${agreeAdhoc ? 'text-slate-800' : 'text-rose-950 font-extrabold'}`}>
-                        I wish to continue as an Adhoc Member of the Highrich Community Revival Society (HCRS) and agree to abide by the Society Rules, Regulations and Terms & Conditions. *
-                      </p>
-                      <p className="text-[9.5px] text-slate-400 font-bold uppercase leading-normal">
-                        (ഞാൻ ഹൈറിച്ച് കമ്മ്യൂണിറ്റി റിവൈവൽ സൊസൈറ്റിയുടെ (HCRS) അഡ്ഹോക്ക് മെമ്പറായി തുടരാൻ ആഗ്രഹിക്കുന്നു സൊസൈറ്റി നിയമങ്ങളും റൂളുകളും നിബന്ധനകളും പാലിക്കാൻ നന്മയോടും താല്പര്യത്തോടും കൂടി സമ്മതിക്കുന്നു.)
+                        {t('reg_agreement_text', 'I wish to continue as an Adhoc Member of the Highrich Community Revival Society (HCRS) and agree to abide by the Society Rules, Regulations and Terms & Conditions. *')}
                       </p>
                     </div>
                   </div>
@@ -298,8 +297,8 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     className="w-full h-13 rounded-2xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 uppercase tracking-widest bg-gradient-to-r from-brand-blue to-indigo-600 text-white disabled:opacity-50 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:translate-y-0"
                   >
                     {(district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])
-                      ? 'Quota Exhausted / ക്വാട്ട കഴിഞ്ഞു' 
-                      : 'Proceed to Payment / പേയ്മെന്റിലേക്ക് പോവുക'}
+                      ? t('reg_quota_exhausted', 'Quota Exhausted / ക്വാട്ട കഴിഞ്ഞു') 
+                      : t('reg_proceed_to_payment', 'Proceed to Payment / പേയ്മെന്റിലേക്ക് പോവുക')}
                     <ArrowRight className="w-4 h-4 text-white" />
                   </Button>
                 </form>
@@ -315,11 +314,11 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     <span className="p-1.5 rounded-xl bg-brand-blue/20 text-[#0066FF] flex items-center justify-center animate-pulse">
                       <Receipt className="w-5 h-5 text-[#FF1493]" />
                     </span>
-                    പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)
+                    {t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}
                   </h4>
                   
                   <p className="text-xs text-slate-200 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/5 p-3 rounded-2xl border border-brand-blue/20 mb-5">
-                    Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-[#FF1493] font-black text-lg underline decoration-brand-magenta">₹200</span> for 1-Year National Active Membership. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക):
+                    {t('reg_upi_scan_instruction', 'Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-[#FF1493] font-black text-lg underline decoration-brand-magenta">₹200</span> for 1-Year National Active Membership. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക):')}
                   </p>
 
                   <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/60 p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
@@ -330,7 +329,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                         onError={() => {
                           if (mirrorIndex < QR_MIRRORS.length - 1) {
                             const nextIndex = mirrorIndex + 1;
-                            setMirrorIndex(nextIndex);
+                             setMirrorIndex(nextIndex);
                             setQrSrc(QR_MIRRORS[nextIndex]);
                           }
                         }}
@@ -342,7 +341,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     <div className="flex flex-col items-center gap-2 w-full text-center mt-1">
                       <p className="text-[10px] font-black text-white bg-slate-950/80 px-4 py-2 rounded-lg border border-slate-800 tracking-wider flex items-center gap-1.5 justify-center">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക
+                        {t('reg_upi_scan_box_text', 'ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക')}
                       </p>
                     </div>
                   </div>
@@ -353,7 +352,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                        അടച്ച തീയതി (Payment Date) <span className="text-[#FF1493]">*</span>
+                        {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-[#FF1493]">*</span>
                       </label>
                       <Input 
                         type="date"
@@ -364,7 +363,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     </div>
                     <div className="space-y-2">
                       <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                        അടച്ച സമയം (Payment Time) <span className="text-[#FF1493]">*</span>
+                        {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-[#FF1493]">*</span>
                       </label>
                       <Input 
                         type="time"
@@ -378,7 +377,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   {/* Quick Helper Button and indicator */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
                     <span className="text-[10px] font-bold text-slate-500 leading-tight">
-                      തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:
+                      {t('reg_current_time_info', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:')}
                     </span>
                     <Button 
                       type="button" 
@@ -388,17 +387,17 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                         const today = new Date();
                         setPaymentDate(today.toISOString().split('T')[0]);
                         setPaymentTime(today.toTimeString().split(' ')[0].substring(0, 5));
-                        toast.success('തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!');
+                        toast.success(t('reg_toast_date_time_set', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!'));
                       }}
                       className="border border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 text-[9px] font-black uppercase px-2.5 h-8 rounded-lg shrink-0 flex items-center gap-1.5 bg-white"
                     >
-                      ഇപ്പോൾ (Use Current)
+                      {t('reg_use_current_btn', 'ഇപ്പോൾ (Use Current)')}
                     </Button>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID) <span className="text-[#FF1493]">*</span>
+                      {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-[#FF1493]">*</span>
                     </label>
                     <Input 
                       value={transactionId}
@@ -410,7 +409,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   </div>
 
                   <p className="text-[10.5px] font-bold text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
-                    * അടച്ച തുകയുടെ ശരിയായ യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാന്സാക്ഷൻ ഐഡിയോ ഇവിടെ നൽകുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.
+                    {t('reg_txnid_note', '* അടച്ച തുകയുടെ ശരിയായ യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാന്സാക്ഷൻ ഐഡിയോ ഇവിടെ നൽകുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.')}
                   </p>
 
                   <div className="flex flex-col gap-3">
@@ -420,7 +419,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       disabled={transactionId.trim().length < 8}
                       className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/15 hover:shadow-brand-blue/25 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1.5px] active:translate-y-0"
                     >
-                      Complete Registration / രജിസ്റ്റർ ചെയ്യുക
+                      {t('reg_complete_btn', 'Complete Registration / രജിസ്റ്റർ ചെയ്യുക')}
                       <ArrowRight className="w-4 h-4 text-white" />
                     </Button>
 
@@ -430,7 +429,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       onClick={() => setStep('details')}
                       className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
                     >
-                      <ArrowLeft className="w-4 h-4" /> Go Back / വിവരങ്ങൾ തിരുത്തുക
+                      <ArrowLeft className="w-4 h-4" /> {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
                     </Button>
                   </div>
                 </div>
