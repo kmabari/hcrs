@@ -674,37 +674,45 @@ export default function App() {
               }
             }
             
+            const usersRef = collection(db, 'users');
+            let querySnap = null;
+
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
               console.log("Healing check: checking offline or mismatched profile for mobile:", loginMobile);
-              const usersRef = collection(db, 'users');
               const q = query(usersRef, where('mobile', '==', loginMobile), limit(1));
-              const querySnap = await getDocs(q);
+              querySnap = await getDocs(q);
+            }
+
+            if ((!querySnap || querySnap.empty) && currentEmail) {
+              console.log("Healing check: checking offline or mismatched profile for email:", currentEmail);
+              const q = query(usersRef, where('email', '==', currentEmail), limit(1));
+              querySnap = await getDocs(q);
+            }
+            
+            if (querySnap && !querySnap.empty) {
+              const oldDoc = querySnap.docs[0];
+              const oldDocId = oldDoc.id;
               
-              if (!querySnap.empty) {
-                const oldDoc = querySnap.docs[0];
-                const oldDocId = oldDoc.id;
+              if (oldDocId !== authUser.uid) {
+                console.log(`Found mismatched profile at ${oldDocId}. Auto-copying to current logged-in UID ${authUser.uid}...`);
+                const profileData = oldDoc.data();
+                const healedProfile = {
+                  ...profileData,
+                  uid: authUser.uid,
+                  status: profileData.status || 'active',
+                  issueDate: profileData.issueDate || serverTimestamp(),
+                };
                 
-                if (oldDocId !== authUser.uid) {
-                  console.log(`Found mismatched profile at ${oldDocId}. Auto-copying to current logged-in UID ${authUser.uid}...`);
-                  const profileData = oldDoc.data();
-                  const healedProfile = {
-                    ...profileData,
-                    uid: authUser.uid,
-                    status: profileData.status || 'active',
-                    issueDate: profileData.issueDate || serverTimestamp(),
-                  };
-                  
-                  await setDoc(doc(db, 'users', authUser.uid), healedProfile);
-                  console.log("Dynamic UID healing successful!");
-                  
-                  // Cleanup old offline/temporary document from Firestore to avoid duplicate counts/listing
-                  if (oldDocId.startsWith('offline_')) {
-                    console.log(`Deleting old offline document ${oldDocId} since it has been synced to ${authUser.uid}`);
-                    await deleteDoc(doc(db, 'users', oldDocId));
-                  }
-                  
-                  healed = true;
+                await setDoc(doc(db, 'users', authUser.uid), healedProfile);
+                console.log("Dynamic UID healing successful!");
+                
+                // Cleanup old offline/temporary document from Firestore to avoid duplicate counts/listing
+                if (oldDocId.startsWith('offline_') || oldDocId.startsWith('life_')) {
+                  console.log(`Deleting old offline/life document ${oldDocId} since it has been synced to ${authUser.uid}`);
+                  await deleteDoc(doc(db, 'users', oldDocId));
                 }
+                
+                healed = true;
               }
             }
           } catch (healErr) {
