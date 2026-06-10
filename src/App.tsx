@@ -139,7 +139,46 @@ export default function App() {
           return !isMainAdmin;
         });
 
-      setMembers(list);
+      let cleanList = [...list];
+      
+      // AUTO-CLEANUP DUPLICATE LIFE MEMBER SERIAL NO 1
+      const life1s = cleanList.filter(u => u.membership_type === 'LIFE_MEMBER' && u.serialNo === 1);
+      if (life1s.length > 1) {
+        console.log("Database Maintenance: Found duplicate Life Members with serialNo = 1:", life1s.map(l => l.uid));
+        
+        // Sort to keep the earliest/original profile, delete later duplicates
+        const sorted = [...life1s].sort((a, b) => {
+          const t1 = a.registrationDate 
+            ? (typeof a.registrationDate.toDate === 'function' 
+                ? a.registrationDate.toDate().getTime() 
+                : new Date(a.registrationDate).getTime()) 
+            : 0;
+          const t2 = b.registrationDate 
+            ? (typeof b.registrationDate.toDate === 'function' 
+                ? b.registrationDate.toDate().getTime() 
+                : new Date(b.registrationDate).getTime()) 
+            : 0;
+          return t1 - t2;
+        });
+
+        // Keep sorted[0] (earliest), delete subsequent duplicates
+        const toDelete = sorted.slice(1);
+        for (const duplicateToKill of toDelete) {
+          console.log(`Auto-deleting duplicate Life Member with serialNo=1, UID: ${duplicateToKill.uid}`);
+          try {
+            await deleteDoc(doc(db, 'users', duplicateToKill.uid));
+            toast.success(`ഡ്യൂപ്ലിക്കേറ്റ് ലൈഫ് മെമ്പർ (സീരിയൽ 1, UID: ${duplicateToKill.uid}) ഡാറ്റാബേസിൽ നിന്ന് വിജയകരമായി നീക്കം ചെയ്തു.`);
+          } catch (delErr) {
+            console.error("Failed to delete duplicate life 1 member:", delErr);
+          }
+        }
+
+        // Exclude deleted profiles from local state
+        const deletedUids = toDelete.map(u => u.uid);
+        cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
+      }
+
+      setMembers(cleanList);
       toast.success('Database entries synchronized successfully.', { id: loadingToast });
     } catch (err: any) {
       console.error("Members fetch error during refresh:", err);

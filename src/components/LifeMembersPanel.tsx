@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
-import { DISTRICTS, BLOOD_GROUPS, getAssemblyCode } from '@/src/constants';
+import { DISTRICTS, CONSTITUENCIES, BLOOD_GROUPS, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,6 @@ interface LifeMembersPanelProps {
   adminUser: any;
   onUpdatePhoto?: (file: File, uid: string) => void;
 }
-
-const LIFE_MANDALAMS = ["Kottakkal", "Tanur", "Tirurangadi", "Vengara", "Malappuram", "Nilambur"];
 
 export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: LifeMembersPanelProps) {
   // Filter for currently active Life Members
@@ -60,6 +58,18 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize constituency list when district changes so that they correspond correctly
+  useEffect(() => {
+    const list = CONSTITUENCIES[district] || [];
+    if (list.length > 0) {
+      if (!list.includes(mandalam)) {
+        setMandalam(list[0]);
+      }
+    } else {
+      setMandalam('');
+    }
+  }, [district]);
 
   // Profile Card trigger modal
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
@@ -123,13 +133,27 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
     const loadingToast = toast.loading('ലൈഫ് മെമ്പർഷിപ്പ് രജിസ്റ്റർ ചെയ്യുന്നു...');
 
     try {
-      // Check duplicate mobile in whole database
       const usersRef = collection(db, 'users');
+
+      // Check duplicate mobile in whole database
       const mobileQuery = query(usersRef, where('mobile', '==', cleanMobile));
       const mobileSnap = await getDocs(mobileQuery);
       
       if (!mobileSnap.empty) {
         toast.error('ഈ മൊബൈൽ നമ്പർ ഇതിനകം രജിസ്റ്റർ ചെയ്തിട്ടുണ്ട്. തനിപ്പകർപ്പ് അനുവദനീയമല്ല.', { id: loadingToast });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check duplicate serial number in whole database (never allow duplicates)
+      const serialQuery = query(
+        usersRef, 
+        where('membership_type', '==', 'LIFE_MEMBER'),
+        where('serialNo', '==', selectedSerial)
+      );
+      const serialSnap = await getDocs(serialQuery);
+      if (!serialSnap.empty) {
+        toast.error(`സീരിയൽ നമ്പർ ${selectedSerial} ഇതിനകം മറ്റൊരു മെമ്പറിന് നൽകിയിട്ടുള്ളതാണ്. തനിപ്പകർപ്പ് അനുവദനീയമല്ല.`, { id: loadingToast });
         setIsSubmitting(false);
         return;
       }
@@ -151,8 +175,11 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
 
       // Format serial block suffix to 3 digits fixed
       const serialStr = String(selectedSerial).padStart(3, '0');
-      // Format ID: HCRS-LIFE-KL-MLP-KTK-### as explicitly requested
-      const generatedMembershipId = `HCRS-LIFE-KL-MLP-KTK-${serialStr}`;
+      
+      // Dynamic codes depending on selected district and mandalam
+      const dCode = district.toUpperCase();
+      const aCode = getAssemblyCode(mandalam).toUpperCase();
+      const generatedMembershipId = `HCRS-LIFE-KL-${dCode}-${aCode}-${serialStr}`;
 
       const newProfile: any = {
         uid: finalUid,
@@ -178,8 +205,8 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
         photoUrl: finalPhotoUrl,
         waStatus: 'Pending',
         stateCode: 'KL',
-        districtCode: 'MLP',
-        constituencyCode: 'KTK',
+        districtCode: dCode,
+        constituencyCode: aCode,
         registeredBy: adminUser?.uid || 'super_admin',
         registeredByName: adminUser?.name || 'Super Admin'
       };
@@ -330,7 +357,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                     disabled={isLimitReached || isSubmitting}
                     className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-blue"
                   >
-                    {LIFE_MANDALAMS.map(mnd => (
+                    {(CONSTITUENCIES[district] || []).map(mnd => (
                       <option key={mnd} value={mnd}>{mnd}</option>
                     ))}
                   </select>
