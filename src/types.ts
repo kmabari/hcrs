@@ -47,6 +47,7 @@ export interface UserProfile {
   constituencyCode?: string;
   username?: string;
   highrichId?: string;
+  isQuotaCounted?: boolean;
 }
 
 export interface GalleryItem {

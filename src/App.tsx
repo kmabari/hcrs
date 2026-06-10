@@ -994,17 +994,6 @@ export default function App() {
         ? cleanEmail
         : `${cleanMobile}@hcrs.society`;
 
-      // 1. Move Quota Check BEFORE Auth Creation to avoid orphan accounts
-      const distCode = getDistrictCode(values.district);
-      const districtQuota = districtQuotas[distCode];
-      const usedDistrictQuota = districtQuotasUsed[distCode] || 0;
-      
-      if (districtQuota !== undefined && districtQuota > 0 && usedDistrictQuota >= districtQuota) {
-        throw new Error(`ദയവായി ശ്രദ്ധിക്കുക: ${values.district} ജില്ലക്ക് അനുവദിച്ച എൻട്രികളുടെ എണ്ണം കഴിഞ്ഞിരിക്കുന്നു. (Quota exhausted for ${values.district})`);
-      }
-
-      toast.loading('Creating secure account...', { id: loadingToast });
-      
       // CHECK IF ALREADY SIGNED IN (from a previous partial registration)
       if (auth.currentUser && (auth.currentUser.email === authEmail || auth.currentUser.email === cleanEmail)) {
         console.log("Using existing auth session for recovery");
@@ -1055,33 +1044,16 @@ export default function App() {
       
       const uid = authResult.user.uid;
       
+      const distCode = getDistrictCode(values.district);
       toast.loading('Saving your details...', { id: loadingToast });
       const userRef = doc(db, 'users', uid);
       const metadataRef = doc(db, 'system', 'totals');
-      const quotaRef = doc(db, 'districtQuotas', distCode);
       
       try {
         let nextSerial = 0;
         await runTransaction(db, async (transaction) => {
           // Perform all reads first
-          const qSnap = await transaction.get(quotaRef);
           const metaDoc = await transaction.get(metadataRef);
-
-          // Handle quota logic
-          if (qSnap.exists()) {
-            const qData = qSnap.data();
-            if (qData.total > 0 && (qData.used || 0) >= qData.total) {
-              throw new Error("QUOTA_FULL");
-            }
-            transaction.update(quotaRef, { used: increment(1) });
-          } else {
-            transaction.set(quotaRef, {
-              id: distCode,
-              districtName: DISTRICTS.find(d => d.code === distCode)?.name || distCode,
-              total: 500,
-              used: 1
-            });
-          }
           
           // Handle metadata/serial logic
           nextSerial = 1001;
@@ -1115,7 +1087,8 @@ export default function App() {
             stateCode: 'KL',
             districtCode: memberDistCode.toUpperCase(),
             constituencyCode: assemblyCode.toUpperCase(),
-            membership_type: 'ADHOC_MEMBER'
+            membership_type: 'ADHOC_MEMBER',
+            isQuotaCounted: false
           };
           transaction.set(userRef, newMemberData);
         });
@@ -1221,10 +1194,12 @@ export default function App() {
       const districtQuota = districtQuotas[distCodeForQuota];
       const usedDistrictQuota = districtQuotasUsed[distCodeForQuota] || 0;
 
-      console.log(`AddOffline Quota Check: ${distCodeForQuota} -> ${usedDistrictQuota}/${districtQuota}`);
+      const countsTowardQuota = !isMainAdmin;
+
+      console.log(`AddOffline Quota Check: ${distCodeForQuota} -> ${usedDistrictQuota}/${districtQuota} (countsTowardQuota: ${countsTowardQuota})`);
 
       // 1. Check District Quota
-      if (districtQuota !== undefined && districtQuota > 0 && usedDistrictQuota >= districtQuota) {
+      if (countsTowardQuota && districtQuota !== undefined && districtQuota > 0 && usedDistrictQuota >= districtQuota) {
         toast.error(`ദയവായി ശ്രദ്ധിക്കുക: ഈ ജില്ലക്ക് അനുവദിച്ച എൻട്രികളുടെ എണ്ണം കഴിഞ്ഞിരിക്കുന്നു. (District quota exhausted: ${distCodeForQuota} - ${usedDistrictQuota}/${districtQuota})`, { id: loadingToast });
         return null;
       }
@@ -1274,24 +1249,26 @@ export default function App() {
 
       await runTransaction(db, async (transaction) => {
         // 1. ALL READS FIRST
-        const qSnap = await transaction.get(quotaRef);
+        const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
         const metaDoc = await transaction.get(metadataRef);
         
         // 2. LOGIC AND WRITES
-        if (qSnap.exists()) {
-          const qData = qSnap.data();
-          if (qData.total !== undefined && qData.total > 0 && (qData.used || 0) >= qData.total) {
-             throw new Error("District quota exhausted during transaction");
+        if (countsTowardQuota) {
+          if (qSnap && qSnap.exists()) {
+            const qData = qSnap.data();
+            if (qData.total !== undefined && qData.total > 0 && (qData.used || 0) >= qData.total) {
+               throw new Error("District quota exhausted during transaction");
+            }
+            transaction.update(quotaRef, { used: increment(1) });
+          } else {
+            // Initialize district quota if not exists
+            transaction.set(quotaRef, {
+              id: distCodeForQuota,
+              districtName: DISTRICTS.find(d => d.code === distCodeForQuota)?.name || distCodeForQuota,
+              total: 398, // Using the user's mentioned number as potential default or just standard
+              used: 1
+            });
           }
-          transaction.update(quotaRef, { used: increment(1) });
-        } else {
-          // Initialize district quota if not exists
-          transaction.set(quotaRef, {
-            id: distCodeForQuota,
-            districtName: DISTRICTS.find(d => d.code === distCodeForQuota)?.name || distCodeForQuota,
-            total: 398, // Using the user's mentioned number as potential default or just standard
-            used: 1
-          });
         }
 
         let nextSerial = (metaDoc.data()?.count || 1000) + 1;
@@ -1317,7 +1294,7 @@ export default function App() {
         // Manual admin additions have expired validity by default from the start (as requested by user)
         const expiry = new Date('2026-04-15T12:00:00Z'); // Expired on April 15, 2026
 
-        const offlineMemberData = {
+        const offlineMemberData: any = {
           uid,
           ...values,
           email: finalEmail, // USE SANITIZED EMAIL
@@ -1339,10 +1316,11 @@ export default function App() {
           stateCode: 'KL',
           districtCode: memberDistCode,
           constituencyCode: assemblyCode,
-          membership_type: 'ADHOC_MEMBER'
+          membership_type: 'ADHOC_MEMBER',
+          isQuotaCounted: countsTowardQuota
         };
         transaction.set(userRef, offlineMemberData);
-        newlyCreatedUser = offlineMemberData;
+        newlyCreatedUser = offlineMemberData as UserProfile;
       });
 
       if (newlyCreatedUser) {
@@ -1633,6 +1611,32 @@ export default function App() {
       members.forEach(m => {
         if (m.district) {
           const code = m.district.toUpperCase();
+          
+          // Exclude Life Members
+          if (m.membership_type === 'LIFE_MEMBER') return;
+          
+          // Exclude explicitly not counted
+          if (m.isQuotaCounted === false) return;
+          
+          // Exclude online self-registrations (no registeredBy)
+          if (!m.registeredBy) return;
+          
+          // Exclude direct entries made by Main Admins
+          const creatorName = (m.registeredByName || '').toLowerCase();
+          const creatorUid = (m.registeredBy || '').toLowerCase();
+          
+          if (
+            creatorUid === 'super_admin' || 
+            creatorUid === 'admin' || 
+            creatorName.includes('super admin') || 
+            creatorName === 'admin' ||
+            creatorName.includes('kmabarikiya') ||
+            creatorName.includes('hcrsindia') ||
+            creatorName.includes('mabarikiya')
+          ) {
+            return;
+          }
+
           counts[code] = (counts[code] || 0) + 1;
         }
       });
