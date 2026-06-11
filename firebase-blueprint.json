@@ -117,6 +117,24 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["memberName", "phone", "issue", "status"]
+    },
+    "MigrationLog": {
+      "title": "Migration Log",
+      "description": "Activity logs and rollback backups of admin old member imports.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "adminEmail": { "type": "string" },
+        "fileName": { "type": "string" },
+        "importedCount": { "type": "integer" },
+        "updatedCount": { "type": "integer" },
+        "skippedCount": { "type": "integer" },
+        "totalRecords": { "type": "integer" },
+        "importedUids": { "type": "array" },
+        "updatedBackup": { "type": "object" }
+      },
+      "required": ["timestamp", "adminEmail", "fileName", "importedCount", "totalRecords"]
     }
   },
   "firestore": {
@@ -143,6 +161,10 @@
     "support_tickets": {
       "schema": "SupportTicket",
       "description": "Automated helper chatbot tickets and notifications for operators."
+    },
+    "migration_logs": {
+      "schema": "MigrationLog",
+      "description": "Activity logs and rollback states for member migrations."
     }
   }
 }

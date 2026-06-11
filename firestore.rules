@@ -241,5 +241,10 @@ service cloud.firestore {
       allow update: if isOperator();
       allow delete: if isAdmin();
     }
+
+    // --- Collection: migration_logs ---
+    match /migration_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
