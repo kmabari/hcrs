@@ -39,10 +39,17 @@ export default function CommitteeManagement({ user }: { user: any }) {
 
   useEffect(() => {
     setLoading(true);
-    const unsub = subscribeToCommitteeMembers((data) => {
-      setMembers(data);
-      setLoading(false);
-    });
+    const unsub = subscribeToCommitteeMembers(
+      (data) => {
+        setMembers(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error loading committee members:", err);
+        toast.error("കമ്മിറ്റി അംഗങ്ങളെ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു: " + err.message);
+        setLoading(false);
+      }
+    );
     return () => unsub();
   }, []);
 

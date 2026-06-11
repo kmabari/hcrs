@@ -285,7 +285,10 @@ export async function deleteCommitteeMember(id: string) {
   await deleteDoc(docRef);
 }
 
-export function subscribeToCommitteeMembers(callback: (items: CommitteeMember[]) => void) {
+export function subscribeToCommitteeMembers(
+  callback: (items: CommitteeMember[]) => void,
+  errorCallback?: (error: Error) => void
+) {
   const q = query(collection(db, 'committees'));
   return onSnapshot(q, (snapshot) => {
     const items = snapshot.docs.map(doc => ({
@@ -306,6 +309,9 @@ export function subscribeToCommitteeMembers(callback: (items: CommitteeMember[])
     callback(items);
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'committees');
+    if (errorCallback) {
+      errorCallback(err instanceof Error ? err : new Error(String(err)));
+    }
   });
 }
 
