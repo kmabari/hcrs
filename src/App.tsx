@@ -680,12 +680,10 @@ export default function App() {
           const isAdmin = userData.role === 'admin' || userData.isAdmin;
           const isOperator = userData.role === 'operator';
           
-          if (isDirectManual && !isMagicLink && (isAdmin || isOperator)) {
-            setView('operator');
-          } else if (isAdmin) {
+          if (isAdmin) {
              setView('admin');
-          } else if (isOperator) {
-            setView('operator');
+          } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
+             setView('operator');
           } else {
             const claimRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_claim_redirect') === 'true' : false;
             if (claimRedirect) {
@@ -839,7 +837,20 @@ export default function App() {
     const loadingToast = toast.loading('Logging you in...');
     let targetEmail = (values.email || '').trim().toLowerCase();
     const trimmedPin = (values.pin || '').trim();
-    const isMobile = /^\d{10}$/.test(targetEmail);
+    
+    // Robust mobile & handle sanitization
+    let sanitizedMobile = targetEmail.replace(/\D/g, '');
+    if (sanitizedMobile.startsWith('91') && sanitizedMobile.length === 12) {
+      sanitizedMobile = sanitizedMobile.slice(2);
+    }
+    const isMobile = /^\d{10}$/.test(sanitizedMobile);
+    
+    if (isMobile) {
+      targetEmail = sanitizedMobile;
+    } else if (!targetEmail.includes('@') && targetEmail.length > 0) {
+      // Auto-append @hcrs.society wrapper for custom usernames typed without domain
+      targetEmail = `${targetEmail}@hcrs.society`;
+    }
 
     setIsLoggingIn(true);
     setLoadingStatus('Authenticating...');
@@ -873,13 +884,16 @@ export default function App() {
         authResult = await signInWithEmailAndPassword(auth, targetEmail, trimmedPin);
         console.log("Auth sign-in successful for:", authResult.user.uid);
       } catch (signInError: any) {
+        const isSuperAdmin = MAIN_ADMINS.some(email => email.toLowerCase() === targetEmail.toLowerCase());
         const isSecondAdmin = SECOND_ADMINS.some(email => email.toLowerCase() === targetEmail.toLowerCase());
-        if (isSecondAdmin && trimmedPin === '246810' && 
+        const isAdmin = isSuperAdmin || isSecondAdmin;
+
+        if (isAdmin && trimmedPin === '246810' && 
             (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential')) {
-          console.log("Second admin user not found with standard credentials. Attempting auto-registration...");
+          console.log("Admin user not found in Auth. Attempting auto-registration...");
           try {
             authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
-            console.log("Auto-registration/login successful for second admin:", authResult.user.uid);
+            console.log("Auto-registration/login successful for admin:", authResult.user.uid);
           } catch (signUpError: any) {
             console.error("Auto-registration failed:", signUpError);
             throw signInError; // propagate original signInError
