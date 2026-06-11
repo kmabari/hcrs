@@ -680,7 +680,7 @@ export default function App() {
           const isAdmin = userData.role === 'admin' || userData.isAdmin;
           const isOperator = userData.role === 'operator';
           
-          if (isDirectManual && !isMagicLink) {
+          if (isDirectManual && !isMagicLink && (isAdmin || isOperator)) {
             setView('operator');
           } else if (isAdmin) {
              setView('admin');
