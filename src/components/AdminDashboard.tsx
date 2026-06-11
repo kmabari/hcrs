@@ -23,6 +23,7 @@ import {
   Smartphone,
   Eye,
   Camera,
+  Database,
   Receipt,
   Plus,
   Pencil,
