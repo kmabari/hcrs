@@ -691,7 +691,7 @@ export default function App() {
             if (claimRedirect) {
               if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_claim_redirect');
               setView('support');
-            } else if (view !== 'register' && view !== 'renewal') {
+            } else if (view !== 'renewal') {
               setView('card');
             }
           }

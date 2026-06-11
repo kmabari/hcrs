@@ -491,7 +491,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 {/* 5. EXPIRY DATE */}
                 <div className={itemPlateClass}>
                   <span className={textTitleClass}>{isLifeMember ? 'VALIDITY' : 'EXPIRY DATE'}</span>
-                  <span className={`${textValueClass} ${!isLifeMember ? 'text-brand-magenta' : 'text-amber-900 font-extrabold animate-pulse'}`}>
+                  <span className={`${textValueClass} ${!isLifeMember ? 'text-brand-magenta' : 'text-amber-900 font-extrabold'}`}>
                     {isLifeMember ? '⭐ PERMANENT ACTIVE' : getRenewalDate(member.registrationDate)}
                   </span>
                 </div>
