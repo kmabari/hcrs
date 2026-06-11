@@ -135,6 +135,25 @@
         "updatedBackup": { "type": "object" }
       },
       "required": ["timestamp", "adminEmail", "fileName", "importedCount", "totalRecords"]
+    },
+    "CommitteeMember": {
+      "title": "Committee Member",
+      "description": "Stores details about the HCRS Committee Members of State, District, and Mandalam levels.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nameMl": { "type": "string" },
+        "designation": { "type": "string" },
+        "designationMl": { "type": "string" },
+        "level": { "type": "string", "enum": ["state", "district", "mandalam"] },
+        "district": { "type": "string" },
+        "mandalam": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "order": { "type": "integer" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "designation", "level"]
     }
   },
   "firestore": {
@@ -165,6 +184,10 @@
     "migration_logs": {
       "schema": "MigrationLog",
       "description": "Activity logs and rollback states for member migrations."
+    },
+    "committees": {
+      "schema": "CommitteeMember",
+      "description": "Collection of state, district, and mandalam committee members."
     }
   }
 }

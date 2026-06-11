@@ -246,5 +246,11 @@ service cloud.firestore {
     match /migration_logs/{logId} {
       allow read, write: if isAdmin();
     }
+
+    // --- Collection: committees ---
+    match /committees/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

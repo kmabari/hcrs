@@ -252,3 +252,60 @@ export function subscribeToAnnouncements(callback: (items: Announcement[]) => vo
   });
 }
 
+export interface CommitteeMember {
+  id?: string;
+  name: string;
+  nameMl?: string;
+  designation: string;
+  designationMl?: string;
+  level: 'state' | 'district' | 'mandalam';
+  district?: string; // district code, e.g. 'TCR'
+  mandalam?: string; // mandalam name, e.g. 'Guruvayur'
+  imageUrl?: string;
+  order?: number;
+  createdAt?: any;
+}
+
+export async function addCommitteeMember(member: Omit<CommitteeMember, 'id' | 'createdAt'>) {
+  const collRef = collection(db, 'committees');
+  return await addDoc(collRef, {
+    ...member,
+    createdAt: serverTimestamp(),
+    order: member.order !== undefined ? member.order : 0
+  });
+}
+
+export async function updateCommitteeMember(id: string, updates: Partial<CommitteeMember>) {
+  const docRef = doc(db, 'committees', id);
+  await updateDoc(docRef, updates);
+}
+
+export async function deleteCommitteeMember(id: string) {
+  const docRef = doc(db, 'committees', id);
+  await deleteDoc(docRef);
+}
+
+export function subscribeToCommitteeMembers(callback: (items: CommitteeMember[]) => void) {
+  const q = query(collection(db, 'committees'));
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CommitteeMember[];
+    
+    // Sort items by order (asc) and name (asc)
+    items.sort((a, b) => {
+      const orderA = a.order !== undefined ? Number(a.order) : 0;
+      const orderB = b.order !== undefined ? Number(b.order) : 0;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    
+    callback(items);
+  }, (err) => {
+    handleFirestoreError(err, OperationType.GET, 'committees');
+  });
+}
+

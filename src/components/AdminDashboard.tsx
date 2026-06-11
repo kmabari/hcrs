@@ -7,6 +7,7 @@ import BrandingManager from './BrandingManager';
 import LanguageManager from './LanguageManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
+import CommitteeManagement from './CommitteeManagement';
 import { 
   Crown,
   Users, 
@@ -1207,6 +1208,21 @@ export default function AdminDashboard({
                   <span>Import Old Members</span>
                 </div>
               </button>
+
+              <button
+                onClick={() => setActiveTab2('committee_mgmt')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'committee_mgmt' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'committee_mgmt' ? 'text-white' : 'text-slate-400')} />
+                  <span>Committee Members</span>
+                </div>
+              </button>
             </div>
           )}
         </nav>
@@ -1285,16 +1301,29 @@ export default function AdminDashboard({
               </button>
 
               {isSuperAdmin && (
-                <button 
-                  onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <Database className="w-4 h-4 text-slate-400" />
-                  <span>Import Old Members</span>
-                </button>
+                <>
+                  <button 
+                    onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <Database className="w-4 h-4 text-slate-400" />
+                    <span>Import Old Members</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setActiveTab2('committee_mgmt'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <Users className="w-4 h-4 text-slate-400" />
+                    <span>Committee Members</span>
+                  </button>
+                </>
               )}
             </nav>
             <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
@@ -1899,6 +1928,12 @@ export default function AdminDashboard({
                       Gallery Management
                     </TabsTrigger>
                   )}
+                  {isSuperAdmin && (
+                    <TabsTrigger value="committee_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                      <Users className="w-3 h-3 text-slate-400" />
+                      Committees
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
 
@@ -1998,6 +2033,10 @@ export default function AdminDashboard({
 
               <TabsContent value="gallery_mgmt">
                 <GalleryManagement user={user} />
+              </TabsContent>
+
+              <TabsContent value="committee_mgmt">
+                <CommitteeManagement user={user} />
               </TabsContent>
 
               <TabsContent value="branding">

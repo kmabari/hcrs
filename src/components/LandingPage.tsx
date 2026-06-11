@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { subscribeToCommitteeMembers, CommitteeMember } from '../lib/cms';
+import { DISTRICTS } from '../constants';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { 
@@ -109,6 +111,16 @@ export default function LandingPage({
   const [currentAnnounceIndex, setCurrentAnnounceIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [userInteracted, setUserInteracted] = useState(false);
+  const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
+  const [activeCommTab, setActiveCommTab] = useState<'state' | 'district' | 'mandalam'>('state');
+  const [selectedCommDistrict, setSelectedCommDistrict] = useState<string>('MLP');
+
+  useEffect(() => {
+    const unsub = subscribeToCommitteeMembers((data) => {
+      setCommitteeMembers(data);
+    });
+    return unsub;
+  }, []);
 
   // Compute active announcements globally in component scope
   const activeAnnouncementsList = (() => {
@@ -1317,79 +1329,247 @@ export default function LandingPage({
               <div className="text-center space-y-2">
                 <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/5 text-[#0A2E5C] px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/10">
                   <Network className="w-4 h-4 text-[#0A2E5C]" />
-                  <span className="font-bold text-[10px] uppercase tracking-wider">Administrative structure • കമ്മിറ്റികൾ</span>
+                  <span className="font-bold text-[10px] uppercase tracking-wider">Organizational leadership • കമ്മിറ്റികൾ</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                  State & District <span className="text-[#0A2E5C]">Committees</span>
+                <h2 className="text-2xl md:text-3xl font-semibold text-slate-900 uppercase tracking-tight">
+                  HCRS Committee <span className="text-[#0A2E5C]">Members</span>
                 </h2>
                 <p className="text-slate-500 font-normal text-xs md:text-sm max-w-xl mx-auto">
-                  Highrich Community Revival Society operates through State, District, and local leadership teams.
+                  സംസ്ഥാന, ജില്ലാ, മണ്ഡലം തലങ്ങളിലെ ഞങ്ങളുടെ നേതൃത്വ നിരയും ഭാരവാഹികളും താഴെ കാണാം.
                 </p>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-[10px] p-8 md:p-10 shadow-sm">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center text-left">
-                  {/* Left explanation block */}
-                  <div className="lg:col-span-5 space-y-5 font-sans">
-                    <div className="w-12 h-12 bg-slate-50 text-[#0A2E5C] border border-slate-200 rounded-[6px] flex items-center justify-center shadow-sm">
-                      <Network className="w-5 h-5 text-[#D91E63]" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-slate-900 uppercase tracking-tight">
-                      Structured Coordination
-                    </h3>
-                    <p className="text-slate-600 font-normal text-xs md:text-sm leading-relaxed">
-                      These committees coordinate welfare initiatives, member support, awareness programs, and community activities to ensure structural efficiency and rapid service delivery.
-                    </p>
-                    <div className="w-20 h-1 bg-[#0A2E5C] rounded" />
-                  </div>
+              {/* Committee Tabs */}
+              <div className="flex flex-col items-center gap-6">
+                <div className="bg-slate-100/80 p-1 rounded-2xl flex items-center justify-between gap-1 w-full max-w-lg border border-slate-200">
+                  <button
+                    onClick={() => setActiveCommTab('state')}
+                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                      activeCommTab === 'state'
+                        ? 'bg-[#0A2E5C] text-white shadow-md font-sans'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    State <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">സംസ്ഥാന സമിതി</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveCommTab('district')}
+                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                      activeCommTab === 'district'
+                        ? 'bg-[#0A2E5C] text-white shadow-md font-sans'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    District <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">ജില്ലാ കമ്മിറ്റികൾ</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveCommTab('mandalam')}
+                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                      activeCommTab === 'mandalam'
+                        ? 'bg-[#0A2E5C] text-white shadow-md font-sans'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Mandalam <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">മണ്ഡലം കമ്മിറ്റികൾ</span>
+                  </button>
+                </div>
 
-                  {/* Right 3 core columns */}
-                  <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-6 font-sans">
-                    {[
-                      {
-                        title: "State Leadership",
-                        titleMl: "സംസ്ഥാന സമിതി",
-                        desc: "Apex planning body formulating state-wide welfare frameworks.",
-                        icon: UserCheck,
-                        color: "text-[#D91E63] bg-[#D91E63]/5 border-[#D91E63]/15"
-                      },
-                      {
-                        title: "District Committee",
-                        titleMl: "ജില്ലാ കമ്മിറ്റികൾ",
-                        desc: "District divisions managing localized member outreach.",
-                        icon: Building2,
-                        color: "text-[#0A2E5C] bg-[#0A2E5C]/5 border-[#0A2E5C]/15"
-                      },
-                      {
-                        title: "Team Network",
-                        titleMl: "ഗ്രൂപ്പ് ശൃംഖല",
-                        desc: "Grassroots division coordinating instant helpline assistance.",
-                        icon: Network,
-                        color: "text-emerald-700 bg-emerald-50 border-emerald-150"
-                      }
-                    ].map((item, index) => {
-                      const TeamIcon = item.icon;
+                {/* District Selector (visible for District & Mandalam committees) */}
+                {activeCommTab !== 'state' && (
+                  <div className="w-full max-w-md space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block text-center">Select District (ജില്ല തിരഞ്ഞെടുക്കുക)</label>
+                    <div className="relative">
+                      <select
+                        value={selectedCommDistrict}
+                        onChange={(e) => setSelectedCommDistrict(e.target.value)}
+                        className="w-full h-11 px-4 pr-10 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-sm appearance-none outline-none focus:border-[#0A2E5C]/30 focus:ring-1 focus:ring-[#0A2E5C]/10 transition-all cursor-pointer"
+                      >
+                        {DISTRICTS.map(d => (
+                          <option key={d.code} value={d.code}>
+                            {d.name === 'Kasaragod' ? 'Kasaragod (കാസർകോട്)' : 
+                             d.name === 'Kannur' ? 'Kannur (കണ്ണൂർ)' : 
+                             d.name === 'Wayanad' ? 'Wayanad (വയനാട്)' : 
+                             d.name === 'Kozhikode' ? 'Kozhikode (കോഴിക്കോട്)' : 
+                             d.name === 'Malappuram' ? 'Malappuram (മലപ്പുറം)' : 
+                             d.name === 'Palakkad' ? 'Palakkad (പാലക്കാട്)' : 
+                             d.name === 'Thrissur' ? 'Thrissur (തൃശ്ശൂർ)' : 
+                             d.name === 'Ernakulam' ? 'Ernakulam (എറണാകുളം)' : 
+                             d.name === 'Idukki' ? 'Idukki (ഇടുക്കി)' : 
+                             d.name === 'Kottayam' ? 'Kottayam (കോട്ടയം)' : 
+                             d.name === 'Alappuzha' ? 'Alappuzha (ആലപ്പുഴ)' : 
+                             d.name === 'Pathanamthitta' ? 'Pathanamthitta (പത്തനംതിട്ട)' : 
+                             d.name === 'Kollam' ? 'Kollam (കൊല്ലം)' : 
+                             d.name === 'Thiruvananthapuram' ? 'Thiruvananthapuram (തിരുവനന്തപുരം)' : d.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                        <ChevronRight className="w-4 h-4 rotate-90" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Render Members */}
+                <div className="w-full pt-4">
+                  {(() => {
+                    const filtered = committeeMembers.filter(m => {
+                      if (activeCommTab === 'state') return m.level === 'state';
+                      if (activeCommTab === 'district') return m.level === 'district' && m.district === selectedCommDistrict;
+                      if (activeCommTab === 'mandalam') return m.level === 'mandalam' && m.district === selectedCommDistrict;
+                      return false;
+                    });
+
+                    if (filtered.length === 0) {
                       return (
-                        <div 
-                          key={index} 
-                          className="bg-slate-50 border border-slate-200 transition-all rounded-[6px] p-6 flex flex-col justify-between h-full font-sans shadow-sm"
-                        >
-                          <div className="space-y-4">
-                            <div className={`w-10 h-10 rounded-[6px] flex items-center justify-center border ${item.color}`}>
-                              <TeamIcon className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-slate-900 text-sm uppercase tracking-tight leading-tight">{item.title}</h4>
-                              <p className="text-[10px] text-[#D91E63] font-bold uppercase tracking-wider mt-1">{item.titleMl}</p>
-                            </div>
-                          </div>
-                          <p className="text-slate-500 text-xs font-normal leading-relaxed mt-4">
-                            {item.desc}
+                        <div className="py-16 px-4 bg-slate-50 border border-slate-200/60 rounded-[24px] text-center max-w-xl mx-auto space-y-2">
+                          <Users className="w-10 h-10 text-slate-400 mx-auto" />
+                          <h4 className="text-sm font-bold text-slate-800">കൂടുതൽ വിവരങ്ങൾ ഉടൻ ലഭ്യമാകും!</h4>
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                            ഭാരവാഹികളുടെ വിവരങ്ങൾ മെയിൻ അഡ്മിൻ പാനലിൽ നിന്നും അപ്‌ലോഡ് ചെയ്യുന്നതിനനുസരിച്ചു് ഇവിടെ പ്രദർശിപ്പിക്കുന്നതാണ്.
                           </p>
                         </div>
                       );
-                    })}
-                  </div>
+                    }
+
+                    const getCategoryForMember = (m: CommitteeMember) => {
+                      const des = (m.designation || '').toLowerCase();
+                      const desMl = (m.designationMl || '').toLowerCase();
+                      
+                      const isSecond = des.includes('vice') || des.includes('joint') || des.includes('assistant') ||
+                                       desMl.includes('വൈസ്') || desMl.includes('ജോയിന്റ്') || desMl.includes('ജോയന്റ്') || desMl.includes('ജോയിൻ') || desMl.includes('അസിസ്റ്റന്റ്');
+                                       
+                      if (isSecond) {
+                        return 'second';
+                      }
+                      
+                      const isMain = des.includes('president') || des.includes('secretary') || des.includes('treasurer') || 
+                                     desMl.includes('പ്രസിഡന്റ്') || desMl.includes('പ്രസിഡണ്ട്') || desMl.includes('സെക്രട്ടറി') || desMl.includes('ട്രഷറർ') || desMl.includes('ട്രഷറര്');
+                                     
+                      if (isMain) {
+                        return 'main';
+                      }
+                      
+                      return 'executive';
+                    };
+
+                    const categorized = filtered.reduce((acc, m) => {
+                      const cat = getCategoryForMember(m);
+                      acc[cat].push(m);
+                      return acc;
+                    }, { main: [] as CommitteeMember[], second: [] as CommitteeMember[], executive: [] as CommitteeMember[] });
+
+                    const renderMemberCard = (m: CommitteeMember) => (
+                      <motion.div
+                        key={m.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.25 }}
+                        className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center gap-4 text-left group relative"
+                      >
+                        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#0A2E5C]/10 bg-slate-50 shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
+                          <img
+                            src={m.imageUrl || 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'}
+                            alt={m.name}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-0.5 overflow-hidden">
+                          <h3 className="font-bold text-slate-800 text-xs md:text-sm tracking-tight leading-snug truncate">
+                            {m.name}
+                          </h3>
+                          {m.nameMl && (
+                            <p className="text-[10px] font-bold text-slate-400 leading-none malayalam-text truncate">
+                              {m.nameMl}
+                            </p>
+                          )}
+
+                          <p className="text-[10px] text-[#D91E63] font-black uppercase tracking-wider pt-0.5 truncate">
+                            {m.designationMl || m.designation}
+                          </p>
+                          
+                          {m.level === 'mandalam' && m.mandalam && (
+                            <div className="inline-flex items-center gap-1 text-[8px] text-slate-500 font-bold uppercase mt-1">
+                              <MapPin className="w-2.5 h-2.5 text-slate-400" />
+                              <span>{m.mandalam} मണ്ഡലം</span>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+
+                    return (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full text-left font-sans items-start">
+                        {/* COLUMN 1: MAIN OFFICE BEARERS */}
+                        <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
+                          <div className="flex items-center gap-2 border-b border-indigo-100/60 pb-3 mb-2 shrink-0">
+                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
+                            <h3 className="font-black text-[12px] text-slate-705 uppercase tracking-wider">
+                              പ്രസിഡന്റ് / സെക്രട്ടറി / ട്രഷറർ
+                              <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Main Office Bearers</span>
+                            </h3>
+                          </div>
+                          
+                          {categorized.main.length > 0 ? (
+                            <div className="space-y-4">
+                              {categorized.main.map((m) => renderMemberCard(m))}
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
+                              No Members Found
+                            </div>
+                          )}
+                        </div>
+
+                        {/* COLUMN 2: VICE PRESIDENTS & JOINT SECRETARIES */}
+                        <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
+                          <div className="flex items-center gap-2 border-b border-indigo-100/60 pb-3 mb-2 shrink-0">
+                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+                            <h3 className="font-black text-[12px] text-slate-705 uppercase tracking-wider">
+                              വൈസ് പ്രസിഡന്റ് / ജോയിന്റ് സെക്രട്ടറി
+                              <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Vice Presidents & Joint Secretaries</span>
+                            </h3>
+                          </div>
+                          
+                          {categorized.second.length > 0 ? (
+                            <div className="space-y-4">
+                              {categorized.second.map((m) => renderMemberCard(m))}
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
+                              No Members Found
+                            </div>
+                          )}
+                        </div>
+
+                        {/* COLUMN 3: EXECUTIVE MEMBERS */}
+                        <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
+                          <div className="flex items-center gap-2 border-b border-indigo-100/60 pb-3 mb-2 shrink-0">
+                            <div className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></div>
+                            <h3 className="font-black text-[12px] text-slate-705 uppercase tracking-wider">
+                              എക്സിക്യൂട്ടീവ് അംഗങ്ങൾ
+                              <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Executive Members</span>
+                            </h3>
+                          </div>
+                          
+                          {categorized.executive.length > 0 ? (
+                            <div className="space-y-4">
+                              {categorized.executive.map((m) => renderMemberCard(m))}
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
+                              No Members Found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </section>
