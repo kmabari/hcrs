@@ -357,23 +357,6 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                   ref={cardRef} 
                   className={`w-[340px] h-[590px] rounded-[24px] text-slate-800 relative overflow-hidden font-sans flex flex-col justify-between shrink-0 select-none ${cardBorderClass}`}
                 >
-              {isExpired && (
-                <div className="absolute inset-0 bg-red-950/20 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
-                  <div className="bg-gradient-to-r from-red-700 to-red-600 text-white font-black uppercase text-[10px] tracking-[0.2em] px-5 py-2.5 rounded-xl shadow-2xl -rotate-12 border border-red-500/30 flex items-center gap-2 select-none scale-105">
-                    <Clock className="w-4 h-4 animate-pulse text-white" /> EXPIRED (കാലാവധി കഴിഞ്ഞു)
-                  </div>
-                </div>
-              )}
-              {!isExpired && member.status === 'pending' && (
-                <div className="absolute inset-0 bg-amber-950/15 backdrop-blur-[1px] z-40 flex items-center justify-center pointer-events-none">
-                  <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black uppercase text-[10px] tracking-[0.15em] px-5 py-3 rounded-xl shadow-2xl -rotate-12 border border-amber-400/30 flex flex-col items-center gap-1 text-center select-none scale-105">
-                    <Clock className="w-4 h-4 animate-pulse text-white" />
-                    <span>PENDING APPROVAL</span>
-                    <span className="text-[9px] font-bold block normal-case">(അപ്രൂവലിനായി കാത്തിരിക്കുന്നു)</span>
-                  </div>
-                </div>
-              )}
-
               {/* Top Premium Card Margin strip - Gold or Magenta */}
               <div className={`h-1.5 w-full absolute top-0 left-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.4)] ${isLifeMember ? 'bg-gradient-to-r from-amber-300 via-[#D4AF37] to-amber-800' : 'bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055]'}`} />
 
