@@ -39,6 +39,51 @@ interface CategoryDetail {
   paid: number;
   received: number;
   pending: number;
+  serialNo?: string;
+}
+
+function ClaimSerialGuide() {
+  return (
+    <div className="bg-slate-900 text-slate-100 rounded-3xl p-5 border border-slate-800 shadow-md space-y-3 relative overflow-hidden my-4 max-w-sm mx-auto">
+      <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF1493]/10 rounded-full blur-xl pointer-events-none" />
+      <div className="flex items-center gap-2">
+        <Info className="w-4.5 h-4.5 text-[#FF1493] animate-pulse shrink-0" />
+        <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-200">
+          സീരിയൽ നമ്പർ എവിടെ കാണാം? (Where is the Serial Number?)
+        </h5>
+      </div>
+      <p className="text-[11px] font-semibold text-slate-400 leading-relaxed text-left">
+        നിങ്ങൾ സമർപ്പിക്കുന്ന ഔദ്യോഗിക ക്ലെയിം ഫോമിലെ മുകളിൽ വലതു വശത്തുള്ള സീരിയൽ നമ്പർ താഴെ നൽകുക. (Please enter the serial number from the top-right of your official claim form).
+      </p>
+      
+      {/* Visual Mockup representation of the physical paper form */}
+      <div className="bg-white text-slate-900 border border-slate-300 rounded-xl p-4 shadow-inner relative max-w-sm mx-auto font-sans leading-none text-left">
+        {/* Ribbon/Seal mock */}
+        <div className="flex justify-between items-start border-b border-dashed border-slate-200 pb-2.5 mb-2.5">
+          <div>
+            <p className="text-[8px] font-black tracking-tight text-slate-800 uppercase">HCRS CLAIM PETITION</p>
+            <p className="text-[6px] text-slate-400 mt-0.5">FORM NO. 1 / ക്ലെയിം ഫോം</p>
+          </div>
+          {/* Highlighted Serial No block with pulse */}
+          <div className="border border-dashed border-rose-500 bg-rose-50 px-2 py-1.5 rounded-lg text-right animate-pulse relative shrink-0">
+            <span className="text-[6px] font-black text-rose-500 uppercase tracking-wider block">SERIAL NO / സീരിയൽ</span>
+            <span className="text-xs font-black text-rose-600 block leading-tight font-mono">12345</span>
+            {/* Soft pointer arrow */}
+            <div className="absolute -left-12 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[7px] px-1 py-0.5 rounded flex items-center shadow-md">
+              ഇതാണ്! <span className="ml-1 text-[8px]">➜</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Mock form lines */}
+        <div className="space-y-1.5 opacity-55">
+          <div className="h-1.5 bg-slate-200 rounded w-[80%]" />
+          <div className="h-1.5 bg-slate-200 rounded w-[95%]" />
+          <div className="h-1.5 bg-slate-200 rounded w-[60%]" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface SupportClaimFormProps {
@@ -103,6 +148,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [selfTotalReceived, setSelfTotalReceived] = useState(0);
   const [selfTotalPending, setSelfTotalPending] = useState(0);
   const [selfNotes, setSelfNotes] = useState('');
+  const [selfSerialNo, setSelfSerialNo] = useState('');
 
   // 2. Claimant State - Parent (Mother or Father)
   const [parentSelected, setParentSelected] = useState(false);
@@ -117,6 +163,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [parentTotalReceived, setParentTotalReceived] = useState(0);
   const [parentTotalPending, setParentTotalPending] = useState(0);
   const [parentNotes, setParentNotes] = useState('');
+  const [parentSerialNo, setParentSerialNo] = useState('');
 
   // 3. Claimant State - Child (Son or Daughter)
   const [childSelected, setChildSelected] = useState(false);
@@ -131,6 +178,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [childTotalReceived, setChildTotalReceived] = useState(0);
   const [childTotalPending, setChildTotalPending] = useState(0);
   const [childNotes, setChildNotes] = useState('');
+  const [childSerialNo, setChildSerialNo] = useState('');
 
   // 4. Claimant State - Spouse (Wife or Husband)
   const [spouseSelected, setSpouseSelected] = useState(false);
@@ -145,6 +193,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const [spouseTotalReceived, setSpouseTotalReceived] = useState(0);
   const [spouseTotalPending, setSpouseTotalPending] = useState(0);
   const [spouseNotes, setSpouseNotes] = useState('');
+  const [spouseSerialNo, setSpouseSerialNo] = useState('');
 
   // General Questions
   const [futurePreference, setFuturePreference] = useState('');
@@ -371,19 +420,24 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const handleCategoryDetailChange = (
     claimant: 'self' | 'parent' | 'child' | 'spouse',
     catId: string,
-    field: 'paid' | 'received',
+    field: 'paid' | 'received' | 'serialNo',
     value: string
   ) => {
-    const numVal = parseFloat(value) || 0;
     const setter = claimant === 'self' ? setSelfCategoryDetails 
                  : claimant === 'parent' ? setParentCategoryDetails 
                  : claimant === 'child' ? setChildCategoryDetails
                  : setSpouseCategoryDetails;
     
     setter(prev => {
-      const current = prev[catId] || { paid: 0, received: 0, pending: 0 };
-      const updated = { ...current, [field]: numVal };
-      updated.pending = updated.paid - updated.received;
+      const current = prev[catId] || { paid: 0, received: 0, pending: 0, serialNo: '' };
+      let updated;
+      if (field === 'serialNo') {
+        updated = { ...current, [field]: value };
+      } else {
+        const numVal = parseFloat(value) || 0;
+        updated = { ...current, [field]: numVal };
+        updated.pending = updated.paid - updated.received;
+      }
       return { ...prev, [catId]: updated };
     });
   };
@@ -472,25 +526,49 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   
   const selfValid = !selfSelected || (
     selfName.trim().length > 0 && 
-    (selfNoBreakup || selfCategories.length > 0)
+    (selfNoBreakup 
+      ? (selfSerialNo.trim().length > 0)
+      : (selfCategories.length > 0 && selfCategories.every(catId => {
+          const det = selfCategoryDetails[catId];
+          return det && det.serialNo && det.serialNo.trim().length > 0;
+        }))
+    )
   );
 
   const parentValid = !parentSelected || (
     parentName.trim().length > 0 && 
     parentRelation !== '' && 
-    (parentNoBreakup || parentCategories.length > 0)
+    (parentNoBreakup 
+      ? (parentSerialNo.trim().length > 0)
+      : (parentCategories.length > 0 && parentCategories.every(catId => {
+          const det = parentCategoryDetails[catId];
+          return det && det.serialNo && det.serialNo.trim().length > 0;
+        }))
+    )
   );
 
   const childValid = !childSelected || (
     childName.trim().length > 0 && 
     childRelation !== '' && 
-    (childNoBreakup || childCategories.length > 0)
+    (childNoBreakup 
+      ? (childSerialNo.trim().length > 0)
+      : (childCategories.length > 0 && childCategories.every(catId => {
+          const det = childCategoryDetails[catId];
+          return det && det.serialNo && det.serialNo.trim().length > 0;
+        }))
+    )
   );
 
   const spouseValid = !spouseSelected || (
     spouseName.trim().length > 0 && 
     spouseRelation !== '' && 
-    (spouseNoBreakup || spouseCategories.length > 0)
+    (spouseNoBreakup 
+      ? (spouseSerialNo.trim().length > 0)
+      : (spouseCategories.length > 0 && spouseCategories.every(catId => {
+          const det = spouseCategoryDetails[catId];
+          return det && det.serialNo && det.serialNo.trim().length > 0;
+        }))
+    )
   );
 
   const formIsValid = 
@@ -530,10 +608,10 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   const downloadTokenCard = async (relId: string, tokenVal: string | number, personName: string) => {
     const cardElement = document.getElementById(`token-card-${relId}`);
     if (!cardElement) {
-      toast.error('ടോക്കൺ കാർഡ് കണ്ടെത്താൻ സാധിച്ചില്ല.');
+      toast.error('സീരിയൽ കാർഡ് കണ്ടെത്താൻ സാധിച്ചില്ല.');
       return;
     }
-    const loadingToast = toast.loading('ടോക്കൺ കാർഡ് ചിത്രം ഡൌൺലോഡിനായി തയ്യാറാക്കുന്നു...');
+    const loadingToast = toast.loading('സീരിയൽ കാർഡ് ചിത്രം ഡൌൺലോഡിനായി തയ്യാറാക്കുന്നു...');
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
       const canvas = await html2canvas(cardElement, {
@@ -544,13 +622,13 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       
       const imgData = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `HCRS_Token_${tokenVal}_${personName.replace(/\s+/g, '_')}.png`;
+      link.download = `HCRS_Serial_${tokenVal}_${personName.replace(/\s+/g, '_')}.png`;
       link.href = imgData;
       link.click();
       
-      toast.success('ടോക്കൺ കാർഡ് വിജയകരമായി ഗാലറിയിലേക്ക് സേവ് ചെയ്തിട്ടുണ്ട്! 📸', { id: loadingToast });
+      toast.success('സീരിയൽ കാർഡ് വിജയകരമായി ഗാലറിയിലേക്ക് സേവ് ചെയ്തിട്ടുണ്ട്! 📸', { id: loadingToast });
     } catch (error) {
-      console.error('Error generating token card image:', error);
+      console.error('Error generating serial card image:', error);
       toast.error('ചിത്രം തെയ്യാറാക്കാൻ പറ്റിയില്ല. ദയവായി നേരിട്ട് സ്ക്രീൻഷോട്ട് എടുക്കുക.', { id: loadingToast });
     }
   };
@@ -656,13 +734,12 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         });
       }
 
-      let offset = 0;
-
       // 1. Submit Self Claim
       if (selfSelected && !hasSelf) {
-        offset++;
-        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
-        assignedTokens['Self'] = tokenVal;
+        const tokenVal = selfNoBreakup 
+          ? selfSerialNo.trim() 
+          : selfCategories.map(cat => selfCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
+        assignedTokens['Self'] = tokenVal || '1001';
         await deleteExistingForCategory(['Self']);
         const selfClaim = {
           ...commonData,
@@ -678,17 +755,19 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: selfTotalReceived,
           totalPending: selfTotalPending,
           notes: selfNotes,
-          tokenNo: tokenVal,
+          tokenNo: tokenVal || '1001',
+          serialNo: selfNoBreakup ? selfSerialNo.trim() : '',
         };
         await addDoc(collection(db, 'claims'), selfClaim);
       }
 
       // 2. Submit Parent Claim
       if (parentSelected && !hasParent) {
-        offset++;
-        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
+        const tokenVal = parentNoBreakup 
+          ? parentSerialNo.trim() 
+          : parentCategories.map(cat => parentCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
         const relType = parentRelation || 'Parent';
-        assignedTokens[relType] = tokenVal;
+        assignedTokens[relType] = tokenVal || '1002';
         await deleteExistingForCategory(['Mother', 'Father']);
         const parentClaim = {
           ...commonData,
@@ -704,17 +783,19 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: parentTotalReceived,
           totalPending: parentTotalPending,
           notes: parentNotes,
-          tokenNo: tokenVal,
+          tokenNo: tokenVal || '1002',
+          serialNo: parentNoBreakup ? parentSerialNo.trim() : '',
         };
         await addDoc(collection(db, 'claims'), parentClaim);
       }
 
       // 3. Submit Child Claim
       if (childSelected && !hasChild) {
-        offset++;
-        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
+        const tokenVal = childNoBreakup 
+          ? childSerialNo.trim() 
+          : childCategories.map(cat => childCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
         const relType = childRelation || 'Child';
-        assignedTokens[relType] = tokenVal;
+        assignedTokens[relType] = tokenVal || '1003';
         await deleteExistingForCategory(['Son', 'Daughter']);
         const childClaim = {
           ...commonData,
@@ -730,17 +811,19 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: childTotalReceived,
           totalPending: childTotalPending,
           notes: childNotes,
-          tokenNo: tokenVal,
+          tokenNo: tokenVal || '1003',
+          serialNo: childNoBreakup ? childSerialNo.trim() : '',
         };
         await addDoc(collection(db, 'claims'), childClaim);
       }
 
       // 4. Submit Spouse Claim
       if (spouseSelected && !hasSpouse) {
-        offset++;
-        const tokenVal = `${prefix}-${baseTokenNo + offset}`;
+        const tokenVal = spouseNoBreakup 
+          ? spouseSerialNo.trim() 
+          : spouseCategories.map(cat => spouseCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
         const relType = spouseRelation || 'Spouse';
-        assignedTokens[relType] = tokenVal;
+        assignedTokens[relType] = tokenVal || '1004';
         await deleteExistingForCategory(['Wife', 'Husband']);
         const spouseClaim = {
           ...commonData,
@@ -756,7 +839,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: spouseTotalReceived,
           totalPending: spouseTotalPending,
           notes: spouseNotes,
-          tokenNo: tokenVal,
+          tokenNo: tokenVal || '1004',
+          serialNo: spouseNoBreakup ? spouseSerialNo.trim() : '',
         };
         await addDoc(collection(db, 'claims'), spouseClaim);
       }
@@ -806,8 +890,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                        claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
                        claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
                     </Badge>
-                    <span className="text-[10px] font-black text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded border border-blue-100 font-mono inline-block">
-                      Token #{claim.tokenNo || 'N/A'}
+                    <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100 font-mono inline-block">
+                      സീരിയൽ: #{claim.tokenNo || claim.serialNo || 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -868,10 +952,10 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             <div className="bg-gradient-to-r from-amber-50 to-[#FFF8DC] border border-amber-300/60 rounded-2xl p-4 text-center shadow-xs">
               <div className="flex items-center justify-center gap-2 text-amber-700 font-extrabold text-[11px] mb-1.5 uppercase tracking-wider">
                 <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
-                <span>ടോക്കൺ ലഭിക്കാൻ നിർദ്ദേശം (Warning & Help)</span>
+                <span>സീരിയൽ കാർഡ് ലഭിക്കാൻ നിർദ്ദേശം (Warning & Help)</span>
               </div>
               <p className="text-[11.5px] font-bold text-slate-700 leading-relaxed">
-                ഭാവി ആവശ്യങ്ങൾക്കായി താഴെ നൽകിയിട്ടുള്ള നിങ്ങളുടെ <strong className="text-brand-magenta font-black">ഓരോ ടോക്കൺ കാർഡും ഡൗൺലോഡ് ചെയ്യുകയോ സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു ഫോൺ ഗാലറിയിൽ സൂക്ഷിക്കുകയോ ചെയ്യുക സുഹൃത്തേ!
+                ഭാവി ആവശ്യങ്ങൾക്കായി താഴെ നൽകിയിട്ടുള്ള നിങ്ങളുടെ <strong className="text-brand-magenta font-black">ഓരോ സീരിയൽ നമ്പർ കാർഡും ഡൗൺലോഡ് ചെയ്യുകയോ സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുത്തു ഫോൺ ഗാലറിയിൽ സൂക്ഷിക്കുകയോ ചെയ്യുക സുഹൃത്തേ!
               </p>
             </div>
 
@@ -908,7 +992,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                           HIGHRICH COMMUNITY REVIVAL SOCIETY
                         </h1>
                         <p className="text-[6.5px] text-[#FF1493] font-black tracking-widest uppercase leading-none italic mt-0.5">
-                          FINANCIAL REGISTRY PREMIUM TOKEN
+                          FINANCIAL REGISTRY PREMIUM SERIAL CARD
                         </p>
                       </div>
                     </div>
@@ -925,14 +1009,14 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.015] to-transparent pointer-events-none" />
                       
                       <p className="text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 font-sans">
-                        യുവർ ടോക്കൺ നമ്പർ
+                        ക്ലെയിം സീരിയൽ നമ്പർ
                       </p>
                       <h2 className="text-[#FF1493] text-5xl font-black tracking-tighter drop-shadow-[0_4px_10px_rgba(255,20,147,0.55)] font-mono my-2.5">
                         #{token}
                       </h2>
                       <div className="w-[50%] h-[1.5px] bg-gradient-to-r from-transparent via-[#FF1493]/30 to-transparent my-1" />
                       <p className="text-[8.5px] text-[#FF1493] font-mono tracking-widest font-black uppercase mt-1">
-                        PREMIUM CLAIM SECURITY ID #0{token}
+                        PREMIUM SECURITY SERIAL #0{token}
                       </p>
                     </div>
 
@@ -978,7 +1062,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                     className="w-[340px] h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-400/20"
                   >
                     <Download className="w-4 h-4 text-white animate-bounce" />
-                    <span>📸 ടോക്കൺ ഗെയിം ഓട്ടോ സേവ് ചെയ്യുക</span>
+                    <span>📸 സീരിയൽ നമ്പർ കാർഡ് സേവ് ചെയ്യുക</span>
                   </Button>
                 </div>
               );
@@ -1179,32 +1263,45 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
                 {/* Breakup Details OR Total manual entries */}
                 {selfNoBreakup ? (
-                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Paid"
-                          value={selfTotalPaid || ''}
-                          onChange={(e) => handleTotalChange('self', 'paid', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
+                  <div className="space-y-4">
+                    <ClaimSerialGuide />
+                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Paid"
+                            value={selfTotalPaid || ''}
+                            onChange={(e) => handleTotalChange('self', 'paid', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Received"
+                            value={selfTotalReceived || ''}
+                            onChange={(e) => handleTotalChange('self', 'received', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Received"
-                          value={selfTotalReceived || ''}
-                          onChange={(e) => handleTotalChange('self', 'received', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
-                      </div>
+                    
+                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
+                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
+                      <Input 
+                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
+                        value={selfSerialNo}
+                        onChange={(e) => setSelfSerialNo(e.target.value)}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
+                      />
                     </div>
                   </div>
                 ) : (
@@ -1228,27 +1325,42 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       })}
                     </div>
 
+                    {selfCategories.length > 0 && <ClaimSerialGuide />}
+
                     {/* Detailed Inputs */}
                     <div className="space-y-3">
                       {selfCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
-                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2 flex-1">
+                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                              <div className="flex gap-2 flex-1">
+                                <Input 
+                                  type="number" 
+                                  placeholder="Paid" 
+                                  value={selfCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('self', catId, 'paid', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                                <Input 
+                                  type="number" 
+                                  placeholder="Recd." 
+                                  value={selfCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('self', catId, 'received', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Serial Number entry for this category */}
+                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
+                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
                               <Input 
-                                type="number" 
-                                placeholder="Paid" 
-                                value={selfCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('self', catId, 'paid', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder="Recd." 
-                                value={selfCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('self', catId, 'received', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
+                                value={selfCategoryDetails[catId]?.serialNo || ''}
+                                onChange={(e) => handleCategoryDetailChange('self', catId, 'serialNo', e.target.value)}
+                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
                               />
                             </div>
                           </div>
@@ -1359,32 +1471,45 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
                 {/* Breakup Details OR Total manual entries */}
                 {parentNoBreakup ? (
-                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Paid"
-                          value={parentTotalPaid || ''}
-                          onChange={(e) => handleTotalChange('parent', 'paid', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
+                  <div className="space-y-4">
+                    <ClaimSerialGuide />
+                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Paid"
+                            value={parentTotalPaid || ''}
+                            onChange={(e) => handleTotalChange('parent', 'paid', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Received"
+                            value={parentTotalReceived || ''}
+                            onChange={(e) => handleTotalChange('parent', 'received', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Received"
-                          value={parentTotalReceived || ''}
-                          onChange={(e) => handleTotalChange('parent', 'received', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
-                      </div>
+                    
+                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
+                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
+                      <Input 
+                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
+                        value={parentSerialNo}
+                        onChange={(e) => setParentSerialNo(e.target.value)}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
+                      />
                     </div>
                   </div>
                 ) : (
@@ -1408,27 +1533,42 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       })}
                     </div>
 
+                    {parentCategories.length > 0 && <ClaimSerialGuide />}
+
                     {/* Detailed Inputs */}
                     <div className="space-y-3">
                       {parentCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
-                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2 flex-1">
+                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                              <div className="flex gap-2 flex-1">
+                                <Input 
+                                  type="number" 
+                                  placeholder="Paid" 
+                                  value={parentCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                                <Input 
+                                  type="number" 
+                                  placeholder="Recd." 
+                                  value={parentCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Serial Number entry for this category */}
+                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
+                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
                               <Input 
-                                type="number" 
-                                placeholder="Paid" 
-                                value={parentCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder="Recd." 
-                                value={parentCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
+                                value={parentCategoryDetails[catId]?.serialNo || ''}
+                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'serialNo', e.target.value)}
+                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
                               />
                             </div>
                           </div>
@@ -1539,32 +1679,45 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
                 {/* Breakup Details OR Total manual entries */}
                 {childNoBreakup ? (
-                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Paid"
-                          value={childTotalPaid || ''}
-                          onChange={(e) => handleTotalChange('child', 'paid', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
+                  <div className="space-y-4">
+                    <ClaimSerialGuide />
+                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Paid"
+                            value={childTotalPaid || ''}
+                            onChange={(e) => handleTotalChange('child', 'paid', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Received"
+                            value={childTotalReceived || ''}
+                            onChange={(e) => handleTotalChange('child', 'received', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Received"
-                          value={childTotalReceived || ''}
-                          onChange={(e) => handleTotalChange('child', 'received', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
-                      </div>
+                    
+                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
+                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
+                      <Input 
+                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
+                        value={childSerialNo}
+                        onChange={(e) => setChildSerialNo(e.target.value)}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
+                      />
                     </div>
                   </div>
                 ) : (
@@ -1588,27 +1741,42 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       })}
                     </div>
 
+                    {childCategories.length > 0 && <ClaimSerialGuide />}
+
                     {/* Detailed Inputs */}
                     <div className="space-y-3">
                       {childCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
-                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2 flex-1">
+                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                              <div className="flex gap-2 flex-1">
+                                <Input 
+                                  type="number" 
+                                  placeholder="Paid" 
+                                  value={childCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                                <Input 
+                                  type="number" 
+                                  placeholder="Recd." 
+                                  value={childCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Serial Number entry for this category */}
+                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
+                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
                               <Input 
-                                type="number" 
-                                placeholder="Paid" 
-                                value={childCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder="Recd." 
-                                value={childCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
+                                value={childCategoryDetails[catId]?.serialNo || ''}
+                                onChange={(e) => handleCategoryDetailChange('child', catId, 'serialNo', e.target.value)}
+                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
                               />
                             </div>
                           </div>
@@ -1719,32 +1887,45 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
                 {/* Breakup Details OR Total manual entries */}
                 {spouseNoBreakup ? (
-                  <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Paid"
-                          value={spouseTotalPaid || ''}
-                          onChange={(e) => handleTotalChange('spouse', 'paid', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
+                  <div className="space-y-4">
+                    <ClaimSerialGuide />
+                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Paid"
+                            value={spouseTotalPaid || ''}
+                            onChange={(e) => handleTotalChange('spouse', 'paid', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Input 
+                            type="number"
+                            placeholder="Received"
+                            value={spouseTotalReceived || ''}
+                            onChange={(e) => handleTotalChange('spouse', 'received', e.target.value)}
+                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input 
-                          type="number"
-                          placeholder="Received"
-                          value={spouseTotalReceived || ''}
-                          onChange={(e) => handleTotalChange('spouse', 'received', e.target.value)}
-                          className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                        />
-                      </div>
+                    
+                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
+                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
+                      <Input 
+                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
+                        value={spouseSerialNo}
+                        onChange={(e) => setSpouseSerialNo(e.target.value)}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
+                      />
                     </div>
                   </div>
                 ) : (
@@ -1768,27 +1949,42 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       })}
                     </div>
 
+                    {spouseCategories.length > 0 && <ClaimSerialGuide />}
+
                     {/* Detailed Inputs */}
                     <div className="space-y-3">
                       {spouseCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-4">
-                            <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2 flex-1">
+                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
+                              <div className="flex gap-2 flex-1">
+                                <Input 
+                                  type="number" 
+                                  placeholder="Paid" 
+                                  value={spouseCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                                <Input 
+                                  type="number" 
+                                  placeholder="Recd." 
+                                  value={spouseCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
+                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Serial Number entry for this category */}
+                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
+                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
                               <Input 
-                                type="number" 
-                                placeholder="Paid" 
-                                value={spouseCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder="Recd." 
-                                value={spouseCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
-                                className="h-9 border-slate-200 text-xs text-slate-700 bg-white"
+                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
+                                value={spouseCategoryDetails[catId]?.serialNo || ''}
+                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'serialNo', e.target.value)}
+                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
                               />
                             </div>
                           </div>

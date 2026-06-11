@@ -3871,7 +3871,7 @@ export default function AdminDashboard({
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 w-[100px]">Token No</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 w-[100px]">Serial No</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Member Info</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Relation</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
@@ -3883,9 +3883,9 @@ export default function AdminDashboard({
                       <TableBody>
                         {filteredClaims.map(claim => (
                           <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
-                            <TableCell className="px-6 py-4 font-black text-brand-magenta text-sm font-mono">
+                            <TableCell className="px-6 py-4 font-black text-[#FF1493] text-sm font-mono">
                               <span className="bg-[#FF1493]/5 border border-[#FF1493]/15 py-1 px-2.5 rounded-lg text-[#FF1493]">
-                                #{claim.tokenNo ?? 'N/A'}
+                                #{claim.tokenNo ?? claim.serialNo ?? 'N/A'}
                               </span>
                             </TableCell>
                             <TableCell className="px-6 py-4">
@@ -5060,8 +5060,8 @@ export default function AdminDashboard({
                              <p className="font-bold text-brand-magenta text-sm font-mono">{claimUser.membershipId || selectedClaim.membershipId || 'PENDING'}</p>
                            </div>
                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Token Number (ടോക്കൺ നമ്പർ)</p>
-                              <p className="font-extrabold text-[#FF1493] text-sm font-mono bg-[#FF1493]/5 border border-[#FF1493]/15 px-2 py-0.5 rounded w-fit">#{selectedClaim.tokenNo ?? 'N/A'}</p>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serial Number (സീരിയൽ നമ്പർ)</p>
+                              <p className="font-extrabold text-[#FF1493] text-sm font-mono bg-[#FF1493]/5 border border-[#FF1493]/15 px-2 py-0.5 rounded w-fit">#{selectedClaim.tokenNo ?? selectedClaim.serialNo ?? 'N/A'}</p>
                           </div>
                           <div className="space-y-1">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</p>
