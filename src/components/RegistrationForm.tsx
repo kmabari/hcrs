@@ -294,7 +294,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <Button 
                     type="submit" 
                     disabled={!agreeAdhoc || (district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])}
-                    className="w-full h-13 rounded-2xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 uppercase tracking-widest bg-gradient-to-r from-brand-blue to-indigo-600 text-white disabled:opacity-50 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:translate-y-0"
+                    className="w-full h-13 rounded-2xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 uppercase tracking-widest bg-brand-blue hover:bg-[#083D91] text-white disabled:opacity-50 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:translate-y-0"
                   >
                     {(district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])
                       ? t('reg_quota_exhausted', 'Quota Exhausted / ക്വാട്ട കഴിഞ്ഞു') 
@@ -308,17 +308,17 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                 <div className="bg-[#030e1d] text-white rounded-[32px] p-6 md:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
                   <div className="absolute top-0 right-0 w-36 h-36 bg-brand-blue/20 blur-3xl pointer-events-none" />
                   <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-brand-magenta/15 blur-3xl pointer-events-none" />
-                  <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-magenta to-indigo-600" />
+                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta" />
                   
                   <h4 className="font-extrabold text-white text-base md:text-lg flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
-                    <span className="p-1.5 rounded-xl bg-brand-blue/20 text-[#0066FF] flex items-center justify-center animate-pulse">
-                      <Receipt className="w-5 h-5 text-[#FF1493]" />
+                    <span className="p-1.5 rounded-xl bg-brand-blue/20 text-brand-blue flex items-center justify-center animate-pulse">
+                      <Receipt className="w-5 h-5 text-brand-magenta" />
                     </span>
                     {t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}
                   </h4>
                   
                   <p className="text-xs text-slate-200 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/5 p-3 rounded-2xl border border-brand-blue/20 mb-5">
-                    {t('reg_upi_scan_instruction', 'Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-[#FF1493] font-black text-lg underline decoration-brand-magenta">₹200</span> for 1-Year National Active Membership. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക):')}
+                    {t('reg_upi_scan_instruction', 'Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-brand-magenta font-black text-lg underline decoration-brand-magenta">₹200</span> for 1-Year National Active Membership. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക):')}
                   </p>
 
                   <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/60 p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
@@ -352,7 +352,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                        {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-[#FF1493]">*</span>
+                        {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-brand-magenta font-black">*</span>
                       </label>
                       <Input 
                         type="date"
@@ -363,7 +363,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     </div>
                     <div className="space-y-2">
                       <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                        {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-[#FF1493]">*</span>
+                        {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-brand-magenta font-black">*</span>
                       </label>
                       <Input 
                         type="time"
@@ -397,7 +397,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
                   <div className="space-y-2">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-[#FF1493]">*</span>
+                      {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-brand-magenta font-black">*</span>
                     </label>
                     <Input 
                       value={transactionId}

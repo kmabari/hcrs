@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;850;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: "Manrope", sans-serif;
+    --font-heading: "Poppins", sans-serif;
     --font-sans: "Inter", sans-serif;
     --font-mono: "Space Grotesk", monospace;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -46,6 +46,7 @@
     --color-brand-gold-light: var(--brand-gold-light);
     --color-brand-blue: var(--brand-blue);
     --color-brand-magenta: var(--brand-magenta);
+    --color-brand-secondary-blue: var(--brand-secondary-blue);
     --color-forest: var(--brand-blue);
     --color-earth: var(--brand-magenta);
     --color-clay: var(--clay);
@@ -60,40 +61,43 @@
 }
 
 :root {
-    /* Premium Design Theme Palette */
-    --brand-blue: #0066FF;
-    --brand-magenta: #FF1493;
-    --brand-navy: #081426;
-    --clay: #F8FAFC;
-    --clay-dark: #F1F5F9;
+    /* Government Portal & Corporate Theme Palette */
+    --brand-blue: #0A2E5C;
+    --brand-secondary-blue: #1E5AA8;
+    --brand-magenta: #D91E63;
+    --brand-navy: #222222;
+    --brand-dark-purple: #0A2E5C;
+    --brand-purple: #1E5AA8;
+    --clay: #FFFFFF;
+    --clay-dark: #F5F7FA;
 
-    --background: var(--clay);
-    --foreground: #081426;
+    --background: #FFFFFF;
+    --foreground: #222222;
     
     --card: #FFFFFF;
-    --card-foreground: #081426;
+    --card-foreground: #222222;
     
     --popover: #FFFFFF;
-    --popover-foreground: #081426;
+    --popover-foreground: #222222;
     
-    --primary: var(--brand-magenta);
+    --primary: var(--brand-blue);
     --primary-foreground: #FFFFFF;
     
-    --secondary: var(--brand-blue);
+    --secondary: var(--brand-secondary-blue);
     --secondary-foreground: #FFFFFF;
     
-    --muted: #F1F5F9;
-    --muted-foreground: #475569;
+    --muted: #E5E7EB;
+    --muted-foreground: #4B5563;
     
     --accent: var(--clay-dark);
     --accent-foreground: var(--brand-blue);
     
-    --destructive: #EF4444;
-    --border: #E2E8F0;
-    --input: #E2E8F0;
+    --destructive: #DC2626;
+    --border: #E5E7EB;
+    --input: #E5E7EB;
     --ring: var(--brand-blue);
     
-    --radius: 1.75rem;
+    --radius: 0.625rem;
 }
 
 @layer base {
@@ -102,36 +106,33 @@
     }
   body {
     @apply bg-background text-foreground;
-     background-image: 
-        radial-gradient(circle at 5% 15%, rgba(0, 102, 255, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 95% 85%, rgba(255, 20, 147, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 50% 50%, rgba(8, 20, 38, 0.01) 0%, transparent 60%);
+     background-color: #FFFFFF;
      background-attachment: fixed;
     }
   html {
-    @apply font-sans antialiased;
+    @apply font-sans antialiased text-[#222222];
     }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading tracking-tight text-[#081426] font-extrabold;
+    @apply font-heading tracking-tight text-[#222222] font-semibold;
   }
 }
 
 @layer utilities {
   .shadow-premium {
-    box-shadow: 0 25px 60px rgba(8, 20, 38, 0.07), 0 5px 15px rgba(0,0,0,0.01);
+    box-shadow: 0 4px 12px rgba(10, 46, 92, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
   }
   
   .shadow-projected {
-    box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.06), -10px -10px 30px rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   }
   
   .shadow-projected-active {
-    box-shadow: inset 5px 5px 15px rgba(0, 0, 0, 0.08), inset -5px -5px 15px rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
   .glass-card {
-    @apply bg-white/80 backdrop-blur-2xl border border-white/50;
-    box-shadow: 0 25px 60px rgba(8, 20, 38, 0.07), 0 5px 15px rgba(0,0,0,0.01);
+    @apply bg-white border border-slate-200;
+    box-shadow: 0 4px 12px rgba(10, 46, 92, 0.05);
   }
 }
 

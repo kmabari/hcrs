@@ -313,11 +313,11 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
               <div className="bg-[#030e1d] text-white rounded-[32px] p-6 md:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
                 <div className="absolute top-0 right-0 w-36 h-36 bg-brand-blue/20 blur-3xl pointer-events-none" />
                 <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-brand-magenta/15 blur-3xl pointer-events-none" />
-                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-magenta to-indigo-600" />
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta" />
                 
                 <h4 className="font-extrabold text-white text-base md:text-lg flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
-                  <span className="p-1.5 rounded-xl bg-brand-blue/20 text-[#0066FF] flex items-center justify-center animate-pulse">
-                    <Receipt className="w-5 h-5 text-[#FF1493]" />
+                  <span className="p-1.5 rounded-xl bg-brand-blue/20 text-brand-blue flex items-center justify-center animate-pulse">
+                    <Receipt className="w-5 h-5 text-brand-magenta" />
                   </span>
                   {t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}
                 </h4>
@@ -357,7 +357,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-[#FF1493]">*</span>
+                      {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-brand-magenta font-black">*</span>
                     </label>
                     <Input 
                       type="date"
@@ -368,7 +368,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   </div>
                   <div className="space-y-2 text-left">
                     <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-[#FF1493]">*</span>
+                      {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-brand-magenta font-black">*</span>
                     </label>
                     <Input 
                       type="time"
@@ -402,7 +402,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
                 <div className="space-y-2 text-left">
                   <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                    {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-[#FF1493]">*</span>
+                    {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-brand-magenta font-black">*</span>
                   </label>
                   <Input 
                     value={transactionId}
