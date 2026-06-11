@@ -147,7 +147,7 @@ service cloud.firestore {
       
       allow create: if ((isSignedIn() && isOwner(userId) && isValidId(userId)) || isOperator()) && 
                     isValidUser(incoming()) &&
-                    (isOperator() || (incoming().get('isAdmin', false) == false && incoming().get('role', 'member') == 'member' && incoming().get('membership_type', 'ADHOC_MEMBER') == 'ADHOC_MEMBER'));
+                    (isOperator() || (incoming().get('isAdmin', false) == false && incoming().get('role', 'member') == 'member' && (incoming().get('membership_type', 'ADHOC_MEMBER') in ['ADHOC_MEMBER', 'LIFE_MEMBER'])));
 
       allow update: if isValidUser(incoming()) && (
         // Action 1: Admin/Operator Update
@@ -164,7 +164,14 @@ service cloud.firestore {
          incoming().renewalPending == true)
       );
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          (userId.startsWith('offline_') || userId.startsWith('life_')) && (
+            (existing().get('email', '') != null && existing().get('email', '') == request.auth.token.email) ||
+            (existing().get('mobile', '') != null && request.auth.token.email.startsWith(existing().get('mobile', '')))
+          )
+        )
+      );
     }
 
     // --- Collection: settings ---

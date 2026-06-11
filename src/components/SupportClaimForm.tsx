@@ -1192,7 +1192,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                     </div>
                     <div className="text-right flex flex-col items-end gap-1">
                       <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 font-mono">
-                        Token #{claim.tokenNo || 'N/A'}
+                        സീരിയൽ #{claim.tokenNo || 'N/A'}
                       </span>
                       <div>
                         <p className="text-[8px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">Pending Amount</p>
