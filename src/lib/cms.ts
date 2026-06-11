@@ -268,8 +268,11 @@ export interface CommitteeMember {
 
 export async function addCommitteeMember(member: Omit<CommitteeMember, 'id' | 'createdAt'>) {
   const collRef = collection(db, 'committees');
+  const cleanMember = Object.fromEntries(
+    Object.entries(member).filter(([_, v]) => v !== undefined)
+  );
   return await addDoc(collRef, {
-    ...member,
+    ...cleanMember,
     createdAt: serverTimestamp(),
     order: member.order !== undefined ? member.order : 0
   });
@@ -277,7 +280,10 @@ export async function addCommitteeMember(member: Omit<CommitteeMember, 'id' | 'c
 
 export async function updateCommitteeMember(id: string, updates: Partial<CommitteeMember>) {
   const docRef = doc(db, 'committees', id);
-  await updateDoc(docRef, updates);
+  const cleanUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([_, v]) => v !== undefined)
+  );
+  await updateDoc(docRef, cleanUpdates);
 }
 
 export async function deleteCommitteeMember(id: string) {

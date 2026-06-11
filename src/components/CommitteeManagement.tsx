@@ -90,14 +90,14 @@ export default function CommitteeManagement({ user }: { user: any }) {
     setSaving(true);
     const data: Omit<CommitteeMember, 'id' | 'createdAt'> = {
       name: name.trim(),
-      nameMl: nameMl.trim() || undefined,
+      nameMl: nameMl.trim() || "",
       designation: designation.trim(),
-      designationMl: designationMl.trim() || undefined,
+      designationMl: designationMl.trim() || "",
       level,
-      imageUrl: imageUrl.trim() || undefined,
+      imageUrl: imageUrl.trim() || "",
       order: Number(order) || 0,
-      district: level !== 'state' ? district : undefined,
-      mandalam: level === 'mandalam' ? mandalam : undefined
+      district: level !== 'state' ? district : "",
+      mandalam: level === 'mandalam' ? mandalam : ""
     };
 
     try {
