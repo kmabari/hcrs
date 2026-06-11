@@ -280,7 +280,8 @@ export default function App() {
     checkClaimSubmission();
   }, [user, claimRefreshTrigger]);
 
-  const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && (
+  const isLifeMember = user && ((user.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || (user.membershipType || '').toUpperCase() === 'LIFE');
+  const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && !isLifeMember && (
     user.renewalPending ||
     (() => {
       const exp = user.expiryDate || (() => {
@@ -748,7 +749,11 @@ export default function App() {
                 // Cleanup old offline/temporary document from Firestore to avoid duplicate counts/listing
                 if (oldDocId.startsWith('offline_') || oldDocId.startsWith('life_')) {
                   console.log(`Deleting old offline/life document ${oldDocId} since it has been synced to ${authUser.uid}`);
-                  await deleteDoc(doc(db, 'users', oldDocId));
+                  try {
+                    await deleteDoc(doc(db, 'users', oldDocId));
+                  } catch (delErr) {
+                    console.warn("Non-blocking deleteDoc of old profile failed:", delErr);
+                  }
                 }
                 
                 healed = true;

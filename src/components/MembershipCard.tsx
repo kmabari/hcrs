@@ -190,7 +190,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
-  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && (
+  const isLifeMember = ((member.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || (member.membershipType || '').toUpperCase() === 'LIFE');
+  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && !isLifeMember && (
     member.renewalPending ||
     (() => {
       const exp = member.expiryDate || (() => {
