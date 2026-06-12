@@ -56,18 +56,22 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isMainAdmin() || isSecondAdmin() || (
-        isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') in ['admin', 'operator'])
+      return isSignedIn() && (
+        isMainAdmin() || isSecondAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') in ['admin', 'operator'])
+        )
       );
     }
 
     function isOperator() {
       // Operators include admins and those explicitly assigned the operator role
-      return isAdmin() || (
-        isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'operator'
+      return isSignedIn() && (
+        isAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'operator'
+          )
         )
       );
     }
@@ -143,7 +147,7 @@ service cloud.firestore {
       
       // Allow limited list queries for registration duplicate checks and renewal lookups
       // This is necessary because these operations happen before authentication or for non-auth lookups
-      allow list: if isOperator() || (request.query.limit <= 2);
+      allow list: if isOperator() || (request.query.limit != null && request.query.limit <= 5);
       
       allow create: if (isSignedIn() && isOwner(userId)) && 
                     (request.resource.data.isAdmin == false && request.resource.data.role == 'member');
