@@ -102,7 +102,7 @@ export default function LandingPage({
   onRegisterWithMobile, 
   onLoginDirect 
 }: LandingPageProps) {
-  const [stage, setStage] = useState<'landing' | 'guidelines' | 'claim_check'>('landing');
+  const [stage, setStage] = useState<'landing' | 'guidelines' | 'claim_check' | 'privacy' | 'terms' | 'refund' | 'contact'>('landing');
   const { t, lang } = useI18n();
   const [agreed, setAgreed] = useState(false);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
@@ -197,6 +197,41 @@ export default function LandingPage({
       unsubGallery();
     };
   }, []);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#privacy') {
+        setStage('privacy');
+        window.scrollTo({ top: 0 });
+      } else if (hash === '#terms') {
+        setStage('terms');
+        window.scrollTo({ top: 0 });
+      } else if (hash === '#refund') {
+        setStage('refund');
+        window.scrollTo({ top: 0 });
+      } else if (hash === '#contact') {
+        setStage('contact');
+        window.scrollTo({ top: 0 });
+      } else if (hash === '#guidelines') {
+        setStage('guidelines');
+        window.scrollTo({ top: 0 });
+      } else if (hash === '#claim_check') {
+        setStage('claim_check');
+        window.scrollTo({ top: 0 });
+      } else if (hash === '#' || hash === '#landing' || !hash) {
+        setStage('landing');
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [stage]);
 
   return (
     <div className="min-h-screen bg-white text-[#222222] font-sans selection:bg-[#0A2E5C]/10 relative overflow-x-hidden pb-12">
@@ -1801,15 +1836,17 @@ export default function LandingPage({
             </section>
 
             {/* Simple Clean Modern Footer */}
-            <footer className="pt-12 border-t border-slate-200/50 max-w-5xl mx-auto">
+            <footer className="pt-12 border-t border-slate-200/50 max-w-5xl mx-auto pb-6">
                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left text-xs text-slate-400">
                   <div className="flex items-center gap-2">
                     <Logo size="sm" className="h-[24px] w-auto border border-slate-200/30 p-0.5 rounded bg-white" />
                     <p className="font-bold">© {new Date().getFullYear()} HCRS Society. Public Registry Channel.</p>
                   </div>
-                  <div className="flex gap-4 font-bold uppercase tracking-wider text-[9px]">
-                    <a href="#" className="hover:text-slate-600 transition-colors">Privacy</a>
-                    <a href="#" className="hover:text-slate-600 transition-colors">Terms</a>
+                  <div className="flex flex-wrap justify-center gap-4 font-bold uppercase tracking-wider text-[9px]">
+                    <a href="#privacy" className="hover:text-[#D91E63] transition-colors">Privacy Policy</a>
+                    <a href="#terms" className="hover:text-[#D91E63] transition-colors">Terms & Conditions</a>
+                    <a href="#refund" className="hover:text-[#D91E63] transition-colors">Refund Policy</a>
+                    <a href="#contact" className="hover:text-[#D91E63] transition-colors">Contact Us</a>
                   </div>
                </div>
             </footer>
@@ -1885,7 +1922,7 @@ export default function LandingPage({
               </CardFooter>
             </Card>
           </motion.div>
-        ) : (
+        ) : stage === 'claim_check' ? (
           <motion.div
             key="claim_check"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -2271,7 +2308,282 @@ export default function LandingPage({
               </CardContent>
             </Card>
           </motion.div>
-        )}
+        ) : stage === 'privacy' ? (
+          <motion.div
+            key="privacy"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+          >
+            <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
+              <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
+                    <Shield className="w-5 h-5 text-[#D91E63]" />
+                    Privacy Policy | സ്വകാര്യതാ നയം
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { window.location.hash = ''; }} 
+                    className="rounded-[6px] w-9 h-9 p-0 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all"
+                  >
+                     <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-700 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">1. Introduction / ആമുഖം</h3>
+                  <p>Welcome to <strong>{settings.fullName || "Highrich Community Revival Society"}</strong>. We value your privacy and trust. This policy governs how we collect, process, and safeguard your personal data to ensure transparency and security on our portal.</p>
+                  <p>{settings.fullName || "ഹൈറിച്ച് കമ്മ്യൂണിറ്റി റിവൈവൽ സൊസൈറ്റി"} ലേക്ക് സ്വാഗതം. നിങ്ങളുടെ സ്വകാര്യതയും വിവരങ്ങളും സുരക്ഷിതമായി സൂക്ഷിക്കുക എന്നത് ഞങ്ങളുടെ ഉത്തരവാദിത്തമാണ്. ഞങ്ങൾ ശേഖരിക്കുന്ന വിവരങ്ങൾ എങ്ങനെ ഉപയോഗിക്കുന്നു എന്ന് ഇവിടെ വിശദീകരിക്കുന്നു.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">2. Information We Collect / ശേഖരിക്കുന്ന വിവരങ്ങൾ</h3>
+                  <p>To register and access the public registry or community support, we collect:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Personal Details:</strong> Full Name, Contact Number (Mobile), Email ID, Full Postal Address.</li>
+                    <li><strong>Administrative Fields:</strong> Kerala Legislative Assembly Constituency (നിയമസഭാ മണ്ഡലം), District, Local Self-Government/Local Body (തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം).</li>
+                    <li><strong>Verification Proofs:</strong> Payment transaction ID, screenshots, and membership references.</li>
+                  </ul>
+                  <p>രജിസ്ട്രേഷൻ സമയത്ത് നിങ്ങളുടെ പേര്, വിലാസം, ഫോൺ നമ്പർ, ഇമെയിൽ ഐഡി, നിയമസഭാ മണ്ഡലം, തദ്ദേശ സ്ഥാപനം, സംസ്ഥാനം എന്നിവയും പെയ്മെന്റ് വിവരങ്ങളും ഞങ്ങൾ ശേഖരിക്കുന്നു.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">3. Purpose & Data Usage / വിവരങ്ങളുടെ ഉപയോഗം</h3>
+                  <p>We collect and utilize this data strictly for administrative coordination, verification of member status, organizing legal/support updates, and facilitating direct support distribution programs within HCRS Kerala.</p>
+                  <p>ഈ വിവരങ്ങൾ അംഗത്വ വിവരങ്ങളുടെ പരിശോധനയ്ക്കും, സൊസൈറ്റിയുടെ വിവിധ പുനരുജ്ജീവന പദ്ധതികളുടെ ആസൂത്രണത്തിനും ഏകോപനത്തിനും മാത്രമായി ഉപയോഗിക്കുന്നു.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">4. Data Security & Storage / വിവരങ്ങളുടെ സുരക്ഷിതത്വം</h3>
+                  <p>All gathered information is hosted inside securely configured Google Cloud Firebase database systems. Access is guarded by multi-layered secure rules. We do not sell, rent, lease, or share your private data with unaffiliated third parties.</p>
+                  <p>നിങ്ങൾ നൽകുന്ന വിവരങ്ങൾ ഗൂഗിൾ ക്ലൗഡ് ഫയർബേസ് സെക്യൂർ ഡാറ്റാബേസിൽ അതീവ സുരക്ഷിതമായാണ് സൂക്ഷിക്കുക. ഇത് മറ്റാർക്കും കൈമാറുകയോ ദുരുപയോഗം ചെയ്യുകയോ ഇല്ല.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">5. Cookies & Tracking / കുക്കികൾ</h3>
+                  <p>We use localized browser sessionStorage and cookie tokens to maintain secure sign-in states, remember selected languages, and prevent session timing out inside iframe-embedded spaces.</p>
+                </div>
+
+                <div className="space-y-2 pb-2">
+                  <h3 className="text-sm font-bold text-slate-800">6. Revisions & Updates / നയങ്ങളിലെ മാറ്റം</h3>
+                  <p>HCRS reserves the right to revise this Privacy Policy at any time. Changes will be posted dynamically to this section with an updated timestamp.</p>
+                  <p>Privacy Policy-യിലുള്ള മാറ്റങ്ങൾ കാലാനുസൃതമായി ഈ പേജിൽ അപ്ഡേറ്റ് ചെയ്യുന്നതാണ്.</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-4 font-bold">Last Updated: June 12, 2026</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : stage === 'terms' ? (
+          <motion.div
+            key="terms"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+          >
+            <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
+              <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
+                    <Scale className="w-5 h-5 text-[#D91E63]" />
+                    Terms & Conditions | നിബന്ധനകളും വ്യവസ്ഥകളും
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { window.location.hash = ''; }} 
+                    className="rounded-[6px] w-9 h-9 p-0 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all"
+                  >
+                     <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-700 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">1. Acceptance of Terms / നിബന്ധനകളുടെ സ്വീകാര്യത</h3>
+                  <p>By accessing this website, registering your profile, making dynamic payments, or interacting with HCRS portal services, you explicitly agree to follow, respect, and be governed by these Terms and Conditions.</p>
+                  <p>ഈ സൊസൈറ്റി വെബ്പോർട്ടൽ ഉപയോഗിക്കുന്നതിലൂടെയും രജിസ്ട്രേഷൻ പൂർത്തിയാക്കുന്നതിലൂടെയും സൊസൈറ്റിയുടെ എല്ലാ നിബന്ധനകളും നിയമങ്ങളും നിങ്ങൾ പൂർണ്ണമനസ്സോടെ അംഗീകരിക്കുകയാണ്.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">2. Eligibility & Membership / യോഗ്യതകൾ</h3>
+                  <p>Registration and use of identity cards are strictly limited to valid citizens supportive of the core objectives of Highrich Community Revival Society (HCRS). Membership is certified post fee payment verification.</p>
+                  <p>സൊസൈറ്റിയുടെ ഭവനനിർമ്മാണം/കമ്മ്യൂണിറ്റി ഉയിർത്തെഴുന്നേൽപ്പ് ലക്ഷ്യങ്ങളെ പിന്താങ്ങുന്നവർക്ക് മാത്രമാണ് രജിസ്ട്രേഷനും തിരിച്ചറിയൽ കാർഡും ലഭിക്കാൻ അർഹതയുള്ളത്.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">3. Integrity of Submitted Data / സത്യസന്ധത</h3>
+                  <p>Users must submit accurate, legitimate, and correct values. If HCRS administrators detect fabricated images, incorrect transaction IDs, mismatched addresses, or fraudulent claims, the user profile is permanently blacklisted, blocked, and marked "disabled" without a refund.</p>
+                  <p>രജിസ്ട്രേഷൻ ഫോമിൽ നിങ്ങൾ നൽകുന്ന വിവരങ്ങൾ സത്യസന്ധവും പൂർണ്ണവുമായിരിക്കണം. ഏതെങ്കിലും രീതിയിൽ തെറ്റായ വിവരങ്ങളോ വ്യാജ ട്രാൻസാക്ഷൻ ഐഡികളോ സമർപ്പിക്കുന്നത് മെമ്പർഷിപ്പ് ശാശ്വതമായി റദ്ദാക്കപ്പെടുന്നതിന് കാരണമാകും.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">4. Payment Processing & Fees / പേയ്മെന്റ് വിവരങ്ങൾ</h3>
+                  <p>Administrative and registry processing levies are processed through secure digital payment integrations (such as Razorpay). Users must follow security guidelines during active sessions and double-check bank debits.</p>
+                  <p>അംഗത്വ വിവര പരിശോധനാ ഫീസുകൾ സെക്യൂർ പേയ്മെന്റ് ഗേറ്റ്വേകൾ വഴിയാണ് അടക്കേണ്ടത്. ഇത് പൂർണ്ണമായും നിയമാനുസൃതമായിരിക്കും.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">5. Limitation of Liability / ബാധ്യത പരിധി</h3>
+                  <p>HCRS, its technical developers, or administrators shall not be held liable for temporary system outages, Firestore internet connection failures, server shutdowns, or standard internet downtime experienced by users.</p>
+                </div>
+
+                <div className="space-y-2 pb-2">
+                  <h3 className="text-sm font-bold text-slate-800">6. Governing Law & Jurisdiction / നിയമപരിധി</h3>
+                  <p>These terms and all operational decisions of HCRS shall be governed by, interpreted, and governed under the laws of Kerala, India. Any disputes are solely subject to the courts of Kerala jurisdiction.</p>
+                  <p>എല്ലാത്തരം തർക്കങ്ങളും തൃശ്ശൂർ / കേരള നിയമപരിധിയിൽ മാത്രം വരുന്നതായിരിക്കും.</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-4 font-bold">Last Updated: June 12, 2026</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : stage === 'refund' ? (
+          <motion.div
+            key="refund"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+          >
+            <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
+              <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
+                    <Coins className="w-5 h-5 text-[#D91E63]" />
+                    Refund & Cancellation | റീഫണ്ട് നയം
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { window.location.hash = ''; }} 
+                    className="rounded-[6px] w-9 h-9 p-0 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all"
+                  >
+                     <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-700 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">1. Strict No-Refund Policy / മാറ്റമില്ലാത്ത റീഫണ്ട് നയം</h3>
+                  <p><strong>HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a mutual volunteer-supported community revival platform. Registered members contribute administrative expenses, validation charges, and profile maintenance processing fees to set up the secure database directory.</p>
+                  <p>Therefore, <strong>all payments, registry fee submissions (₹200), structural database renewals, or operator quota charges are strictly final, non-refundable, and non-reversible.</strong></p>
+                  <p>സൊസൈറ്റി നൽകുന്ന വിവര പരിശോധന സേവനങ്ങൾ അടിസ്ഥാനമാക്കിയാണ് പേയ്മെന്റുകൾ നടക്കുന്നത്. അതിനാൽ അടച്ച രജിസ്ട്രേഷൻ ഫീസ് (₹200), മറ്റ് ഭരണപരമായ ചാർജ്ജുകൾ എന്നിവ **യാതൊരു കാരണവശാലും റീഫണ്ട് ചെയ്യുന്നതല്ല**.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">2. Cancellation of Membership / കാൻസലേഷൻ വ്യവസ്ഥകൾ</h3>
+                  <p>Once a registration is submitted and payment is recorded on our gateway, you cannot cancel the transaction or seek reversal of registration. Members may request the removal/hiding of their profile from active public viewing by raising a support query, but no fee will be returned.</p>
+                  <p>നിങ്ങൾ സൊസൈറ്റി പ്ലാറ്റ്‌ഫോമിൽ ലിസ്റ്റ് ചെയ്ത വിവരങ്ങൾ ഒഴിവാക്കാൻ ആഗ്രഹിക്കുന്നുവെങ്കിൽ, സപ്പോർട്ട് ചാനൽ വഴി അപേക്ഷ സമർപ്പിക്കാം. എന്നാൽ ഫീസ് തിരികെ ലഭിക്കില്ല.</p>
+                </div>
+
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-800">3. Failed & Duplicate Transactions / നെറ്റ്‌വർക്ക് പരാജയങ്ങൾ</h3>
+                  <p>If money was successfully debited from your card/bank account but the registry status failed to activate due to Firestore quota exceedance or internet interruption:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Send of copy of your bank debit SMS or screenshot to <strong>{settings.email}</strong>.</li>
+                    <li>Specify the registered Mobile Number used in the form.</li>
+                    <li>We will inspect the backend logs and your payment status within 7 working days to activate the profile.</li>
+                  </ul>
+                  <p>തുക കുറയുകയും രജിസ്ട്രേഷൻ പൂർണ്ണമാകാതിരിക്കുകയും ചെയ്താൽ ബാങ്ക് സ്റ്റേറ്റ്‌മെന്റും വിവരങ്ങളുമായി ഞങ്ങളുടെ സപ്പോർട്ട് ഇമെയിൽ വിലാസത്തിൽ (<strong>{settings.email}</strong>) ബന്ധപ്പെടുക. ഞങ്ങൾ പരിശോധിച്ചു ഉടൻ തന്നെ കാർഡ് ആക്ടീവ് ആക്കി നൽകുന്നതാണ്.</p>
+                </div>
+
+                <div className="space-y-2 pb-2">
+                  <h3 className="text-sm font-bold text-slate-800">4. Gateway Terms / ഗേറ്റ്‌വേ റെഗുലേഷൻസ്</h3>
+                  <p>All automated online payments are processed securely via Authorized Payment Gateways. Refunds or transaction settlement rules are bound strictly to their system rules in coordination with Reserve Bank of India guidelines.</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-4 font-bold">Last Updated: June 12, 2026</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : stage === 'contact' ? (
+          <motion.div
+            key="contact"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+          >
+            <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
+              <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
+                    <Phone className="w-5 h-5 text-[#D91E63]" />
+                    Contact Us | ഞങ്ങളെ ബന്ധപ്പെടുക
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { window.location.hash = ''; }} 
+                    className="rounded-[6px] w-9 h-9 p-0 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all"
+                  >
+                     <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-755 leading-relaxed">
+                <p className="border-b border-slate-100 pb-4">If you have any doubts, require registration support, or need guidance on membership updates, please reach out to us during official hours.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                  <div className="space-y-4">
+                    <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
+                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
+                        <MapPin className="w-4 h-4 text-[#D91E63]" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Office Address / വിലാസം</h4>
+                        <p className="text-slate-600 text-xs mt-1 leading-relaxed">{settings.address || "HCRS Central Committee Office, Kerala, India"}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
+                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Helpline Number / ഫോൺ</h4>
+                        <p className="text-slate-600 text-xs mt-1 leading-relaxed font-semibold">{settings.phone}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
+                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
+                        <Mail className="w-4 h-4 text-[#D91E63]" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Email Address / ഇമെയിൽ</h4>
+                        <p className="text-slate-600 text-xs mt-1 font-semibold">{settings.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
+                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Society Portal / വെബ്സൈറ്റ്</h4>
+                        <p className="text-slate-600 text-xs mt-1 font-semibold">{settings.website || window.location.origin}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-[8px] mt-6 flex gap-3 items-start">
+                  <Info className="w-4 h-4 text-[#0A2E5C] shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Operational Hours / പ്രവൃത്തി സമയം</h5>
+                    <p className="text-[11px] text-slate-650 mt-1 leading-relaxed">
+                      Our official support team operates from <strong>Monday to Saturday (09:30 AM to 05:30 PM IST)</strong>. We are closed on Sundays and Public Holidays.
+                      <br/>
+                      പ്രവൃത്തി സമയം: തിങ്കൾ മുതൽ ശനി വരെ രാവിലെ 09:30 മുതൽ വൈകുന്നേരം 05:30 വരെ. ഞായറാഴ്ച അവധിയായിരിക്കും.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : null}
       </AnimatePresence>
     </div>
   );
