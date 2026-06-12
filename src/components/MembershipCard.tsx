@@ -38,20 +38,21 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const body = document.body;
+    const container = containerRef.current;
+    if (!container) return;
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width } = entry.contentRect;
         const targetWidth = 340;
-        const paddedWidth = width - 24;
-        const targetScale = paddedWidth < targetWidth ? Math.max(0.4, paddedWidth / targetWidth) : 1;
+        const paddedWidth = width - 20; // account for container horizontal padding safely
+        const targetScale = paddedWidth < targetWidth ? Math.max(0.35, paddedWidth / targetWidth) : 1;
         
         requestAnimationFrame(() => {
           setScale(targetScale);
         });
       }
     });
-    resizeObserver.observe(body);
+    resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
   }, []);
 

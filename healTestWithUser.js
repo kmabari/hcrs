@@ -10,18 +10,26 @@ const auth = getAuth(app);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 async function runTest() {
-  console.log("Authenticating as Life Member: l-molyjoseph955@gmail.com...");
+  console.log("Authenticating as Life Member: ollassery@gmail.com...");
   let userCredential;
   try {
-    userCredential = await signInWithEmailAndPassword(auth, "l-molyjoseph955@gmail.com", "123456");
+    userCredential = await signInWithEmailAndPassword(auth, "ollassery@gmail.com", "123456");
     console.log("Auth success! Logged in UID:", userCredential.user.uid);
   } catch (err) {
-    console.error("Auth failed:", err);
-    return;
+    console.log("Auth login failed, trying to sign in or register if user doesn't exist...");
+    try {
+      // Try to create the Auth account if it doesn't exist, simulating the app's healing flow
+      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      userCredential = await createUserWithEmailAndPassword(auth, "ollassery@gmail.com", "123456");
+      console.log("Auth creation success! Logged in UID:", userCredential.user.uid);
+    } catch (createErr) {
+      console.error("Auth creation/login failed:", createErr.message);
+      return;
+    }
   }
 
   const authUser = userCredential.user;
-  const oldDocId = "life_7561897767_1781102904443";
+  const oldDocId = "life_7736586048_1781058136029";
   
   // 1. Fetch old document
   console.log(`Step 1: Fetching old document: ${oldDocId}...`);
@@ -40,6 +48,7 @@ async function runTest() {
   }
 
   const profileData = oldDocSnap.data();
+  console.log("Profile data retrieved:", profileData.name);
   const healedProfile = {
     ...profileData,
     uid: authUser.uid,

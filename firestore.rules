@@ -166,8 +166,14 @@ service cloud.firestore {
       allow delete: if isAdmin() || (
         isSignedIn() && (
           (userId.startsWith('offline_') || userId.startsWith('life_')) && (
-            (existing().get('email', '') != null && existing().get('email', '') == request.auth.token.email) ||
-            (existing().get('mobile', '') != null && request.auth.token.email.startsWith(existing().get('mobile', '')))
+            (existing().email != null && existing().email == request.auth.token.email) ||
+            (existing().mobile != null && request.auth.token.email.startsWith(existing().mobile)) ||
+            (
+              exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile == resource.data.mobile ||
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == resource.data.email
+              )
+            )
           )
         )
       );

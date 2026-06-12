@@ -928,10 +928,13 @@ export default function App() {
 
       if (isMobile) {
         setLoadingStatus('Resolving Mobile Identity...');
-        const q = query(usersRef, where('mobile', '==', sanitizedMobile), limit(1));
+        const q = query(usersRef, where('mobile', '==', sanitizedMobile), limit(5));
         const querySnap = await getDocs(q);
         if (!querySnap.empty) {
-          mappedUserData = querySnap.docs[0].data();
+          // Prefer healed profile: ID is not starting with 'life_' or 'offline_'
+          const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
+          const selectedDoc = healedDoc || querySnap.docs[0];
+          mappedUserData = selectedDoc.data();
           targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
         } else {
           targetEmail = `${sanitizedMobile}@hcrs.society`;
@@ -939,23 +942,27 @@ export default function App() {
       } else {
         // Look up by membershipId first (e.g. HCRS-LIFE-KL-MLP-KOT-001)
         setLoadingStatus('Resolving Membership ID...');
-        let q = query(usersRef, where('membershipId', '==', originalInput), limit(1));
+        let q = query(usersRef, where('membershipId', '==', originalInput), limit(5));
         let querySnap = await getDocs(q);
         
         if (querySnap.empty) {
-          q = query(usersRef, where('membershipId', '==', originalInput.toUpperCase()), limit(1));
+          q = query(usersRef, where('membershipId', '==', originalInput.toUpperCase()), limit(5));
           querySnap = await getDocs(q);
         }
 
         if (!querySnap.empty) {
-          mappedUserData = querySnap.docs[0].data();
+          const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
+          const selectedDoc = healedDoc || querySnap.docs[0];
+          mappedUserData = selectedDoc.data();
           targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
         } else if (originalInput.includes('@')) {
           setLoadingStatus('Resolving Email Identity...');
-          const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase()), limit(1));
+          const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase()), limit(5));
           const querySnapEmail = await getDocs(qEmail);
           if (!querySnapEmail.empty) {
-            mappedUserData = querySnapEmail.docs[0].data();
+            const healedDoc = querySnapEmail.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
+            const selectedDoc = healedDoc || querySnapEmail.docs[0];
+            mappedUserData = selectedDoc.data();
             targetEmail = mappedUserData.email;
           } else {
             targetEmail = originalInput.toLowerCase();
@@ -963,10 +970,12 @@ export default function App() {
         } else {
           // Standard auto-append fallback
           const fallbackEmail = `${originalInput.toLowerCase()}@hcrs.society`;
-          const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(1));
+          const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(5));
           const querySnapFallback = await getDocs(qFallback);
           if (!querySnapFallback.empty) {
-            mappedUserData = querySnapFallback.docs[0].data();
+            const healedDoc = querySnapFallback.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
+            const selectedDoc = healedDoc || querySnapFallback.docs[0];
+            mappedUserData = selectedDoc.data();
             targetEmail = mappedUserData.email;
           } else {
             targetEmail = fallbackEmail;
