@@ -141,6 +141,11 @@ const SECOND_ADMINS = [
 
 const hasValidity = (u: any) => {
   if (u.status !== 'active') return false;
+  
+  const isLife = (u.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || 
+                 (u.membershipType || '').toUpperCase() === 'LIFE';
+  if (isLife) return true;
+  
   if (!u.expiryDate) return false;
   
   let expDate: Date;

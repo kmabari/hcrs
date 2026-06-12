@@ -44,11 +44,11 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         const { width } = entry.contentRect;
         const targetWidth = 340;
         const paddedWidth = width - 24;
-        if (paddedWidth < targetWidth) {
-          setScale(Math.max(0.4, paddedWidth / targetWidth));
-        } else {
-          setScale(1);
-        }
+        const targetScale = paddedWidth < targetWidth ? Math.max(0.4, paddedWidth / targetWidth) : 1;
+        
+        requestAnimationFrame(() => {
+          setScale(targetScale);
+        });
       }
     });
     resizeObserver.observe(body);
@@ -281,7 +281,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       {/* Screenshot Friendly Outer Backdrop Container - Enhanced with hyper-realistic Wooden Surface Mockup */}
       <div 
         ref={containerRef}
-        style={{ minHeight: `${630 * scale}px` }}
+        style={{ minHeight: '630px' }}
         className="w-full bg-[#3c2517] p-2.5 sm:p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl transition-all duration-300"
       >
         {/* Deep luxurious wood background, planks and lighting highlight */}
