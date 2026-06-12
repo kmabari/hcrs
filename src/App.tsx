@@ -719,16 +719,67 @@ export default function App() {
             const usersRef = collection(db, 'users');
             let querySnap = null;
 
+            // Collect all possible query candidates to leave absolutely no chance of failure
+            const candidates: { field: string; value: string; desc: string }[] = [];
+            
+            // Candidate 1: extracted loginMobile from email (most common)
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
-              console.log("Healing check: checking offline or mismatched profile for mobile:", loginMobile);
-              const q = query(usersRef, where('mobile', '==', loginMobile), limit(1));
-              querySnap = await getDocs(q);
+              candidates.push({ field: 'mobile', value: loginMobile, desc: 'extracted mobile from email prefix' });
+            }
+            
+            // Candidate 2: current authenticating email
+            if (currentEmail) {
+              candidates.push({ field: 'email', value: currentEmail, desc: 'current auth email' });
+            }
+            
+            // Candidate 3: potential default emails using the mobile number
+            if (loginMobile && /^\d{10}$/.test(loginMobile)) {
+              candidates.push({ field: 'email', value: `${loginMobile}@hcrs-life.society`, desc: 'standard life member placeholder email' });
+              candidates.push({ field: 'email', value: `${loginMobile}@hcrs.society`, desc: 'standard member placeholder email' });
+            }
+            
+            // Candidate 4: sessionStorage lookup for typed mobile or card ID
+            if (typeof window !== 'undefined') {
+              try {
+                const sessionInput = sessionStorage.getItem('hcrs_login_identifier') || '';
+                const sessionMobile = sessionStorage.getItem('hcrs_login_mobile') || '';
+                
+                if (sessionMobile && /^\d{10}$/.test(sessionMobile)) {
+                  candidates.push({ field: 'mobile', value: sessionMobile, desc: 'session mobile number' });
+                  candidates.push({ field: 'email', value: `${sessionMobile}@hcrs-life.society`, desc: 'session life member placeholder email' });
+                  candidates.push({ field: 'email', value: `${sessionMobile}@hcrs.society`, desc: 'session placeholder email' });
+                }
+                if (sessionInput.trim()) {
+                  const cleanedInput = sessionInput.trim();
+                  candidates.push({ field: 'membershipId', value: cleanedInput, desc: 'session membershipId direct match' });
+                  candidates.push({ field: 'membershipId', value: cleanedInput.toUpperCase(), desc: 'session membershipId uppercase match' });
+                }
+              } catch (e) {
+                console.warn("Non-blocking sessionStorage read failed inside healing check:", e);
+              }
             }
 
-            if ((!querySnap || querySnap.empty) && currentEmail) {
-              console.log("Healing check: checking offline or mismatched profile for email:", currentEmail);
-              const q = query(usersRef, where('email', '==', currentEmail), limit(1));
-              querySnap = await getDocs(q);
+            // Deduplicate candidates (by field + value)
+            const uniqueCandidates: typeof candidates = [];
+            const seen = new Set<string>();
+            for (const cand of candidates) {
+              const key = `${cand.field}::${cand.value.toLowerCase()}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                uniqueCandidates.push(cand);
+              }
+            }
+
+            // Execute queries in fallback order until we find a match
+            for (const cand of uniqueCandidates) {
+              console.log(`Healing check: querying where('${cand.field}', '==', '${cand.value}') (${cand.desc})...`);
+              const q = query(usersRef, where(cand.field, '==', cand.value), limit(1));
+              const snap = await getDocs(q);
+              if (!snap.empty) {
+                querySnap = snap;
+                console.log(`Healing matched candidate via where('${cand.field}', '==', '${cand.value}') (${cand.desc})! Document ID:`, snap.docs[0].id);
+                break;
+              }
             }
             
             if (querySnap && !querySnap.empty) {
@@ -741,6 +792,7 @@ export default function App() {
                 const healedProfile = {
                   ...profileData,
                   uid: authUser.uid,
+                  role: profileData.role || 'member',
                   status: profileData.status || 'active',
                   issueDate: profileData.issueDate || serverTimestamp(),
                 };
@@ -850,6 +902,20 @@ export default function App() {
       sanitizedMobile = sanitizedMobile.slice(1);
     }
     const isMobile = /^\d{10}$/.test(sanitizedMobile);
+
+    // Securely cache identifier for subsequent dynamic UID healing checks
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('hcrs_login_identifier', originalInput);
+        if (isMobile) {
+          sessionStorage.setItem('hcrs_login_mobile', sanitizedMobile);
+        } else {
+          sessionStorage.removeItem('hcrs_login_mobile');
+        }
+      } catch (e) {
+        console.warn("Could not write login identifier cache to sessionStorage:", e);
+      }
+    }
     
     setIsLoggingIn(true);
     setLoadingStatus('Authenticating...');
