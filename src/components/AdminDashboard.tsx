@@ -140,11 +140,12 @@ const SECOND_ADMINS = [
 ];
 
 const hasValidity = (u: any) => {
-  if (u.status !== 'active') return false;
+  if (u.status === 'deleted') return false;
   
-  const isLife = (u.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || 
-                 (u.membershipType || '').toUpperCase() === 'LIFE';
+  const isLife = String(u.membership_type || u.membershipType || '').toUpperCase().includes('LIFE');
   if (isLife) return true;
+
+  if (u.status !== 'active') return false;
   
   if (!u.expiryDate) return false;
   
@@ -931,7 +932,12 @@ export default function AdminDashboard({
 
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
-        matchesCategory = (m.membership_type || 'ADHOC_MEMBER') === categoryFilter;
+        const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        if (categoryFilter === 'LIFE_MEMBER') {
+          matchesCategory = typeStr.includes('LIFE');
+        } else if (categoryFilter === 'ADHOC_MEMBER') {
+          matchesCategory = !typeStr.includes('LIFE');
+        }
       }
       
       return matchesSearch && matchesDistrict && matchesStatus && matchesSource && matchesCategory;
@@ -953,7 +959,12 @@ export default function AdminDashboard({
 
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
-        matchesCategory = (m.membership_type || 'ADHOC_MEMBER') === categoryFilter;
+        const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        if (categoryFilter === 'LIFE_MEMBER') {
+          matchesCategory = typeStr.includes('LIFE');
+        } else if (categoryFilter === 'ADHOC_MEMBER') {
+          matchesCategory = !typeStr.includes('LIFE');
+        }
       }
       return matchesCategory && hasValidity(m);
     }).length;
@@ -980,7 +991,12 @@ export default function AdminDashboard({
       
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
-        matchesCategory = (m.membership_type || 'ADHOC_MEMBER') === categoryFilter;
+        const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        if (categoryFilter === 'LIFE_MEMBER') {
+          matchesCategory = typeStr.includes('LIFE');
+        } else if (categoryFilter === 'ADHOC_MEMBER') {
+          matchesCategory = !typeStr.includes('LIFE');
+        }
       }
       
       return matchesSearch && matchesDistrict && matchesCategory && hasValidity(m);
@@ -2186,7 +2202,7 @@ export default function AdminDashboard({
                           onClick={() => setViewingMember(member)}
                         >
                           <span>{member.name}</span>
-                          {(member.membership_type || 'ADHOC_MEMBER') === 'LIFE_MEMBER' ? (
+                          {String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE') ? (
                             <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                               ⭐ LIFE MEMBER
                             </span>
@@ -2538,7 +2554,7 @@ export default function AdminDashboard({
                           onClick={() => setViewingMember(member)}
                         >
                           <span>{member.name}</span>
-                          {(member.membership_type || 'ADHOC_MEMBER') === 'LIFE_MEMBER' ? (
+                          {String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE') ? (
                             <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                               ⭐ LIFE MEMBER
                             </span>
@@ -4155,7 +4171,7 @@ export default function AdminDashboard({
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {(viewingMember.membership_type || 'ADHOC_MEMBER') === 'LIFE_MEMBER' ? (
+                        {String(viewingMember.membership_type || viewingMember.membershipType || '').toUpperCase().includes('LIFE') ? (
                           <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                             ⭐ LIFE MEMBER
                           </span>

@@ -470,16 +470,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Safety check: If still loading after 30 seconds, fallback to landing
+    // Safety check: If still loading after 15 seconds, fallback to landing to avoid black hole loops
     const timer = setTimeout(() => {
-      if (view === 'loading' && !isMagicLink) {
+      if (view === 'loading') {
         console.log("Loading timeout: Falling back to landing");
-        toast.info("സെഷൻ ടൈം-ഔട്ട് ആയി. ദയവായി ലോഗിൻ വീണ്ടും ശ്രമിക്കുക. (Connection timed out)");
+        toast.info("സെഷൻ ടൈം-ഔട്ട് ആയി. ദയവായി വീണ്ടും ശ്രമിക്കുക. (Connection timed out)");
+        setIsMagicLink(false);
         setView('landing');
       }
-    }, 15000); // 15 seconds for consistency
+    }, 15000); // 15 seconds is more than enough
     return () => clearTimeout(timer);
-  }, [view, isMagicLink]);
+  }, [view]);
 
   useEffect(() => {
     let unsubscribeMembers: (() => void) | null = null;
@@ -835,49 +836,75 @@ export default function App() {
 
   const handleLogin = async (values: { email: string, pin: string }, originView: 'login' | 'landing' = 'login'): Promise<boolean> => {
     const loadingToast = toast.loading('Logging you in...');
-    let targetEmail = (values.email || '').trim().toLowerCase();
+    const originalInput = (values.email || '').trim();
     const trimmedPin = (values.pin || '').trim();
     
     // Robust mobile & handle sanitization
-    let sanitizedMobile = targetEmail.replace(/\D/g, '');
+    let sanitizedMobile = originalInput.replace(/\D/g, '');
     if (sanitizedMobile.startsWith('91') && sanitizedMobile.length === 12) {
       sanitizedMobile = sanitizedMobile.slice(2);
+    } else if (sanitizedMobile.startsWith('0') && sanitizedMobile.length === 11) {
+      sanitizedMobile = sanitizedMobile.slice(1);
     }
     const isMobile = /^\d{10}$/.test(sanitizedMobile);
     
-    if (isMobile) {
-      targetEmail = sanitizedMobile;
-    } else if (!targetEmail.includes('@') && targetEmail.length > 0) {
-      // Auto-append @hcrs.society wrapper for custom usernames typed without domain
-      targetEmail = `${targetEmail}@hcrs.society`;
-    }
-
     setIsLoggingIn(true);
     setLoadingStatus('Authenticating...');
     try {
       setView('loading');
       let mappedUserData: any = null;
+      let targetEmail = '';
+
+      const usersRef = collection(db, 'users');
 
       if (isMobile) {
         setLoadingStatus('Resolving Mobile Identity...');
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('mobile', '==', targetEmail), limit(1));
+        const q = query(usersRef, where('mobile', '==', sanitizedMobile), limit(1));
         const querySnap = await getDocs(q);
         if (!querySnap.empty) {
           mappedUserData = querySnap.docs[0].data();
-          if (mappedUserData.email) targetEmail = mappedUserData.email;
-          else targetEmail = `${targetEmail}@hcrs.society`;
+          targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
         } else {
-          targetEmail = `${targetEmail}@hcrs.society`;
+          targetEmail = `${sanitizedMobile}@hcrs.society`;
         }
-      } else if (targetEmail.includes('@')) {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('email', '==', targetEmail), limit(1));
-        const querySnap = await getDocs(q);
+      } else {
+        // Look up by membershipId first (e.g. HCRS-LIFE-KL-MLP-KOT-001)
+        setLoadingStatus('Resolving Membership ID...');
+        let q = query(usersRef, where('membershipId', '==', originalInput), limit(1));
+        let querySnap = await getDocs(q);
+        
+        if (querySnap.empty) {
+          q = query(usersRef, where('membershipId', '==', originalInput.toUpperCase()), limit(1));
+          querySnap = await getDocs(q);
+        }
+
         if (!querySnap.empty) {
           mappedUserData = querySnap.docs[0].data();
+          targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
+        } else if (originalInput.includes('@')) {
+          setLoadingStatus('Resolving Email Identity...');
+          const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase()), limit(1));
+          const querySnapEmail = await getDocs(qEmail);
+          if (!querySnapEmail.empty) {
+            mappedUserData = querySnapEmail.docs[0].data();
+            targetEmail = mappedUserData.email;
+          } else {
+            targetEmail = originalInput.toLowerCase();
+          }
+        } else {
+          // Standard auto-append fallback
+          const fallbackEmail = `${originalInput.toLowerCase()}@hcrs.society`;
+          const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(1));
+          const querySnapFallback = await getDocs(qFallback);
+          if (!querySnapFallback.empty) {
+            mappedUserData = querySnapFallback.docs[0].data();
+            targetEmail = mappedUserData.email;
+          } else {
+            targetEmail = fallbackEmail;
+          }
         }
       }
+
       setLoadingStatus(`Connecting as ${targetEmail}...`);
       let authResult;
       try {
