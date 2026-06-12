@@ -37,20 +37,21 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   }, [isScreenshotMode, onScreenshotModeChange]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (typeof window === 'undefined') return;
+    const body = document.body;
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width } = entry.contentRect;
         const targetWidth = 340;
-        // Leave tiny margin spacing inside the wrapper padding
-        if (width < targetWidth) {
-          setScale(width / targetWidth);
+        const paddedWidth = width - 24;
+        if (paddedWidth < targetWidth) {
+          setScale(Math.max(0.4, paddedWidth / targetWidth));
         } else {
           setScale(1);
         }
       }
     });
-    resizeObserver.observe(containerRef.current);
+    resizeObserver.observe(body);
     return () => resizeObserver.disconnect();
   }, []);
 
@@ -191,6 +192,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   };
 
   const isLifeMember = ((member.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || (member.membershipType || '').toUpperCase() === 'LIFE');
+  const isBanned = (member.status || '').toLowerCase() === 'banned' || (member.status || '').toLowerCase() === 'disabled';
   const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && !isLifeMember && (
     member.renewalPending ||
     (() => {
@@ -293,7 +295,6 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
         {/* Core Premium 3D PVC ID Card with Double Metallic Bevel Frame (Gold theme for Life Member, Slate theme for Adhoc Member) */}
         {(() => {
-          const isLifeMember = member.membership_type === 'LIFE_MEMBER';
           const cardBorderClass = isLifeMember 
             ? "border-[6px] border-[#D4AF37] shadow-[25px_30px_50px_rgba(0,0,0,0.95)] bg-gradient-to-br from-[#24170b] via-[#120803] to-[#040201]"
             : "border-[6px] border-slate-700/85 shadow-[25px_30px_50px_rgba(0,0,0,0.9)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b]";
@@ -359,6 +360,18 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 >
               {/* Top Premium Card Margin strip - Gold or Magenta */}
               <div className={`h-1.5 w-full absolute top-0 left-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.4)] ${isLifeMember ? 'bg-gradient-to-r from-amber-300 via-[#D4AF37] to-amber-800' : 'bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055]'}`} />
+
+              {/* Expired/Banned Ribbon */}
+              {(isExpired || isBanned) && (
+                <div className="absolute top-[26px] -right-[38px] w-[130px] bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-extrabold text-[8px] py-1 uppercase tracking-wider text-center rotate-45 z-40 shadow-[0_2px_5px_rgba(0,0,0,0.4)] border-y border-white/10 flex flex-col items-center justify-center leading-none pointer-events-none">
+                  <span className="font-sans font-black drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.6)] text-white">
+                    {isBanned ? '🚫 BANNED' : '⚠️ EXPIRED'}
+                  </span>
+                  <span className="text-[5px] mt-0.5 tracking-normal leading-none font-bold opacity-90 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.5)]">
+                    {isBanned ? 'റദ്ദാക്കി' : 'കാലാവധി കഴിഞ്ഞു'}
+                  </span>
+                </div>
+              )}
 
               {/* Header section with HCRS Logo Left + Metallic Embossed Panel Right */}
               <div className="p-4 pt-5 shrink-0 flex items-center justify-between gap-3 relative">
