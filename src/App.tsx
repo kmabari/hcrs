@@ -280,7 +280,10 @@ export default function App() {
     checkClaimSubmission();
   }, [user, claimRefreshTrigger]);
 
-  const isLifeMember = user && ((user.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || (user.membershipType || '').toUpperCase() === 'LIFE');
+  const isLifeMember = user && (
+    String(user.membership_type || '').toUpperCase().includes('LIFE') ||
+    String(user.membershipType || '').toUpperCase().includes('LIFE')
+  );
   const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && !isLifeMember && (
     user.renewalPending ||
     (() => {

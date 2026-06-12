@@ -191,7 +191,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
-  const isLifeMember = ((member.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || (member.membershipType || '').toUpperCase() === 'LIFE');
+  const isLifeMember = String(member.membership_type || '').toUpperCase().includes('LIFE') ||
+    String(member.membershipType || '').toUpperCase().includes('LIFE');
   const isBanned = (member.status || '').toLowerCase() === 'banned' || (member.status || '').toLowerCase() === 'disabled';
   const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && !isLifeMember && (
     member.renewalPending ||

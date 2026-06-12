@@ -2057,7 +2057,8 @@ export default function LandingPage({
                             const isRenewalPending = !!foundUser.renewalPending;
                             
                             // Check if they are expired
-                            const isLife = ((foundUser.membership_type || '').toUpperCase() === 'LIFE_MEMBER' || (foundUser.membershipType || '').toUpperCase() === 'LIFE');
+                            const isLife = String(foundUser.membership_type || '').toUpperCase().includes('LIFE') ||
+                              String(foundUser.membershipType || '').toUpperCase().includes('LIFE');
                             const isUserExpired = !isLife && (isRenewalPending || (() => {
                               const exp = foundUser.expiryDate;
                               if (!exp) {
