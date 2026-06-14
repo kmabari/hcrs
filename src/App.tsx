@@ -928,8 +928,23 @@ export default function App() {
 
       if (isMobile) {
         setLoadingStatus('Resolving Mobile Identity...');
-        const q = query(usersRef, where('mobile', '==', sanitizedMobile), limit(5));
-        const querySnap = await getDocs(q);
+        let querySnap = await getDocs(query(usersRef, where('mobile', '==', sanitizedMobile), limit(5)));
+        if (querySnap.empty && sanitizedMobile.length === 10) {
+          const variations = [
+            `+91${sanitizedMobile}`,
+            `91${sanitizedMobile}`,
+            `0${sanitizedMobile}`
+          ];
+          for (const variant of variations) {
+            const qVariant = query(usersRef, where('mobile', '==', variant), limit(5));
+            const snapVariant = await getDocs(qVariant);
+            if (!snapVariant.empty) {
+              querySnap = snapVariant;
+              break;
+            }
+          }
+        }
+
         if (!querySnap.empty) {
           // Prefer healed profile: ID is not starting with 'life_' or 'offline_'
           const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
@@ -1004,7 +1019,7 @@ export default function App() {
             throw signInError; // propagate original signInError
           }
         } else if ((signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') && 
-                   mappedUserData && trimmedPin === (mappedUserData.pin || '123456')) {
+                   mappedUserData && trimmedPin === String(mappedUserData.pin ?? '123456').trim()) {
           // Dynamic Auth auto-creation/healing for valid offline profiles
           console.log("Entered PIN matches registered database profile PIN. Healing Auth registration...");
           try {
@@ -1037,7 +1052,7 @@ export default function App() {
               throw signInError; // propagate original signInError
             }
           }
-        } else if (mappedUserData && trimmedPin === (mappedUserData.pin || '123456')) {
+        } else if (mappedUserData && trimmedPin === String(mappedUserData.pin ?? '123456').trim()) {
           // The database PIN is correct, but login failed (e.g., wrong-password because of old out-of-sync auth record)
           console.log("PIN is correct in Firestore, but standard Auth login failed. Attempting secondary/v2 auth channel...");
           const mobilePart = isMobile ? sanitizedMobile : (mappedUserData.mobile || '');
@@ -1944,10 +1959,10 @@ export default function App() {
           );
         } else {
           return (
-            <div className="bg-amber-500 text-slate-900 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-amber-600/30 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
+            <div className="bg-slate-800 text-slate-100 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-slate-700 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
               <div className="flex items-center gap-1.5 justify-center">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-950 animate-pulse" />
-                <span>താത്കാലികമായി കണക്ഷൻ തടസ്സപ്പെട്ടിരിക്കുന്നു. ദയവായി അല്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക. (Connection paused temporarily. Please try again later.)</span>
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500 animate-pulse" />
+                <span>സാങ്കേതിക തകരാർ കാരണം സർവീസ് താത്കാലികമായി ലഭ്യമല്ല. ദയവായി പിന്നീട് വീണ്ടും ശ്രമിക്കുക. (Service temporarily unavailable due to a technical error. Please try again later.)</span>
               </div>
             </div>
           );

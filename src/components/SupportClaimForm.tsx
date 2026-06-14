@@ -526,49 +526,25 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
   
   const selfValid = !selfSelected || (
     selfName.trim().length > 0 && 
-    (selfNoBreakup 
-      ? (selfSerialNo.trim().length > 0)
-      : (selfCategories.length > 0 && selfCategories.every(catId => {
-          const det = selfCategoryDetails[catId];
-          return det && det.serialNo && det.serialNo.trim().length > 0;
-        }))
-    )
+    (selfNoBreakup || selfCategories.length > 0)
   );
 
   const parentValid = !parentSelected || (
     parentName.trim().length > 0 && 
     parentRelation !== '' && 
-    (parentNoBreakup 
-      ? (parentSerialNo.trim().length > 0)
-      : (parentCategories.length > 0 && parentCategories.every(catId => {
-          const det = parentCategoryDetails[catId];
-          return det && det.serialNo && det.serialNo.trim().length > 0;
-        }))
-    )
+    (parentNoBreakup || parentCategories.length > 0)
   );
 
   const childValid = !childSelected || (
     childName.trim().length > 0 && 
     childRelation !== '' && 
-    (childNoBreakup 
-      ? (childSerialNo.trim().length > 0)
-      : (childCategories.length > 0 && childCategories.every(catId => {
-          const det = childCategoryDetails[catId];
-          return det && det.serialNo && det.serialNo.trim().length > 0;
-        }))
-    )
+    (childNoBreakup || childCategories.length > 0)
   );
 
   const spouseValid = !spouseSelected || (
     spouseName.trim().length > 0 && 
     spouseRelation !== '' && 
-    (spouseNoBreakup 
-      ? (spouseSerialNo.trim().length > 0)
-      : (spouseCategories.length > 0 && spouseCategories.every(catId => {
-          const det = spouseCategoryDetails[catId];
-          return det && det.serialNo && det.serialNo.trim().length > 0;
-        }))
-    )
+    (spouseNoBreakup || spouseCategories.length > 0)
   );
 
   const formIsValid = 
@@ -734,12 +710,13 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         });
       }
 
+      let currentTokenOffset = 0;
+
       // 1. Submit Self Claim
       if (selfSelected && !hasSelf) {
-        const tokenVal = selfNoBreakup 
-          ? selfSerialNo.trim() 
-          : selfCategories.map(cat => selfCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
-        assignedTokens['Self'] = tokenVal || '1001';
+        currentTokenOffset++;
+        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+        assignedTokens['Self'] = tokenVal;
         await deleteExistingForCategory(['Self']);
         const selfClaim = {
           ...commonData,
@@ -755,19 +732,18 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: selfTotalReceived,
           totalPending: selfTotalPending,
           notes: selfNotes,
-          tokenNo: tokenVal || '1001',
-          serialNo: selfNoBreakup ? selfSerialNo.trim() : '',
+          tokenNo: tokenVal,
+          serialNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), selfClaim);
       }
 
       // 2. Submit Parent Claim
       if (parentSelected && !hasParent) {
-        const tokenVal = parentNoBreakup 
-          ? parentSerialNo.trim() 
-          : parentCategories.map(cat => parentCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
+        currentTokenOffset++;
+        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
         const relType = parentRelation || 'Parent';
-        assignedTokens[relType] = tokenVal || '1002';
+        assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Mother', 'Father']);
         const parentClaim = {
           ...commonData,
@@ -783,19 +759,18 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: parentTotalReceived,
           totalPending: parentTotalPending,
           notes: parentNotes,
-          tokenNo: tokenVal || '1002',
-          serialNo: parentNoBreakup ? parentSerialNo.trim() : '',
+          tokenNo: tokenVal,
+          serialNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), parentClaim);
       }
 
       // 3. Submit Child Claim
       if (childSelected && !hasChild) {
-        const tokenVal = childNoBreakup 
-          ? childSerialNo.trim() 
-          : childCategories.map(cat => childCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
+        currentTokenOffset++;
+        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
         const relType = childRelation || 'Child';
-        assignedTokens[relType] = tokenVal || '1003';
+        assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Son', 'Daughter']);
         const childClaim = {
           ...commonData,
@@ -811,19 +786,18 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: childTotalReceived,
           totalPending: childTotalPending,
           notes: childNotes,
-          tokenNo: tokenVal || '1003',
-          serialNo: childNoBreakup ? childSerialNo.trim() : '',
+          tokenNo: tokenVal,
+          serialNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), childClaim);
       }
 
       // 4. Submit Spouse Claim
       if (spouseSelected && !hasSpouse) {
-        const tokenVal = spouseNoBreakup 
-          ? spouseSerialNo.trim() 
-          : spouseCategories.map(cat => spouseCategoryDetails[cat]?.serialNo || '').filter(Boolean).sort().join(', ');
+        currentTokenOffset++;
+        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
         const relType = spouseRelation || 'Spouse';
-        assignedTokens[relType] = tokenVal || '1004';
+        assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Wife', 'Husband']);
         const spouseClaim = {
           ...commonData,
@@ -839,8 +813,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
           totalReceived: spouseTotalReceived,
           totalPending: spouseTotalPending,
           notes: spouseNotes,
-          tokenNo: tokenVal || '1004',
-          serialNo: spouseNoBreakup ? spouseSerialNo.trim() : '',
+          tokenNo: tokenVal,
+          serialNo: tokenVal,
         };
         await addDoc(collection(db, 'claims'), spouseClaim);
       }
@@ -1264,7 +1238,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                 {/* Breakup Details OR Total manual entries */}
                 {selfNoBreakup ? (
                   <div className="space-y-4">
-                    <ClaimSerialGuide />
                     <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
@@ -1293,16 +1266,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
-                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
-                      <Input 
-                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
-                        value={selfSerialNo}
-                        onChange={(e) => setSelfSerialNo(e.target.value)}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
-                      />
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1324,8 +1287,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         );
                       })}
                     </div>
-
-                    {selfCategories.length > 0 && <ClaimSerialGuide />}
 
                     {/* Detailed Inputs */}
                     <div className="space-y-3">
@@ -1351,17 +1312,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                                   className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
                                 />
                               </div>
-                            </div>
-                            
-                            {/* Serial Number entry for this category */}
-                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
-                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
-                              <Input 
-                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
-                                value={selfCategoryDetails[catId]?.serialNo || ''}
-                                onChange={(e) => handleCategoryDetailChange('self', catId, 'serialNo', e.target.value)}
-                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
-                              />
                             </div>
                           </div>
                         );
@@ -1472,7 +1422,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                 {/* Breakup Details OR Total manual entries */}
                 {parentNoBreakup ? (
                   <div className="space-y-4">
-                    <ClaimSerialGuide />
                     <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
@@ -1501,16 +1450,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
-                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
-                      <Input 
-                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
-                        value={parentSerialNo}
-                        onChange={(e) => setParentSerialNo(e.target.value)}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
-                      />
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1532,8 +1471,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         );
                       })}
                     </div>
-
-                    {parentCategories.length > 0 && <ClaimSerialGuide />}
 
                     {/* Detailed Inputs */}
                     <div className="space-y-3">
@@ -1559,17 +1496,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                                   className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
                                 />
                               </div>
-                            </div>
-                            
-                            {/* Serial Number entry for this category */}
-                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
-                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
-                              <Input 
-                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
-                                value={parentCategoryDetails[catId]?.serialNo || ''}
-                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'serialNo', e.target.value)}
-                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
-                              />
                             </div>
                           </div>
                         );
@@ -1680,7 +1606,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                 {/* Breakup Details OR Total manual entries */}
                 {childNoBreakup ? (
                   <div className="space-y-4">
-                    <ClaimSerialGuide />
                     <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
@@ -1709,16 +1634,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
-                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
-                      <Input 
-                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
-                        value={childSerialNo}
-                        onChange={(e) => setChildSerialNo(e.target.value)}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
-                      />
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1741,9 +1656,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       })}
                     </div>
 
-                    {childCategories.length > 0 && <ClaimSerialGuide />}
-
-                    {/* Detailed Inputs */}
+                     {/* Detailed Inputs */}
                     <div className="space-y-3">
                       {childCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
@@ -1767,17 +1680,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                                   className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
                                 />
                               </div>
-                            </div>
-                            
-                            {/* Serial Number entry for this category */}
-                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
-                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
-                              <Input 
-                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
-                                value={childCategoryDetails[catId]?.serialNo || ''}
-                                onChange={(e) => handleCategoryDetailChange('child', catId, 'serialNo', e.target.value)}
-                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
-                              />
                             </div>
                           </div>
                         );
@@ -1888,7 +1790,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                 {/* Breakup Details OR Total manual entries */}
                 {spouseNoBreakup ? (
                   <div className="space-y-4">
-                    <ClaimSerialGuide />
                     <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
@@ -1917,16 +1818,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-1.5 bg-rose-500/[0.02] border border-rose-500/10 p-3.5 rounded-2xl">
-                      <Label className="text-[10px] font-black text-rose-600 uppercase tracking-wider block mb-1">ക്ലെയിം ഫോം സീരിയൽ നമ്പർ (Claim Form Serial No) *</Label>
-                      <Input 
-                        placeholder="സീരിയൽ നമ്പർ നൽകുക (e.g. 1245)" 
-                        value={spouseSerialNo}
-                        onChange={(e) => setSpouseSerialNo(e.target.value)}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white text-xs"
-                      />
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1949,9 +1840,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                       })}
                     </div>
 
-                    {spouseCategories.length > 0 && <ClaimSerialGuide />}
-
-                    {/* Detailed Inputs */}
+                     {/* Detailed Inputs */}
                     <div className="space-y-3">
                       {spouseCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
@@ -1975,17 +1864,6 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                                   className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
                                 />
                               </div>
-                            </div>
-                            
-                            {/* Serial Number entry for this category */}
-                            <div className="flex items-center gap-2 border-t border-slate-100/50 pt-2 text-[10px] font-semibold text-slate-500">
-                              <span className="text-[9px] font-black text-[#FF1493] uppercase shrink-0">സീരിയൽ നമ്പർ (Serial No) *</span>
-                              <Input 
-                                placeholder="സീരിയൽ നമ്പർ (e.g. 1245)" 
-                                value={spouseCategoryDetails[catId]?.serialNo || ''}
-                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'serialNo', e.target.value)}
-                                className="h-8 border-slate-150 text-slate-850 font-black bg-white flex-1 text-xs"
-                              />
                             </div>
                           </div>
                         );

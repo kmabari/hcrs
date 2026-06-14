@@ -195,8 +195,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const isLifeMember = String(member.membership_type || '').toUpperCase().includes('LIFE') ||
     String(member.membershipType || '').toUpperCase().includes('LIFE');
   const isBanned = (member.status || '').toLowerCase() === 'banned' || (member.status || '').toLowerCase() === 'disabled';
-  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && !isLifeMember && (
-    member.renewalPending ||
+  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && member.renewalPending !== true && !isLifeMember && (
     (() => {
       const exp = member.expiryDate || (() => {
         const reg = member.registrationDate;
@@ -470,8 +469,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                   </h3>
                 </div>
 
-                {/* Membership Category Ribbon block */}
-                <div className="mt-2 flex items-center justify-center">
+                 {/* Membership Category Ribbon block */}
+                <div className="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
                   {isLifeMember ? (
                     <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-550 to-amber-600 text-white text-[9px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-lg border border-amber-300">
                       👑 LIFE MEMBER
@@ -482,6 +481,14 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                     </span>
                   )}
                 </div>
+
+                {isPending && (
+                  <div className="mt-1.5">
+                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-[7.5px] font-black px-3 py-0.5 rounded border border-amber-300/50 animate-pulse uppercase tracking-wider shadow-[0_1.5px_3px_rgba(0,0,0,0.3)]">
+                      ⚠️ APPROVAL PENDING / അപ്പ്രൂവൽ പെൻഡിങ്
+                    </span>
+                  </div>
+                )}
 
                 {/* District & Mandalam (Assembly Constituency is Mandalam) */}
                 <p className={`text-[9px] font-black uppercase tracking-wider mt-2 font-sans ${isLifeMember ? 'text-amber-500' : 'text-brand-magenta'}`}>
