@@ -840,7 +840,7 @@ export default function App() {
               else if (isOp) setView('operator');
               else setView('card');
             }
-            toast.success('ഓഫ്‌ലൈൻ/ക്വോട്ട മൂലം താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.');
+            toast.success('താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.');
             return;
           }
         } catch (e) {
@@ -1011,13 +1011,36 @@ export default function App() {
             authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
             console.log("Dynamically created / healed Auth account for user:", authResult.user.uid);
           } catch (signUpError: any) {
-            console.error("Auto-healing registration failed:", signUpError);
-            throw signInError; // propagate original signInError
+            if (signUpError.code === 'auth/email-already-in-use') {
+              console.log("Primary email is already in Auth but login mismatch exists. Trying secondary v2 channel fall-through...");
+              const mobilePart = isMobile ? sanitizedMobile : (mappedUserData.mobile || '');
+              const secondaryEmail = `${mobilePart}_v2@hcrs.society`;
+              try {
+                authResult = await signInWithEmailAndPassword(auth, secondaryEmail, trimmedPin);
+                console.log("Sign-in successful via fallback v2 channel:", authResult.user.uid);
+              } catch (secError: any) {
+                if (secError.code === 'auth/user-not-found' || secError.code === 'auth/invalid-credential') {
+                  console.log("Secondary auth account doesn't exist. Creating fresh fallback v2 channel...");
+                  try {
+                    authResult = await createUserWithEmailAndPassword(auth, secondaryEmail, trimmedPin);
+                    console.log("Created fresh fallback v2 auth account:", authResult.user.uid);
+                  } catch (createSecError) {
+                    console.error("Failed to create secondary auth account:", createSecError);
+                    throw signInError;
+                  }
+                } else {
+                  throw signInError;
+                }
+              }
+            } else {
+              console.error("Auto-healing registration failed:", signUpError);
+              throw signInError; // propagate original signInError
+            }
           }
         } else if (mappedUserData && trimmedPin === (mappedUserData.pin || '123456')) {
           // The database PIN is correct, but login failed (e.g., wrong-password because of old out-of-sync auth record)
           console.log("PIN is correct in Firestore, but standard Auth login failed. Attempting secondary/v2 auth channel...");
-          const mobilePart = isMobile ? values.email : (mappedUserData.mobile || '');
+          const mobilePart = isMobile ? sanitizedMobile : (mappedUserData.mobile || '');
           const secondaryEmail = `${mobilePart}_v2@hcrs.society`;
           try {
             authResult = await signInWithEmailAndPassword(auth, secondaryEmail, trimmedPin);
@@ -1890,25 +1913,46 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans antialiased text-foreground selection:bg-brand-blue/20">
-      {isQuotaExceeded && (
-        <div className="bg-amber-500 text-slate-900 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-amber-600/30 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
-          <div className="flex items-center gap-1.5 justify-center">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-950 animate-pulse" />
-            <span>ഡാറ്റാബേസ് കണക്ഷൻ തടസ്സപ്പെട്ടു (Firestore Daily Free Read Quota Crossed).</span>
-          </div>
-          <span className="text-[10px] md:text-xs opacity-95">
-            നാളെ വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ{' '} 
-            <a 
-              href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/ai-studio-2eaab070-9ce1-4d91-bbeb-abf7bacb0528/data?openUpgradeDialog=true" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="underline font-black text-amber-950 hover:text-white transition-colors"
-            >
-              ഇവിടെ ക്ലിക്ക് ചെയ്ത് ബില്ലിംഗ് അപ്ഗ്രേഡ് ചെയ്യുക
-            </a>.
-          </span>
-        </div>
-      )}
+      {isQuotaExceeded && (() => {
+        const isUserAdmin = user && (
+          user.isAdmin || 
+          user.role === 'admin' || 
+          user.role === 'operator' ||
+          MAIN_ADMINS.some(e => e.toLowerCase() === (user.email || '').toLowerCase()) ||
+          SECOND_ADMINS.some(e => e.toLowerCase() === (user.email || '').toLowerCase())
+        );
+
+        if (isUserAdmin) {
+          return (
+            <div className="bg-amber-500 text-slate-900 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-amber-600/30 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
+              <div className="flex items-center gap-1.5 justify-center">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-950 animate-pulse" />
+                <span>ഡാറ്റാബേസ് കണക്ഷൻ തടസ്സപ്പെട്ടു (Firestore Daily Free Read Quota Crossed).</span>
+              </div>
+              <span className="text-[10px] md:text-xs opacity-95">
+                നാളെ വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ{' '} 
+                <a 
+                  href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/ai-studio-2eaab070-9ce1-4d91-bbeb-abf7bacb0528/data?openUpgradeDialog=true" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="underline font-black text-amber-950 hover:text-white transition-colors"
+                >
+                  ഇവിടെ ക്ലിക്ക് ചെയ്ത് ബില്ലിംഗ് അപ്ഗ്രേഡ് ചെയ്യുക
+                </a>.
+              </span>
+            </div>
+          );
+        } else {
+          return (
+            <div className="bg-amber-500 text-slate-900 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-amber-600/30 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
+              <div className="flex items-center gap-1.5 justify-center">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-950 animate-pulse" />
+                <span>താത്കാലികമായി കണക്ഷൻ തടസ്സപ്പെട്ടിരിക്കുന്നു. ദയവായി അല്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക. (Connection paused temporarily. Please try again later.)</span>
+              </div>
+            </div>
+          );
+        }
+      })()}
 
       {view === 'landing' && (
         <LandingPage 

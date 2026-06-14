@@ -213,6 +213,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     })()
   );
 
+  const isPending = member.status === 'pending' || member.renewalPending === true;
+
   const getRenewalDate = (date: any) => {
     // If we have an explicit expiry date, use that!
     const exp = member.expiryDate;
@@ -372,6 +374,33 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                   <span className="text-[5px] mt-0.5 tracking-normal leading-none font-bold opacity-90 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.5)]">
                     {isBanned ? 'റദ്ദാക്കി' : 'കാലാവധി കഴിഞ്ഞു'}
                   </span>
+                </div>
+              )}
+
+              {/* Pending Approval Ribbon */}
+              {isPending && !isBanned && !isExpired && (
+                <div className="absolute top-[26px] -right-[38px] w-[130px] bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-900 font-extrabold text-[8px] py-1 uppercase tracking-wider text-center rotate-45 z-40 shadow-[0_2px_5px_rgba(0,0,0,0.4)] border-y border-white/20 flex flex-col items-center justify-center leading-none pointer-events-none">
+                  <span className="font-sans font-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)] text-slate-950">
+                    🕒 PENDING
+                  </span>
+                  <span className="text-[5.5px] mt-0.5 tracking-normal leading-none font-bold opacity-90 drop-shadow-[0_1px_1.5px_rgba(255,255,255,0.3)] text-slate-900">
+                    അപ്പ്രൂവൽ പെൻഡിങ്
+                  </span>
+                </div>
+              )}
+
+              {/* Central Rubber Stamp Watermark for Security */}
+              {isPending && (
+                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
+                  <div className="border-[4px] border-double border-rose-600/80 p-2 px-3 rounded-xl flex flex-col items-center justify-center bg-white/10 backdrop-blur-[0.5px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
+                    <span className="text-[12px] font-black tracking-[0.12em] text-rose-600 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)] font-sans uppercase">
+                      PENDING APPROVAL
+                    </span>
+                    <div className="w-full h-[1.5px] bg-rose-600/80 my-1" />
+                    <span className="text-[11.5px] font-extrabold text-rose-600 tracking-tight text-center font-sans">
+                      അപ്പ്രൂവൽ പെൻഡിങ്
+                    </span>
+                  </div>
                 </div>
               )}
 
