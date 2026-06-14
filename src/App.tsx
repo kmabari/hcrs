@@ -1664,6 +1664,40 @@ export default function App() {
     console.log(`Attempting to ${shouldHardDelete ? 'permanently delete' : 'deactivate'} document:`, uid);
     try {
       const userRef = doc(db, 'users', uid);
+
+      // Decrement quotas if the member is not already at a 'deleted' status
+      if (existing && existing.status !== 'deleted') {
+        const countsTowardQuota = existing.isQuotaCounted ?? (
+          existing.membership_type !== 'LIFE_MEMBER' && 
+          existing.membershipType !== 'LIFE_MEMBER'
+        );
+
+        if (countsTowardQuota) {
+          try {
+            const rawDistrict = existing.district || existing.districtCode || 'MLP';
+            const distCode = getDistrictCode(rawDistrict).toUpperCase();
+            const quotaRef = doc(db, 'districtQuotas', distCode);
+            await updateDoc(quotaRef, {
+              used: increment(-1)
+            });
+            console.log(`Successfully decremented district quota (${distCode}) used count.`);
+          } catch (quotaErr) {
+            console.error("Non-blocking error: Failed to decrement district quota:", quotaErr);
+          }
+        }
+
+        if (existing.registeredBy) {
+          try {
+            const operatorRef = doc(db, 'users', existing.registeredBy);
+            await updateDoc(operatorRef, {
+              quotaUsed: increment(-1)
+            });
+            console.log(`Successfully decremented operator (${existing.registeredBy}) quotaUsed count.`);
+          } catch (opErr) {
+            console.error("Non-blocking error: Failed to decrement operator quota:", opErr);
+          }
+        }
+      }
       
       if (shouldHardDelete) {
         // Complete hard delete from Firestore

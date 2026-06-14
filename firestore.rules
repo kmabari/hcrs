@@ -222,7 +222,7 @@ service cloud.firestore {
       allow write: if isAdmin();
       allow update: if isSignedIn() && (
         isAdmin() ||
-        (incoming().used == existing().used + 1 && 
+        ((incoming().used == existing().used + 1 || incoming().used == existing().used - 1) && 
          incoming().total == existing().total &&
          incoming().id == existing().id)
       );
