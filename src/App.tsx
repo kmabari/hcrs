@@ -432,7 +432,7 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const hasPathVerify = window.location.pathname.startsWith('/verify/');
-      return params.has('memberId') || params.has('distLogin') || hasPathVerify;
+      return params.has('memberId') || hasPathVerify;
     }
     return false;
   });
@@ -838,7 +838,7 @@ export default function App() {
           if (!healed && view === 'loading' && !isAdminEmail) {
             // If they just logged in but have no doc, maybe they're new or deleted
             setView('register');
-            toast.info('പൂർണ്ണരൂപം ലഭ്യമല്ല. ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Profile not found, please register)');
+            toast.info('പൂർണ്ണരൂപം ലഭ്യമല്ല. ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Profile not found, please register)', { id: 'profile_not_found_toast' });
           }
         }
       }, (error) => {
@@ -858,7 +858,7 @@ export default function App() {
               else if (isOp) setView('operator');
               else setView('card');
             }
-            toast.success('താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.');
+            toast.success('താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.', { id: 'db_connection_fallback_toast' });
             return;
           }
         } catch (e) {
