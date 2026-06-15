@@ -113,6 +113,8 @@ export default function App() {
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
   const isSyncingRef = useRef(false);
+  const hasInitialSyncedRef = useRef(false);
+  const lastAuthUserUidRef = useRef<string | null>(null);
 
   const refreshMembersList = useCallback(async (customUser?: UserProfile) => {
     const activeUser = customUser || user;
@@ -525,6 +527,8 @@ export default function App() {
 
       if (!authUser) {
         console.log("No authenticated user found.");
+        hasInitialSyncedRef.current = false;
+        lastAuthUserUidRef.current = null;
         if (!isMagicLink) {
           setUser(null);
           setMembers([]);
@@ -537,6 +541,10 @@ export default function App() {
       }
 
       setLoadingStatus('Handshake Verified...');
+      if (lastAuthUserUidRef.current !== authUser.uid) {
+        hasInitialSyncedRef.current = false;
+        lastAuthUserUidRef.current = authUser.uid;
+      }
       const currentEmail = (authUser.email || '').toLowerCase().trim();
       const isSuperAdminEmail = MAIN_ADMINS.some(email => email.toLowerCase() === currentEmail);
       const isSecondAdminEmail = SECOND_ADMINS.some(email => email.toLowerCase() === currentEmail);
@@ -724,7 +732,8 @@ export default function App() {
             }
           }
 
-          if (isAdmin || isOperator) {
+          if ((isAdmin || isOperator) && !hasInitialSyncedRef.current) {
+             hasInitialSyncedRef.current = true;
              refreshMembersList(userData);
           }
         } else {
