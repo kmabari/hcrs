@@ -1,0 +1,193 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores membership details and credentials for HCRS Society members.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string" },
+        "mobile": { "type": "string", "description": "Username (unique mobile number)" },
+        "email": { "type": "string", "description": "Contact email and login credential." },
+        "address": { "type": "string" },
+        "district": { "type": "string" },
+        "state": { "type": "string" },
+        "pincode": { "type": "string" },
+        "postOffice": { "type": "string" },
+        "assemblyConstituency": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "membershipType": { "type": "string", "enum": ["Annual", "Life"] },
+        "membership_type": { "type": "string", "enum": ["LIFE_MEMBER", "ADHOC_MEMBER"] },
+        "photoUrl": { "type": "string", "description": "URL to profile photo in Firebase Storage" },
+        "paymentProofUrl": { "type": "string", "description": "URL to payment screenshot in Firebase Storage" },
+        "registrationDate": { "type": "string", "format": "date-time" },
+        "membershipId": { "type": "string", "description": "Format: [State]/[District_Code]/[Constituency_Code]/[Serial_No]" },
+        "status": { "type": "string", "enum": ["pending", "active", "offline"] },
+        "isPaid": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "isAdmin": { "type": "boolean" },
+        "pin": { "type": "string", "description": "6-digit numeric password" }
+      },
+      "required": ["name", "mobile", "email", "district", "state", "pin"]
+    },
+    "SupportClaim": {
+      "title": "Highrich Support Claim",
+      "description": "Information collected for member support coordination regarding Highrich investments.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "membershipId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userMobile": { "type": "string" },
+        "userDistrict": { "type": "string" },
+        "highrichId": { "type": "string" },
+        "categories": { "type": "array" },
+        "otherCategory": { "type": "string" },
+        "categoryDetails": { "type": "object" },
+        "noBreakup": { "type": "boolean" },
+        "totalPaid": { "type": "number" },
+        "totalReceived": { "type": "number" },
+        "totalPending": { "type": "number" },
+        "futurePreference": { "type": "string" },
+        "hardshipStatus": { "type": "array" },
+        "isEmergency": { "type": "boolean" },
+        "priorityStatus": { "type": "string" },
+        "tokenNo": { "type": "integer" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "membershipId", "totalPaid", "totalReceived", "futurePreference"]
+    },
+    "DistrictQuota": {
+      "title": "District Registration Quota",
+      "description": "Defines the shared registration limits for a specific district.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "District Code (e.g., MLP, KKD)" },
+        "districtName": { "type": "string" },
+        "total": { "type": "integer" },
+        "used": { "type": "integer" }
+      },
+      "required": ["id", "districtName", "total", "used"]
+    },
+    "OrgSettings": {
+      "title": "Organization Settings",
+      "description": "Stores site-wide configuration like contact details and about content.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "shortName": { "type": "string" },
+        "aboutUs": { "type": "string" },
+        "mission": { "type": "string" },
+        "vision": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website": { "type": "string" },
+        "districtDetails": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "GalleryItem": {
+      "title": "Gallery Item",
+      "description": "An image in the organization gallery.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["url", "category", "title"]
+    },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "Customer support inquiries lodged automatically by the AI chatbot.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memberName": { "type": "string" },
+        "memberId": { "type": "string" },
+        "phone": { "type": "string" },
+        "issue": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["memberName", "phone", "issue", "status"]
+    },
+    "MigrationLog": {
+      "title": "Migration Log",
+      "description": "Activity logs and rollback backups of admin old member imports.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "adminEmail": { "type": "string" },
+        "fileName": { "type": "string" },
+        "importedCount": { "type": "integer" },
+        "updatedCount": { "type": "integer" },
+        "skippedCount": { "type": "integer" },
+        "totalRecords": { "type": "integer" },
+        "importedUids": { "type": "array" },
+        "updatedBackup": { "type": "object" }
+      },
+      "required": ["timestamp", "adminEmail", "fileName", "importedCount", "totalRecords"]
+    },
+    "CommitteeMember": {
+      "title": "Committee Member",
+      "description": "Stores details about the HCRS Committee Members of State, District, and Mandalam levels.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nameMl": { "type": "string" },
+        "designation": { "type": "string" },
+        "designationMl": { "type": "string" },
+        "level": { "type": "string", "enum": ["state", "district", "mandalam"] },
+        "district": { "type": "string" },
+        "mandalam": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "order": { "type": "integer" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "designation", "level"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Collection of HCRS Society members."
+    },
+    "districtQuotas": {
+      "schema": "DistrictQuota",
+      "description": "Shared registration quotas per district."
+    },
+    "claims": {
+      "schema": "SupportClaim",
+      "description": "Member support claims and investment details."
+    },
+    "settings": {
+      "schema": "OrgSettings",
+      "description": "Global organization settings document."
+    },
+    "gallery": {
+      "schema": "GalleryItem",
+      "description": "Collection of gallery images."
+    },
+    "support_tickets": {
+      "schema": "SupportTicket",
+      "description": "Automated helper chatbot tickets and notifications for operators."
+    },
+    "migration_logs": {
+      "schema": "MigrationLog",
+      "description": "Activity logs and rollback states for member migrations."
+    },
+    "committees": {
+      "schema": "CommitteeMember",
+      "description": "Collection of state, district, and mandalam committee members."
+    }
+  }
+}

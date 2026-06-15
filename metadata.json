@@ -1,0 +1,8 @@
+{
+  "name": "Remix: HCRS Society Membership",
+  "description": "Premium membership management system with ID card generation, digital registration, and admin dashboard for HCRS Society.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

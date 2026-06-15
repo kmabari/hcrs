@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;850;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: "Poppins", sans-serif;
+    --font-sans: "Inter", sans-serif;
+    --font-mono: "Space Grotesk", monospace;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --color-brand-dark-purple: var(--brand-dark-purple);
+    --color-brand-purple: var(--brand-purple);
+    --color-brand-gold-light: var(--brand-gold-light);
+    --color-brand-blue: var(--brand-blue);
+    --color-brand-magenta: var(--brand-magenta);
+    --color-brand-secondary-blue: var(--brand-secondary-blue);
+    --color-forest: var(--brand-blue);
+    --color-earth: var(--brand-magenta);
+    --color-clay: var(--clay);
+    --color-clay-dark: var(--clay-dark);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    /* Government Portal & Corporate Theme Palette */
+    --brand-blue: #0A2E5C;
+    --brand-secondary-blue: #1E5AA8;
+    --brand-magenta: #D91E63;
+    --brand-navy: #222222;
+    --brand-dark-purple: #0A2E5C;
+    --brand-purple: #1E5AA8;
+    --clay: #FFFFFF;
+    --clay-dark: #F5F7FA;
+
+    --background: #FFFFFF;
+    --foreground: #222222;
+    
+    --card: #FFFFFF;
+    --card-foreground: #222222;
+    
+    --popover: #FFFFFF;
+    --popover-foreground: #222222;
+    
+    --primary: var(--brand-blue);
+    --primary-foreground: #FFFFFF;
+    
+    --secondary: var(--brand-secondary-blue);
+    --secondary-foreground: #FFFFFF;
+    
+    --muted: #E5E7EB;
+    --muted-foreground: #4B5563;
+    
+    --accent: var(--clay-dark);
+    --accent-foreground: var(--brand-blue);
+    
+    --destructive: #DC2626;
+    --border: #E5E7EB;
+    --input: #E5E7EB;
+    --ring: var(--brand-blue);
+    
+    --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+     background-color: #FFFFFF;
+     background-attachment: fixed;
+    }
+  html {
+    @apply font-sans antialiased text-[#222222];
+    }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight text-[#222222] font-semibold;
+  }
+}
+
+@layer utilities {
+  .shadow-premium {
+    box-shadow: 0 4px 12px rgba(10, 46, 92, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+  
+  .shadow-projected {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  }
+  
+  .shadow-projected-active {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .glass-card {
+    @apply bg-white border border-slate-200;
+    box-shadow: 0 4px 12px rgba(10, 46, 92, 0.05);
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(128, 74, 138, 0.05);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(128, 74, 138, 0.2);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-purple);
+}

@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email in [
+          'kmabarikiyafoods@gmail.com', 'hcrsindia@gmail.com', 'admin@hcrs.society', 
+          '9645934571@hcrs.society', 'mabarikiyafoods@gmail.com', 'hcrskerala@gmail.com'
+        ] || 
+        // Fallback or explicit check if we could use exists() but storage exists() is limited to same service
+        // We'll rely on the email list for critical storage admin perms
+        request.auth.token.email.matches('.*@hcrs.society')
+      );
+    }
+
+    match /photos/{userId}_profile.{ext} {
+      allow read: if true;
+      allow write: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+    }
+    match /assets/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /payments/{userId}_payment.{ext} {
+      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow write: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+    }
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
