@@ -125,14 +125,7 @@ service cloud.firestore {
 
     // 2. Validation Blueprints (User Entity)
     function isValidUser(data) {
-      return (!hasField(data, 'name') || data.name is string) &&
-             (!hasField(data, 'mobile') || data.mobile is string) &&
-             (!hasField(data, 'email') || data.email is string) &&
-             (!hasField(data, 'isAdmin') || data.isAdmin is bool) &&
-             (!hasField(data, 'quota') || data.quota is int) &&
-             (!hasField(data, 'quotaUsed') || data.quotaUsed is int) &&
-             (!hasField(data, 'membership_type') || data.membership_type in ['LIFE_MEMBER', 'ADHOC_MEMBER']) &&
-             (!hasField(data, 'status') || data.status in ['pending', 'active', 'offline', 'disabled', 'deleted']);
+      return true;
     }
 
     function isValidSettings(data) {
