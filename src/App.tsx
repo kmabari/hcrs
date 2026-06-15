@@ -37,19 +37,34 @@ const MAIN_ADMINS = [
 const SECOND_ADMINS = [
   'hcrskerala@gmail.com',
   'hcrskasaragod@hcrs.society',
+  'hcrsksd@hcrs.society',
   'hcrskannur@hcrs.society',
+  'hcrsknr@hcrs.society',
   'hcrswayanad@hcrs.society',
+  'hcrswyd@hcrs.society',
   'hcrskozhikode@hcrs.society',
+  'hcrskoz@hcrs.society',
   'hcrsmalappuram@hcrs.society',
+  'hcrsmlp@hcrs.society',
+  'hcrsmpm@hcrs.society',
   'hcrspalakkad@hcrs.society',
+  'hcrspkd@hcrs.society',
   'hcrsthrissur@hcrs.society',
+  'hcrstcr@hcrs.society',
   'hcrsernakulam@hcrs.society',
+  'hcrsekm@hcrs.society',
   'hcrsidukki@hcrs.society',
+  'hcrsidk@hcrs.society',
   'hcrskottayam@hcrs.society',
+  'hcrsktm@hcrs.society',
   'hcrsalappuzha@hcrs.society',
+  'hcrsalp@hcrs.society',
   'hcrspathanamthitta@hcrs.society',
+  'hcrspta@hcrs.society',
   'hcrskollam@hcrs.society',
-  'hcrsthiruvananthapuram@hcrs.society'
+  'hcrsklm@hcrs.society',
+  'hcrsthiruvananthapuram@hcrs.society',
+  'hcrstvm@hcrs.society'
 ];
 
 const getStrictDistrictFromEmail = (email: string): string | null => {
@@ -64,7 +79,7 @@ const getStrictDistrictFromEmail = (email: string): string | null => {
   if (suffix === 'kannur' || suffix === 'knr') return 'KNR';
   if (suffix === 'wayanad' || suffix === 'wyd') return 'WYD';
   if (suffix === 'kozhikode' || suffix === 'kozicode' || suffix === 'kozikhode' || suffix === 'koz') return 'KOZ';
-  if (suffix === 'malappuram' || suffix === 'malapuram' || suffix === 'mlp') return 'MLP';
+  if (suffix === 'malappuram' || suffix === 'malapuram' || suffix === 'mlp' || suffix === 'mpm') return 'MLP';
   if (suffix === 'palakkad' || suffix === 'palakad' || suffix === 'pkd') return 'PKD';
   if (suffix === 'thrissur' || suffix === 'trichur' || suffix === 'tcr') return 'TCR';
   if (suffix === 'ernakulam' || suffix === 'cochin' || suffix === 'ekm') return 'EKM';
@@ -443,6 +458,9 @@ export default function App() {
       sessionStorage.setItem('hcrs_district_intent', distLogin);
       sessionStorage.setItem('hcrs_direct_manual', 'true');
       setIsDirectManual(true);
+      
+      // Clean up the URL so the distLogin query param doesn't stay in the address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     if (memberId) {

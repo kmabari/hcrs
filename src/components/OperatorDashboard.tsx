@@ -179,7 +179,7 @@ export default function OperatorDashboard({
   }, [user.district]);
 
   const stats = useMemo(() => ({
-    myEntries: members.length,
+    myEntries: members.filter(m => m.status !== 'deleted').length,
     active: members.filter(m => m.status === 'active').length
   }), [members]);
 

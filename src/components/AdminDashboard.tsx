@@ -124,19 +124,34 @@ const MAIN_ADMINS = [
 const SECOND_ADMINS = [
   'hcrskerala@gmail.com',
   'hcrskasaragod@hcrs.society',
+  'hcrsksd@hcrs.society',
   'hcrskannur@hcrs.society',
+  'hcrsknr@hcrs.society',
   'hcrswayanad@hcrs.society',
+  'hcrswyd@hcrs.society',
   'hcrskozhikode@hcrs.society',
+  'hcrskoz@hcrs.society',
   'hcrsmalappuram@hcrs.society',
+  'hcrsmlp@hcrs.society',
+  'hcrsmpm@hcrs.society',
   'hcrspalakkad@hcrs.society',
+  'hcrspkd@hcrs.society',
   'hcrsthrissur@hcrs.society',
+  'hcrstcr@hcrs.society',
   'hcrsernakulam@hcrs.society',
+  'hcrsekm@hcrs.society',
   'hcrsidukki@hcrs.society',
+  'hcrsidk@hcrs.society',
   'hcrskottayam@hcrs.society',
+  'hcrsktm@hcrs.society',
   'hcrsalappuzha@hcrs.society',
+  'hcrsalp@hcrs.society',
   'hcrspathanamthitta@hcrs.society',
+  'hcrspta@hcrs.society',
   'hcrskollam@hcrs.society',
-  'hcrsthiruvananthapuram@hcrs.society'
+  'hcrsklm@hcrs.society',
+  'hcrsthiruvananthapuram@hcrs.society',
+  'hcrstvm@hcrs.society'
 ];
 
 const hasValidity = (u: any) => {
