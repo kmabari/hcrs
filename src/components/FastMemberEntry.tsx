@@ -43,6 +43,15 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
     mandalam: string;
   } | null>(null);
 
+  const [debugError, setDebugError] = useState<{
+    submittedData: any;
+    validationResult: string;
+    databaseRequest: any;
+    databaseResponse: any;
+    exactMessage: string;
+    stack?: string;
+  } | null>(null);
+
   // Filter mandalams (constituencies) based on chosen district
   const mandalamOptions = district ? (CONSTITUENCIES[district] || []) : [];
 
@@ -69,6 +78,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setDebugError(null);
+    let valResult = 'Initiating form validations...';
     
     // Form validations
     if (!name.trim()) {
@@ -93,10 +104,15 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       return;
     }
 
+    valResult = `Form validations passed. Name: '${name.trim()}', Mobile: '${cleanMobile}', State: '${state}', District: '${district}', Mandalam: '${mandalam}'`;
     setIsSubmitting(true);
     const loadingToast = toast.loading('Initiating Fast Manual Entry...');
 
+    let countsTowardQuota = false;
+    let finalUid = '';
+
     try {
+      valResult += ' | Verifying mobile number uniqueness in users collection...';
       // 1. MOBILE NUMBER PROTECTION: Check for uniqueness
       const usersRef = collection(db, 'users');
       const mobileQuery = query(
@@ -106,12 +122,15 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       );
       const mobileSnap = await getDocs(mobileQuery);
       if (!mobileSnap.empty) {
+        valResult += ' | Duplicate mobile check FAILED! Mobile already registered.';
         toast.error('Mobile number already registered. No duplicate permits allowed.', { id: loadingToast });
         setIsSubmitting(false);
         return;
       }
+      valResult += ' | Mobile uniqueness verified (No duplicates found).';
 
       // 2. DISTRICT QUOTA CHECK
+      valResult += ' | Performing District quota validation...';
       const MAIN_ADMINS = [
         'kmabarikiyafoods@gmail.com',
         'hcrsindia@gmail.com',
@@ -124,18 +143,21 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
                           (adminUser?.role === 'admin' && !adminUser?.district) ||
                           (adminUser?.mobile === '9645934571');
       const isLifeMember = false;
-      const countsTowardQuota = !isMainAdmin && !isLifeMember;
+      countsTowardQuota = !isMainAdmin && !isLifeMember;
 
       const distQuota = districtQuotas[district];
       const usedDistQuota = districtQuotasUsed[district] || 0;
       if (countsTowardQuota && distQuota !== undefined && distQuota > 0 && usedDistQuota >= distQuota) {
+        valResult += ` | District quota exceeded error (${usedDistQuota}/${distQuota})`;
         toast.error(`അനുവദിച്ച എൻട്രികളുടെ പരിധി കവിഞ്ഞു! (District quota exhausted for ${district}: ${usedDistQuota}/${distQuota})`, { id: loadingToast });
         setIsSubmitting(false);
         return;
       }
+      valResult += ` | District quota check passed. Counts toward quota = ${countsTowardQuota}.`;
 
       // 3. ADMIN PERSONAL QUOTA CHECK (if operator or secondary admin)
       if (adminUser && adminUser.role !== 'admin') {
+        valResult += ' | Performing personal operator limit checks...';
         const adminDocRef = doc(db, 'users', adminUser.uid);
         const adminSnap = await getDoc(adminDocRef);
         if (adminSnap.exists()) {
@@ -143,26 +165,31 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           const pQuota = adminData.quota;
           const pUsed = adminData.quotaUsed || 0;
           if (pQuota !== undefined && pQuota > 0 && pUsed >= pQuota) {
+            valResult += ` | Operator personal limit check FAILED! (${pUsed}/${pQuota})`;
             toast.error('നിങ്ങളുടെ വ്യക്തിഗത എൻട്രികളുടെ ക്വാട്ട പരിധി കഴിഞ്ഞു. (Personal limit exhausted)', { id: loadingToast });
             setIsSubmitting(false);
             return;
           }
         }
       }
+      valResult += ' | Personal operator limit checks passed.';
 
       // 4. CREATE AUTH ACCOUNT IN FIREBASE AUTH using secondary app instance
+      valResult += ` | Initiating secondary auth account mapping for ${cleanMobile}...`;
       const virtualEmail = `${cleanMobile}@hcrs.society`;
-      let finalUid = '';
       try {
         const authResult = await createUserWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD);
         finalUid = authResult.user.uid;
+        valResult += ` | Secondary auth account created successfully with UID: '${finalUid}'`;
         // Sign out secondary session immediately
         await signOut(secondaryAuth);
       } catch (authErr: any) {
         if (authErr.code === 'auth/email-already-in-use') {
           // Fallback if auth exists but firestore was missing/stale
           finalUid = `offline_${cleanMobile}_${Date.now()}`;
+          valResult += ` | Secondary auth reported credentials exist. Fallback local generated UID: '${finalUid}'`;
         } else {
+          valResult += ` | Auth registration aborted: ${authErr.message || authErr}`;
           throw authErr;
         }
       }
@@ -178,9 +205,11 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       const userRef = doc(db, 'users', finalUid);
 
       let nextSerial = 1001;
+      valResult += ' | Triggering runTransaction sequence...';
 
       try {
         await runTransaction(db, async (transaction) => {
+          valResult += ' | [Transaction] Reading system settings and quota sheets...';
           // Reads
           const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
           const metaDoc = await transaction.get(metadataRef);
@@ -192,10 +221,12 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
               if (qData.total && qData.total > 0 && (qData.used || 0) >= qData.total) {
                 throw new Error(`QUOTA_EXHAUSTED`);
               }
+              valResult += ' | [Transaction] Scheduling update of district registration count +1...';
               transaction.update(quotaRef, { used: increment(1) });
             } else {
               // Initialize district quota if not exists
               const distName = DISTRICTS.find(d => d.code === district)?.name || district;
+              valResult += ' | [Transaction] District quota sheet is missing. Initializing standard cell config...';
               transaction.set(quotaRef, {
                 id: district,
                 districtName: distName,
@@ -208,17 +239,22 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           // Serial check logic
           if (metaDoc.exists()) {
             nextSerial = (metaDoc.data().count || 1000) + 1;
+            valResult += ` | [Transaction] Acquired current system total serial count: ${nextSerial-1}. Planning to assign next serial: ${nextSerial}`;
+          } else {
+            valResult += ' | [Transaction] No system serial check found. Standardizing initial batch tracking: 1001';
           }
           transaction.set(metadataRef, { count: nextSerial }, { merge: true });
 
           // Update operator personal limit used
           if (adminUser) {
+            valResult += ` | [Transaction] Logging registrant limits on operator: ${adminUser.uid}`;
             const opRef = doc(db, 'users', adminUser.uid);
             transaction.set(opRef, { quotaUsed: increment(1) }, { merge: true });
           }
 
           // Generate Structured Membership ID: HCRS-KL-District-Constituency-Serial (4 digits)
           const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
+          valResult += ` | [Transaction] Formulated legal structured Membership ID: ${generatedMembershipId}`;
 
           const newProfile: any = {
             uid: finalUid,
@@ -252,9 +288,12 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             isQuotaCounted: countsTowardQuota
           };
 
+          valResult += ` | [Transaction] Submitting user update/create user doc under path: 'users/${finalUid}'`;
           transaction.set(userRef, newProfile);
         });
+        valResult += ' | runTransaction completed successfully in the cloud.';
       } catch (error: any) {
+        valResult += ` | runTransaction FAILED! Direct exception details: ${error?.message || error}`;
         const errMsg = error?.message || String(error);
         const errCode = error?.code || '';
         const isOfflineError = 
@@ -267,6 +306,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           errCode === 'unavailable';
 
         if (isOfflineError) {
+          valResult += ' | Connection interruption detected. Transitioning to local offline direct-write sequence...';
           console.warn("Database connection issue detected during FastMemberEntry! Running offline direct-write fallback...");
           
           try {
@@ -327,6 +367,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           }
 
           await setDoc(userRef, newProfile);
+          valResult += ' | Offline fallback sequence executed locally.';
         } else {
           throw error;
         }
@@ -350,11 +391,49 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       }
     } catch (err: any) {
       console.error('Fast manual entry error:', err);
-      let errorMsg = 'Failed to record entry. Plese check options.';
-      if (err.message === 'QUOTA_EXHAUSTED') {
-        errorMsg = 'District quota constraint violated.';
+      let errorMsg = err?.message || String(err);
+      
+      // Handle potential JSON string from handleFirestoreError
+      let userReadableMsg = errorMsg;
+      try {
+        if (errorMsg.startsWith('{') && errorMsg.endsWith('}')) {
+          const parsed = JSON.parse(errorMsg);
+          userReadableMsg = `${parsed.error || 'Permission Denied'} [Operation: ${parsed.operationType} on path: ${parsed.path || ''}]`;
+        }
+      } catch (pE) {
+        // use fallback original text
       }
-      toast.error(errorMsg, { id: loadingToast });
+
+      setDebugError({
+        submittedData: {
+          name: name.trim(),
+          mobile: cleanMobile,
+          state: state,
+          district: district,
+          mandalam: mandalam
+        },
+        validationResult: valResult,
+        databaseRequest: {
+          virtualEmail: `${cleanMobile}@hcrs.society`,
+          countsTowardQuota,
+          targetUid: finalUid || 'Not resolved yet',
+          districtQuotaRef: `districtQuotas/${district}`,
+          totalsDocRef: 'system/totals',
+          operatorDocRef: adminUser ? `users/${adminUser.uid}` : 'N/A'
+        },
+        databaseResponse: {
+          code: err?.code || 'N/A',
+          details: err?.details || 'N/A'
+        },
+        exactMessage: userReadableMsg,
+        stack: err?.stack || ''
+      });
+
+      let finalToastLabel = 'Failed to record entry. Please check options.';
+      if (err.message === 'QUOTA_EXHAUSTED') {
+        finalToastLabel = 'District quota constraint violated.';
+      }
+      toast.error(finalToastLabel, { id: loadingToast });
     } finally {
       setIsSubmitting(false);
     }
@@ -559,6 +638,72 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           {isSubmitting ? 'Creating Member Account...' : 'Instant Create Member Profile'}
         </Button>
       </form>
+
+      {/* DEBUG MODE Section */}
+      {debugError && (
+        <div id="debug-log-panel" className="m-6 p-6 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-950 font-mono space-y-4 animate-in slide-in-from-bottom duration-300">
+          <div className="flex items-center justify-between border-b border-rose-200 pb-2">
+            <h4 className="font-black text-rose-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <span>⚠️ System Debug Panel (വിശദമായ തകരാർ വിവരങ്ങൾ)</span>
+            </h4>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setDebugError(null)}
+              className="h-7 text-[10px] bg-white border-rose-200 hover:bg-rose-100 text-rose-700 font-bold px-2.5"
+            >
+              Clear Log
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <span className="font-bold text-rose-900 block border-b border-rose-100 pb-1 mb-1 bg-rose-100 px-1.5 py-0.5 rounded uppercase tracking-wider text-[9.5px]">Exact Error Reason (തകരാർ കാരണം):</span>
+              <p className="font-bold text-rose-700 bg-white p-2.5 rounded-lg border border-rose-150 shadow-sm leading-relaxed whitespace-pre-wrap">{debugError.exactMessage}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <span className="font-semibold text-rose-800 block mb-0.5 uppercase text-[9px] tracking-wider">Submitted Data:</span>
+                <pre className="bg-white p-2 rounded border border-rose-100 overflow-x-auto text-[10px] leading-snug">
+                  {JSON.stringify(debugError.submittedData, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <span className="font-semibold text-rose-800 block mb-0.5 uppercase text-[9px] tracking-wider">Database Request Details:</span>
+                <pre className="bg-white p-2 rounded border border-rose-100 overflow-x-auto text-[10px] leading-snug">
+                  {JSON.stringify(debugError.databaseRequest, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            <div>
+              <span className="font-semibold text-rose-800 block mb-0.5 uppercase text-[9px] tracking-wider">Validation Step Result:</span>
+              <p className="bg-white p-2 rounded border border-rose-100 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap">{debugError.validationResult}</p>
+            </div>
+
+            {debugError.databaseResponse && (
+              <div>
+                <span className="font-semibold text-rose-800 block mb-0.5 uppercase text-[9px] tracking-wider">Database Response:</span>
+                <pre className="bg-white p-2 rounded border border-rose-100 overflow-x-auto text-[10px] leading-snug">
+                  {JSON.stringify(debugError.databaseResponse, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {debugError.stack && (
+              <div>
+                <details className="cursor-pointer">
+                  <summary className="font-semibold text-rose-800 uppercase text-[9px] tracking-wider hover:text-rose-950">View Technical Stack Trace</summary>
+                  <pre className="bg-stone-950 text-stone-300 p-2.5 rounded-lg mt-1.5 overflow-x-auto text-[10px] leading-snug max-h-40 overflow-y-auto w-full">
+                    {debugError.stack}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
