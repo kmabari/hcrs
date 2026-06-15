@@ -95,6 +95,11 @@ const getStrictDistrictFromEmail = (email: string): string | null => {
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify'>('loading');
+  const currentViewRef = useRef(view);
+  useEffect(() => {
+    currentViewRef.current = view;
+  }, [view]);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [verifiedMember, setVerifiedMember] = useState<UserProfile | null>(null);
   const [members, setMembers] = useState<UserProfile[]>([]);
@@ -518,7 +523,7 @@ export default function App() {
     let unsubscribeUser: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
-      console.log("Auth State Changed:", authUser?.email, "Current View:", view);
+      console.log("Auth State Changed:", authUser?.email, "Current View Ref:", currentViewRef.current);
       
       if (isRegistering) {
         console.log("Auth change ignored: isRegistering is true");
@@ -535,7 +540,10 @@ export default function App() {
           if (unsubscribeMembers) { unsubscribeMembers(); unsubscribeMembers = null; }
           if (unsubscribeUser) { unsubscribeUser(); unsubscribeUser = null; }
           const curUrl = new URLSearchParams(window.location.search);
-          if (view !== 'register' && !curUrl.has('memberId')) setView('landing');
+          const allowedUnauthViews = ['landing', 'login', 'register', 'renewal', 'gallery', 'verify'];
+          if (!allowedUnauthViews.includes(currentViewRef.current) && !curUrl.has('memberId')) {
+            setView('landing');
+          }
         }
         return;
       }
@@ -568,7 +576,7 @@ export default function App() {
            district: strictDistrict || ''
         };
         setUser(placeholderAdmin);
-        if (view !== 'register') {
+        if (currentViewRef.current !== 'register') {
           if (isSuperAdminEmail) setView('admin');
           else setView('operator'); // Second admins go to operator (district) view by default unless approved
         }
@@ -586,7 +594,7 @@ export default function App() {
         if (cached) {
           const cachedData = JSON.parse(cached) as UserProfile;
           setUser(cachedData);
-          if (view !== 'register' && view !== 'renewal') {
+          if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal') {
             const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
             const isOp = cachedData.role === 'operator';
             if (isAdm) setView('admin');
@@ -727,7 +735,7 @@ export default function App() {
             if (claimRedirect) {
               if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_claim_redirect');
               setView('support');
-            } else if (view !== 'renewal') {
+            } else if (currentViewRef.current !== 'renewal') {
               setView('card');
             }
           }
@@ -852,7 +860,7 @@ export default function App() {
             console.error("Error healing UID mismatch:", healErr);
           }
 
-          if (!healed && view === 'loading' && !isAdminEmail) {
+          if (!healed && currentViewRef.current === 'loading' && !isAdminEmail) {
             // If they just logged in but have no doc, maybe they're new or deleted
             setView('register');
             toast.info('പൂർണ്ണരൂപം ലഭ്യമല്ല. ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Profile not found, please register)', { id: 'profile_not_found_toast' });
@@ -868,7 +876,7 @@ export default function App() {
           if (cached) {
             const cachedData = JSON.parse(cached) as UserProfile;
             setUser(cachedData);
-            if (view !== 'register' && view !== 'renewal') {
+            if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal') {
               const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
               const isOp = cachedData.role === 'operator';
               if (isAdm) setView('admin');
@@ -888,7 +896,7 @@ export default function App() {
         }
 
         if (isSuperAdminEmail) setView('admin');
-        else if (!isMagicLink && view !== 'register') setView('landing');
+        else if (!isMagicLink && currentViewRef.current !== 'register') setView('landing');
       });
     });
 
