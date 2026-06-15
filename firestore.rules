@@ -164,8 +164,10 @@ service cloud.firestore {
       // This is necessary because these operations happen before authentication or for non-auth lookups
       allow list: if isOperator() || (request.query.limit != null && request.query.limit <= 5);
       
-      allow create: if (isSignedIn() && isOwner(userId)) && 
-                    (request.resource.data.isAdmin == false && request.resource.data.role == 'member');
+      allow create: if (isSignedIn() && (
+        (isOwner(userId) && request.resource.data.get('isAdmin', false) == false && request.resource.data.get('role', 'member') == 'member') ||
+        isOperator()
+      )) && isValidUser(request.resource.data);
 
       allow update: if isValidUser(incoming()) && (
         // Action 1: Admin/Operator Update
