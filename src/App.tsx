@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import RegistrationForm from './components/RegistrationForm';
 import RenewalForm from './RenewalForm';
@@ -112,6 +112,7 @@ export default function App() {
   const [claimRefreshTrigger, setClaimRefreshTrigger] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
+  const isSyncingRef = useRef(false);
 
   const refreshMembersList = useCallback(async (customUser?: UserProfile) => {
     const activeUser = customUser || user;
@@ -120,7 +121,10 @@ export default function App() {
     const isOperator = activeUser.role === 'operator';
     if (!isAdmin && !isOperator) return;
 
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     setIsSyncingDocs(true);
+
     console.log("refreshMembersList: Querying 'users'. activeUser:", {
       uid: activeUser?.uid,
       email: activeUser?.email,
@@ -131,7 +135,10 @@ export default function App() {
       uid: auth.currentUser.uid,
       email: auth.currentUser.email
     } : "null");
-    const loadingToast = toast.loading('Syncing database entries...');
+
+    const loadingToast = 'syncing_db_entries';
+    toast.loading('Syncing database entries...', { id: loadingToast });
+
     try {
       let q;
       const currentEmail = (activeUser.email || '').toLowerCase().trim();
@@ -148,11 +155,11 @@ export default function App() {
 
       const snapshot = await getDocs(q);
       const list = snapshot.docs
-        .map(doc => ({ uid: doc.id, ...(doc.data() as any) } as UserProfile))
-        .filter(u => {
-          const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
-          return !isMainAdmin;
-        });
+         .map(doc => ({ uid: doc.id, ...(doc.data() as any) } as UserProfile))
+         .filter(u => {
+           const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
+           return !isMainAdmin;
+         });
 
       let cleanList = [...list];
       
@@ -205,6 +212,7 @@ export default function App() {
       handleFirestoreError(err, OperationType.GET, 'users');
     } finally {
       setIsSyncingDocs(false);
+      isSyncingRef.current = false;
     }
   }, [user]);
 
@@ -858,7 +866,12 @@ export default function App() {
               else if (isOp) setView('operator');
               else setView('card');
             }
-            toast.success('താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.', { id: 'db_connection_fallback_toast' });
+            const now = Date.now();
+            const lastShown = (window as any)._lastDbConnectionToastTime || 0;
+            if (now - lastShown > 30000) {
+              (window as any)._lastDbConnectionToastTime = now;
+              toast.success('താൽക്കാലികമായി ഡാറ്റാബേസ് കണക്ഷൻ ലഭ്യമായില്ല എങ്കിലും മുൻപ് ലോഡ് ചെയ്ത താങ്കളുടെ പ്രൊഫൈൽ ഇവിടെ കാണാം.', { id: 'db_connection_fallback_toast' });
+            }
             return;
           }
         } catch (e) {
@@ -1430,81 +1443,165 @@ export default function App() {
 
       let newlyCreatedUser: UserProfile | null = null;
 
-      await runTransaction(db, async (transaction) => {
-        // 1. ALL READS FIRST
-        const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
-        const metaDoc = await transaction.get(metadataRef);
-        
-        // 2. LOGIC AND WRITES
-        if (countsTowardQuota) {
-          if (qSnap && qSnap.exists()) {
-            const qData = qSnap.data();
-            if (qData.total !== undefined && qData.total > 0 && (qData.used || 0) >= qData.total) {
-               throw new Error("District quota exhausted during transaction");
+      try {
+        await runTransaction(db, async (transaction) => {
+          // 1. ALL READS FIRST
+          const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
+          const metaDoc = await transaction.get(metadataRef);
+          
+          // 2. LOGIC AND WRITES
+          if (countsTowardQuota) {
+            if (qSnap && qSnap.exists()) {
+              const qData = qSnap.data();
+              if (qData.total !== undefined && qData.total > 0 && (qData.used || 0) >= qData.total) {
+                 throw new Error("District quota exhausted during transaction");
+              }
+              transaction.update(quotaRef, { used: increment(1) });
+            } else {
+              // Initialize district quota if not exists
+              transaction.set(quotaRef, {
+                id: distCodeForQuota,
+                districtName: DISTRICTS.find(d => d.code === distCodeForQuota)?.name || distCodeForQuota,
+                total: 398, // Using the user's mentioned number as potential default or just standard
+                used: 1
+              });
             }
-            transaction.update(quotaRef, { used: increment(1) });
-          } else {
-            // Initialize district quota if not exists
-            transaction.set(quotaRef, {
-              id: distCodeForQuota,
-              districtName: DISTRICTS.find(d => d.code === distCodeForQuota)?.name || distCodeForQuota,
-              total: 398, // Using the user's mentioned number as potential default or just standard
-              used: 1
-            });
           }
+
+          let nextSerial = (metaDoc.data()?.count || 1000) + 1;
+          transaction.set(metadataRef, { count: nextSerial }, { merge: true });
+
+          const memberDistCode = getDistrictCode(values.district || 'MLP').toUpperCase();
+          const assemblyCode = getAssemblyCode(values.assemblyConstituency || '').toUpperCase();
+          const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial);
+
+          const isMainAdminFinal = MAIN_ADMINS.some(e => e.toLowerCase() === (user?.email || '').toLowerCase());
+          // Increment count for Operators and Second Admins if they have a real profile document
+          if (user?.role === 'operator' || (user?.role === 'admin' && !isMainAdminFinal)) {
+            const operatorRef = doc(db, 'users', user.uid);
+            // Use set with merge to avoid failure if document doesn't exist
+            transaction.set(operatorRef, {
+              quotaUsed: increment(1)
+            }, { merge: true });
+          }
+
+          const isBulk = orgSettings?.registrationMode === 'bulk';
+          const isAdminAccount = values.role === 'admin' || values.role === 'operator';
+          
+          // Manual admin additions have expired validity by default from the start (as requested by user)
+          const expiry = new Date('2026-04-15T12:00:00Z'); // Expired on April 15, 2026
+
+          const offlineMemberData: any = {
+            uid,
+            ...values,
+            email: finalEmail, // USE SANITIZED EMAIL
+            registrationDate: new Date('2025-04-15T12:00:00Z'), // Joining / Registration Date set to April 2025
+            membershipId: finalId,
+            status: 'active', // Auto-approved
+            isPaid: true,
+            isApproved: true,
+            issueDate: new Date('2025-04-15T12:00:00Z'),
+            expiryDate: expiry,
+            isAdmin: isAdminAccount,
+            role: values.role || 'member',
+            quota: values.quota || 0,
+            quotaUsed: 0,
+            registeredBy: user?.uid, // Track who added this member
+            registeredByName: user?.name || 'Admin', // Store name for display
+            serialNo: nextSerial,
+            waStatus: isBulk ? 'Pending' : 'Sent',
+            stateCode: 'KL',
+            districtCode: memberDistCode,
+            constituencyCode: assemblyCode,
+            membership_type: 'ADHOC_MEMBER',
+            isQuotaCounted: countsTowardQuota
+          };
+          transaction.set(userRef, offlineMemberData);
+          newlyCreatedUser = offlineMemberData as UserProfile;
+        });
+      } catch (error: any) {
+        const errMsg = error?.message || String(error);
+        const errCode = error?.code || '';
+        const isOfflineError = 
+          errMsg.toLowerCase().includes('offline') || 
+          errMsg.toLowerCase().includes('connection') || 
+          errMsg.toLowerCase().includes('could not reach') || 
+          errMsg.toLowerCase().includes('backend') ||
+          errMsg.toLowerCase().includes('timeout') ||
+          errMsg.toLowerCase().includes('unavailable') ||
+          errCode === 'unavailable';
+
+        if (isOfflineError) {
+          console.warn("Database connection issue detected during handleAddOffline! Running offline direct-write fallback...");
+          
+          let nextSerial = 1001;
+          try {
+            // Read from server or local cache (fallback is instant if offline)
+            const metaDoc = await getDoc(metadataRef);
+            if (metaDoc.exists()) {
+              nextSerial = (metaDoc.data()?.count || 1000) + 1;
+            } else {
+              const maxLocal = members && members.length > 0 ? Math.max(...members.map(m => m.serialNo || 1000), 1000) : 1000;
+              nextSerial = maxLocal + 1;
+            }
+          } catch (e) {
+            const maxLocal = members && members.length > 0 ? Math.max(...members.map(m => m.serialNo || 1000), 1000) : 1000;
+            nextSerial = maxLocal + 1;
+          }
+
+          const memberDistCode = getDistrictCode(values.district || 'MLP').toUpperCase();
+          const assemblyCode = getAssemblyCode(values.assemblyConstituency || '').toUpperCase();
+          const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial);
+
+          const isMainAdminFinal = MAIN_ADMINS.some(e => e.toLowerCase() === (user?.email || '').toLowerCase());
+          const isBulk = orgSettings?.registrationMode === 'bulk';
+          const isAdminAccount = values.role === 'admin' || values.role === 'operator';
+          const expiry = new Date('2026-04-15T12:00:00Z');
+
+          const offlineMemberData: any = {
+            uid,
+            ...values,
+            email: finalEmail,
+            registrationDate: new Date('2025-04-15T12:00:00Z'),
+            membershipId: finalId,
+            status: 'active',
+            isPaid: true,
+            isApproved: true,
+            issueDate: new Date('2025-04-15T12:00:00Z'),
+            expiryDate: expiry,
+            isAdmin: isAdminAccount,
+            role: values.role || 'member',
+            quota: values.quota || 0,
+            quotaUsed: 0,
+            registeredBy: user?.uid,
+            registeredByName: user?.name || 'Admin',
+            serialNo: nextSerial,
+            waStatus: isBulk ? 'Pending' : 'Sent',
+            stateCode: 'KL',
+            districtCode: memberDistCode,
+            constituencyCode: assemblyCode,
+            membership_type: 'ADHOC_MEMBER',
+            isQuotaCounted: countsTowardQuota
+          };
+
+          // Safe, direct, offline-first non-blocking writes
+          await setDoc(metadataRef, { count: nextSerial }, { merge: true });
+          
+          if (countsTowardQuota) {
+            await setDoc(quotaRef, { used: increment(1) }, { merge: true });
+          }
+
+          if (user?.role === 'operator' || (user?.role === 'admin' && !isMainAdminFinal)) {
+            const operatorRef = doc(db, 'users', user.uid);
+            await setDoc(operatorRef, { quotaUsed: increment(1) }, { merge: true });
+          }
+
+          await setDoc(userRef, offlineMemberData);
+          newlyCreatedUser = offlineMemberData as UserProfile;
+        } else {
+          throw error;
         }
-
-        let nextSerial = (metaDoc.data()?.count || 1000) + 1;
-        transaction.set(metadataRef, { count: nextSerial }, { merge: true });
-
-        const memberDistCode = getDistrictCode(values.district || 'MLP').toUpperCase();
-        const assemblyCode = getAssemblyCode(values.assemblyConstituency || '').toUpperCase();
-        const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial);
-
-        const isMainAdminFinal = MAIN_ADMINS.some(e => e.toLowerCase() === (user?.email || '').toLowerCase());
-        // Increment count for Operators and Second Admins if they have a real profile document
-        if (user?.role === 'operator' || (user?.role === 'admin' && !isMainAdminFinal)) {
-          const operatorRef = doc(db, 'users', user.uid);
-          // Use set with merge to avoid failure if document doesn't exist
-          transaction.set(operatorRef, {
-            quotaUsed: increment(1)
-          }, { merge: true });
-        }
-
-        const isBulk = orgSettings?.registrationMode === 'bulk';
-        const isAdminAccount = values.role === 'admin' || values.role === 'operator';
-        
-        // Manual admin additions have expired validity by default from the start (as requested by user)
-        const expiry = new Date('2026-04-15T12:00:00Z'); // Expired on April 15, 2026
-
-        const offlineMemberData: any = {
-          uid,
-          ...values,
-          email: finalEmail, // USE SANITIZED EMAIL
-          registrationDate: new Date('2025-04-15T12:00:00Z'), // Joining / Registration Date set to April 2025
-          membershipId: finalId,
-          status: 'active', // Auto-approved
-          isPaid: true,
-          isApproved: true,
-          issueDate: new Date('2025-04-15T12:00:00Z'),
-          expiryDate: expiry,
-          isAdmin: isAdminAccount,
-          role: values.role || 'member',
-          quota: values.quota || 0,
-          quotaUsed: 0,
-          registeredBy: user?.uid, // Track who added this member
-          registeredByName: user?.name || 'Admin', // Store name for display
-          serialNo: nextSerial,
-          waStatus: isBulk ? 'Pending' : 'Sent',
-          stateCode: 'KL',
-          districtCode: memberDistCode,
-          constituencyCode: assemblyCode,
-          membership_type: 'ADHOC_MEMBER',
-          isQuotaCounted: countsTowardQuota
-        };
-        transaction.set(userRef, offlineMemberData);
-        newlyCreatedUser = offlineMemberData as UserProfile;
-      });
+      }
 
       if (newlyCreatedUser) {
         setMembers(prev => [newlyCreatedUser!, ...prev]);

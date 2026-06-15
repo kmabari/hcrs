@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment } from 'firebase/firestore';
 import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,80 +179,158 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
       let nextSerial = 1001;
 
-      await runTransaction(db, async (transaction) => {
-        // Reads
-        const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
-        const metaDoc = await transaction.get(metadataRef);
+      try {
+        await runTransaction(db, async (transaction) => {
+          // Reads
+          const qSnap = countsTowardQuota ? await transaction.get(quotaRef) : null;
+          const metaDoc = await transaction.get(metadataRef);
 
-        // Quota increment logic in transaction
-        if (countsTowardQuota) {
-          if (qSnap && qSnap.exists()) {
-            const qData = qSnap.data();
-            if (qData.total && qData.total > 0 && (qData.used || 0) >= qData.total) {
-              throw new Error(`QUOTA_EXHAUSTED`);
+          // Quota increment logic in transaction
+          if (countsTowardQuota) {
+            if (qSnap && qSnap.exists()) {
+              const qData = qSnap.data();
+              if (qData.total && qData.total > 0 && (qData.used || 0) >= qData.total) {
+                throw new Error(`QUOTA_EXHAUSTED`);
+              }
+              transaction.update(quotaRef, { used: increment(1) });
+            } else {
+              // Initialize district quota if not exists
+              const distName = DISTRICTS.find(d => d.code === district)?.name || district;
+              transaction.set(quotaRef, {
+                id: district,
+                districtName: distName,
+                total: 500,
+                used: 1
+              });
             }
-            transaction.update(quotaRef, { used: increment(1) });
-          } else {
-            // Initialize district quota if not exists
-            const distName = DISTRICTS.find(d => d.code === district)?.name || district;
-            transaction.set(quotaRef, {
-              id: district,
-              districtName: distName,
-              total: 500,
-              used: 1
-            });
           }
+
+          // Serial check logic
+          if (metaDoc.exists()) {
+            nextSerial = (metaDoc.data().count || 1000) + 1;
+          }
+          transaction.set(metadataRef, { count: nextSerial }, { merge: true });
+
+          // Update operator personal limit used
+          if (adminUser) {
+            const opRef = doc(db, 'users', adminUser.uid);
+            transaction.set(opRef, { quotaUsed: increment(1) }, { merge: true });
+          }
+
+          // Generate Structured Membership ID: HCRS-KL-District-Constituency-Serial (4 digits)
+          const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
+
+          const newProfile: any = {
+            uid: finalUid,
+            name: name.trim(),
+            mobile: cleanMobile,
+            email: '', // empty initially as required
+            state: state,
+            district: district,
+            assemblyConstituency: mandalam,
+            address: '',
+            pincode: '',
+            postOffice: '',
+            bloodGroup: '',
+            gender: '',
+            dob: '',
+            membershipId: generatedMembershipId,
+            status: 'active', // Approved and Active instantly
+            isPaid: true,
+            isApproved: true,
+            isAdmin: false,
+            role: 'member',
+            serialNo: nextSerial,
+            registrationDate: new Date('2025-04-15T12:00:00Z'), // Manual entry defaults to join date April 2025
+            expiryDate: new Date('2026-04-15T12:00:00Z'), // Expiry set to April 2026 so they require renewal
+            registeredBy: adminUser?.uid || 'district_admin',
+            registeredByName: adminUser?.name || 'District Admin',
+            waStatus: 'Pending',
+            stateCode: 'KL',
+            districtCode: getDistrictCode(district).toUpperCase(),
+            constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
+            isQuotaCounted: countsTowardQuota
+          };
+
+          transaction.set(userRef, newProfile);
+        });
+      } catch (error: any) {
+        const errMsg = error?.message || String(error);
+        const errCode = error?.code || '';
+        const isOfflineError = 
+          errMsg.toLowerCase().includes('offline') || 
+          errMsg.toLowerCase().includes('connection') || 
+          errMsg.toLowerCase().includes('could not reach') || 
+          errMsg.toLowerCase().includes('backend') ||
+          errMsg.toLowerCase().includes('timeout') ||
+          errMsg.toLowerCase().includes('unavailable') ||
+          errCode === 'unavailable';
+
+        if (isOfflineError) {
+          console.warn("Database connection issue detected during FastMemberEntry! Running offline direct-write fallback...");
+          
+          try {
+            const metaDoc = await getDoc(metadataRef);
+            if (metaDoc.exists()) {
+              nextSerial = (metaDoc.data().count || 1000) + 1;
+            } else {
+              nextSerial = 1000 + Math.floor(Math.random() * 900) + 1;
+            }
+          } catch (e) {
+            nextSerial = 1000 + Math.floor(Math.random() * 900) + 1;
+          }
+
+          const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
+
+          const newProfile: any = {
+            uid: finalUid,
+            name: name.trim(),
+            mobile: cleanMobile,
+            email: '',
+            state: state,
+            district: district,
+            assemblyConstituency: mandalam,
+            address: '',
+            pincode: '',
+            postOffice: '',
+            bloodGroup: '',
+            gender: '',
+            dob: '',
+            membershipId: generatedMembershipId,
+            status: 'active',
+            isPaid: true,
+            isApproved: true,
+            isAdmin: false,
+            role: 'member',
+            serialNo: nextSerial,
+            registrationDate: new Date('2025-04-15T12:00:00Z'),
+            expiryDate: new Date('2026-04-15T12:00:00Z'),
+            registeredBy: adminUser?.uid || 'district_admin',
+            registeredByName: adminUser?.name || 'District Admin',
+            waStatus: 'Pending',
+            stateCode: 'KL',
+            districtCode: getDistrictCode(district).toUpperCase(),
+            constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
+            isQuotaCounted: countsTowardQuota
+          };
+
+          // Safe direct offline-first writes
+          await setDoc(metadataRef, { count: nextSerial }, { merge: true });
+          
+          if (countsTowardQuota) {
+            await setDoc(quotaRef, { used: increment(1) }, { merge: true });
+          }
+
+          if (adminUser) {
+            const opRef = doc(db, 'users', adminUser.uid);
+            await setDoc(opRef, { quotaUsed: increment(1) }, { merge: true });
+          }
+
+          await setDoc(userRef, newProfile);
+        } else {
+          throw error;
         }
-
-        // Serial check logic
-        if (metaDoc.exists()) {
-          nextSerial = (metaDoc.data().count || 1000) + 1;
-        }
-        transaction.set(metadataRef, { count: nextSerial }, { merge: true });
-
-        // Update operator personal limit used
-        if (adminUser) {
-          const opRef = doc(db, 'users', adminUser.uid);
-          transaction.set(opRef, { quotaUsed: increment(1) }, { merge: true });
-        }
-
-        // Generate Structured Membership ID: HCRS-KL-District-Constituency-Serial (4 digits)
-        const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
-
-        const newProfile: any = {
-          uid: finalUid,
-          name: name.trim(),
-          mobile: cleanMobile,
-          email: '', // empty initially as required
-          state: state,
-          district: district,
-          assemblyConstituency: mandalam,
-          address: '',
-          pincode: '',
-          postOffice: '',
-          bloodGroup: '',
-          gender: '',
-          dob: '',
-          membershipId: generatedMembershipId,
-          status: 'active', // Approved and Active instantly
-          isPaid: true,
-          isApproved: true,
-          isAdmin: false,
-          role: 'member',
-          serialNo: nextSerial,
-          registrationDate: new Date('2025-04-15T12:00:00Z'), // Manual entry defaults to join date April 2025
-          expiryDate: new Date('2026-04-15T12:00:00Z'), // Expiry set to April 2026 so they require renewal
-          registeredBy: adminUser?.uid || 'district_admin',
-          registeredByName: adminUser?.name || 'District Admin',
-          waStatus: 'Pending',
-          stateCode: 'KL',
-          districtCode: getDistrictCode(district).toUpperCase(),
-          constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
-          isQuotaCounted: countsTowardQuota
-        };
-
-        transaction.set(userRef, newProfile);
-      });
+      }
 
       // 6. SUCCESS
       const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
