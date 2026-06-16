@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
 import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
-import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit } from 'firebase/firestore';
+import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, getCountFromServer } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
@@ -117,11 +117,28 @@ export default function App() {
   const [claimRefreshTrigger, setClaimRefreshTrigger] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
+  const [dbStats, setDbStats] = useState({
+    total: 0,
+    active: 0,
+    pending: 0,
+    renewals: 0,
+    deleted: 0,
+  });
   const isSyncingRef = useRef(false);
   const hasInitialSyncedRef = useRef(false);
   const lastAuthUserUidRef = useRef<string | null>(null);
 
-  const refreshMembersList = useCallback(async (customUser?: UserProfile) => {
+  const refreshMembersList = useCallback(async (
+    customUser?: UserProfile,
+    filters?: {
+      searchTerm?: string;
+      districtFilter?: string;
+      activeTab?: string;
+      categoryFilter?: string;
+      sourceFilter?: string;
+      page?: number;
+    }
+  ) => {
     const activeUser = customUser || user;
     if (!activeUser) return;
     const isAdmin = activeUser.role === 'admin' || activeUser.isAdmin;
@@ -132,50 +149,166 @@ export default function App() {
     isSyncingRef.current = true;
     setIsSyncingDocs(true);
 
-    console.log("refreshMembersList: Querying 'users'. activeUser:", {
+    const filterObj = filters || {};
+    console.log("refreshMembersList: Querying with server-side pagination & filters:", {
       uid: activeUser?.uid,
-      email: activeUser?.email,
       role: activeUser?.role,
-      isAdmin: activeUser?.isAdmin,
-      district: activeUser?.district
-    }, "auth.currentUser:", auth.currentUser ? {
-      uid: auth.currentUser.uid,
-      email: auth.currentUser.email
-    } : "null");
+      filters: filterObj
+    });
 
     const loadingToast = 'syncing_db_entries';
     toast.loading('Syncing database entries...', { id: loadingToast });
 
     try {
-      let q;
       const currentEmail = (activeUser.email || '').toLowerCase().trim();
-      if (isAdmin) {
-         const isSuper = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) || !activeUser.district;
-         q = isSuper 
-           ? query(collection(db, 'users')) 
-           : query(collection(db, 'users'), where('district', '==', activeUser.district));
+      const isSuper = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) || !activeUser.district;
+
+      const baseQ = collection(db, 'users');
+      const countConstraints: any[] = [];
+
+      // 1. Enforce Role & District Isolation constraints
+      if (!isSuper) {
+        if (activeUser.district) {
+          countConstraints.push(where('district', '==', activeUser.district));
+        } else {
+          countConstraints.push(where('registeredBy', '==', activeUser.uid));
+        }
       } else {
-         q = activeUser.district 
-           ? query(collection(db, 'users'), where('district', '==', activeUser.district))
-           : query(collection(db, 'users'), where('registeredBy', '==', activeUser.uid));
+        const distVal = filterObj.districtFilter || 'all';
+        if (distVal !== 'all') {
+          countConstraints.push(where('district', '==', distVal));
+        }
       }
 
-      const snapshot = await getDocs(q);
-      const list = snapshot.docs
-         .map(doc => ({ uid: doc.id, ...(doc.data() as any) } as UserProfile))
-         .filter(u => {
-           const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
-           return !isMainAdmin;
-         });
+      // 2. Fetch Aggregated Counts (Using hyper-efficient getCountFromServer - practically 0 read cost!)
+      const qCountActive = query(baseQ, ...countConstraints, where('status', '==', 'active'));
+      const qCountPending = query(baseQ, ...countConstraints, where('status', '==', 'pending'));
+      const qCountDeleted = query(baseQ, ...countConstraints, where('status', '==', 'deleted'));
+      const qCountRenewals = query(baseQ, ...countConstraints, where('renewalPending', '==', true));
 
-      let cleanList = [...list];
-      
+      const [snapActive, snapPending, snapDeleted, snapRenewals] = await Promise.all([
+        getCountFromServer(qCountActive),
+        getCountFromServer(qCountPending),
+        getCountFromServer(qCountDeleted),
+        getCountFromServer(qCountRenewals)
+      ]);
+
+      const activeC = snapActive.data().count;
+      const pendingC = snapPending.data().count;
+      const deletedC = snapDeleted.data().count;
+      const renewalsC = snapRenewals.data().count;
+
+      setDbStats({
+        active: activeC,
+        pending: pendingC,
+        deleted: deletedC,
+        renewals: renewalsC,
+        total: activeC + renewalsC, // Verified active or renewal pending
+      });
+
+      // 3. Document Query Construction
+      let snapDocs: UserProfile[] = [];
+      const term = (filterObj.searchTerm || '').trim();
+
+      if (term) {
+        // High-efficiency specific search term lookup to bypass reading thousands of entries
+        const cleanPhone = term.replace(/\D/g, '');
+        const searchQueries = [];
+
+        if (cleanPhone && cleanPhone.length >= 4) {
+          searchQueries.push(query(baseQ, ...countConstraints, where('mobile', '==', cleanPhone)));
+        }
+        if (term.length >= 3) {
+          searchQueries.push(query(baseQ, ...countConstraints, where('membershipId', '==', term.toUpperCase())));
+          searchQueries.push(query(baseQ, ...countConstraints, where('membershipId', '==', term)));
+        }
+        if (term.length >= 2) {
+          searchQueries.push(query(
+            baseQ, 
+            ...countConstraints, 
+            where('name', '>=', term), 
+            where('name', '<=', term + '\uf8ff'),
+            limit(50)
+          ));
+          const cappedTerm = term.charAt(0).toUpperCase() + term.slice(1);
+          if (cappedTerm !== term) {
+            searchQueries.push(query(
+              baseQ, 
+              ...countConstraints, 
+              where('name', '>=', cappedTerm), 
+              where('name', '<=', cappedTerm + '\uf8ff'),
+              limit(50)
+            ));
+          }
+        }
+
+        const snaps = await Promise.all(searchQueries.map(sq => getDocs(sq)));
+        const seenUids = new Set<string>();
+
+        snaps.forEach(snapshot => {
+          snapshot.docs.forEach(docSnap => {
+            if (!seenUids.has(docSnap.id)) {
+              seenUids.add(docSnap.id);
+              const uData = docSnap.data() as any;
+              const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (uData.email || '').toLowerCase());
+              if (!isMainAdmin) {
+                snapDocs.push({ uid: docSnap.id, ...(uData as any) });
+              }
+            }
+          });
+        });
+      } else {
+        // Build the normal query
+        const queryConstraints = [...countConstraints];
+
+        // Status constraint matching current view/tab context
+        const tab = filterObj.activeTab || 'list';
+        if (tab === 'requests') {
+          queryConstraints.push(where('status', '==', 'pending'));
+        } else if (tab === 'deleted') {
+          queryConstraints.push(where('status', '==', 'deleted'));
+        } else if (tab === 'renewals') {
+          queryConstraints.push(where('renewalPending', '==', true));
+        } else {
+          queryConstraints.push(where('status', '==', 'active'));
+        }
+
+        // Category filter
+        const cat = filterObj.categoryFilter || 'all';
+        if (cat === 'LIFE_MEMBER') {
+          queryConstraints.push(where('membership_type', '==', 'LIFE_MEMBER'));
+        } else if (cat === 'ADHOC_MEMBER') {
+          queryConstraints.push(where('membership_type', '==', 'ADHOC_MEMBER'));
+        }
+
+        const pageNum = filterObj.page || 1;
+        const PAGE_SIZE = 50;
+
+        const paginatedQ = query(
+          baseQ,
+          ...queryConstraints,
+          limit(pageNum * PAGE_SIZE)
+        );
+
+        const snapshot = await getDocs(paginatedQ);
+        const mappedList = snapshot.docs
+          .map(doc => ({ uid: doc.id, ...(doc.data() as any) } as UserProfile))
+          .filter(u => {
+            const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
+            return !isMainAdmin;
+          });
+
+        const sliceStart = Math.max(0, (pageNum - 1) * PAGE_SIZE);
+        snapDocs = mappedList.slice(sliceStart, sliceStart + PAGE_SIZE);
+      }
+
+      let cleanList = [...snapDocs];
+
       // AUTO-CLEANUP DUPLICATE LIFE MEMBER SERIAL NO 1
       const life1s = cleanList.filter(u => u.membership_type === 'LIFE_MEMBER' && u.serialNo === 1);
       if (life1s.length > 1) {
         console.log("Database Maintenance: Found duplicate Life Members with serialNo = 1:", life1s.map(l => l.uid));
         
-        // Sort to keep the earliest/original profile, delete later duplicates
         const sorted = [...life1s].sort((a, b) => {
           const t1 = a.registrationDate 
             ? (typeof a.registrationDate.toDate === 'function' 
@@ -190,7 +323,6 @@ export default function App() {
           return t1 - t2;
         });
 
-        // Keep sorted[0] (earliest), delete subsequent duplicates
         const toDelete = sorted.slice(1);
         for (const duplicateToKill of toDelete) {
           console.log(`Auto-deleting duplicate Life Member with serialNo=1, UID: ${duplicateToKill.uid}`);
@@ -202,12 +334,12 @@ export default function App() {
           }
         }
 
-        // Exclude deleted profiles from local state
         const deletedUids = toDelete.map(u => u.uid);
         cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
       }
 
       setMembers(cleanList);
+      setIsQuotaExceeded(false);
       toast.success('Database entries synchronized successfully.', { id: loadingToast });
     } catch (err: any) {
       console.error("Members fetch error during refresh:", err);
@@ -2573,6 +2705,7 @@ export default function App() {
             <AdminDashboard 
               user={user}
               members={members} 
+              dbStats={dbStats}
               onApprove={handleApprove} 
               onAddOffline={handleAddOffline} 
               onUpdate={handleUpdateMember}
@@ -2596,6 +2729,7 @@ export default function App() {
           <OperatorDashboard 
             user={user}
             members={members} 
+            dbStats={dbStats}
             onAddMember={handleAddOffline} 
             onUpdate={handleUpdateMember}
             onDelete={handleDeleteMember}

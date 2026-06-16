@@ -97,6 +97,13 @@ import { cn } from '@/lib/utils';
 interface AdminDashboardProps {
   user?: UserProfile | null;
   members: UserProfile[];
+  dbStats?: {
+    total: number;
+    active: number;
+    pending: number;
+    renewals: number;
+    deleted: number;
+  };
   onApprove: (id: string) => void;
   onAddOffline: (data: any) => void;
   onUpdate: (id: string, data: Partial<UserProfile>) => void;
@@ -109,7 +116,14 @@ interface AdminDashboardProps {
   districtQuotasUsed?: Record<string, number>;
   handleLogout: () => void;
   onViewCard?: () => void;
-  onRefreshMembers?: () => void;
+  onRefreshMembers?: (filters?: {
+    searchTerm?: string;
+    districtFilter?: string;
+    activeTab?: string;
+    categoryFilter?: string;
+    sourceFilter?: string;
+    page?: number;
+  }) => void;
   isSyncingMembers?: boolean;
 }
 
@@ -192,6 +206,7 @@ const getCategoryLabel = (catId: string) => {
 export default function AdminDashboard({ 
   user,
   members, 
+  dbStats,
   onApprove, 
   onAddOffline, 
   onUpdate, 
@@ -424,12 +439,31 @@ export default function AdminDashboard({
   const [currentPage, setCurrentPage] = useState(1);
   const [validActivePage, setValidActivePage] = useState(1);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [dbPage, setDbPage] = useState(1);
 
   // Automatically reset to page 1 on search or filter changes
   useEffect(() => {
     setCurrentPage(1);
     setValidActivePage(1);
   }, [searchTerm, districtFilter, statusFilter, sourceFilter]);
+
+  useEffect(() => {
+    setDbPage(1);
+  }, [searchTerm, districtFilter, activeTab, categoryFilter, sourceFilter]);
+
+  // Trigger server-side pagination fetch
+  useEffect(() => {
+    if (onRefreshMembers) {
+      onRefreshMembers({
+        searchTerm,
+        districtFilter,
+        activeTab,
+        categoryFilter,
+        sourceFilter,
+        page: dbPage
+      });
+    }
+  }, [searchTerm, districtFilter, activeTab, categoryFilter, sourceFilter, dbPage, onRefreshMembers]);
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
@@ -894,6 +928,9 @@ export default function AdminDashboard({
   }, [members]);
 
   const stats = useMemo(() => {
+    if (dbStats) {
+      return dbStats;
+    }
     let total = 0;
     let active = 0;
     let pending = 0;
@@ -914,7 +951,7 @@ export default function AdminDashboard({
     }
 
     return { total, active, pending, renewals };
-  }, [actualMembers, districtFilter]);
+  }, [actualMembers, districtFilter, dbStats]);
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -2510,6 +2547,34 @@ export default function AdminDashboard({
                   </div>
                 </div>
               )}
+              {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
+                <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                   <Database className="w-3.5 h-3.5 text-brand-blue" />
+                   Database Batch: {dbPage} (ആകെ ബാച്ച് {dbPage})
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={dbPage <= 1 || isSyncingMembers}
+                    onClick={() => setDbPage(prev => Math.max(1, prev - 1))}
+                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
+                  >
+                    ◀ Prev 50 (മുൻപത്തെ 50)
+                  </Button>
+                  <span className="text-xs font-black text-brand-blue font-mono px-1">Page {dbPage}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={members.length < 50 || isSyncingMembers}
+                    onClick={() => setDbPage(prev => prev + 1)}
+                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
+                  >
+                    Next 50 (അടുത്ത 50) ▶
+                  </Button>
+                </div>
+              </div>
               {filteredMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2776,6 +2841,34 @@ export default function AdminDashboard({
                   </div>
                 </div>
               )}
+              {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
+                <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                   <Database className="w-3.5 h-3.5 text-brand-blue" />
+                   Database Batch: {dbPage} (ആകെ ബാച്ച് {dbPage})
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={dbPage <= 1 || isSyncingMembers}
+                    onClick={() => setDbPage(prev => Math.max(1, prev - 1))}
+                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
+                  >
+                    ◀ Prev 50 (മുൻപത്തെ 50)
+                  </Button>
+                  <span className="text-xs font-black text-brand-blue font-mono px-1">Page {dbPage}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={members.length < 50 || isSyncingMembers}
+                    onClick={() => setDbPage(prev => prev + 1)}
+                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
+                  >
+                    Next 50 (അടുത്ത 50) ▶
+                  </Button>
+                </div>
+              </div>
               {filteredValidActiveMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">

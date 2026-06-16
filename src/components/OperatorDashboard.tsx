@@ -10,6 +10,7 @@ import {
   ShieldCheck, 
   Download, 
   Share2, 
+  Database,
   CheckCircle2, 
   XCircle,
   Clock,
@@ -78,6 +79,13 @@ import FastMemberEntry from './FastMemberEntry';
 interface OperatorDashboardProps {
   user: UserProfile;
   members: UserProfile[];
+  dbStats?: {
+    total: number;
+    active: number;
+    pending: number;
+    renewals: number;
+    deleted: number;
+  };
   onAddMember: (values: any) => void;
   onUpdate: (uid: string, data: Partial<UserProfile>) => void;
   onDelete?: (uid: string) => void;
@@ -87,13 +95,21 @@ interface OperatorDashboardProps {
   isDirectManual?: boolean;
   isSecondAdmin?: boolean;
   onViewCard?: () => void;
-  onRefreshMembers?: () => void;
+  onRefreshMembers?: (filters?: {
+    searchTerm?: string;
+    districtFilter?: string;
+    activeTab?: string;
+    categoryFilter?: string;
+    sourceFilter?: string;
+    page?: number;
+  }) => void;
   isSyncingMembers?: boolean;
 }
 
 export default function OperatorDashboard({ 
   user,
   members, 
+  dbStats,
   onAddMember, 
   onUpdate,
   onDelete,
@@ -178,10 +194,35 @@ export default function OperatorDashboard({
     }
   }, [user.district]);
 
-  const stats = useMemo(() => ({
-    myEntries: members.filter(m => m.status !== 'deleted').length,
-    active: members.filter(m => m.status === 'active').length
-  }), [members]);
+  const [dbPage, setDbPage] = useState(1);
+
+  useEffect(() => {
+    setDbPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (onRefreshMembers) {
+      onRefreshMembers({
+        searchTerm,
+        districtFilter: user.district || 'all',
+        activeTab: 'list',
+        page: dbPage
+      });
+    }
+  }, [searchTerm, dbPage, user.district, onRefreshMembers]);
+
+  const stats = useMemo(() => {
+    if (dbStats) {
+      return {
+        myEntries: dbStats.total,
+        active: dbStats.active
+      };
+    }
+    return {
+      myEntries: members.filter(m => m.status !== 'deleted').length,
+      active: members.filter(m => m.status === 'active').length
+    };
+  }, [members, dbStats]);
 
   const activeDistrict = user.district || formData.district;
   const districtName = DISTRICTS.find(d => d.code === activeDistrict)?.name || activeDistrict;
@@ -524,6 +565,35 @@ export default function OperatorDashboard({
                       )}
                     </TableBody>
                   </Table>
+                  
+                  {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
+                    <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                       <Database className="w-3.5 h-3.5 text-brand-blue" />
+                       Database Batch: {dbPage} (ആകെ ബാച്ച് {dbPage})
+                    </div>
+                    <div className="flex items-center gap-2 font-sans">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={dbPage <= 1 || isSyncingMembers}
+                        onClick={() => setDbPage(prev => Math.max(1, prev - 1))}
+                        className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
+                      >
+                        ◀ Prev 50 (മുൻപത്തെ 50)
+                      </Button>
+                      <span className="text-xs font-black text-brand-blue font-mono px-1">Page {dbPage}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={members.length < 50 || isSyncingMembers}
+                        onClick={() => setDbPage(prev => prev + 1)}
+                        className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
+                      >
+                        Next 50 (അടുത്ത 50) ▶
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
