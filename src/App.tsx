@@ -129,8 +129,15 @@ export default function App() {
   const lastAuthUserUidRef = useRef<string | null>(null);
 
   const refreshMembersList = useCallback(async (
-    customUser?: UserProfile,
-    filters?: {
+    customUserOrFilters?: UserProfile | {
+      searchTerm?: string;
+      districtFilter?: string;
+      activeTab?: string;
+      categoryFilter?: string;
+      sourceFilter?: string;
+      page?: number;
+    },
+    explicitFilters?: {
       searchTerm?: string;
       districtFilter?: string;
       activeTab?: string;
@@ -139,7 +146,25 @@ export default function App() {
       page?: number;
     }
   ) => {
-    const activeUser = customUser || user;
+    let activeUser = user;
+    let filterObj: {
+      searchTerm?: string;
+      districtFilter?: string;
+      activeTab?: string;
+      categoryFilter?: string;
+      sourceFilter?: string;
+      page?: number;
+    } = {};
+
+    if (customUserOrFilters) {
+      if ('uid' in (customUserOrFilters as any) && typeof (customUserOrFilters as any).uid === 'string' && (customUserOrFilters as any).uid) {
+        activeUser = customUserOrFilters as UserProfile;
+        filterObj = explicitFilters || {};
+      } else {
+        filterObj = customUserOrFilters as any;
+      }
+    }
+
     if (!activeUser) return;
     const isAdmin = activeUser.role === 'admin' || activeUser.isAdmin;
     const isOperator = activeUser.role === 'operator';
@@ -149,7 +174,6 @@ export default function App() {
     isSyncingRef.current = true;
     setIsSyncingDocs(true);
 
-    const filterObj = filters || {};
     console.log("refreshMembersList: Querying with server-side pagination & filters:", {
       uid: activeUser?.uid,
       role: activeUser?.role,
@@ -1501,6 +1525,14 @@ export default function App() {
         registrationDate: now 
       } : m));
 
+      // Optimistically update dbStats
+      setDbStats(prev => ({
+        ...prev,
+        pending: Math.max(0, prev.pending - 1),
+        active: prev.active + 1,
+        total: prev.active + 1 + prev.renewals
+      }));
+
       toast.success('Member approved successfully', { id: loadingToast });
     } catch (error) {
       toast.error('Approval failed', { id: loadingToast });
@@ -1861,6 +1893,45 @@ export default function App() {
         ...finalData,
         issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || m.issueDate)
       } : m));
+
+      // Optimistically update dbStats
+      setDbStats(prev => {
+        let newPending = prev.pending;
+        let newActive = prev.active;
+        let newDeleted = prev.deleted;
+        let newRenewals = prev.renewals;
+
+        if (existingMember) {
+          const oldStatus = existingMember.status || 'active';
+          const newStatus = finalData.status || oldStatus;
+          
+          if (oldStatus !== newStatus) {
+            if (oldStatus === 'pending') newPending = Math.max(0, newPending - 1);
+            else if (oldStatus === 'active') newActive = Math.max(0, newActive - 1);
+            else if (oldStatus === 'deleted') newDeleted = Math.max(0, newDeleted - 1);
+
+            if (newStatus === 'pending') newPending++;
+            else if (newStatus === 'active') newActive++;
+            else if (newStatus === 'deleted') newDeleted++;
+          }
+
+          const oldRenewal = !!existingMember.renewalPending;
+          const newRenewal = finalData.renewalPending !== undefined ? !!finalData.renewalPending : oldRenewal;
+
+          if (oldRenewal !== newRenewal) {
+            if (oldRenewal) newRenewals = Math.max(0, newRenewals - 1);
+            else newRenewals++;
+          }
+        }
+
+        return {
+          pending: newPending,
+          active: newActive,
+          deleted: newDeleted,
+          renewals: newRenewals,
+          total: newActive + newRenewals
+        };
+      });
 
       toast.success('Successfully updated.', { id: loadingToast });
     } catch (error) {
