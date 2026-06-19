@@ -157,7 +157,11 @@ export default function App() {
     } = {};
 
     if (customUserOrFilters) {
-      if ('uid' in (customUserOrFilters as any) && typeof (customUserOrFilters as any).uid === 'string' && (customUserOrFilters as any).uid) {
+      const isEvent = (customUserOrFilters instanceof Event) || 
+                      (typeof customUserOrFilters === 'object' && ('nativeEvent' in customUserOrFilters || 'preventDefault' in customUserOrFilters));
+      if (isEvent) {
+        filterObj = {};
+      } else if ('uid' in (customUserOrFilters as any) && typeof (customUserOrFilters as any).uid === 'string' && (customUserOrFilters as any).uid) {
         activeUser = customUserOrFilters as UserProfile;
         filterObj = explicitFilters || {};
       } else {

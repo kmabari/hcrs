@@ -8,6 +8,7 @@ import LanguageManager from './LanguageManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
+import DbMigrationManager from './DbMigrationManager';
 import { 
   Crown,
   Users, 
@@ -1283,6 +1284,21 @@ export default function AdminDashboard({
               </button>
 
               <button
+                onClick={() => setActiveTab2('db_migration')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'db_migration' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'db_migration' ? 'text-white' : 'text-slate-400')} />
+                  <span>DB Migration (ഡേറ്റാ മൈഗ്രേഷൻ)</span>
+                </div>
+              </button>
+
+              <button
                 onClick={() => setActiveTab2('committee_mgmt')}
                 className={cn(
                   "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
@@ -1384,6 +1400,17 @@ export default function AdminDashboard({
                   >
                     <Database className="w-4 h-4 text-slate-400" />
                     <span>Import Old Members</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setActiveTab2('db_migration'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'db_migration' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <Database className="w-4 h-4 text-slate-400" />
+                    <span>Database Migration (ഡേറ്റാ മൈഗ്രേഷൻ)</span>
                   </button>
 
                   <button 
@@ -2007,6 +2034,12 @@ export default function AdminDashboard({
                       Committees
                     </TabsTrigger>
                   )}
+                  {isSuperAdmin && (
+                    <TabsTrigger value="db_migration" className="data-[state=active]:bg-white data-[state=active]:text-rose-650 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                      <Database className="w-3 h-3 text-rose-500" />
+                      DB Migration (ഡേറ്റാ മൈഗ്രേഷൻ)
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
 
@@ -2101,6 +2134,12 @@ export default function AdminDashboard({
                     adminUser={user} 
                     onRefresh={onRefreshMembers || (() => {})} 
                   />
+                )}
+              </TabsContent>
+
+              <TabsContent value="db_migration">
+                {isSuperAdmin && (
+                  <DbMigrationManager user={user} />
                 )}
               </TabsContent>
 
