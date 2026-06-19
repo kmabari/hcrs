@@ -2113,7 +2113,7 @@ export default function App() {
               <span className="text-[10px] md:text-xs opacity-95">
                 നാളെ വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ{' '} 
                 <a 
-                  href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/ai-studio-2eaab070-9ce1-4d91-bbeb-abf7bacb0528/data?openUpgradeDialog=true" 
+                  href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/-default-/data?openUpgradeDialog=true" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="underline font-black text-amber-950 hover:text-white transition-colors"

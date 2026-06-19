@@ -77,6 +77,9 @@ async function testDatabase(label: string, config: any, dbId: string) {
 }
 
 async function run() {
+  // Test default database
+  await testDatabase("Default Database", currentConfig, "(default)");
+
   // Test current configuration
   await testDatabase("Current Configuration", currentConfig, currentConfig.firestoreDatabaseId);
 

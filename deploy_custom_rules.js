@@ -2,7 +2,7 @@ import fs from 'fs';
 
 async function deployRules() {
   const projectId = "gen-lang-client-0932665202";
-  const databaseId = "ai-studio-2eaab070-9ce1-4d91-bbeb-abf7bacb0528";
+  const databaseId = "(default)";
   
   console.log("Reading rules file...");
   const rulesContent = fs.readFileSync('firestore.rules', 'utf8');
