@@ -1,8 +1,11 @@
 import fs from 'fs';
 
 async function deployRules() {
-  const projectId = "gen-lang-client-0932665202";
-  const databaseId = "(default)";
+  console.log("Reading firebase-applet-config.json...");
+  const config = JSON.parse(fs.readFileSync('firebase-applet-config.json', 'utf8'));
+  const projectId = config.projectId;
+  const databaseId = config.firestoreDatabaseId || "(default)";
+  console.log(`Using Project: ${projectId}, Database: ${databaseId}`);
   
   console.log("Reading rules file...");
   const rulesContent = fs.readFileSync('firestore.rules', 'utf8');

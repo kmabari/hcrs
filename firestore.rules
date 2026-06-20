@@ -205,6 +205,12 @@ service cloud.firestore {
       allow write: if isAdmin() && isValidGallery(incoming());
     }
 
+    // --- Collection: gallery_categories ---
+    match /gallery_categories/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // --- Collection: announcements ---
     match /announcements/{annId} {
       allow read: if true;
@@ -214,7 +220,7 @@ service cloud.firestore {
     // --- Collection: admins ---
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if false; // Managed via console or super admin
+      allow write: if isMainAdmin(); // Allow master admin to write during restore
     }
     
     // --- Collection: metadata ---
@@ -247,6 +253,7 @@ service cloud.firestore {
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       );
       allow create: if isSignedIn() && (
+        isOperator() ||
         request.resource.data.uid == request.auth.uid ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          request.resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
@@ -266,6 +273,7 @@ service cloud.firestore {
       allow create: if true; // Allows offline and standard guest and authenticated reports
       allow update: if isOperator();
       allow delete: if isAdmin();
+      allow write: if isOperator();
     }
 
     // --- Collection: migration_logs ---

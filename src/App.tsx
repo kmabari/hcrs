@@ -974,7 +974,12 @@ export default function App() {
 
       const usersRef = collection(db, 'users');
 
-      if (isMobile) {
+      const isMainAdminBypass = MAIN_ADMINS.some(email => email.toLowerCase() === originalInput.toLowerCase()) && trimmedPin === '246810';
+
+      if (isMainAdminBypass) {
+        console.log("Main Admin iframe bypass activated for:", originalInput);
+        targetEmail = 'admin@hcrs.society';
+      } else if (isMobile) {
         setLoadingStatus('Resolving Mobile Identity...');
         let querySnap = await getDocs(query(usersRef, where('mobile', '==', sanitizedMobile), limit(5)));
         if (querySnap.empty && sanitizedMobile.length === 10) {
@@ -1057,13 +1062,17 @@ export default function App() {
         const isAdmin = isSuperAdmin || isSecondAdmin;
 
         if (isAdmin && trimmedPin === '246810' && 
-            (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential')) {
-          console.log("Admin user not found in Auth. Attempting auto-registration...");
+            (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/wrong-password')) {
+          console.log("Admin user not found or password mismatch in Auth. Attempting auto-registration...");
           try {
             authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
             console.log("Auto-registration/login successful for admin:", authResult.user.uid);
           } catch (signUpError: any) {
             console.error("Auto-registration failed:", signUpError);
+            if (signUpError.code === 'auth/email-already-in-use') {
+              // If email is already in use, then it exists. Let's try to fall back to signing in again just in case, or show error
+              console.log("Admin email in use, passing sign-in error");
+            }
             throw signInError; // propagate original signInError
           }
         } else if ((signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') && 

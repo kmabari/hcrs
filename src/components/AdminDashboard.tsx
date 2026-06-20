@@ -8,6 +8,7 @@ import LanguageManager from './LanguageManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
+import BackupRestoreManager from './BackupRestoreManager';
 import { 
   Crown,
   Users, 
@@ -223,6 +224,105 @@ export default function AdminDashboard({
     });
     
     return byName ? byName.code : normalized;
+  };
+
+  const compareMobiles = (m1: any, m2: any): boolean => {
+    if (!m1 || !m2) return false;
+    const clean1 = String(m1).replace(/\D/g, '');
+    const clean2 = String(m2).replace(/\D/g, '');
+    if (clean1 === clean2) return true;
+    
+    // Fallback to last 10 digits
+    const last10_1 = clean1.slice(-10);
+    const last10_2 = clean2.slice(-10);
+    return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
+  };
+
+  const formatClaimDate = (createdAt: any): string => {
+    if (!createdAt) return 'N/A';
+    
+    if (typeof createdAt.toDate === 'function') {
+      try {
+        return createdAt.toDate().toLocaleDateString('en-IN');
+      } catch (e) {
+        console.warn("toDate failed:", e);
+      }
+    }
+    
+    if (typeof createdAt === 'string' || typeof createdAt === 'number') {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-IN');
+      }
+    }
+    
+    const secs = createdAt.seconds ?? createdAt._seconds;
+    if (typeof secs === 'number') {
+      const d = new Date(secs * 1000);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-IN');
+      }
+    }
+
+    const fallbackDate = new Date(createdAt);
+    if (!isNaN(fallbackDate.getTime())) {
+      return fallbackDate.toLocaleDateString('en-IN');
+    }
+
+    return 'N/A';
+  };
+
+  const formatClaimDateTime = (createdAt: any): string => {
+    if (!createdAt) return 'N/A';
+    
+    if (typeof createdAt.toDate === 'function') {
+      try {
+        return createdAt.toDate().toLocaleString('en-IN');
+      } catch (e) {
+        console.warn("toDate failed:", e);
+      }
+    }
+    
+    if (typeof createdAt === 'string' || typeof createdAt === 'number') {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('en-IN');
+      }
+    }
+    
+    const secs = createdAt.seconds ?? createdAt._seconds;
+    if (typeof secs === 'number') {
+      const d = new Date(secs * 1000);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('en-IN');
+      }
+    }
+
+    const fallbackDate = new Date(createdAt);
+    if (!isNaN(fallbackDate.getTime())) {
+      return fallbackDate.toLocaleString('en-IN');
+    }
+
+    return 'N/A';
+  };
+
+  const formatClaimCategories = (categories: any): string => {
+    if (!categories) return '';
+    if (Array.isArray(categories)) {
+      return categories.map(cat => getCategoryLabel(cat)).join(', ');
+    }
+    if (typeof categories === 'string') {
+      try {
+        if (categories.startsWith('[') && categories.endsWith(']')) {
+          const parsed = JSON.parse(categories);
+          if (Array.isArray(parsed)) {
+            return parsed.map(cat => getCategoryLabel(cat)).join(', ');
+          }
+        }
+      } catch (e) {}
+      return categories.split(',').map(s => getCategoryLabel(s.trim())).join(', ');
+    }
+    return String(categories);
   };
 
   const getAssemblyCode = (name: string) => {
@@ -619,9 +719,15 @@ export default function AdminDashboard({
     if (!user) return;
     setClaimsLoading(true);
     
-    const q = query(collection(db, 'claims'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'claims'));
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      // Sort client-side so that old claims without 'createdAt' are still included and displayed
+      data.sort((a: any, b: any) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      });
       setClaims(data);
       setClaimsLoading(false);
     }, (err: any) => {
@@ -1970,6 +2076,12 @@ export default function AdminDashboard({
                       Committees
                     </TabsTrigger>
                   )}
+                  {isSuperAdmin && (
+                    <TabsTrigger value="backup_restore" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                      <Database className="w-3 h-3 text-slate-400" />
+                      Database Restore (ബാക്കപ്പ്)
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
 
@@ -2074,6 +2186,15 @@ export default function AdminDashboard({
               <TabsContent value="committee_mgmt">
                 <CommitteeManagement user={user} />
               </TabsContent>
+
+              {isSuperAdmin && (
+                <TabsContent value="backup_restore">
+                  <BackupRestoreManager 
+                    adminUser={user} 
+                    onRefresh={onRefreshMembers || (() => {})} 
+                  />
+                </TabsContent>
+              )}
 
               <TabsContent value="branding">
                 <BrandingManager />
@@ -2238,7 +2359,7 @@ export default function AdminDashboard({
                           
                           {/* Family claims indicator on Member row */}
                           {(() => {
-                            const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
+                            const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
                             if (mClaims.length === 0) return null;
                             return (
                               <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
@@ -2590,7 +2711,7 @@ export default function AdminDashboard({
                           
                           {/* Family claims indicator on Member row */}
                           {(() => {
-                            const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
+                            const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
                             if (mClaims.length === 0) return null;
                             return (
                               <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
@@ -3865,6 +3986,7 @@ export default function AdminDashboard({
                       <Button 
                         onClick={() => {
                           const ws = XLSX.utils.json_to_sheet(filteredClaims.map(c => ({
+                            'Token No': c.tokenNo ?? c.serialNo ?? 'N/A',
                             'Name': c.userName,
                             'Relation': c.relation === 'Self' ? 'സ്വന്തം (Self)' :
                                        c.relation === 'Mother' ? 'അമ്മ (Mother)' :
@@ -3876,13 +3998,15 @@ export default function AdminDashboard({
                             'Mobile': c.userMobile,
                             'District': c.userDistrict,
                             'HR ID': c.highrichId,
-                            'Categories': c.categories?.join(', '),
+                            'Categories': formatClaimCategories(c.categories),
                             'Total Paid': c.totalPaid,
                             'Total Received': c.totalReceived,
                             'Balance Pending': c.totalPending,
-                            'Preference': c.futurePreference,
+                            'Preference': c.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' : 
+                                         c.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' : 
+                                         c.futurePreference === 'continue' ? 'Ready to continue based on future plans' : (c.futurePreference || 'N/A'),
                             'Priority': c.priorityStatus,
-                            'Date': c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()
+                            'Date': formatClaimDate(c.createdAt)
                           })));
                           const wb = XLSX.utils.book_new();
                           XLSX.utils.book_append_sheet(wb, ws, "Support Claims");
@@ -3913,6 +4037,7 @@ export default function AdminDashboard({
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Date</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -3929,7 +4054,7 @@ export default function AdminDashboard({
                                 <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
                                 <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
                                 {(() => {
-                                  const comboCount = claims.filter(c => c.userMobile === claim.userMobile).length;
+                                  const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
                                   if (comboCount > 1) {
                                     return (
                                       <div className="mt-1">
@@ -3989,6 +4114,9 @@ export default function AdminDashboard({
                                   </Badge>
                                   {claim.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
                                </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                              {formatClaimDate(claim.createdAt)}
                             </TableCell>
                             <TableCell className="text-right px-6">
                                <div className="flex items-center justify-end gap-1">
@@ -4277,7 +4405,7 @@ export default function AdminDashboard({
 
                 {/* Related Support Claims Section */}
                 {(() => {
-                  const mClaims = claims.filter(c => c.uid === viewingMember.uid || (viewingMember.mobile && c.userMobile === viewingMember.mobile));
+                  const mClaims = claims.filter(c => c.uid === viewingMember.uid || compareMobiles(c.userMobile, viewingMember.mobile));
                   if (mClaims.length === 0) return null;
                   return (
                     <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
@@ -5231,7 +5359,7 @@ export default function AdminDashboard({
 
                  <div className="pt-6 border-t flex items-center justify-between">
                     <div className="text-[10px] font-bold text-slate-400">
-                       SUBMITTED ON: {selectedClaim.createdAt?.toDate ? selectedClaim.createdAt.toDate().toLocaleString() : 'N/A'}
+                       SUBMITTED ON: {formatClaimDateTime(selectedClaim.createdAt)}
                     </div>
                     <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-8">Close</Button>
                  </div>

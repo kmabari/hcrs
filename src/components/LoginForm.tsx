@@ -233,6 +233,16 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 </svg>
                 Sign In with Google
               </Button>
+
+              {/* Admin login help box */}
+              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-1.5">
+                <p className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                  ⚠️ അഡ്മിൻ ലോഗിൻ ഗൈഡ് (Admin Access Backup)
+                </p>
+                <p className="text-[10px] text-amber-700 font-semibold leading-relaxed">
+                  മൊബൈൽ ബ്രൗസറോ അതോ ഗൂഗിൾ ലോഗിൻ പോപ്പ്അപ്പോ ലഭിക്കുന്നില്ലെങ്കിൽ, മുകളിലെ <span className="font-extrabold text-amber-900">Mobile Number / Email</span> ബോക്സിൽ നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത അഡ്മിൻ ഇമെയിൽ ഐഡി (ഉദാഹരണത്തിന്: <span className="font-mono font-bold text-amber-900">hcrskerala@gmail.com</span>) നൽകുക. തുടർന്ന് <span className="font-extrabold text-amber-900">Password</span> ബോക്സിൽ <span className="font-mono font-bold text-amber-900">246810</span> എന്ന് ടൈപ്പ് ചെയ്ത് താഴെയുള്ള <b>"Log In"</b> ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ നിങ്ങൾക്ക് അഡ്മിൻ പാനലിലേക്ക് നേരിട്ട് പ്രവേശിക്കാം.
+                </p>
+              </div>
             </form>
           </Form>
         </div>
