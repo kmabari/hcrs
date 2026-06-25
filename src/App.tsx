@@ -123,6 +123,7 @@ export default function App() {
     pending: 0,
     renewals: 0,
     deleted: 0,
+    validActive: 0,
   });
   const isSyncingRef = useRef(false);
   const hasInitialSyncedRef = useRef(false);
@@ -213,24 +214,31 @@ export default function App() {
       const qCountPending = query(baseQ, ...countConstraints, where('status', '==', 'pending'));
       const qCountDeleted = query(baseQ, ...countConstraints, where('status', '==', 'deleted'));
       const qCountRenewals = query(baseQ, ...countConstraints, where('renewalPending', '==', true));
+      const qCountValidActive = query(baseQ, ...countConstraints, where('status', '==', 'active'), where('expiryDate', '>', new Date()));
 
-      const [snapActive, snapPending, snapDeleted, snapRenewals] = await Promise.all([
+      const [snapActive, snapPending, snapDeleted, snapRenewals, snapValidActive] = await Promise.all([
         getCountFromServer(qCountActive),
         getCountFromServer(qCountPending),
         getCountFromServer(qCountDeleted),
-        getCountFromServer(qCountRenewals)
+        getCountFromServer(qCountRenewals),
+        getCountFromServer(qCountValidActive).catch(err => {
+          console.warn("Index not ready for valid active count, falling back:", err);
+          return null;
+        })
       ]);
 
       const activeC = snapActive.data().count;
       const pendingC = snapPending.data().count;
       const deletedC = snapDeleted.data().count;
       const renewalsC = snapRenewals.data().count;
+      const validActiveC = snapValidActive ? snapValidActive.data().count : activeC;
 
       setDbStats({
         active: activeC,
         pending: pendingC,
         deleted: deletedC,
         renewals: renewalsC,
+        validActive: validActiveC,
         total: activeC + renewalsC, // Verified active or renewal pending
       });
 
@@ -300,16 +308,24 @@ export default function App() {
           queryConstraints.push(where('status', '==', 'deleted'));
         } else if (tab === 'renewals') {
           queryConstraints.push(where('renewalPending', '==', true));
+        } else if (tab === 'life_members') {
+          queryConstraints.push(where('status', '==', 'active'));
+          queryConstraints.push(where('membership_type', '==', 'LIFE_MEMBER'));
+        } else if (tab === 'valid_active') {
+          queryConstraints.push(where('status', '==', 'active'));
+          queryConstraints.push(where('expiryDate', '>', new Date()));
         } else {
           queryConstraints.push(where('status', '==', 'active'));
         }
 
         // Category filter
-        const cat = filterObj.categoryFilter || 'all';
-        if (cat === 'LIFE_MEMBER') {
-          queryConstraints.push(where('membership_type', '==', 'LIFE_MEMBER'));
-        } else if (cat === 'ADHOC_MEMBER') {
-          queryConstraints.push(where('membership_type', '==', 'ADHOC_MEMBER'));
+        if (tab !== 'life_members' && tab !== 'valid_active') {
+          const cat = filterObj.categoryFilter || 'all';
+          if (cat === 'LIFE_MEMBER') {
+            queryConstraints.push(where('membership_type', '==', 'LIFE_MEMBER'));
+          } else if (cat === 'ADHOC_MEMBER') {
+            queryConstraints.push(where('membership_type', '==', 'ADHOC_MEMBER'));
+          }
         }
 
         const pageNum = filterObj.page || 1;
@@ -367,6 +383,24 @@ export default function App() {
 
         const deletedUids = toDelete.map(u => u.uid);
         cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
+      }
+
+      // AUTO-HEAL MISSING EXPIRY DATE FOR LIFE MEMBERS TO ALIGN WITH DYNAMIC QUERIES
+      const lifeMembersToHeal = cleanList.filter(u => 
+        String(u.membership_type || u.membershipType || '').toUpperCase().includes('LIFE') && 
+        (!u.expiryDate || u.expiryDate === null)
+      );
+      if (lifeMembersToHeal.length > 0) {
+        console.log("Database Maintenance: Healing Life Members with missing expiryDate:", lifeMembersToHeal.map(l => l.uid));
+        const farFuture = new Date('2099-12-31T23:59:59Z');
+        for (const m of lifeMembersToHeal) {
+          try {
+            await updateDoc(doc(db, 'users', m.uid), { expiryDate: farFuture });
+            m.expiryDate = farFuture;
+          } catch (err) {
+            console.error("Failed to heal expiry date for life member:", m.uid, err);
+          }
+        }
       }
 
       setMembers(cleanList);

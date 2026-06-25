@@ -78,6 +78,10 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
   const [isFetchingSheet, setIsFetchingSheet] = useState<boolean>(false);
   const [corsErrorLink, setCorsErrorLink] = useState<GoogleImportLink | null>(null);
 
+  // Direct Google Sheets fetch state for Step 1
+  const [directSheetUrl, setDirectSheetUrl] = useState<string>('');
+  const [isFetchingDirectSheet, setIsFetchingDirectSheet] = useState<boolean>(false);
+
   // Form states for registering link
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -251,7 +255,12 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
     const loadingToast = toast.loading("ഗൂഗിൾ ഷീറ്റിൽ നിന്നും വിവരങ്ങൾ ശേഖരിക്കുന്നു... (Fetching Sheet...)");
     try {
-      const response = await fetch(exportUrl);
+      // Fetch via server proxy to completely bypass CORS restrictions
+      const response = await fetch("/api/proxy-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: exportUrl })
+      });
       if (!response.ok) {
         throw new Error(`Google Sheets responded with HTTP status ${response.status}`);
       }
@@ -267,12 +276,59 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       setPanelTab('import');
       setStep(2);
     } catch (err: any) {
-      console.error("CORS restriction on Google Sheets fetch:", err);
+      console.error("CORS proxy or Google Sheets fetch issue:", err);
       toast.dismiss(loadingToast);
       setCorsErrorLink(link);
       toast.warning("Google Sheet കണക്ഷൻ തടസ്സപ്പെട്ടു (CORS restriction). ദയവായി താഴെയുള്ള ഡൗൺലോഡ് സഹായി ഉപയോഗിക്കുക.");
     } finally {
       setIsFetchingSheet(false);
+    }
+  };
+
+  const handleFetchDirectSheet = async () => {
+    if (!directSheetUrl) {
+      toast.error("ദയവായി ഒരു സാധുവായ ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് നൽകുക. (Please enter a valid Google Sheets URL.)");
+      return;
+    }
+    
+    setIsFetchingDirectSheet(true);
+    const exportUrl = getGoogleSheetsExportUrl(directSheetUrl);
+    
+    if (!exportUrl) {
+      toast.error("സാധുവായ ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് കണ്ടെത്താനായില്ല. (Could not parse valid Google Sheets ID from the link.)");
+      setIsFetchingDirectSheet(false);
+      return;
+    }
+
+    const loadingToast = toast.loading("ഗൂഗിൾ ഷീറ്റിൽ നിന്നും വിവരങ്ങൾ ശേഖരിക്കുന്നു... (Fetching Sheet...)");
+    try {
+      // Fetch via server proxy to completely bypass CORS restrictions
+      const response = await fetch("/api/proxy-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: exportUrl })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Google Sheets responded with HTTP status ${response.status}`);
+      }
+      
+      const buffer = await response.arrayBuffer();
+      toast.dismiss(loadingToast);
+      toast.success("വിവരങ്ങൾ വിജയകരമായി ശേഖരിച്ചു! കോളം മാപ്പിംഗിലേക്ക് മാറ്റുന്നു... (Google Sheet Loaded!)");
+      
+      setActiveImportLinkId(null); // Direct import has no registered link id
+      setFileName(`Google Sheet Link: ${directSheetUrl.substring(0, 45)}...`);
+      setZipPhotos(new Map());
+      
+      parseSpreadsheetBuffer(buffer, "Direct Google Sheet");
+      setStep(2);
+    } catch (err: any) {
+      console.error("Direct Google Sheets fetch issue:", err);
+      toast.dismiss(loadingToast);
+      toast.error("ഷീറ്റ് വിവരങ്ങൾ ശേഖരിക്കാൻ കഴിഞ്ഞില്ല. ഗൂഗിൾ ഷീറ്റിൽ 'Anyone with the link can view' എന്ന് നൽകിയിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുക. (Failed to load Google Sheet. Please check sharing settings.)");
+    } finally {
+      setIsFetchingDirectSheet(false);
     }
   };
 
@@ -748,16 +804,16 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
   // Perform bulk transactional seed mapping to firebase firestore
   const beginBulkDataMigration = async () => {
-    const listToProcess = [...validatedRecords];
-    if (duplicateMode === 'update') {
-      listToProcess.push(...duplicateRecords);
-    }
+    // Sort all records chronologically by row number so they process in order
+    const listToProcess = [...validatedRecords, ...duplicateRecords].sort((a, b) => a.rowNum - b.rowNum);
 
     if (listToProcess.length === 0) {
       toast.error("No valid records prepared to seed.");
       return;
     }
 
+    // Set step to 4 to show the live progression queue with logging & monitoring
+    setStep(4);
     setIsImporting(true);
     setIsPaused(false);
     setCurrentProgressIndex(0);
@@ -795,6 +851,18 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
       setCurrentProgressIndex(i);
       const row = listToProcess[i];
+
+      // If this is a duplicate record and the admin chose to skip duplicates
+      if (row.duplicateReason && duplicateMode === 'skip') {
+        skippedCount++;
+        activeLogs.unshift({
+          type: 'skip',
+          message: `[ആൾറെഡി വെബ്സൈറ്റിൽ ഉള്ളത് - SKIPPED] #${row.rowNum}: ${row.name} (${row.mobile}) - ${row.duplicateReason} (ഇറക്കുമതി ചെയ്തില്ല)`
+        });
+        setImportLog([...activeLogs]);
+        continue;
+      }
+
       const docUid = row.existingProfile?.uid || `hcrs_imp_${row.mobile}`;
       const userRef = doc(db, 'users', docUid);
 
@@ -929,8 +997,8 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       fileName: fileName,
       importedCount: successCount,
       updatedCount: upCount,
-      skippedCount: duplicateMode === 'skip' ? duplicateRecords.length : 0,
-      totalRecords: successCount + upCount + failCount,
+      skippedCount: skippedCount,
+      totalRecords: successCount + upCount + skippedCount + failCount,
       importedUids: importedUids,
       updatedBackup: updatedBackup,
       rolled_back: false
@@ -962,7 +1030,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       totalRows: listToProcess.length,
       imported: successCount,
       updated: upCount,
-      skipped: duplicateMode === 'skip' ? duplicateRecords.length : 0,
+      skipped: skippedCount,
       failed: failCount,
       timestamp: new Date()
     });
@@ -970,7 +1038,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     setIsImporting(false);
     onRefresh();
     setStep(5);
-    toast.success(`Migration completed. ${successCount} Created, ${upCount} Refreshed, ${failCount} Failed.`);
+    toast.success(`Migration completed. ${successCount} Created, ${upCount} Refreshed, ${skippedCount} Skipped, ${failCount} Failed.`);
   };
 
   // Rollback/Undo operation to restore preceding database state
@@ -1181,26 +1249,38 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </p>
               </div>
 
-              {/* Direct access to Google Sheets & Drive integrator */}
-              <div className="bg-emerald-50 border border-emerald-200/50 p-4.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
+              {/* Direct Paste Google Sheet Link Form */}
+              <div className="bg-emerald-50 border-2 border-emerald-100 p-5 rounded-2xl space-y-4 animate-in fade-in duration-300">
                 <div className="flex items-center gap-3">
-                  <div className="bg-emerald-100 p-3 rounded-xl text-emerald-700 shrink-0">
+                  <div className="bg-emerald-100 p-2.5 rounded-xl text-emerald-700 shrink-0">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <div className="text-left space-y-1">
-                    <h4 className="text-xs font-extrabold text-emerald-850 uppercase tracking-tight">ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് കോപ്പി-പേസ്റ്റ് ചെയ്യണോ? (Link Google Sheet?)</h4>
-                    <p className="text-[10.5px] text-emerald-700 font-semibold leading-relaxed">
-                      ഗൂഗിൾ ഡ്രൈവിലുള്ള നിങ്ങളുടെ മെമ്പർ ഷീറ്റുകൾ നേരിട്ട് ലിങ്ക് ചെയ്യാനും തത്സമയം മോണിറ്റർ ചെയ്യാനും മുകളിലുള്ള <strong>"Google Sheets & Drive Integrator"</strong> ടാബ് ഉപയോഗിക്കുക. അല്ലെങ്കിൽ താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.
-                    </p>
+                  <div className="text-left space-y-0.5">
+                    <h4 className="text-xs font-black text-emerald-850 uppercase tracking-tight">ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് നേരിട്ട് ഇംപോർട്ട് ചെയ്യുക (Directly Import Google Sheet Link)</h4>
+                    <p className="text-[10px] text-emerald-600 font-bold leading-none">Paste any Google Sheet URL to instantly parse and extract members</p>
                   </div>
                 </div>
-                <Button
-                  onClick={() => setPanelTab('google_drive')}
-                  size="sm"
-                  className="bg-emerald-650 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer py-2 px-3.5 shrink-0 shadow-sm flex items-center gap-1.5 transition-all"
-                >
-                  ഗൂഗിൾ ഷീറ്റ് ടാബ് തുറക്കുക <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="url"
+                    placeholder="ഉദാ: https://docs.google.com/spreadsheets/d/..."
+                    value={directSheetUrl}
+                    onChange={(e) => setDirectSheetUrl(e.target.value)}
+                    className="flex-1 h-11 px-3.5 rounded-xl border border-emerald-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white font-semibold font-mono text-[11px]"
+                  />
+                  <Button
+                    onClick={handleFetchDirectSheet}
+                    disabled={isFetchingDirectSheet}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[11px] tracking-wider rounded-xl h-11 px-5 flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer shadow-sm"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isFetchingDirectSheet ? 'animate-spin' : ''}`} />
+                    {isFetchingDirectSheet ? 'ഷീറ്റ് ലോഡ് ചെയ്യുന്നു...' : 'ലിങ്ക് കണക്ട് ചെയ്യുക ✓'}
+                  </Button>
+                </div>
+                <div className="text-[10px] text-emerald-700/85 font-semibold leading-relaxed">
+                  💡 <strong>പ്രധാനം:</strong> ഗൂഗിൾ ഷീറ്റിൽ ഷെയർ ഓപ്ഷനിൽ പോയി <strong>&quot;Anyone with the link can view&quot;</strong> എന്ന് നൽകാൻ മറക്കരുത്. പ്രൊക്സി കണക്ഷൻ ഉള്ളതിനാൽ ബ്രൗസർ തടസ്സങ്ങൾ ഒന്നും ഉണ്ടാകില്ല!
+                </div>
               </div>
 
               {availableSpreadsheets.length > 0 && (
@@ -1520,13 +1600,13 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
               {/* Progress bar */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
-                  <span>Processed {currentProgressIndex + 1} / {validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0)}</span>
-                  <span>{Math.round(((currentProgressIndex + 1) / (validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0))) * 100)}%</span>
+                  <span>Processed {currentProgressIndex + 1} / {validatedRecords.length + duplicateRecords.length}</span>
+                  <span>{Math.round(((currentProgressIndex + 1) / (validatedRecords.length + duplicateRecords.length)) * 100)}%</span>
                 </div>
                 <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-150">
                   <div 
                     className="h-full bg-gradient-to-r from-brand-blue to-blue-500 rounded-full transition-all duration-300"
-                    style={{ width: `${((currentProgressIndex + 1) / (validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0))) * 100}%` }}
+                    style={{ width: `${((currentProgressIndex + 1) / (validatedRecords.length + duplicateRecords.length)) * 100}%` }}
                   />
                 </div>
               </div>

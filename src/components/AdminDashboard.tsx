@@ -11,6 +11,7 @@ import CommitteeManagement from './CommitteeManagement';
 import DbMigrationManager from './DbMigrationManager';
 import { 
   Crown,
+  Sparkles,
   Users, 
   Search, 
   Filter, 
@@ -104,6 +105,7 @@ interface AdminDashboardProps {
     pending: number;
     renewals: number;
     deleted: number;
+    validActive?: number;
   };
   onApprove: (id: string) => void;
   onAddOffline: (data: any) => void;
@@ -1058,6 +1060,9 @@ export default function AdminDashboard({
     }).length;
   }, [members, districtFilter, categoryFilter]);
 
+  const finalValidActiveCount = stats.validActive ?? validActiveCount;
+  const finalDeletedCount = stats.deleted ?? members.filter(m => m.status === 'deleted').length;
+
   const filteredValidActiveMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const districtMap = new Map(DISTRICTS.map(d => [d.code, d.name.toLowerCase()]));
@@ -1339,12 +1344,12 @@ export default function AdminDashboard({
                 <CheckCircle2 className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'valid_active' ? 'text-white' : 'text-slate-400')} />
                 <span>Active & Valid</span>
               </div>
-              {validActiveCount > 0 && (
+              {finalValidActiveCount > 0 && (
                 <span className={cn(
                   "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
                   activeTab === 'valid_active' ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'
                 )}>
-                  {validActiveCount}
+                  {finalValidActiveCount}
                 </span>
               )}
             </button>
@@ -1711,12 +1716,12 @@ export default function AdminDashboard({
                     <CheckCircle2 className={cn("w-4 h-4", activeTab === 'valid_active' ? 'text-brand-blue' : 'text-slate-400')} />
                     <span>Active & Valid</span>
                   </div>
-                  {validActiveCount > 0 && (
+                  {finalValidActiveCount > 0 && (
                     <span className={cn(
                       "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
                       activeTab === 'valid_active' ? 'bg-brand-blue text-white' : 'bg-green-100 text-green-600'
                     )}>
-                      {validActiveCount}
+                      {finalValidActiveCount}
                     </span>
                   )}
                 </button>
@@ -2231,30 +2236,30 @@ export default function AdminDashboard({
                     </div>
                   </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
-                      <Input 
-                        id="s-email" 
-                        type="email"
-                        required 
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="example@mail.com" 
-                        value={manualFormData.email} 
-                        onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="s-member-pin" className="font-bold text-slate-700">Member Password (പാസ്സ്‌വേർഡ്)</Label>
-                      <Input 
-                        id="s-member-pin" 
-                        type="text"
-                        required 
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="Set member password" 
-                        value={manualFormData.pin} 
-                        onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
+                    <Input 
+                      id="s-email" 
+                      type="email"
+                      required 
+                      className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
+                      placeholder="example@mail.com" 
+                      value={manualFormData.email} 
+                      onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="s-member-pin" className="font-bold text-slate-700">Member Password (പാസ്സ്‌വേർഡ്)</Label>
+                    <Input 
+                      id="s-member-pin" 
+                      type="text"
+                      required 
+                      className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
+                      placeholder="Set member password" 
+                      value={manualFormData.pin} 
+                      onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="s-address" className="font-bold text-slate-700">Full Address (മേൽവിലാസം)</Label>
@@ -2355,18 +2360,18 @@ export default function AdminDashboard({
                       value={manualFormData.bloodGroup} 
                       onValueChange={v => setManualFormData({...manualFormData, bloodGroup: v})}
                     >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
-                          <SelectValue placeholder="Blood Group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BLOOD_GROUPS.map(bg => (
-                            <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
+                        <SelectValue placeholder="Blood Group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BLOOD_GROUPS.map(bg => (
+                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    <Button 
+                  <Button 
                     type="submit" 
                     disabled={(user?.quota !== undefined && (user?.quotaUsed || 0) >= user.quota) || isSubmitting}
                     className="w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-brand-magenta/20 bg-brand-magenta text-white hover:bg-brand-magenta/90 disabled:opacity-50"
@@ -2415,20 +2420,14 @@ export default function AdminDashboard({
               </div>
             </div>
 
-            {false && isSuperAdmin && countOf2026Members > 0 && (
-              <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-brand-magenta/20 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {isSuperAdmin && countOf2026Members > 0 && (
+              <div className="bg-brand-magenta/5 border border-brand-magenta/25 rounded-2xl p-5 text-left animate-in slide-in-from-top-4 duration-300 mt-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert className="w-5 h-5 text-brand-magenta animate-pulse" />
-                      <h4 className="font-black text-slate-800 text-sm uppercase tracking-wide">
-                        അംഗങ്ങളുടെ ജോയിനിംഗ് തീയതി ക്രമീകരണ അസിസ്റ്റന്റ് (Super Admin Mode)
-                      </h4>
-                    </div>
-                    <p className="text-slate-600 text-xs font-semibold leading-relaxed">
-                      ലിസ്റ്റിൽ രജിസ്റ്റർ ചെയ്തവരും മൈഗ്രേറ്റ് ചെയ്തതുമായ <span className="font-black text-brand-magenta text-sm underline">{countOf2026Members}</span> മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി ഇപ്പോഴും 2026 ലാണ് കിടക്കുന്നത്. ഇവരെ എത്രയും വേഗം 2025 ലേക്ക് മാറ്റുകയും കാർഡ് കാലാവധി കഴിഞ്ഞ് പുതുക്കേണ്ട സമയം കഴിഞ്ഞതായി (Renewal Required) രേഖപ്പെടുത്തുകയും വേണം. അംഗങ്ങൾക്ക് ലോഗിൻ ചെയ്യുമ്പോൾ റിന്യൂവൽ പേജ് വരാൻ ഇത് സഹായിക്കും.
+                    <p className="text-xs font-black text-brand-magenta uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4" /> 2026 അംഗങ്ങളുടെ തീയതി ക്രമീകരിക്കുക (Align Joining Dates to 2025)
                     </p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
+                    <p className="text-[10px] text-slate-400 font-bold leading-normal">
                       Align {countOf2026Members} members to joining year 2025. This makes their cards expired (due for ₹100 renewal) and prompts them to renew when they access their account.
                     </p>
                   </div>

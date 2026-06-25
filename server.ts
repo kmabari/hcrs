@@ -668,6 +668,27 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // Proxy endpoint to download Google Sheet bypassing CORS
+  app.post("/api/proxy-sheet", async (req, res) => {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: "Google Sheet URL is required." });
+    }
+    try {
+      console.log("Proxying Google Sheet fetch for:", url);
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Google Sheets responded with HTTP status ${response.status}`);
+      }
+      const buffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.send(Buffer.from(buffer));
+    } catch (err: any) {
+      console.error("Error proxying Google Sheet fetch:", err);
+      res.status(500).json({ error: "Failed to download Google Sheet: " + err.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
