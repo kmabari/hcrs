@@ -98,6 +98,7 @@ export default function App() {
   const currentViewRef = useRef(view);
   useEffect(() => {
     currentViewRef.current = view;
+    window.scrollTo(0, 0);
   }, [view]);
 
   const [user, setUser] = useState<UserProfile | null>(null);

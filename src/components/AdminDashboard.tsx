@@ -193,6 +193,29 @@ const hasValidity = (u: any) => {
   return expDate.getTime() > Date.now();
 };
 
+const isProtectedFrom2025 = (m: any) => {
+  if (m.role === 'admin' || m.role === 'operator') return true;
+
+  // 1. Life Membership (ലൈഫ് മെമ്പർഷിപ്പ്) is protected
+  const isLife = String(m.membership_type || m.membershipType || '').toUpperCase().includes('LIFE');
+  if (isLife) return true;
+
+  // 2. Renewal Membership (റിന്യൂവൽ മെമ്പർഷിപ്പ്) is protected (they have either a renewalDate or renewalTransactionId)
+  const isRenewed = !!m.renewalDate || !!m.renewalTransactionId;
+  if (isRenewed) return true;
+
+  // 3. New Membership (ന്യൂ മെമ്പർഷിപ്പ്) with online payment / transaction ID is protected
+  const hasOnlineTx = m.transactionId && 
+                      m.transactionId !== 'MANUAL_OFFLINE' && 
+                      m.transactionId !== 'CASH/OFFLINE';
+  
+  if (hasOnlineTx && hasValidity(m)) {
+    return true;
+  }
+
+  return false;
+};
+
 const getCategoryLabel = (catId: string) => {
   const mapping: Record<string, string> = {
     'digital': 'Digital Redeem Coupon (ഡിജിറ്റൽ റെഡീം കൂപ്പൺ)',
@@ -273,6 +296,7 @@ export default function AdminDashboard({
   const countOf2026Members = useMemo(() => {
     return members.filter(m => {
       if (m.role === 'admin' || m.role === 'operator') return false;
+      if (isProtectedFrom2025(m)) return false;
       const regDate = m.registrationDate;
       if (!regDate) return true; // If missing, count it
       const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
@@ -443,6 +467,10 @@ export default function AdminDashboard({
   const [validActivePage, setValidActivePage] = useState(1);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [dbPage, setDbPage] = useState(1);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
 
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
@@ -754,6 +782,7 @@ export default function AdminDashboard({
   const handleAlignAllDatesTo2025 = async () => {
     const targets = members.filter(m => {
       if (m.role === 'admin' || m.role === 'operator') return false;
+      if (isProtectedFrom2025(m)) return false;
       const regDate = m.registrationDate;
       if (!regDate) return true; // Align if date is missing
       const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));

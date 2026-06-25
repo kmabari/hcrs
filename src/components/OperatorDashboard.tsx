@@ -133,6 +133,11 @@ export default function OperatorDashboard({
     return () => unsub();
   }, []);
   const [isAddingMember, setIsAddingMember] = useState(false);
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [isAddingMember, editingMember]);
+
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<{ id: string, email: string, pin: string, mobile: string, name: string } | null>(null);
   const [formData, setFormData] = useState(() => {
