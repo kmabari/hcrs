@@ -856,18 +856,37 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         };
 
         // Increment or decrement the district registration quotas accordingly
-        const quotaRef = doc(db, 'districtQuotas', row.district);
-        const quotaSnap = await getDoc(quotaRef);
-        if (!quotaSnap.exists()) {
-          await setDoc(quotaRef, {
-            id: row.district,
-            districtName: DISTRICTS.find(d => d.code === row.district)?.name || row.district,
-            total: 2000,
-            used: 1
-          });
-        } else {
-          // Increment used quota if newly created
-          if (!isUpdateAction) {
+        if (isUpdateAction && backupData && backupData.district !== row.district) {
+          // Decrement old district quota
+          if (backupData.district) {
+            const oldQuotaRef = doc(db, 'districtQuotas', backupData.district);
+            await setDoc(oldQuotaRef, { used: increment(-1) }, { merge: true });
+          }
+          // Increment new district quota
+          const newQuotaRef = doc(db, 'districtQuotas', row.district);
+          const newQuotaSnap = await getDoc(newQuotaRef);
+          if (!newQuotaSnap.exists()) {
+            await setDoc(newQuotaRef, {
+              id: row.district,
+              districtName: DISTRICTS.find(d => d.code === row.district)?.name || row.district,
+              total: 2000,
+              used: 1
+            });
+          } else {
+            await setDoc(newQuotaRef, { used: increment(1) }, { merge: true });
+          }
+        } else if (!isUpdateAction) {
+          // Greenfield import: increment used quota for the district
+          const quotaRef = doc(db, 'districtQuotas', row.district);
+          const quotaSnap = await getDoc(quotaRef);
+          if (!quotaSnap.exists()) {
+            await setDoc(quotaRef, {
+              id: row.district,
+              districtName: DISTRICTS.find(d => d.code === row.district)?.name || row.district,
+              total: 2000,
+              used: 1
+            });
+          } else {
             await setDoc(quotaRef, { used: increment(1) }, { merge: true });
           }
         }
@@ -1160,6 +1179,28 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 <p className="text-xs text-slate-500 max-w-xl mx-auto leading-relaxed">
                   പഴയ വൈബ്സൈറ്റിൽ നിന്നും കയറ്റുമതി ചെയ്ത എക്സൽ, CSV, അല്ലെങ്കിൽ ചിത്രങ്ങൾ ഉൾപ്പെടുന്ന ZIP ഫയൽ ഇവിടെ സുരക്ഷിതമായി സമർപ്പിക്കുക. ചിത്ര ഫയലുകളെ ഓട്ടോമാറ്റിക് ലുക്ക്അപ്പ് വഴി ബന്ധിപ്പിക്കുന്നതായിരിക്കും.
                 </p>
+              </div>
+
+              {/* Direct access to Google Sheets & Drive integrator */}
+              <div className="bg-emerald-50 border border-emerald-200/50 p-4.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-100 p-3 rounded-xl text-emerald-700 shrink-0">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div className="text-left space-y-1">
+                    <h4 className="text-xs font-extrabold text-emerald-850 uppercase tracking-tight">ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് കോപ്പി-പേസ്റ്റ് ചെയ്യണോ? (Link Google Sheet?)</h4>
+                    <p className="text-[10.5px] text-emerald-700 font-semibold leading-relaxed">
+                      ഗൂഗിൾ ഡ്രൈവിലുള്ള നിങ്ങളുടെ മെമ്പർ ഷീറ്റുകൾ നേരിട്ട് ലിങ്ക് ചെയ്യാനും തത്സമയം മോണിറ്റർ ചെയ്യാനും മുകളിലുള്ള <strong>"Google Sheets & Drive Integrator"</strong> ടാബ് ഉപയോഗിക്കുക. അല്ലെങ്കിൽ താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setPanelTab('google_drive')}
+                  size="sm"
+                  className="bg-emerald-650 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl cursor-pointer py-2 px-3.5 shrink-0 shadow-sm flex items-center gap-1.5 transition-all"
+                >
+                  ഗൂഗിൾ ഷീറ്റ് ടാബ് തുറക്കുക <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
               </div>
 
               {availableSpreadsheets.length > 0 && (
