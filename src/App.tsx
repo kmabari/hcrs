@@ -15,7 +15,7 @@ import { UserProfile } from './types';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToAnnouncements, Announcement } from './lib/cms';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
-import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode, getAssemblyCode, generateNewMembershipId } from './constants';
+import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode, getAssemblyCode, generateNewMembershipId, SHARED_URL } from './constants';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
@@ -245,6 +245,9 @@ export default function App() {
 
         if (cleanPhone && cleanPhone.length >= 4) {
           searchQueries.push(query(baseQ, ...countConstraints, where('mobile', '==', cleanPhone)));
+          if (!isNaN(Number(cleanPhone))) {
+            searchQueries.push(query(baseQ, ...countConstraints, where('mobile', '==', Number(cleanPhone))));
+          }
         }
         if (term.length >= 3) {
           searchQueries.push(query(baseQ, ...countConstraints, where('membershipId', '==', term.toUpperCase())));
@@ -535,10 +538,10 @@ export default function App() {
           { 
             id: loadingToast,
             duration: 15000, 
-            description: 'പരിഹാരം: ദയവായി https://hcrs-kappa.vercel.app ഓപ്പൺ ചെയ്ത് ഗൂഗിൾ ലോഗിൻ വഴി കയറി മുകളിൽ കാണുന്ന "Set Domain PIN" വഴി നിങ്ങളുടെ പാസ്‌വേഡ് സെറ്റ് ചെയ്യുക. ശേഷം നിങ്ങളുടെ ഇമെയിലും ആ പാസ്‌വേഡും ഉപയോഗിച്ച് നേരിട്ട് www.hcrs.in ലോഗിൻ ചെയ്യുക!',
+            description: `പരിഹാരം: ദയവായി താഴെ കാണുന്ന ബട്ടൺ ക്ലിക്ക് ചെയ്തു ലോഗിൻ ചെയ്ത ശേഷം നിങ്ങളുടെ പാസ്‌വേഡ്/പിൻ ക്രമീകരിക്കുക. ശേഷം നിങ്ങളുടെ ഇമെയിലും ആ പാസ്‌വേഡും ഉപയോഗിച്ച് നേരിട്ട് www.hcrs.in ലോഗിൻ ചെയ്യുക!`,
             action: {
-              label: 'Vercel fallback വഴി തുറക്കുക',
-              onClick: () => window.open('https://hcrs-kappa.vercel.app', '_blank')
+              label: 'ലോഗിൻ ചെയ്യുക (Login via Shared)',
+              onClick: () => window.open(SHARED_URL, '_blank')
             }
           }
         );
@@ -923,11 +926,12 @@ export default function App() {
             let querySnap = null;
 
             // Collect all possible query candidates to leave absolutely no chance of failure
-            const candidates: { field: string; value: string; desc: string }[] = [];
+            const candidates: { field: string; value: string | number; desc: string }[] = [];
             
             // Candidate 1: extracted loginMobile from email (most common)
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
               candidates.push({ field: 'mobile', value: loginMobile, desc: 'extracted mobile from email prefix' });
+              candidates.push({ field: 'mobile', value: Number(loginMobile), desc: 'extracted numeric mobile from email prefix' });
             }
             
             // Candidate 2: current authenticating email
@@ -949,6 +953,7 @@ export default function App() {
                 
                 if (sessionMobile && /^\d{10}$/.test(sessionMobile)) {
                   candidates.push({ field: 'mobile', value: sessionMobile, desc: 'session mobile number' });
+                  candidates.push({ field: 'mobile', value: Number(sessionMobile), desc: 'session numeric mobile number' });
                   candidates.push({ field: 'email', value: `${sessionMobile}@hcrs-life.society`, desc: 'session life member placeholder email' });
                   candidates.push({ field: 'email', value: `${sessionMobile}@hcrs.society`, desc: 'session placeholder email' });
                 }
@@ -966,7 +971,7 @@ export default function App() {
             const uniqueCandidates: typeof candidates = [];
             const seen = new Set<string>();
             for (const cand of candidates) {
-              const key = `${cand.field}::${cand.value.toLowerCase()}`;
+              const key = `${cand.field}::${String(cand.value).toLowerCase()}`;
               if (!seen.has(key)) {
                 seen.add(key);
                 uniqueCandidates.push(cand);
@@ -1153,6 +1158,16 @@ export default function App() {
           }
         }
 
+        // Support numeric mobile representations in the DB
+        if (querySnap.empty && !isNaN(Number(sanitizedMobile))) {
+          const numericMobile = Number(sanitizedMobile);
+          const qNumeric = query(usersRef, where('mobile', '==', numericMobile), limit(5));
+          const snapNumeric = await getDocs(qNumeric);
+          if (!snapNumeric.empty) {
+            querySnap = snapNumeric;
+          }
+        }
+
         if (!querySnap.empty) {
           // Prefer healed profile: ID is not starting with 'life_' or 'offline_'
           const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
@@ -1324,9 +1339,10 @@ export default function App() {
       toast.loading('Validating registration...', { id: loadingToast });
       const usersRef = collection(db, 'users');
       
-      const mobileQuery = query(usersRef, where('mobile', '==', cleanMobile), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
-      const mobileSnap = await getDocs(mobileQuery);
-      if (!mobileSnap.empty) {
+      const mobileQuery1 = query(usersRef, where('mobile', '==', cleanMobile), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
+      const mobileQuery2 = query(usersRef, where('mobile', '==', Number(cleanMobile)), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
+      const [mobileSnap1, mobileSnap2] = await Promise.all([getDocs(mobileQuery1), getDocs(mobileQuery2)]);
+      if (!mobileSnap1.empty || !mobileSnap2.empty) {
         throw new Error('This mobile number is already registered. Please Login. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ലോഗിൻ ചെയ്യുക.)');
       }
 

@@ -4317,7 +4317,10 @@ export default function AdminDashboard({
                         
                         // We prefer the current origin unless it's obviously a dev setup AND we have a stable fallback
                         // However, on AI Studio, origin changes frequently, so using window.location.origin is usually SAFEST
-                        const effectiveBase = currentOrigin || SHARED_URL;
+                        let effectiveBase = currentOrigin || SHARED_URL;
+                        if (effectiveBase.includes('ais-dev') || effectiveBase.includes('google.com')) {
+                          effectiveBase = SHARED_URL;
+                        }
 
                         // Remove trailing slash if exists to avoid double slash
                         const cleanBase = effectiveBase.endsWith('/') ? effectiveBase.slice(0, -1) : effectiveBase;
