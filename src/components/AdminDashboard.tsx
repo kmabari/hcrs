@@ -797,6 +797,16 @@ export default function AdminDashboard({
     }
   };
 
+  const safeToDate = (val: any): Date => {
+    if (!val) return new Date();
+    if (val instanceof Date) return val;
+    if (typeof val.toDate === 'function') return val.toDate();
+    if (typeof val.seconds === 'number') return new Date(val.seconds * 1000);
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+    return new Date();
+  };
+
   const handleApproveRenewal = async (member: UserProfile) => {
     const loadingToast = toast.loading('Approving renewal...');
     try {
@@ -804,16 +814,31 @@ export default function AdminDashboard({
       const expiry = new Date();
       expiry.setFullYear(now.getFullYear() + 1);
 
-      await onUpdate(member.uid, {
-        status: 'active',
+      // Robust helper to get safe ISO string without throwing RangeError on invalid dates
+      const getSafeISOString = (val: any): string => {
+        try {
+          const d = safeToDate(val);
+          if (d && !isNaN(d.getTime())) {
+            return d.toISOString();
+          }
+        } catch (e) {
+          console.error("Error in getSafeISOString:", e);
+        }
+        return new Date().toISOString();
+      };
+
+      const payload = {
+        status: 'active' as const,
         isApproved: true,
         renewalPending: false,
         issueDate: serverTimestamp(), // Update issue date on renewal approval
-        registrationDate: member.registrationDate || serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
+        registrationDate: member.registrationDate ? safeToDate(member.registrationDate) : serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
         renewalDate: serverTimestamp(), // Store renewal date permanently
         expiryDate: expiry,
-        paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
-      });
+        paymentTime: getSafeISOString(member.renewalDate || (member as any).renewalPaymentDate)
+      };
+
+      await onUpdate(member.uid, payload as any);
       
       const message = `അഭിനന്ദനങ്ങൾ! താങ്കളുടെ HCRS മെമ്പർഷിപ്പ് റിന്യൂവൽ അപ്പ്രൂവ് ചെയ്തിരിക്കുന്നു. സർവീസ് കാലാവധി ഒരു വർഷത്തേക്ക് കൂടി പുതുക്കിയിട്ടുണ്ട്.`;
       
@@ -822,8 +847,9 @@ export default function AdminDashboard({
       }, 500);
 
       toast.success('Renewal approved successfully', { id: loadingToast });
-    } catch (error) {
-      toast.error('Renewal approval failed', { id: loadingToast });
+    } catch (error: any) {
+      console.error("Renewal approval error details:", error);
+      toast.error(`Renewal approval failed: ${error.message || error}`, { id: loadingToast });
     }
   };
 

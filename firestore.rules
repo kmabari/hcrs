@@ -164,7 +164,7 @@ service cloud.firestore {
 
       allow update: if isValidUser(incoming()) && (
         // Action 1: Admin/Operator Update
-        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details']) || isAdmin())) ||
+        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details', 'waStatus', 'stateCode', 'districtCode', 'constituencyCode', 'registrationDate', 'renewalPending', 'renewalDate', 'paymentTime', 'paymentProofUrl', 'renewalTransactionId', 'renewalPaymentDate', 'renewalPaymentTime', 'name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'transactionId', 'registeredBy', 'isQuotaCounted']) || isAdmin())) ||
         
         // Action 2: User Profile Edit (Self) - restricted fields
         (isSignedIn() && isOwner(userId) && 
@@ -270,6 +270,11 @@ service cloud.firestore {
 
     // --- Collection: migration_logs ---
     match /migration_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- Collection: google_import_links ---
+    match /google_import_links/{linkId} {
       allow read, write: if isAdmin();
     }
 

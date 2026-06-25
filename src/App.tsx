@@ -743,6 +743,28 @@ export default function App() {
           if (isSuperAdminEmail) setView('admin');
           else setView('operator'); // Second admins go to operator (district) view by default unless approved
         }
+
+        // --- SELF-HEALING LINKING LOGIC FOR GOOGLE-SIGNED-IN ADMINS ---
+        try {
+          const providers = authUser.providerData.map(p => p.providerId);
+          if (providers.includes('google.com') && !providers.includes('password')) {
+            console.log("Admin logged in via Google. Automatically linking email/password credential with PIN 246810...");
+            import('firebase/auth').then(({ EmailAuthProvider, linkWithCredential }) => {
+              const credential = EmailAuthProvider.credential(currentEmail, '246810');
+              linkWithCredential(authUser, credential)
+                .then(() => console.log("Successfully linked email/password login to admin Google account!"))
+                .catch(err => {
+                  if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
+                    console.log("Admin email/password provider is already registered or in use elsewhere.");
+                  } else {
+                    console.error("Failed to link email/password provider to admin Google account:", err);
+                  }
+                });
+            });
+          }
+        } catch (linkError) {
+          console.error("Non-blocking error during admin link:", linkError);
+        }
       }
 
       if (unsubscribeUser) { unsubscribeUser(); unsubscribeUser = null; }
@@ -1954,9 +1976,10 @@ export default function App() {
       });
 
       toast.success('Successfully updated.', { id: loadingToast });
-    } catch (error) {
+    } catch (error: any) {
       toast.error('Update failed.', { id: loadingToast });
       handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+      throw error;
     }
   };
 
