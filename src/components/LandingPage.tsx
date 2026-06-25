@@ -288,125 +288,127 @@ export default function LandingPage({
       </nav>
 
       {/* Main Showcase / Hero Cover - Government Portal Style */}
-      <div className="w-full max-w-6xl mx-auto pt-24 pb-16 px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative bg-[#F5F7FA] rounded-[20px] p-8 md:p-14 overflow-hidden border border-slate-200 shadow-sm"
-        >
-          {/* Flat Grid Layer */}
-          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+      {stage === 'landing' && (
+        <div className="w-full max-w-6xl mx-auto pt-24 pb-16 px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative bg-[#F5F7FA] rounded-[20px] p-8 md:p-14 overflow-hidden border border-slate-200 shadow-sm"
+          >
+            {/* Flat Grid Layer */}
+            <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-          {/* Core Content */}
-          <div className="relative flex flex-col items-center text-center">
-            
-            {/* Top Registration Badge */}
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-full shadow-sm mb-8 transition-all cursor-default"
-            >
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-600 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            {/* Core Content */}
+            <div className="relative flex flex-col items-center text-center">
+              
+              {/* Top Registration Badge */}
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="inline-flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-full shadow-sm mb-8 transition-all cursor-default"
+              >
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-600 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                </div>
+                <span className="font-bold text-[10px] md:text-xs text-[#0A2E5C] uppercase tracking-wider">
+                  {t('hero_reg_badge', 'Govt. Registered Society • Reg No: TSR/TC/93/2025')}
+                </span>
+              </motion.div>
+   
+              {/* Logo */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.5 }}
+                className="p-3 bg-white shadow-sm rounded-[12px] border border-slate-200 mb-8"
+              >
+                <Logo className="scale-100" />
+              </motion.div>
+
+              {/* Main Title & Subtitle */}
+              <div className="max-w-4xl space-y-4 mb-8">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-[#0A2E5C] tracking-tight uppercase leading-[1.2]">
+                  {t('hero_title_1', 'HIGHRICH COMMUNITY')}<br />
+                  <span className="text-[#D91E63]">
+                    {t('hero_title_2', 'REVIVAL SOCIETY')}
+                  </span> (HCRS)
+                </h1>
+                <p className="text-slate-650 font-normal text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                  {t('hero_subtitle', 'A Registered Society Committed To Reviving & Supporting The Highrich Community')}
+                </p>
               </div>
-              <span className="font-bold text-[10px] md:text-xs text-[#0A2E5C] uppercase tracking-wider">
-                {t('hero_reg_badge', 'Govt. Registered Society • Reg No: TSR/TC/93/2025')}
-              </span>
-            </motion.div>
- 
-            {/* Logo */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="p-3 bg-white shadow-sm rounded-[12px] border border-slate-200 mb-8"
-            >
-              <Logo className="scale-100" />
-            </motion.div>
 
-            {/* Main Title & Subtitle */}
-            <div className="max-w-4xl space-y-4 mb-8">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-[#0A2E5C] tracking-tight uppercase leading-[1.2]">
-                {t('hero_title_1', 'HIGHRICH COMMUNITY')}<br />
-                <span className="text-[#D91E63]">
-                  {t('hero_title_2', 'REVIVAL SOCIETY')}
-                </span> (HCRS)
-              </h1>
-              <p className="text-slate-650 font-normal text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-                {t('hero_subtitle', 'A Registered Society Committed To Reviving & Supporting The Highrich Community')}
-              </p>
-            </div>
+              {/* Horizontal Line divider */}
+              <div className="w-full max-w-xs h-px bg-slate-200 mb-10" />
 
-            {/* Horizontal Line divider */}
-            <div className="w-full max-w-xs h-px bg-slate-200 mb-10" />
-
-            {/* Core Pillars / Professional Icons Grid */}
-            <div className="w-full max-w-5xl">
-              <p className="text-[10px] md:text-xs font-bold text-[#D91E63] uppercase tracking-wider mb-6">
-                {t('hero_core_pillars', 'Our Core Pillars')}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-                {[
-                  {
-                    key: "community",
-                    titleDefault: "Community Welfare",
-                    descDefault: "Fostering kinship, solidarity and mutual group communication among all members.",
-                    icon: Users,
-                    color: "text-[#0A2E5C] bg-[#0A2E5C]/10 border-[#0A2E5C]/20"
-                  },
-                  {
-                    key: "revival",
-                    titleDefault: "Revival Efforts",
-                    descDefault: "Rebuilding community confidence, outlining dynamic revival strategies, and restoring legal clarity.",
-                    icon: Sparkles,
-                    color: "text-[#1E5AA8] bg-[#1E5AA8]/10 border-[#1E5AA8]/20"
-                  },
-                  {
-                    key: "support",
-                    titleDefault: "Medical & Social Support",
-                    descDefault: "Active social welfare initiatives, essential educational support, and continuous medical aid guidance.",
-                    icon: HeartHandshake,
-                    color: "text-[#D91E63] bg-[#D91E63]/10 border-[#D91E63]/20"
-                  },
-                  {
-                    key: "legal",
-                    titleDefault: "Legal Assistance",
-                    descDefault: "Providing lawful help mechanisms, structured representation, and protecting member interests in forums.",
-                    icon: Shield,
-                    color: "text-emerald-700 bg-emerald-50 border-emerald-150"
-                  }
-                ].map((pillar, i) => {
-                  const IconComponent = pillar.icon;
-                  return (
-                    <motion.div
-                      key={pillar.key}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
-                      className="bg-white border border-slate-200 rounded-[10px] p-6 shadow-sm hover:border-[#1E5AA8]/40 transition-[border-color,box-shadow] duration-200 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className={`w-10 h-10 rounded-[8px] flex items-center justify-center border ${pillar.color} mb-4 shrink-0`}>
-                          <IconComponent className="w-5 h-5" />
+              {/* Core Pillars / Professional Icons Grid */}
+              <div className="w-full max-w-5xl">
+                <p className="text-[10px] md:text-xs font-bold text-[#D91E63] uppercase tracking-wider mb-6">
+                  {t('hero_core_pillars', 'Our Core Pillars')}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+                  {[
+                    {
+                      key: "community",
+                      titleDefault: "Community Welfare",
+                      descDefault: "Fostering kinship, solidarity and mutual group communication among all members.",
+                      icon: Users,
+                      color: "text-[#0A2E5C] bg-[#0A2E5C]/10 border-[#0A2E5C]/20"
+                    },
+                    {
+                      key: "revival",
+                      titleDefault: "Revival Efforts",
+                      descDefault: "Rebuilding community confidence, outlining dynamic revival strategies, and restoring legal clarity.",
+                      icon: Sparkles,
+                      color: "text-[#1E5AA8] bg-[#1E5AA8]/10 border-[#1E5AA8]/20"
+                    },
+                    {
+                      key: "support",
+                      titleDefault: "Medical & Social Support",
+                      descDefault: "Active social welfare initiatives, essential educational support, and continuous medical aid guidance.",
+                      icon: HeartHandshake,
+                      color: "text-[#D91E63] bg-[#D91E63]/10 border-[#D91E63]/20"
+                    },
+                    {
+                      key: "legal",
+                      titleDefault: "Legal Assistance",
+                      descDefault: "Providing lawful help mechanisms, structured representation, and protecting member interests in forums.",
+                      icon: Shield,
+                      color: "text-emerald-700 bg-emerald-50 border-emerald-150"
+                    }
+                  ].map((pillar, i) => {
+                    const IconComponent = pillar.icon;
+                    return (
+                      <motion.div
+                        key={pillar.key}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 + i * 0.1 }}
+                        className="bg-white border border-slate-200 rounded-[10px] p-6 shadow-sm hover:border-[#1E5AA8]/40 transition-[border-color,box-shadow] duration-200 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className={`w-10 h-10 rounded-[8px] flex items-center justify-center border ${pillar.color} mb-4 shrink-0`}>
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-[#222222] font-semibold text-sm md:text-base leading-tight uppercase">
+                            {t(`pillar_${pillar.key}_title`, pillar.titleDefault)}
+                          </h3>
                         </div>
-                        <h3 className="text-[#222222] font-semibold text-sm md:text-base leading-tight uppercase">
-                          {t(`pillar_${pillar.key}_title`, pillar.titleDefault)}
-                        </h3>
-                      </div>
-                      <p className="text-slate-600 text-xs font-normal leading-relaxed mt-2.5">
-                        {t(`pillar_${pillar.key}_desc`, pillar.descDefault)}
-                      </p>
-                    </motion.div>
-                  );
-                })}
+                        <p className="text-slate-650 text-xs font-normal leading-relaxed mt-2.5">
+                          {t(`pillar_${pillar.key}_desc`, pillar.descDefault)}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-          </div>
-        </motion.div>
-      </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {stage === 'landing' ? (
@@ -1857,7 +1859,7 @@ export default function LandingPage({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-2xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-2xl mx-auto px-4 pb-24 pt-24"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
@@ -1928,7 +1930,7 @@ export default function LandingPage({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-2xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-2xl mx-auto px-4 pb-24 pt-24"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
@@ -2315,7 +2317,7 @@ export default function LandingPage({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-4xl mx-auto px-4 pb-24 pt-24"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
@@ -2383,7 +2385,7 @@ export default function LandingPage({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-4xl mx-auto px-4 pb-24 pt-24"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
@@ -2446,7 +2448,7 @@ export default function LandingPage({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-4xl mx-auto px-4 pb-24 pt-24"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
@@ -2503,7 +2505,7 @@ export default function LandingPage({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-4xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-4xl mx-auto px-4 pb-24 pt-24"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
