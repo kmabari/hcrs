@@ -19,7 +19,10 @@ import {
   ShieldAlert, 
   FileText,
   Clock,
-  Coins
+  Coins,
+  Calendar,
+  Users,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +54,55 @@ export default function DbMigrationManager({ user }: DbMigrationManagerProps) {
   const [parsedData, setParsedData] = useState<any | null>(null);
   const [generatedBackupJson, setGeneratedBackupJson] = useState<string>('');
   const [copiedBackup, setCopiedBackup] = useState(false);
+
+  // Date Filtering States (for Today/Yesterday registrations or date-wise exports)
+  const [filterStartDate, setFilterStartDate] = useState(() => {
+    // Yesterday
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [filterEndDate, setFilterEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [showFilteredResult, setShowFilteredResult] = useState(false);
+  const [searchSource, setSearchSource] = useState<'none' | 'file' | 'live'>('none');
+  const [loadingLiveDates, setLoadingLiveDates] = useState(false);
+
+  // Helper to check if a date is within selected range
+  const isWithinDateRange = (regDate: any, startStr: string, endStr: string): boolean => {
+    if (!regDate) return false;
+    
+    let d: Date;
+    if (typeof regDate === 'object') {
+      if (regDate.__type === 'timestamp') {
+        d = new Date(regDate.seconds * 1000);
+      } else if (regDate.seconds) {
+        d = new Date(regDate.seconds * 1000);
+      } else if (regDate.nanoseconds !== undefined) {
+        d = new Date((regDate.seconds || 0) * 1000);
+      } else if (regDate._seconds) {
+        d = new Date(regDate._seconds * 1000);
+      } else {
+        d = new Date(regDate);
+      }
+    } else {
+      d = new Date(regDate);
+    }
+
+    if (isNaN(d.getTime())) return false;
+
+    // Convert date string to start/end of day in local timezone
+    const start = new Date(startStr);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(endStr);
+    end.setHours(23, 59, 59, 999);
+
+    const clientTime = d.getTime();
+    return clientTime >= start.getTime() && clientTime <= end.getTime();
+  };
 
   // Helper: Recursive Timestamp Serializer
   const serializeValue = (val: any): any => {
@@ -156,6 +208,98 @@ export default function DbMigrationManager({ user }: DbMigrationManagerProps) {
     setCopiedBackup(true);
     toast.success('ബാക്കപ്പ് കോഡ് ക്ലിപ്പ്ബോർഡിലേക്ക് കോപ്പി ചെയ്തു! (Backup JSON copied to clipboard!)');
     setTimeout(() => setCopiedBackup(false), 3000);
+  };
+
+  // Action: Fetch and Filter live database users by date range
+  const handleQueryLiveByDate = async () => {
+    setLoadingLiveDates(true);
+    const toastId = toast.loading('തീയതി നോക്കി മെമ്പർമാരെ ലൈവായി അന്വേഷിക്കുന്നു...');
+    try {
+      const snapshot = await getDocs(collection(db, 'users'));
+      const allUsers = snapshot.docs.map(docSnap => ({
+        __id: docSnap.id,
+        ...docSnap.data()
+      })) as any[];
+
+      const filtered = allUsers.filter((u: any) => {
+        return isWithinDateRange(u.registrationDate, filterStartDate, filterEndDate);
+      });
+
+      // Sort by date descending
+      filtered.sort((a, b) => {
+        const da = a.registrationDate?.seconds ? a.registrationDate.seconds * 1000 : new Date(a.registrationDate).getTime();
+        const dbVal = b.registrationDate?.seconds ? b.registrationDate.seconds * 1000 : new Date(b.registrationDate).getTime();
+        return dbVal - da;
+      });
+
+      setFilteredMembers(filtered);
+      setShowFilteredResult(true);
+      setSearchSource('live');
+      toast.success(`ലൈവ് ഡാറ്റാബേസിൽ നിന്ന് വിജയകരമായി ${filtered.length} മെമ്പർമാരെ കണ്ടെത്തി!`, { id: toastId });
+    } catch (err: any) {
+      console.error('Error fetching live users map:', err);
+      toast.error(`ഡാറ്റ വായിക്കുന്നതിൽ അസൗകര്യം നേരിട്ടു (Quota limit error): ${err.message || err}`, { id: toastId });
+    } finally {
+      setLoadingLiveDates(false);
+    }
+  };
+
+  // Action: Filter local uploaded backup JSON by date range
+  const handleQueryFileByDate = () => {
+    if (!parsedData || !parsedData.data || !parsedData.data.users) {
+      toast.error('നിങ്ങൾ തന്നിട്ടുള്ള ഡൗൺലോഡ് ചെയ്ത ബാക്കപ്പ് ഫയൽ ആദ്യം സ്റ്റെപ്പ് 2-ൽ തിരഞ്ഞെടുക്കുക!', { duration: 6000 });
+      return;
+    }
+
+    const allUsers = parsedData.data.users;
+    const filtered = allUsers.filter((u: any) => {
+      return isWithinDateRange(u.registrationDate, filterStartDate, filterEndDate);
+    });
+
+    // Sort by date descending
+    filtered.sort((a, b) => {
+      const da = a.seconds ? a.seconds * 1000 : new Date(a).getTime();
+      const dbVal = b.seconds ? b.seconds * 1000 : new Date(b).getTime();
+      return dbVal - da;
+    });
+
+    setFilteredMembers(filtered);
+    setShowFilteredResult(true);
+    setSearchSource('file');
+    toast.success(`നിങ്ങൾ നൽകിയ ഫയലിൽ നിന്ന് ${filtered.length} മെമ്പർമാരെ കണ്ടെത്തിയിരിക്കുന്നു!`);
+  };
+
+  // Action: Download selected members as a separate sub-backup JSON file
+  const handleDownloadFilteredBackup = () => {
+    if (filteredMembers.length === 0) return;
+    
+    // We want to preserve full formatting so it can be re-imported safely
+    const filteredPayload = {
+      backupVersion: '2.0-filtered',
+      exportedAt: new Date().toISOString(),
+      filterStartDate,
+      filterEndDate,
+      data: {
+        users: filteredMembers.map(userItem => {
+          // Serialize to store
+          return serializeValue(userItem);
+        })
+      }
+    };
+
+    const jsonStr = JSON.stringify(filteredPayload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `HCRS_FILTERED_BACKUP_${filterStartDate}_to_${filterEndDate}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`${filteredMembers.length} പേരുടെ പുതിയ ബാക്കപ്പ് ഫയൽ ഡൗൺലോഡ് ചെയ്തിരിക്കുന്നു!`);
   };
 
   // Action: Handle File Upload & Parse
@@ -454,6 +598,195 @@ export default function DbMigrationManager({ user }: DbMigrationManagerProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* SECTION: DATE-BASED MEMBER LOOKUP & FILTER BACKUP */}
+      <Card id="date_filter_panel" className="border-slate-100 dark:border-slate-800 shadow-md overflow-hidden bg-white">
+        <CardHeader className="pb-3 border-b border-slate-50 bg-slate-50/60">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-brand-blue" />
+            <CardTitle className="text-sm font-extrabold text-slate-800">
+              തീയതി അടിസ്ഥാനത്തിൽ മെമ്പേഴ്സിനെ കണ്ടെത്തുക / ബാക്കപ്പ് ചെയ്യുക (Date Filter & Quick Lookup)
+            </CardTitle>
+          </div>
+          <CardDescription className="text-[10px] font-bold text-slate-400">
+            ഇന്നും ഇന്നലെയും അല്ലെങ്കിൽ ഏത് പ്രത്യേക തീയതിയിലും പുതിയതായി ചേർന്ന മെമ്പർമാരെ കണ്ടെത്താനും അതിലടങ്ങിയ വിവരങ്ങൾ മാത്രമായി ഡൗൺലോഡ് ചെയ്യാനും ഇത് ഉപയോഗിക്കാം.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div className="space-y-1">
+              <label className="text-[10px] font-extrabold text-slate-500 uppercase">തുടങ്ങേണ്ട തീയതി (Start Date)</label>
+              <input 
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                className="w-full text-xs h-10 border border-slate-200 rounded-lg px-3 focus:outline-none focus:border-brand-blue bg-white text-slate-800"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-extrabold text-slate-500 uppercase">അവസാനിക്കേണ്ട തീയതി (End Date)</label>
+              <input 
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                className="w-full text-xs h-10 border border-slate-200 rounded-lg px-3 focus:outline-none focus:border-brand-blue bg-white text-slate-800"
+              />
+            </div>
+
+            <div className="sm:col-span-2 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                onClick={handleQueryLiveByDate}
+                disabled={loadingLiveDates}
+                className="h-10 text-[10px] font-bold bg-brand-blue text-white hover:bg-brand-blue/90 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {loadingLiveDates ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                ലൈവ് DB-ൽ തിരയുക
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleQueryFileByDate}
+                className="h-10 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-850 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                ഫയലിൽ തിരയുക
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap text-[10px] font-bold text-slate-500">
+            <button 
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setFilterStartDate(today);
+                setFilterEndDate(today);
+              }}
+              className="bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              ഇന്ന് മാത്രം (Today Only)
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesStr = yesterday.toISOString().split('T')[0];
+                setFilterStartDate(yesStr);
+                setFilterEndDate(yesStr);
+              }}
+              className="bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              ഇന്നലെ മാത്രം (Yesterday Only)
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                const todayVal = new Date();
+                const todayStr = todayVal.toISOString().split('T')[0];
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesStr = yesterday.toISOString().split('T')[0];
+                setFilterStartDate(yesStr);
+                setFilterEndDate(todayStr);
+              }}
+              className="bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              ഇന്നും ഇന്നലെയും (Today & Yesterday)
+            </button>
+          </div>
+
+          {showFilteredResult && (
+            <div className="border border-slate-100 rounded-xl overflow-hidden mt-4 animate-in slide-in-from-bottom-2 duration-300">
+              <div className="bg-slate-550/5 px-4 py-3 flex items-center justify-between border-b border-slate-100">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-brand-blue" />
+                  <span className="text-[11px] font-black text-slate-750">
+                    കണ്ടെത്തിയ മെമ്പർമാർ: <span className="text-brand-blue text-xs ml-1 font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">{filteredMembers.length}</span>
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400">
+                    ({searchSource === 'live' ? 'ലൈവ് ഡാറ്റാബേസിൽ നിന്ന്' : 'ഫയലിൽ നിന്ന്'})
+                  </span>
+                </div>
+
+                {filteredMembers.length > 0 && (
+                  <Button
+                    onClick={handleDownloadFilteredBackup}
+                    className="h-8 text-[9px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1 cursor-pointer"
+                  >
+                    <Download className="w-3 h-3" />
+                    ഈ ലിസ്റ്റ് ഫയലായി ഡൗൺലോഡ് ചെയ്യുക
+                  </Button>
+                )}
+              </div>
+
+              {filteredMembers.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs font-bold space-y-1">
+                  <div>🔍 ഈ തീയതികളിൽ മെമ്പർമാരെ കണ്ടെത്താൻ കഴിഞ്ഞില്ല!</div>
+                  <p className="text-[10px] font-medium text-slate-400 font-sans">വേറെ തീയതികൾ നൽകി ലൈവ് ഡാറ്റാബേസിലോ നിങ്ങളുടെ ബാക്കപ്പ് ഫയലിലോ അമർത്തി നോക്കുക.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-[9px] font-black uppercase text-slate-500">
+                        <th className="p-2.5 pl-4">അംഗത്വ നമ്പർ / മെമ്പർ</th>
+                        <th className="p-2.5">മൊബൈൽ നമ്പർ</th>
+                        <th className="p-2.5">ജില്ല</th>
+                        <th className="p-2.5">ചേർന്ന തീയതി</th>
+                        <th className="p-2.5 pr-4 text-right">പദവി (Status)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[10px] font-bold text-slate-600 font-mono">
+                      {filteredMembers.map((m, idx) => {
+                        let joinDateStr = 'N/A';
+                        if (m.registrationDate) {
+                          if (m.registrationDate.seconds) {
+                            joinDateStr = new Date(m.registrationDate.seconds * 1000).toLocaleString('en-IN');
+                          } else if (m.registrationDate.toDate) {
+                            joinDateStr = m.registrationDate.toDate().toLocaleString('en-IN');
+                          } else {
+                            joinDateStr = new Date(m.registrationDate).toLocaleString('en-IN');
+                          }
+                        }
+
+                        return (
+                          <tr key={m.__id || idx} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-2.5 pl-4 flex flex-col">
+                              <span className="font-sans font-black text-slate-800 text-[11px]">{m.name || 'No Name'}</span>
+                              <span className="text-[9px] text-[#aa2060] font-black bg-[#aa2060]/5 px-1.5 py-0.2 rounded w-fit mt-0.5">
+                                {m.membershipId || 'PENDING ASSIGN'}
+                              </span>
+                            </td>
+                            <td className="p-2.5 font-sans">{m.mobile || 'N/A'}</td>
+                            <td className="p-2.5 font-sans text-xs">{m.district || 'N/A'}</td>
+                            <td className="p-2.5 font-sans text-[10px] text-slate-500">{joinDateStr}</td>
+                            <td className="p-2.5 pr-4 text-right">
+                              <span className={`text-[9px] font-black rounded-full px-2 py-0.5 ${
+                                m.status === 'approved' || m.approved
+                                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                  : 'bg-amber-50 text-amber-600 border border-amber-100'
+                              }`}>
+                                {m.status === 'approved' || m.approved ? 'APPROVED' : 'PENDING'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* QUICK VERIFICATION CHECKLIST */}
       <Card className="border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white">

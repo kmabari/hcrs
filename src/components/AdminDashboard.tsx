@@ -266,7 +266,7 @@ export default function AdminDashboard({
     return clean.substring(0, 3);
   };
 
-  const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
+  const isSuperAdmin = MAIN_ADMINS.some(email => email.toLowerCase() === (user?.email || '').toLowerCase().trim());
   
   const countOf2026Members = useMemo(() => {
     return members.filter(m => {
@@ -442,21 +442,30 @@ export default function AdminDashboard({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [dbPage, setDbPage] = useState(1);
 
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Automatically reset to page 1 on search or filter changes
   useEffect(() => {
     setCurrentPage(1);
     setValidActivePage(1);
-  }, [searchTerm, districtFilter, statusFilter, sourceFilter]);
+  }, [debouncedSearchTerm, districtFilter, statusFilter, sourceFilter]);
 
   useEffect(() => {
     setDbPage(1);
-  }, [searchTerm, districtFilter, activeTab, categoryFilter, sourceFilter]);
+  }, [debouncedSearchTerm, districtFilter, activeTab, categoryFilter, sourceFilter]);
 
   // Trigger server-side pagination fetch
   useEffect(() => {
     if (onRefreshMembers) {
       onRefreshMembers({
-        searchTerm,
+        searchTerm: debouncedSearchTerm,
         districtFilter,
         activeTab,
         categoryFilter,
@@ -464,7 +473,7 @@ export default function AdminDashboard({
         page: dbPage
       });
     }
-  }, [searchTerm, districtFilter, activeTab, categoryFilter, sourceFilter, dbPage, onRefreshMembers]);
+  }, [debouncedSearchTerm, districtFilter, activeTab, categoryFilter, sourceFilter, dbPage, onRefreshMembers]);
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
@@ -1194,126 +1203,345 @@ export default function AdminDashboard({
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
-          <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2">Management Console</p>
-          <button
-            onClick={() => setActiveTab2('list')}
-            className={cn(
-              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-              activeTab === 'list' 
-                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'list' ? 'text-white' : 'text-slate-400')} />
-              <span>Member Directory</span>
-            </div>
-            {stats.active > 0 && (
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-              )}>
-                {stats.active}
-              </span>
-            )}
-          </button>
+        <nav className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Group 1: Core Operations */}
+          <div className="space-y-1">
+            <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Management Console</p>
+            
+            <button
+              onClick={() => setActiveTab2('list')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'list' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'list' ? 'text-white' : 'text-slate-400')} />
+                <span>Member Directory</span>
+              </div>
+              {stats.active > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                )}>
+                  {stats.active}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab2('requests')}
-            className={cn(
-              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-              activeTab === 'requests' 
-                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' ? 'text-white' : 'text-slate-400')} />
-              <span>New Requests</span>
-            </div>
-            {stats.pending > 0 && (
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-brand-magenta/5 text-brand-magenta'
-              )}>
-                {stats.pending}
-              </span>
-            )}
-          </button>
+            <button
+              onClick={() => setActiveTab2('requests')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'requests' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' ? 'text-white' : 'text-slate-400')} />
+                <span>New Requests</span>
+              </div>
+              {stats.pending > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-brand-magenta/5 text-brand-magenta'
+                )}>
+                  {stats.pending}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab2('claims')}
-            className={cn(
-              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-              activeTab === 'claims' 
-                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' ? 'text-white' : 'text-slate-400')} />
-              <span>Claims Support</span>
-            </div>
-            {claims.length > 0 && (
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'claims' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
-              )}>
-                {claims.length}
-              </span>
-            )}
-          </button>
+            <button
+              onClick={() => setActiveTab2('renewals')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'renewals' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'renewals' ? 'text-white' : 'text-slate-400')} />
+                <span>Renewals</span>
+              </div>
+              {stats.renewals > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'renewals' ? 'bg-white/25 text-white' : 'bg-orange-100 text-orange-600'
+                )}>
+                  {stats.renewals}
+                </span>
+              )}
+            </button>
 
+            <button
+              onClick={() => setActiveTab2('claims')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'claims' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' ? 'text-white' : 'text-slate-400')} />
+                <span>Claims Support</span>
+              </div>
+              {claims.length > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'claims' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
+                )}>
+                  {claims.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('valid_active')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'valid_active' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'valid_active' ? 'text-white' : 'text-slate-400')} />
+                <span>Active & Valid</span>
+              </div>
+              {validActiveCount > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'valid_active' ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'
+                )}>
+                  {validActiveCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('fast_entry')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'fast_entry' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'fast_entry' ? 'text-white' : 'text-slate-400')} />
+                <span>Fast Entry</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('tickets')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'tickets' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Headphones className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'tickets' ? 'text-white' : 'text-slate-400')} />
+                <span>AI Support Tickets</span>
+              </div>
+              {supportTickets.filter(t => t.status === 'pending').length > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'tickets' ? 'bg-white/20 text-white' : 'bg-emerald-500 text-white'
+                )}>
+                  {supportTickets.filter(t => t.status === 'pending').length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('deleted')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'deleted' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Clock className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'deleted' ? 'text-white' : 'text-slate-400')} />
+                <span>Deactivated Members</span>
+              </div>
+              {members.filter(m => m.status === 'deleted').length > 0 && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                  activeTab === 'deleted' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-500'
+                )}>
+                  {members.filter(m => m.status === 'deleted').length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Group 2: Settings & Quotas */}
+          <div className="space-y-1">
+            <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Configuration & Settings</p>
+            
+            <button
+              onClick={() => setActiveTab2('quotas')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'quotas' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'quotas' ? 'text-white' : 'text-slate-400')} />
+                <span>Settings & Quotas</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('districts')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'districts' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Lock className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'districts' ? 'text-white' : 'text-slate-400')} />
+                <span>District URLs</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Group 3: Data Migration */}
           {isSuperAdmin && (
-            <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
-              <p className="px-3.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Data Migration</p>
+            <div className="space-y-1 pt-2 border-t border-slate-100">
+              <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">System Administration</p>
+              
               <button
-                onClick={() => setActiveTab2('bulk_import')}
+                onClick={() => setActiveTab2('life_members')}
                 className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'bulk_import' 
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'life_members' 
                     ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
-                  <span>Import Old Members</span>
+                  <Crown className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'life_members' ? 'text-white' : 'text-slate-400')} />
+                  <span>Life Members</span>
                 </div>
               </button>
 
               <button
-                onClick={() => setActiveTab2('db_migration')}
+                onClick={() => setActiveTab2('bulk_import')}
                 className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'db_migration' 
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'bulk_import' 
                     ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'db_migration' ? 'text-white' : 'text-slate-400')} />
-                  <span>DB Migration (ഡേറ്റാ മൈഗ്രേഷൻ)</span>
+                  <Download className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
+                  <span>Import Old Members</span>
                 </div>
               </button>
 
               <button
                 onClick={() => setActiveTab2('committee_mgmt')}
                 className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
                   activeTab === 'committee_mgmt' 
                     ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'committee_mgmt' ? 'text-white' : 'text-slate-400')} />
-                  <span>Committee Members</span>
+                  <span>Committees</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab2('db_migration')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'db_migration' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'db_migration' ? 'text-white' : 'text-slate-400')} />
+                  <span>DB Migration</span>
                 </div>
               </button>
             </div>
           )}
+
+          {/* Group 4: Customization */}
+          <div className="space-y-1 pt-2 border-t border-slate-100">
+            <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Customization</p>
+            
+            {!isSecondary && (
+              <button
+                onClick={() => setActiveTab2('branding')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'branding' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Globe className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'branding' ? 'text-white' : 'text-slate-400')} />
+                  <span>Branding & CMS</span>
+                </div>
+              </button>
+            )}
+
+            {!isSecondary && (
+              <button
+                onClick={() => setActiveTab2('language')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'language' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Globe className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'language' ? 'text-white' : 'text-slate-400')} />
+                  <span>Language Manager</span>
+                </div>
+              </button>
+            )}
+
+            {(isSuperAdmin || user?.role === 'admin') && (
+              <button
+                onClick={() => setActiveTab2('gallery_mgmt')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'gallery_mgmt' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <ImageIcon className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'gallery_mgmt' ? 'text-white' : 'text-slate-400')} />
+                  <span>Gallery Management</span>
+                </div>
+              </button>
+            )}
+          </div>
         </nav>
 
         {/* Sidebar Footer */}
@@ -1357,74 +1585,311 @@ export default function AdminDashboard({
                 <X className="w-3.5 h-3.5" />
               </Button>
             </div>
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
-              <button 
-                onClick={() => { setActiveTab2('list'); setMobileSidebarOpen(false); }} 
-                className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'list' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                )}
-              >
-                <Users className="w-4 h-4 text-slate-400" />
-                <span>Member directory</span>
-              </button>
-              <button 
-                onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
-                className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'requests' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                )}
-              >
-                <UserPlus className="w-4 h-4 text-slate-400" />
-                <span>New Requests</span>
-              </button>
-              <button 
-                onClick={() => { setActiveTab2('claims'); setMobileSidebarOpen(false); }} 
-                className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'claims' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                )}
-              >
-                <MessageCircle className="w-4 h-4 text-slate-400" />
-                <span>Claims Support</span>
-              </button>
+            <nav className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Group 1: Core Operations */}
+              <div className="space-y-1">
+                <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Management Console</p>
+                
+                <button 
+                  onClick={() => { setActiveTab2('list'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'list' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className={cn("w-4 h-4", activeTab === 'list' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Member directory</span>
+                  </div>
+                  {stats.active > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'list' ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-500'
+                    )}>
+                      {stats.active}
+                    </span>
+                  )}
+                </button>
 
+                <button 
+                  onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'requests' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <UserPlus className={cn("w-4 h-4", activeTab === 'requests' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>New Requests</span>
+                  </div>
+                  {stats.pending > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'requests' ? 'bg-brand-blue text-white' : 'bg-brand-magenta/5 text-brand-magenta'
+                    )}>
+                      {stats.pending}
+                    </span>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('renewals'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'renewals' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className={cn("w-4 h-4", activeTab === 'renewals' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Renewals</span>
+                  </div>
+                  {stats.renewals > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'renewals' ? 'bg-brand-blue text-white' : 'bg-orange-100 text-orange-600'
+                    )}>
+                      {stats.renewals}
+                    </span>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('claims'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'claims' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <MessageCircle className={cn("w-4 h-4", activeTab === 'claims' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Claims Support</span>
+                  </div>
+                  {claims.length > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'claims' ? 'bg-brand-blue text-white' : 'bg-red-50 text-red-500'
+                    )}>
+                      {claims.length}
+                    </span>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('valid_active'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'valid_active' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className={cn("w-4 h-4", activeTab === 'valid_active' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Active & Valid</span>
+                  </div>
+                  {validActiveCount > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'valid_active' ? 'bg-brand-blue text-white' : 'bg-green-100 text-green-600'
+                    )}>
+                      {validActiveCount}
+                    </span>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('fast_entry'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'fast_entry' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <UserPlus className={cn("w-4 h-4", activeTab === 'fast_entry' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Fast Entry</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('tickets'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'tickets' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Headphones className={cn("w-4 h-4", activeTab === 'tickets' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>AI Support Tickets</span>
+                  </div>
+                  {supportTickets.filter(t => t.status === 'pending').length > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'tickets' ? 'bg-brand-blue text-white' : 'bg-emerald-500 text-white'
+                    )}>
+                      {supportTickets.filter(t => t.status === 'pending').length}
+                    </span>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('deleted'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'deleted' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock className={cn("w-4 h-4", activeTab === 'deleted' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Deactivated Members</span>
+                  </div>
+                  {members.filter(m => m.status === 'deleted').length > 0 && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
+                      activeTab === 'deleted' ? 'bg-brand-blue text-white' : 'bg-red-100 text-red-500'
+                    )}>
+                      {members.filter(m => m.status === 'deleted').length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Group 2: Settings & Quotas */}
+              <div className="space-y-1">
+                <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Configuration & Settings</p>
+                
+                <button 
+                  onClick={() => { setActiveTab2('quotas'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'quotas' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings className={cn("w-4 h-4", activeTab === 'quotas' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>Settings & Quotas</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab2('districts'); setMobileSidebarOpen(false); }} 
+                  className={cn(
+                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                    activeTab === 'districts' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Lock className={cn("w-4 h-4", activeTab === 'districts' ? 'text-brand-blue' : 'text-slate-400')} />
+                    <span>District URLs</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Group 3: Data Migration */}
               {isSuperAdmin && (
-                <>
+                <div className="space-y-1 pt-2 border-t border-slate-100">
+                  <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">System Administration</p>
+                  
                   <button 
-                    onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
+                    onClick={() => { setActiveTab2('life_members'); setMobileSidebarOpen(false); }} 
                     className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'life_members' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
                     )}
                   >
-                    <Database className="w-4 h-4 text-slate-400" />
-                    <span>Import Old Members</span>
+                    <div className="flex items-center gap-3">
+                      <Crown className={cn("w-4 h-4", activeTab === 'life_members' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>Life Members</span>
+                    </div>
                   </button>
 
                   <button 
-                    onClick={() => { setActiveTab2('db_migration'); setMobileSidebarOpen(false); }} 
+                    onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
                     className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'db_migration' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
                     )}
                   >
-                    <Database className="w-4 h-4 text-slate-400" />
-                    <span>Database Migration (ഡേറ്റാ മൈഗ്രേഷൻ)</span>
+                    <div className="flex items-center gap-3">
+                      <Download className={cn("w-4 h-4", activeTab === 'bulk_import' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>Import Old Members</span>
+                    </div>
                   </button>
 
                   <button 
                     onClick={() => { setActiveTab2('committee_mgmt'); setMobileSidebarOpen(false); }} 
                     className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
                       activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
                     )}
                   >
-                    <Users className="w-4 h-4 text-slate-400" />
-                    <span>Committee Members</span>
+                    <div className="flex items-center gap-3">
+                      <Users className={cn("w-4 h-4", activeTab === 'committee_mgmt' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>Committees</span>
+                    </div>
                   </button>
-                </>
+
+                  <button 
+                    onClick={() => { setActiveTab2('db_migration'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'db_migration' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Database className={cn("w-4 h-4", activeTab === 'db_migration' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>DB Migration</span>
+                    </div>
+                  </button>
+                </div>
               )}
+
+              {/* Group 4: Customization */}
+              <div className="space-y-1 pt-2 border-t border-slate-100">
+                <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Customization</p>
+                
+                {!isSecondary && (
+                  <button 
+                    onClick={() => { setActiveTab2('branding'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'branding' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Globe className={cn("w-4 h-4", activeTab === 'branding' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>Branding & CMS</span>
+                    </div>
+                  </button>
+                )}
+
+                {!isSecondary && (
+                  <button 
+                    onClick={() => { setActiveTab2('language'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'language' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Globe className={cn("w-4 h-4", activeTab === 'language' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>Language Manager</span>
+                    </div>
+                  </button>
+                )}
+
+                {(isSuperAdmin || user?.role === 'admin') && (
+                  <button 
+                    onClick={() => { setActiveTab2('gallery_mgmt'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'gallery_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <ImageIcon className={cn("w-4 h-4", activeTab === 'gallery_mgmt' ? 'text-brand-blue' : 'text-slate-400')} />
+                      <span>Gallery Management</span>
+                    </div>
+                  </button>
+                )}
+              </div>
             </nav>
             <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
                {onViewCard && (

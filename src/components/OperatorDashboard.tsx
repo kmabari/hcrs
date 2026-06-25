@@ -194,22 +194,31 @@ export default function OperatorDashboard({
     }
   }, [user.district]);
 
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const [dbPage, setDbPage] = useState(1);
 
   useEffect(() => {
     setDbPage(1);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     if (onRefreshMembers) {
       onRefreshMembers({
-        searchTerm,
+        searchTerm: debouncedSearchTerm,
         districtFilter: user.district || 'all',
         activeTab: 'list',
         page: dbPage
       });
     }
-  }, [searchTerm, dbPage, user.district, onRefreshMembers]);
+  }, [debouncedSearchTerm, dbPage, user.district, onRefreshMembers]);
 
   const stats = useMemo(() => {
     if (dbStats) {
