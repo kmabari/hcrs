@@ -326,7 +326,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
         try {
           const compressed = await compressImage(selectedPhoto, 650, 650, 0.75);
           const photoRef = ref(storage, `photos/${finalUid}_profile.jpg`);
-          const uploadResult = await uploadBytes(photoRef, compressed);
+          const uploadResult = await uploadBytes(photoRef, compressed, { contentType: 'image/jpeg' });
           finalPhotoUrl = await getDownloadURL(uploadResult.ref);
         } catch (photoErr) {
           console.error("Photo upload error:", photoErr);

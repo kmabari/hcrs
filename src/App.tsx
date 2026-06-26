@@ -2177,7 +2177,7 @@ export default function App() {
     try {
       const compressedPhoto = await compressImage(photo, 1000, 1000, 0.8);
       const photoRef = ref(storage, `photos/${uid}_profile.jpg`);
-      const uploadResult = await uploadBytes(photoRef, compressedPhoto);
+      const uploadResult = await uploadBytes(photoRef, compressedPhoto, { contentType: 'image/jpeg' });
       const photoUrl = await getDownloadURL(uploadResult.ref);
       
       await updateDoc(doc(db, 'users', uid), { photoUrl });
