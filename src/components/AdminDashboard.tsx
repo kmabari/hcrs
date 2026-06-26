@@ -2419,8 +2419,265 @@ export default function AdminDashboard({
             </Card>
           </div>
         </div>
+
+        {/* District Members List Card */}
+        <Card className="border-none shadow-sm overflow-hidden bg-white rounded-3xl">
+          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div>
+              <CardTitle className="font-sans font-black text-slate-800 uppercase text-sm tracking-tight flex items-center gap-2">
+                <Users className="w-4 h-4 text-brand-magenta" />
+                District Members List (ജില്ലാ മെമ്പർമാരുടെ ലിസ്റ്റ്)
+              </CardTitle>
+              <CardDescription className="text-[10px] font-bold text-slate-400 uppercase mt-1">
+                Showing entries in {DISTRICTS.find(d => d.code === user?.district)?.name || user?.district || 'Your District'} District
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 bg-emerald-50/50 border border-emerald-100 px-3 py-1.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                District Database
+              </div>
+            </div>
+          </CardHeader>
+
+          <div className="p-6 border-b border-slate-100 bg-white">
+            <div className="relative">
+              <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+              <Input 
+                placeholder="Search by name, phone or membership ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); // Reset page on search
+                }}
+                className="pl-12 h-12 bg-slate-50 border-slate-200 rounded-xl font-bold focus:border-brand-magenta/20 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-white">
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="border-slate-200">
+                  <TableHead className="w-[80px] font-black text-slate-500 text-[10px] uppercase tracking-widest">Photo</TableHead>
+                  <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Member Info</TableHead>
+                  <TableHead className="hidden lg:table-cell font-black text-slate-500 text-[10px] uppercase tracking-widest">District/Assembly</TableHead>
+                  <TableHead className="hidden md:table-cell font-black text-slate-500 text-[10px] uppercase tracking-widest">ID Details</TableHead>
+                  <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Status</TableHead>
+                  <TableHead className="text-right font-black text-slate-500 text-[10px] uppercase tracking-widest">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedMembers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-10">
+                      <p className="text-sm font-bold text-slate-400 uppercase">No matching district members found</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedMembers.map((member) => (
+                    <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                      <TableCell>
+                        <div className="relative group cursor-pointer" onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file && onUpdatePhoto) {
+                              onUpdatePhoto(file, member.uid);
+                            }
+                          };
+                          input.click();
+                        }}>
+                          <Avatar className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50 group-hover:opacity-70 transition-all">
+                            <AvatarImage src={member.photoUrl} alt={member.name} className="object-cover" />
+                            <AvatarFallback className="bg-brand-blue/20 text-brand-blue rounded-lg font-bold">
+                              {(member.name || '?').charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                            <Camera className="w-4 h-4 text-white drop-shadow-md" />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div 
+                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors flex items-center gap-1.5 flex-wrap"
+                          onClick={() => setViewingMember(member)}
+                        >
+                          <span>{member.name}</span>
+                          {String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE') ? (
+                            <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                              ⭐ LIFE MEMBER
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                              ADHOC MEMBER
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          <div className="text-xs text-slate-500 flex items-center gap-1 font-semibold">
+                            <Smartphone className="w-3 h-3 text-slate-400" />
+                            {member.mobile}
+                          </div>
+                          <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
+                            <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-sm font-medium text-slate-700 font-semibold">
+                          {DISTRICTS.find(d => d.code === member.district)?.name || member.district}
+                        </div>
+                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 font-semibold">
+                          <MapPin className="w-3 h-3 text-slate-450" />
+                          {member.assemblyConstituency}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="text-xs font-mono font-black text-brand-blue bg-brand-blue/10 px-2 py-1 rounded inline-block">
+                          {member.membershipId}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
+                          SN: {member.serialNo}
+                        </div>
+                        <div className="mt-2 space-y-1 text-[10px] border-t border-slate-100 pt-1.5 font-sans font-semibold text-slate-500">
+                          <div className="flex items-center gap-1" title="Joining Date">
+                            <span className="font-extrabold text-slate-400">Join:</span> 
+                            {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString('en-IN') : (member.registrationDate ? new Date(member.registrationDate).toLocaleDateString('en-IN') : 'N/A')}
+                          </div>
+                          <div className="flex items-center gap-1" title="Expiry/Validity Date">
+                            <span className="font-extrabold text-slate-400">Expiry:</span> 
+                            {member.expiryDate?.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : (member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('en-IN') : 'N/A')}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          {member.status === 'active' ? (
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2.5 py-0.5 rounded-full font-bold">Active</Badge>
+                          ) : member.status === 'pending' ? (
+                            <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none px-2.5 py-0.5 rounded-full font-bold">Pending</Badge>
+                          ) : (
+                            <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-none px-2.5 py-0.5 rounded-full font-bold">Offline</Badge>
+                          )}
+                          {(member.registeredByName || member.certAdminName) && (
+                            <div className="p-1.5 bg-slate-50 border border-slate-150 rounded-lg text-[9px] text-slate-550 font-medium">
+                              By: {member.certAdminName || member.registeredByName}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              sendWAMessage({
+                                name: member.name,
+                                mobile: member.mobile,
+                                uid: member.uid,
+                                pin: member.pin,
+                                membershipId: member.membershipId
+                              });
+                            }}
+                            className="h-8 w-8 text-green-600 hover:bg-green-50"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setViewingMember(member)}
+                            className="h-8 w-8 text-brand-blue hover:bg-brand-blue/10"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingMember(member)}
+                            className="h-8 w-8 text-slate-600 hover:bg-slate-100"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(member.uid)}
+                            className="h-8 w-8 text-red-500 hover:bg-red-50"
+                            title="Delete Member"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {filteredMembers.length > itemsPerPage && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-slate-100 bg-white">
+              <p className="text-xs font-bold text-slate-500">
+                Showing {Math.min(filteredMembers.length, (currentPage - 1) * itemsPerPage + 1)}–{Math.min(filteredMembers.length, currentPage * itemsPerPage)} of {filteredMembers.length} results
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
+                >
+                  PREV
+                </Button>
+                {Array.from({ length: Math.ceil(filteredMembers.length / itemsPerPage) }).map((_, idx) => {
+                  const pNum = idx + 1;
+                  if (pNum === 1 || pNum === Math.ceil(filteredMembers.length / itemsPerPage) || Math.abs(currentPage - pNum) <= 1) {
+                    return (
+                      <Button
+                        key={pNum}
+                        variant={currentPage === pNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(pNum)}
+                        className={cn(
+                          "rounded-xl h-9 w-9 p-0 text-xs font-black",
+                          currentPage === pNum ? "bg-brand-magenta text-white hover:bg-brand-magenta/90" : "border-slate-200"
+                        )}
+                      >
+                        {pNum}
+                      </Button>
+                    );
+                  }
+                  if (pNum === 2 || pNum === Math.ceil(filteredMembers.length / itemsPerPage) - 1) {
+                    return <span className="text-slate-400 text-xs px-1" key={`ellipsis-${pNum}`}>...</span>;
+                  }
+                  return null;
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredMembers.length / itemsPerPage), prev + 1))}
+                  disabled={currentPage === Math.ceil(filteredMembers.length / itemsPerPage)}
+                  className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
+                >
+                  NEXT
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
-        ) : (
+    ) : (
           <>
             <div className="space-y-6">
               {/* Membership Statistics Section */}
