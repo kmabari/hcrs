@@ -1,23 +1,3 @@
-import React, { useRef, useEffect, useState } from 'react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
-import { Download, Camera, PartyPopper, LogOut, Calendar, Phone, Mail, Award, Clock, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { UserProfile } from '@/src/types';
-import { DISTRICTS, SHARED_URL } from '@/src/constants';
-import confetti from 'canvas-confetti';
-import { compressImage } from '@/src/lib/imageUtils';
-import { getOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
-
-interface MembershipCardProps {
-  member: UserProfile;
-  onUpdatePhoto?: (file: File) => void;
-  showCelebration?: boolean;
-  isAdmin?: boolean;
-  onLogout?: () => void;
-}
-
 export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout }: MembershipCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
@@ -43,11 +23,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               <div className="text-red-600 font-black text-lg uppercase">
                 {member.renewalPending ? 'RENEWAL PENDING' : 'PENDING APPROVAL'}
               </div>
-              <div className="text-red-600 font-bold text-sm">
-                {member.renewalPending ? 'പുതുക്കൽ പരിശോധനയിൽ' : 'അപ്പ്രൂവൽ പെൻഡിങ്'}
-              </div>
-            </div>
-          </div>
+        
         )}
 
         <div className="p-6 text-white text-center">
@@ -59,5 +35,3 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       <Button onClick={() => window.print()} className="w-full bg-blue-600">Download Card</Button>
     </div>
   );
-}
-
