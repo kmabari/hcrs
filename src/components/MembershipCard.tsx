@@ -1,21 +1,63 @@
-              {/* RENEWAL PENDING സീൽ */}
-              {member.renewalPending === true && !isBanned && !isExpired && (
-                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
-                  <div className="border-[4px] border-double border-red-600/90 p-2 px-3 rounded-xl flex flex-col items-center justify-center bg-white/10 backdrop-blur-[0.5px] shadow-[0_4px_12px_rgba(0,0,0,0.3)] max-w-[220px]">
-                    <span className="text-[12px] font-black tracking-[0.12em] text-red-600 font-sans uppercase">RENEWAL PENDING</span>
-                    <div className="w-full h-[1.5px] bg-red-600/80 my-1" />
-                    <span className="text-[11.5px] font-extrabold text-red-600 text-center font-sans">പുതുക്കൽ പരിശോധനയിൽ</span>
-                  </div>
-                </div>
-              )}
+import React, { useRef, useEffect, useState } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { Download, Camera, PartyPopper, LogOut, Calendar, Phone, Mail, Award, Clock, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { UserProfile } from '@/src/types';
+import { DISTRICTS, SHARED_URL } from '@/src/constants';
+import confetti from 'canvas-confetti';
+import { compressImage } from '@/src/lib/imageUtils';
+import { getOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 
-              {/* പഴയ Pending Approval സീൽ (ഇത് കൂടി ഉണ്ടെങ്കിൽ മാത്രമേ സാധാരണ Pending മെമ്പർമാർക്ക് സീൽ കിട്ടൂ) */}
-              {member.status === 'pending' && !member.renewalPending && !isBanned && !isExpired && (
-                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
-                  <div className="border-[4px] border-double border-rose-600/80 p-2 px-3 rounded-xl flex flex-col items-center justify-center bg-white/10 backdrop-blur-[0.5px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
-                    <span className="text-[12px] font-black tracking-[0.12em] text-rose-600 font-sans uppercase">PENDING APPROVAL</span>
-                    <div className="w-full h-[1.5px] bg-rose-600/80 my-1" />
-                    <span className="text-[11.5px] font-extrabold text-rose-600 text-center font-sans">അപ്പ്രൂവൽ പെൻഡിങ്</span>
-                  </div>
-                </div>
-              )}
+interface MembershipCardProps {
+  member: UserProfile;
+  onUpdatePhoto?: (file: File) => void;
+  showCelebration?: boolean;
+  isAdmin?: boolean;
+  onLogout?: () => void;
+}
+
+export default function MembershipCard({ member, onUpdatePhoto, showCelebration = true, isAdmin = false, onLogout }: MembershipCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
+
+  useEffect(() => {
+    getOrgSettings().then(setSettings);
+  }, []);
+
+  const districtName = DISTRICTS.find(d => d.code === member.district)?.name || member.district;
+
+  // നിലവിലെ ഡിസൈനിലെ പ്രധാന ലോജിക്
+  const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && !member.renewalPending;
+  const isPending = member.status === 'pending' || member.renewalPending;
+
+  return (
+    <div className="flex flex-col items-center gap-4 p-4">
+      <div ref={cardRef} className="w-[340px] h-[590px] rounded-[24px] bg-slate-900 border-[6px] border-slate-700 relative flex flex-col justify-between overflow-hidden shadow-2xl">
+        
+        {/* ഇവിടെയാണ് സീൽ വരുന്നത് */}
+        {isPending && !isExpired && (
+          <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-50 pointer-events-none select-none">
+            <div className="border-[4px] border-double border-red-600 bg-white/90 p-4 rounded-xl shadow-xl text-center">
+              <div className="text-red-600 font-black text-lg uppercase">
+                {member.renewalPending ? 'RENEWAL PENDING' : 'PENDING APPROVAL'}
+              </div>
+              <div className="text-red-600 font-bold text-sm">
+                {member.renewalPending ? 'പുതുക്കൽ പരിശോധനയിൽ' : 'അപ്പ്രൂവൽ പെൻഡിങ്'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="p-6 text-white text-center">
+           <h3 className="text-2xl font-black">{member.name}</h3>
+           <p className="text-sm text-gray-400">{member.membershipId}</p>
+        </div>
+      </div>
+      
+      <Button onClick={() => window.print()} className="w-full bg-blue-600">Download Card</Button>
+    </div>
+  );
+}
+
