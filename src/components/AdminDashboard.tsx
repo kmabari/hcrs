@@ -8,24 +8,14 @@ import LanguageManager from './LanguageManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
-<<<<<<< HEAD
-import DbMigrationManager from './DbMigrationManager';
-import { 
-  Crown,
-  Sparkles,
-=======
 import BackupRestoreManager from './BackupRestoreManager';
 import { 
   Crown,
->>>>>>> new-repo/main
   Users, 
   Search, 
   Filter, 
   Download, 
-<<<<<<< HEAD
-=======
   Upload,
->>>>>>> new-repo/main
   UserPlus, 
   MoreVertical, 
   CheckCircle2, 
@@ -37,10 +27,7 @@ import {
   Eye,
   Camera,
   Database,
-<<<<<<< HEAD
-=======
   FileSpreadsheet,
->>>>>>> new-repo/main
   Receipt,
   Plus,
   Pencil,
@@ -61,12 +48,8 @@ import {
   Bell,
   ChevronRight,
   Headphones,
-<<<<<<< HEAD
-  Loader2
-=======
   Loader2,
   Copy
->>>>>>> new-repo/main
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -118,17 +101,6 @@ import { cn } from '@/lib/utils';
 interface AdminDashboardProps {
   user?: UserProfile | null;
   members: UserProfile[];
-<<<<<<< HEAD
-  dbStats?: {
-    total: number;
-    active: number;
-    pending: number;
-    renewals: number;
-    deleted: number;
-    validActive?: number;
-  };
-=======
->>>>>>> new-repo/main
   onApprove: (id: string) => void;
   onAddOffline: (data: any) => void;
   onUpdate: (id: string, data: Partial<UserProfile>) => void;
@@ -141,18 +113,7 @@ interface AdminDashboardProps {
   districtQuotasUsed?: Record<string, number>;
   handleLogout: () => void;
   onViewCard?: () => void;
-<<<<<<< HEAD
-  onRefreshMembers?: (filters?: {
-    searchTerm?: string;
-    districtFilter?: string;
-    activeTab?: string;
-    categoryFilter?: string;
-    sourceFilter?: string;
-    page?: number;
-  }) => void;
-=======
   onRefreshMembers?: () => void;
->>>>>>> new-repo/main
   isSyncingMembers?: boolean;
 }
 
@@ -161,19 +122,11 @@ const MAIN_ADMINS = [
   'hcrsindia@gmail.com',
   'admin@hcrs.society',
   '9645934571@hcrs.society',
-<<<<<<< HEAD
-  'mabarikiyafoods@gmail.com'
-];
-
-const SECOND_ADMINS = [
-  'hcrskerala@gmail.com',
-=======
   'mabarikiyafoods@gmail.com',
   'hcrskerala@gmail.com'
 ];
 
 const SECOND_ADMINS = [
->>>>>>> new-repo/main
   'hcrskasaragod@hcrs.society',
   'hcrsksd@hcrs.society',
   'hcrskannur@hcrs.society',
@@ -227,32 +180,6 @@ const hasValidity = (u: any) => {
   return expDate.getTime() > Date.now();
 };
 
-<<<<<<< HEAD
-const isProtectedFrom2025 = (m: any) => {
-  if (m.role === 'admin' || m.role === 'operator') return true;
-
-  // 1. Life Membership (ലൈഫ് മെമ്പർഷിപ്പ്) is protected
-  const isLife = String(m.membership_type || m.membershipType || '').toUpperCase().includes('LIFE');
-  if (isLife) return true;
-
-  // 2. Renewal Membership (റിന്യൂവൽ മെമ്പർഷിപ്പ്) is protected (they have either a renewalDate or renewalTransactionId)
-  const isRenewed = !!m.renewalDate || !!m.renewalTransactionId;
-  if (isRenewed) return true;
-
-  // 3. New Membership (ന്യൂ മെമ്പർഷിപ്പ്) with online payment / transaction ID is protected
-  const hasOnlineTx = m.transactionId && 
-                      m.transactionId !== 'MANUAL_OFFLINE' && 
-                      m.transactionId !== 'CASH/OFFLINE';
-  
-  if (hasOnlineTx && hasValidity(m)) {
-    return true;
-  }
-
-  return false;
-};
-
-=======
->>>>>>> new-repo/main
 const getCategoryLabel = (catId: string) => {
   const mapping: Record<string, string> = {
     'digital': 'Digital Redeem Coupon (ഡിജിറ്റൽ റെഡീം കൂപ്പൺ)',
@@ -269,10 +196,6 @@ const getCategoryLabel = (catId: string) => {
 export default function AdminDashboard({ 
   user,
   members, 
-<<<<<<< HEAD
-  dbStats,
-=======
->>>>>>> new-repo/main
   onApprove, 
   onAddOffline, 
   onUpdate, 
@@ -306,8 +229,6 @@ export default function AdminDashboard({
     return byName ? byName.code : normalized;
   };
 
-<<<<<<< HEAD
-=======
   const compareMobiles = (m1: any, m2: any): boolean => {
     if (!m1 || !m2) return false;
     const clean1 = String(m1).replace(/\D/g, '');
@@ -407,7 +328,6 @@ export default function AdminDashboard({
     return String(categories);
   };
 
->>>>>>> new-repo/main
   const getAssemblyCode = (name: string) => {
     if (!name) return 'OTH';
     const clean = name.trim().toUpperCase().replace(/\s/g, '');
@@ -433,19 +353,11 @@ export default function AdminDashboard({
     return clean.substring(0, 3);
   };
 
-<<<<<<< HEAD
-  const isSuperAdmin = MAIN_ADMINS.some(email => email.toLowerCase() === (user?.email || '').toLowerCase().trim());
-=======
   const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
->>>>>>> new-repo/main
   
   const countOf2026Members = useMemo(() => {
     return members.filter(m => {
       if (m.role === 'admin' || m.role === 'operator') return false;
-<<<<<<< HEAD
-      if (isProtectedFrom2025(m)) return false;
-=======
->>>>>>> new-repo/main
       const regDate = m.registrationDate;
       if (!regDate) return true; // If missing, count it
       const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
@@ -615,51 +527,12 @@ export default function AdminDashboard({
   const [currentPage, setCurrentPage] = useState(1);
   const [validActivePage, setValidActivePage] = useState(1);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-<<<<<<< HEAD
-  const [dbPage, setDbPage] = useState(1);
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
-
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-=======
->>>>>>> new-repo/main
 
   // Automatically reset to page 1 on search or filter changes
   useEffect(() => {
     setCurrentPage(1);
     setValidActivePage(1);
-<<<<<<< HEAD
-  }, [debouncedSearchTerm, districtFilter, statusFilter, sourceFilter]);
-
-  useEffect(() => {
-    setDbPage(1);
-  }, [debouncedSearchTerm, districtFilter, activeTab, categoryFilter, sourceFilter]);
-
-  // Trigger server-side pagination fetch
-  useEffect(() => {
-    if (onRefreshMembers) {
-      onRefreshMembers({
-        searchTerm: debouncedSearchTerm,
-        districtFilter,
-        activeTab,
-        categoryFilter,
-        sourceFilter,
-        page: dbPage
-      });
-    }
-  }, [debouncedSearchTerm, districtFilter, activeTab, categoryFilter, sourceFilter, dbPage, onRefreshMembers]);
-=======
   }, [searchTerm, districtFilter, statusFilter, sourceFilter]);
->>>>>>> new-repo/main
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
@@ -668,8 +541,6 @@ export default function AdminDashboard({
   const [editingClaim, setEditingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
 
-<<<<<<< HEAD
-=======
   // Claims Bulk Import States
   const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
   const [claimsImportFile, setClaimsImportFile] = useState<File | null>(null);
@@ -680,7 +551,6 @@ export default function AdminDashboard({
   const [claimsImportColumns, setClaimsImportColumns] = useState<string[]>([]);
   const [claimsColumnMapping, setClaimsColumnMapping] = useState<Record<string, string>>({});
 
->>>>>>> new-repo/main
   // States for Editing Claim Dialog
   const [editClaimHighrichId, setEditClaimHighrichId] = useState('');
   const [editClaimNoBreakup, setEditClaimNoBreakup] = useState(false);
@@ -721,8 +591,6 @@ export default function AdminDashboard({
     }
   }, [editingClaim]);
 
-<<<<<<< HEAD
-=======
   // Claims File Upload Change Parser
   const handleClaimsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -944,7 +812,6 @@ export default function AdminDashboard({
     }
   };
 
->>>>>>> new-repo/main
   const claimUser = useMemo(() => {
     if (!selectedClaim) return null;
     const found = members?.find((m: any) => m.uid === selectedClaim.uid);
@@ -1039,15 +906,6 @@ export default function AdminDashboard({
 
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [supportTicketsLoading, setSupportTicketsLoading] = useState(false);
-<<<<<<< HEAD
-
-  useEffect(() => {
-    if (!user) return;
-    setSupportTicketsLoading(true);
-    const q = query(collection(db, 'support_tickets'), orderBy('timestamp', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-=======
   const [claimsError, setClaimsError] = useState<string | null>(null);
   const [supportTicketsError, setSupportTicketsError] = useState<string | null>(null);
 
@@ -1077,14 +935,10 @@ export default function AdminDashboard({
       } catch (e) {
         console.warn("localStorage set tickets failed:", e);
       }
->>>>>>> new-repo/main
       setSupportTickets(data);
       setSupportTicketsLoading(false);
     }, (err: any) => {
       console.error("Support tickets fetch error:", err);
-<<<<<<< HEAD
-      // Suppress or handle empty collection
-=======
       setSupportTicketsError(err.code || err.message || "permission-denied");
       try {
         const cached = localStorage.getItem('hcrs_cached_support_tickets');
@@ -1096,7 +950,6 @@ export default function AdminDashboard({
       } catch (e) {
         console.warn("localStorage read tickets failed:", e);
       }
->>>>>>> new-repo/main
       setSupportTickets([]);
       setSupportTicketsLoading(false);
     });
@@ -1131,12 +984,6 @@ export default function AdminDashboard({
   useEffect(() => {
     if (!user) return;
     setClaimsLoading(true);
-<<<<<<< HEAD
-    
-    const q = query(collection(db, 'claims'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-=======
     setClaimsError(null);
     if (user.uid === 'offline_admin') {
       try {
@@ -1167,13 +1014,10 @@ export default function AdminDashboard({
       } catch (e) {
         console.warn("localStorage set claims failed:", e);
       }
->>>>>>> new-repo/main
       setClaims(data);
       setClaimsLoading(false);
     }, (err: any) => {
       console.error("Claims fetch error:", err);
-<<<<<<< HEAD
-=======
       setClaimsError(err.code || err.message || "permission-denied");
       try {
         const cached = localStorage.getItem('hcrs_cached_claims');
@@ -1185,7 +1029,6 @@ export default function AdminDashboard({
       } catch (e) {
         console.warn("localStorage read claims failed:", e);
       }
->>>>>>> new-repo/main
       setClaimsLoading(false);
     });
     return () => unsubscribe();
@@ -1268,10 +1111,6 @@ export default function AdminDashboard({
   const handleAlignAllDatesTo2025 = async () => {
     const targets = members.filter(m => {
       if (m.role === 'admin' || m.role === 'operator') return false;
-<<<<<<< HEAD
-      if (isProtectedFrom2025(m)) return false;
-=======
->>>>>>> new-repo/main
       const regDate = m.registrationDate;
       if (!regDate) return true; // Align if date is missing
       const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
@@ -1317,19 +1156,6 @@ export default function AdminDashboard({
     }
   };
 
-<<<<<<< HEAD
-  const safeToDate = (val: any): Date => {
-    if (!val) return new Date();
-    if (val instanceof Date) return val;
-    if (typeof val.toDate === 'function') return val.toDate();
-    if (typeof val.seconds === 'number') return new Date(val.seconds * 1000);
-    const d = new Date(val);
-    if (!isNaN(d.getTime())) return d;
-    return new Date();
-  };
-
-=======
->>>>>>> new-repo/main
   const handleApproveRenewal = async (member: UserProfile) => {
     const loadingToast = toast.loading('Approving renewal...');
     try {
@@ -1337,33 +1163,6 @@ export default function AdminDashboard({
       const expiry = new Date();
       expiry.setFullYear(now.getFullYear() + 1);
 
-<<<<<<< HEAD
-      // Robust helper to get safe ISO string without throwing RangeError on invalid dates
-      const getSafeISOString = (val: any): string => {
-        try {
-          const d = safeToDate(val);
-          if (d && !isNaN(d.getTime())) {
-            return d.toISOString();
-          }
-        } catch (e) {
-          console.error("Error in getSafeISOString:", e);
-        }
-        return new Date().toISOString();
-      };
-
-      const payload = {
-        status: 'active' as const,
-        isApproved: true,
-        renewalPending: false,
-        issueDate: serverTimestamp(), // Update issue date on renewal approval
-        registrationDate: member.registrationDate ? safeToDate(member.registrationDate) : serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
-        renewalDate: serverTimestamp(), // Store renewal date permanently
-        expiryDate: expiry,
-        paymentTime: getSafeISOString(member.renewalDate || (member as any).renewalPaymentDate)
-      };
-
-      await onUpdate(member.uid, payload as any);
-=======
       await onUpdate(member.uid, {
         status: 'active',
         isApproved: true,
@@ -1374,7 +1173,6 @@ export default function AdminDashboard({
         expiryDate: expiry,
         paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
       });
->>>>>>> new-repo/main
       
       const message = `അഭിനന്ദനങ്ങൾ! താങ്കളുടെ HCRS മെമ്പർഷിപ്പ് റിന്യൂവൽ അപ്പ്രൂവ് ചെയ്തിരിക്കുന്നു. സർവീസ് കാലാവധി ഒരു വർഷത്തേക്ക് കൂടി പുതുക്കിയിട്ടുണ്ട്.`;
       
@@ -1383,14 +1181,8 @@ export default function AdminDashboard({
       }, 500);
 
       toast.success('Renewal approved successfully', { id: loadingToast });
-<<<<<<< HEAD
-    } catch (error: any) {
-      console.error("Renewal approval error details:", error);
-      toast.error(`Renewal approval failed: ${error.message || error}`, { id: loadingToast });
-=======
     } catch (error) {
       toast.error('Renewal approval failed', { id: loadingToast });
->>>>>>> new-repo/main
     }
   };
 
@@ -1505,12 +1297,6 @@ export default function AdminDashboard({
   }, [members]);
 
   const stats = useMemo(() => {
-<<<<<<< HEAD
-    if (dbStats) {
-      return dbStats;
-    }
-=======
->>>>>>> new-repo/main
     let total = 0;
     let active = 0;
     let pending = 0;
@@ -1531,11 +1317,7 @@ export default function AdminDashboard({
     }
 
     return { total, active, pending, renewals };
-<<<<<<< HEAD
-  }, [actualMembers, districtFilter, dbStats]);
-=======
   }, [actualMembers, districtFilter]);
->>>>>>> new-repo/main
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -1606,12 +1388,6 @@ export default function AdminDashboard({
     }).length;
   }, [members, districtFilter, categoryFilter]);
 
-<<<<<<< HEAD
-  const finalValidActiveCount = stats.validActive ?? validActiveCount;
-  const finalDeletedCount = stats.deleted ?? members.filter(m => m.status === 'deleted').length;
-
-=======
->>>>>>> new-repo/main
   const filteredValidActiveMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const districtMap = new Map(DISTRICTS.map(d => [d.code, d.name.toLowerCase()]));
@@ -1783,256 +1559,6 @@ export default function AdminDashboard({
         </div>
 
         {/* Navigation Items */}
-<<<<<<< HEAD
-        <nav className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Group 1: Core Operations */}
-          <div className="space-y-1">
-            <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Management Console</p>
-            
-            <button
-              onClick={() => setActiveTab2('list')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'list' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'list' ? 'text-white' : 'text-slate-400')} />
-                <span>Member Directory</span>
-              </div>
-              {stats.active > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                )}>
-                  {stats.active}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('requests')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'requests' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' ? 'text-white' : 'text-slate-400')} />
-                <span>New Requests</span>
-              </div>
-              {stats.pending > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-brand-magenta/5 text-brand-magenta'
-                )}>
-                  {stats.pending}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('renewals')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'renewals' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'renewals' ? 'text-white' : 'text-slate-400')} />
-                <span>Renewals</span>
-              </div>
-              {stats.renewals > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'renewals' ? 'bg-white/25 text-white' : 'bg-orange-100 text-orange-600'
-                )}>
-                  {stats.renewals}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('claims')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'claims' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' ? 'text-white' : 'text-slate-400')} />
-                <span>Claims Support</span>
-              </div>
-              {claims.length > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'claims' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
-                )}>
-                  {claims.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('valid_active')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'valid_active' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'valid_active' ? 'text-white' : 'text-slate-400')} />
-                <span>Active & Valid</span>
-              </div>
-              {finalValidActiveCount > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'valid_active' ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'
-                )}>
-                  {finalValidActiveCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('fast_entry')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'fast_entry' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'fast_entry' ? 'text-white' : 'text-slate-400')} />
-                <span>Fast Entry</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('tickets')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'tickets' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Headphones className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'tickets' ? 'text-white' : 'text-slate-400')} />
-                <span>AI Support Tickets</span>
-              </div>
-              {supportTickets.filter(t => t.status === 'pending').length > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'tickets' ? 'bg-white/20 text-white' : 'bg-emerald-500 text-white'
-                )}>
-                  {supportTickets.filter(t => t.status === 'pending').length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('deleted')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'deleted' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Clock className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'deleted' ? 'text-white' : 'text-slate-400')} />
-                <span>Deactivated Members</span>
-              </div>
-              {members.filter(m => m.status === 'deleted').length > 0 && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                  activeTab === 'deleted' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-500'
-                )}>
-                  {members.filter(m => m.status === 'deleted').length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Group 2: Settings & Quotas */}
-          <div className="space-y-1">
-            <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Configuration & Settings</p>
-            
-            <button
-              onClick={() => setActiveTab2('quotas')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'quotas' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Settings className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'quotas' ? 'text-white' : 'text-slate-400')} />
-                <span>Settings & Quotas</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab2('districts')}
-              className={cn(
-                "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                activeTab === 'districts' 
-                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                  : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Lock className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'districts' ? 'text-white' : 'text-slate-400')} />
-                <span>District URLs</span>
-              </div>
-            </button>
-          </div>
-
-          {/* Group 3: Data Migration */}
-          {isSuperAdmin && (
-            <div className="space-y-1 pt-2 border-t border-slate-100">
-              <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">System Administration</p>
-              
-              <button
-                onClick={() => setActiveTab2('life_members')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'life_members' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Crown className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'life_members' ? 'text-white' : 'text-slate-400')} />
-                  <span>Life Members</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab2('bulk_import')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'bulk_import' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Download className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
-=======
         <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
           <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2">Management Console</p>
           <button
@@ -2118,7 +1644,6 @@ export default function AdminDashboard({
               >
                 <div className="flex items-center gap-3">
                   <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
->>>>>>> new-repo/main
                   <span>Import Old Members</span>
                 </div>
               </button>
@@ -2126,104 +1651,19 @@ export default function AdminDashboard({
               <button
                 onClick={() => setActiveTab2('committee_mgmt')}
                 className={cn(
-<<<<<<< HEAD
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'committee_mgmt' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-=======
                   "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
                   activeTab === 'committee_mgmt' 
                     ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
                     : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
->>>>>>> new-repo/main
                 )}
               >
                 <div className="flex items-center gap-3">
                   <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'committee_mgmt' ? 'text-white' : 'text-slate-400')} />
-<<<<<<< HEAD
-                  <span>Committees</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab2('db_migration')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'db_migration' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'db_migration' ? 'text-white' : 'text-slate-400')} />
-                  <span>DB Migration</span>
-=======
                   <span>Committee Members</span>
->>>>>>> new-repo/main
                 </div>
               </button>
             </div>
           )}
-<<<<<<< HEAD
-
-          {/* Group 4: Customization */}
-          <div className="space-y-1 pt-2 border-t border-slate-100">
-            <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Customization</p>
-            
-            {!isSecondary && (
-              <button
-                onClick={() => setActiveTab2('branding')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'branding' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Globe className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'branding' ? 'text-white' : 'text-slate-400')} />
-                  <span>Branding & CMS</span>
-                </div>
-              </button>
-            )}
-
-            {!isSecondary && (
-              <button
-                onClick={() => setActiveTab2('language')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'language' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Globe className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'language' ? 'text-white' : 'text-slate-400')} />
-                  <span>Language Manager</span>
-                </div>
-              </button>
-            )}
-
-            {(isSuperAdmin || user?.role === 'admin') && (
-              <button
-                onClick={() => setActiveTab2('gallery_mgmt')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'gallery_mgmt' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <ImageIcon className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'gallery_mgmt' ? 'text-white' : 'text-slate-400')} />
-                  <span>Gallery Management</span>
-                </div>
-              </button>
-            )}
-          </div>
-=======
->>>>>>> new-repo/main
         </nav>
 
         {/* Sidebar Footer */}
@@ -2267,234 +1707,6 @@ export default function AdminDashboard({
                 <X className="w-3.5 h-3.5" />
               </Button>
             </div>
-<<<<<<< HEAD
-            <nav className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Group 1: Core Operations */}
-              <div className="space-y-1">
-                <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Management Console</p>
-                
-                <button 
-                  onClick={() => { setActiveTab2('list'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'list' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Users className={cn("w-4 h-4", activeTab === 'list' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Member directory</span>
-                  </div>
-                  {stats.active > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'list' ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-500'
-                    )}>
-                      {stats.active}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'requests' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <UserPlus className={cn("w-4 h-4", activeTab === 'requests' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>New Requests</span>
-                  </div>
-                  {stats.pending > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'requests' ? 'bg-brand-blue text-white' : 'bg-brand-magenta/5 text-brand-magenta'
-                    )}>
-                      {stats.pending}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('renewals'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'renewals' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <RefreshCw className={cn("w-4 h-4", activeTab === 'renewals' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Renewals</span>
-                  </div>
-                  {stats.renewals > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'renewals' ? 'bg-brand-blue text-white' : 'bg-orange-100 text-orange-600'
-                    )}>
-                      {stats.renewals}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('claims'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'claims' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <MessageCircle className={cn("w-4 h-4", activeTab === 'claims' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Claims Support</span>
-                  </div>
-                  {claims.length > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'claims' ? 'bg-brand-blue text-white' : 'bg-red-50 text-red-500'
-                    )}>
-                      {claims.length}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('valid_active'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'valid_active' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className={cn("w-4 h-4", activeTab === 'valid_active' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Active & Valid</span>
-                  </div>
-                  {finalValidActiveCount > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'valid_active' ? 'bg-brand-blue text-white' : 'bg-green-100 text-green-600'
-                    )}>
-                      {finalValidActiveCount}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('fast_entry'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'fast_entry' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <UserPlus className={cn("w-4 h-4", activeTab === 'fast_entry' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Fast Entry</span>
-                  </div>
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('tickets'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'tickets' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Headphones className={cn("w-4 h-4", activeTab === 'tickets' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>AI Support Tickets</span>
-                  </div>
-                  {supportTickets.filter(t => t.status === 'pending').length > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'tickets' ? 'bg-brand-blue text-white' : 'bg-emerald-500 text-white'
-                    )}>
-                      {supportTickets.filter(t => t.status === 'pending').length}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('deleted'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'deleted' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Clock className={cn("w-4 h-4", activeTab === 'deleted' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Deactivated Members</span>
-                  </div>
-                  {members.filter(m => m.status === 'deleted').length > 0 && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5 text-center",
-                      activeTab === 'deleted' ? 'bg-brand-blue text-white' : 'bg-red-100 text-red-500'
-                    )}>
-                      {members.filter(m => m.status === 'deleted').length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {/* Group 2: Settings & Quotas */}
-              <div className="space-y-1">
-                <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Configuration & Settings</p>
-                
-                <button 
-                  onClick={() => { setActiveTab2('quotas'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'quotas' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Settings className={cn("w-4 h-4", activeTab === 'quotas' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>Settings & Quotas</span>
-                  </div>
-                </button>
-
-                <button 
-                  onClick={() => { setActiveTab2('districts'); setMobileSidebarOpen(false); }} 
-                  className={cn(
-                    "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                    activeTab === 'districts' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Lock className={cn("w-4 h-4", activeTab === 'districts' ? 'text-brand-blue' : 'text-slate-400')} />
-                    <span>District URLs</span>
-                  </div>
-                </button>
-              </div>
-
-              {/* Group 3: Data Migration */}
-              {isSuperAdmin && (
-                <div className="space-y-1 pt-2 border-t border-slate-100">
-                  <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">System Administration</p>
-                  
-                  <button 
-                    onClick={() => { setActiveTab2('life_members'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'life_members' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Crown className={cn("w-4 h-4", activeTab === 'life_members' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>Life Members</span>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Download className={cn("w-4 h-4", activeTab === 'bulk_import' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>Import Old Members</span>
-                    </div>
-=======
             <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
               <button 
                 onClick={() => { setActiveTab2('list'); setMobileSidebarOpen(false); }} 
@@ -2538,88 +1750,11 @@ export default function AdminDashboard({
                   >
                     <Database className="w-4 h-4 text-slate-400" />
                     <span>Import Old Members</span>
->>>>>>> new-repo/main
                   </button>
 
                   <button 
                     onClick={() => { setActiveTab2('committee_mgmt'); setMobileSidebarOpen(false); }} 
                     className={cn(
-<<<<<<< HEAD
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Users className={cn("w-4 h-4", activeTab === 'committee_mgmt' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>Committees</span>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => { setActiveTab2('db_migration'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'db_migration' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Database className={cn("w-4 h-4", activeTab === 'db_migration' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>DB Migration</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-
-              {/* Group 4: Customization */}
-              <div className="space-y-1 pt-2 border-t border-slate-100">
-                <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Customization</p>
-                
-                {!isSecondary && (
-                  <button 
-                    onClick={() => { setActiveTab2('branding'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'branding' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Globe className={cn("w-4 h-4", activeTab === 'branding' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>Branding & CMS</span>
-                    </div>
-                  </button>
-                )}
-
-                {!isSecondary && (
-                  <button 
-                    onClick={() => { setActiveTab2('language'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'language' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Globe className={cn("w-4 h-4", activeTab === 'language' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>Language Manager</span>
-                    </div>
-                  </button>
-                )}
-
-                {(isSuperAdmin || user?.role === 'admin') && (
-                  <button 
-                    onClick={() => { setActiveTab2('gallery_mgmt'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'gallery_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <ImageIcon className={cn("w-4 h-4", activeTab === 'gallery_mgmt' ? 'text-brand-blue' : 'text-slate-400')} />
-                      <span>Gallery Management</span>
-                    </div>
-                  </button>
-                )}
-              </div>
-=======
                       "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
                       activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
                     )}
@@ -2629,7 +1764,6 @@ export default function AdminDashboard({
                   </button>
                 </>
               )}
->>>>>>> new-repo/main
             </nav>
             <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
                {onViewCard && (
@@ -2945,32 +2079,6 @@ export default function AdminDashboard({
                     </div>
                   </div>
 
-<<<<<<< HEAD
-                  <div className="space-y-2">
-                    <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
-                    <Input 
-                      id="s-email" 
-                      type="email"
-                      required 
-                      className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                      placeholder="example@mail.com" 
-                      value={manualFormData.email} 
-                      onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="s-member-pin" className="font-bold text-slate-700">Member Password (പാസ്സ്‌വേർഡ്)</Label>
-                    <Input 
-                      id="s-member-pin" 
-                      type="text"
-                      required 
-                      className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                      placeholder="Set member password" 
-                      value={manualFormData.pin} 
-                      onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
-                    />
-                  </div>
-=======
                     <div className="space-y-2">
                       <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
                       <Input 
@@ -2995,7 +2103,6 @@ export default function AdminDashboard({
                         onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
                       />
                     </div>
->>>>>>> new-repo/main
 
                   <div className="space-y-2">
                     <Label htmlFor="s-address" className="font-bold text-slate-700">Full Address (മേൽവിലാസം)</Label>
@@ -3096,20 +2203,6 @@ export default function AdminDashboard({
                       value={manualFormData.bloodGroup} 
                       onValueChange={v => setManualFormData({...manualFormData, bloodGroup: v})}
                     >
-<<<<<<< HEAD
-                      <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
-                        <SelectValue placeholder="Blood Group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BLOOD_GROUPS.map(bg => (
-                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button 
-=======
                         <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
                           <SelectValue placeholder="Blood Group" />
                         </SelectTrigger>
@@ -3122,7 +2215,6 @@ export default function AdminDashboard({
                     </div>
 
                     <Button 
->>>>>>> new-repo/main
                     type="submit" 
                     disabled={(user?.quota !== undefined && (user?.quotaUsed || 0) >= user.quota) || isSubmitting}
                     className="w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-brand-magenta/20 bg-brand-magenta text-white hover:bg-brand-magenta/90 disabled:opacity-50"
@@ -3141,270 +2233,8 @@ export default function AdminDashboard({
             </Card>
           </div>
         </div>
-<<<<<<< HEAD
-
-        {/* District Members List Card */}
-        <Card className="border-none shadow-sm overflow-hidden bg-white rounded-3xl">
-          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row gap-4 justify-between items-center">
-            <div>
-              <CardTitle className="font-sans font-black text-slate-800 uppercase text-sm tracking-tight flex items-center gap-2">
-                <Users className="w-4 h-4 text-brand-magenta" />
-                District Members List (ജില്ലാ മെമ്പർമാരുടെ ലിസ്റ്റ്)
-              </CardTitle>
-              <CardDescription className="text-[10px] font-bold text-slate-400 uppercase mt-1">
-                Showing entries in {DISTRICTS.find(d => d.code === user?.district)?.name || user?.district || 'Your District'} District
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 bg-emerald-50/50 border border-emerald-100 px-3 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                District Database
-              </div>
-            </div>
-          </CardHeader>
-
-          <div className="p-6 border-b border-slate-100 bg-white">
-            <div className="relative">
-              <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
-              <Input 
-                placeholder="Search by name, phone or membership ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset page on search
-                }}
-                className="pl-12 h-12 bg-slate-50 border-slate-200 rounded-xl font-bold focus:border-brand-magenta/20 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="overflow-x-auto bg-white">
-            <Table>
-              <TableHeader className="bg-slate-50/50">
-                <TableRow className="border-slate-200">
-                  <TableHead className="w-[80px] font-black text-slate-500 text-[10px] uppercase tracking-widest">Photo</TableHead>
-                  <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Member Info</TableHead>
-                  <TableHead className="hidden lg:table-cell font-black text-slate-500 text-[10px] uppercase tracking-widest">District/Assembly</TableHead>
-                  <TableHead className="hidden md:table-cell font-black text-slate-500 text-[10px] uppercase tracking-widest">ID Details</TableHead>
-                  <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Status</TableHead>
-                  <TableHead className="text-right font-black text-slate-500 text-[10px] uppercase tracking-widest">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedMembers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10">
-                      <p className="text-sm font-bold text-slate-400 uppercase">No matching district members found</p>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedMembers.map((member) => (
-                    <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                      <TableCell>
-                        <div className="relative group cursor-pointer" onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file && onUpdatePhoto) {
-                              onUpdatePhoto(file, member.uid);
-                            }
-                          };
-                          input.click();
-                        }}>
-                          <Avatar className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50 group-hover:opacity-70 transition-all">
-                            <AvatarImage src={member.photoUrl} alt={member.name} className="object-cover" />
-                            <AvatarFallback className="bg-brand-blue/20 text-brand-blue rounded-lg font-bold">
-                              {(member.name || '?').charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                            <Camera className="w-4 h-4 text-white drop-shadow-md" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div 
-                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors flex items-center gap-1.5 flex-wrap"
-                          onClick={() => setViewingMember(member)}
-                        >
-                          <span>{member.name}</span>
-                          {String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE') ? (
-                            <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
-                              ⭐ LIFE MEMBER
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                              ADHOC MEMBER
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-0.5 mt-1">
-                          <div className="text-xs text-slate-500 flex items-center gap-1 font-semibold">
-                            <Smartphone className="w-3 h-3 text-slate-400" />
-                            {member.mobile}
-                          </div>
-                          <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
-                            <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="text-sm font-medium text-slate-700 font-semibold">
-                          {DISTRICTS.find(d => d.code === member.district)?.name || member.district}
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 font-semibold">
-                          <MapPin className="w-3 h-3 text-slate-450" />
-                          {member.assemblyConstituency}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="text-xs font-mono font-black text-brand-blue bg-brand-blue/10 px-2 py-1 rounded inline-block">
-                          {member.membershipId}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
-                          SN: {member.serialNo}
-                        </div>
-                        <div className="mt-2 space-y-1 text-[10px] border-t border-slate-100 pt-1.5 font-sans font-semibold text-slate-500">
-                          <div className="flex items-center gap-1" title="Joining Date">
-                            <span className="font-extrabold text-slate-400">Join:</span> 
-                            {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString('en-IN') : (member.registrationDate ? new Date(member.registrationDate).toLocaleDateString('en-IN') : 'N/A')}
-                          </div>
-                          <div className="flex items-center gap-1" title="Expiry/Validity Date">
-                            <span className="font-extrabold text-slate-400">Expiry:</span> 
-                            {member.expiryDate?.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : (member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('en-IN') : 'N/A')}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {member.status === 'active' ? (
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2.5 py-0.5 rounded-full font-bold">Active</Badge>
-                          ) : member.status === 'pending' ? (
-                            <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none px-2.5 py-0.5 rounded-full font-bold">Pending</Badge>
-                          ) : (
-                            <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-none px-2.5 py-0.5 rounded-full font-bold">Offline</Badge>
-                          )}
-                          {(member.registeredByName || member.certAdminName) && (
-                            <div className="p-1.5 bg-slate-50 border border-slate-150 rounded-lg text-[9px] text-slate-550 font-medium">
-                              By: {member.certAdminName || member.registeredByName}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              sendWAMessage({
-                                name: member.name,
-                                mobile: member.mobile,
-                                uid: member.uid,
-                                pin: member.pin,
-                                membershipId: member.membershipId
-                              });
-                            }}
-                            className="h-8 w-8 text-green-600 hover:bg-green-50"
-                            title="Chat on WhatsApp"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setViewingMember(member)}
-                            className="h-8 w-8 text-brand-blue hover:bg-brand-blue/10"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingMember(member)}
-                            className="h-8 w-8 text-slate-600 hover:bg-slate-100"
-                            title="Edit"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(member.uid)}
-                            className="h-8 w-8 text-red-500 hover:bg-red-50"
-                            title="Delete Member"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {filteredMembers.length > itemsPerPage && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-slate-100 bg-white">
-              <p className="text-xs font-bold text-slate-500">
-                Showing {Math.min(filteredMembers.length, (currentPage - 1) * itemsPerPage + 1)}–{Math.min(filteredMembers.length, currentPage * itemsPerPage)} of {filteredMembers.length} results
-              </p>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
-                >
-                  PREV
-                </Button>
-                {Array.from({ length: Math.ceil(filteredMembers.length / itemsPerPage) }).map((_, idx) => {
-                  const pNum = idx + 1;
-                  if (pNum === 1 || pNum === Math.ceil(filteredMembers.length / itemsPerPage) || Math.abs(currentPage - pNum) <= 1) {
-                    return (
-                      <Button
-                        key={pNum}
-                        variant={currentPage === pNum ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(pNum)}
-                        className={cn(
-                          "rounded-xl h-9 w-9 p-0 text-xs font-black",
-                          currentPage === pNum ? "bg-brand-magenta text-white hover:bg-brand-magenta/90" : "border-slate-200"
-                        )}
-                      >
-                        {pNum}
-                      </Button>
-                    );
-                  }
-                  if (pNum === 2 || pNum === Math.ceil(filteredMembers.length / itemsPerPage) - 1) {
-                    return <span className="text-slate-400 text-xs px-1" key={`ellipsis-${pNum}`}>...</span>;
-                  }
-                  return null;
-                })}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredMembers.length / itemsPerPage), prev + 1))}
-                  disabled={currentPage === Math.ceil(filteredMembers.length / itemsPerPage)}
-                  className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
-                >
-                  NEXT
-                </Button>
-              </div>
-            </div>
-          )}
-        </Card>
-      </div>
-    ) : (
-=======
       </div>
         ) : (
->>>>>>> new-repo/main
           <>
             <div className="space-y-6">
               {/* Membership Statistics Section */}
@@ -3433,16 +2263,6 @@ export default function AdminDashboard({
               </div>
             </div>
 
-<<<<<<< HEAD
-            {isSuperAdmin && countOf2026Members > 0 && (
-              <div className="bg-brand-magenta/5 border border-brand-magenta/25 rounded-2xl p-5 text-left animate-in slide-in-from-top-4 duration-300 mt-6">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-                  <div className="space-y-1">
-                    <p className="text-xs font-black text-brand-magenta uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4" /> 2026 അംഗങ്ങളുടെ തീയതി ക്രമീകരിക്കുക (Align Joining Dates to 2025)
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-bold leading-normal">
-=======
             {false && isSuperAdmin && countOf2026Members > 0 && (
               <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-brand-magenta/20 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3457,7 +2277,6 @@ export default function AdminDashboard({
                       ലിസ്റ്റിൽ രജിസ്റ്റർ ചെയ്തവരും മൈഗ്രേറ്റ് ചെയ്തതുമായ <span className="font-black text-brand-magenta text-sm underline">{countOf2026Members}</span> മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി ഇപ്പോഴും 2026 ലാണ് കിടക്കുന്നത്. ഇവരെ എത്രയും വേഗം 2025 ലേക്ക് മാറ്റുകയും കാർഡ് കാലാവധി കഴിഞ്ഞ് പുതുക്കേണ്ട സമയം കഴിഞ്ഞതായി (Renewal Required) രേഖപ്പെടുത്തുകയും വേണം. അംഗങ്ങൾക്ക് ലോഗിൻ ചെയ്യുമ്പോൾ റിന്യൂവൽ പേജ് വരാൻ ഇത് സഹായിക്കും.
                     </p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
->>>>>>> new-repo/main
                       Align {countOf2026Members} members to joining year 2025. This makes their cards expired (due for ₹100 renewal) and prompts them to renew when they access their account.
                     </p>
                   </div>
@@ -3555,15 +2374,9 @@ export default function AdminDashboard({
                     </TabsTrigger>
                   )}
                   {isSuperAdmin && (
-<<<<<<< HEAD
-                    <TabsTrigger value="db_migration" className="data-[state=active]:bg-white data-[state=active]:text-rose-650 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Database className="w-3 h-3 text-rose-500" />
-                      DB Migration (ഡേറ്റാ മൈഗ്രേഷൻ)
-=======
                     <TabsTrigger value="backup_restore" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                       <Database className="w-3 h-3 text-slate-400" />
                       Database Restore (ബാക്കപ്പ്)
->>>>>>> new-repo/main
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -3663,15 +2476,6 @@ export default function AdminDashboard({
                 )}
               </TabsContent>
 
-<<<<<<< HEAD
-              <TabsContent value="db_migration">
-                {isSuperAdmin && (
-                  <DbMigrationManager user={user} />
-                )}
-              </TabsContent>
-
-=======
->>>>>>> new-repo/main
               <TabsContent value="gallery_mgmt">
                 <GalleryManagement user={user} />
               </TabsContent>
@@ -3680,8 +2484,6 @@ export default function AdminDashboard({
                 <CommitteeManagement user={user} />
               </TabsContent>
 
-<<<<<<< HEAD
-=======
               {isSuperAdmin && (
                 <TabsContent value="backup_restore">
                   <BackupRestoreManager 
@@ -3691,7 +2493,6 @@ export default function AdminDashboard({
                 </TabsContent>
               )}
 
->>>>>>> new-repo/main
               <TabsContent value="branding">
                 <BrandingManager />
               </TabsContent>
@@ -3855,11 +2656,7 @@ export default function AdminDashboard({
                           
                           {/* Family claims indicator on Member row */}
                           {(() => {
-<<<<<<< HEAD
-                            const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
-=======
                             const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
->>>>>>> new-repo/main
                             if (mClaims.length === 0) return null;
                             return (
                               <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
@@ -4131,37 +2928,6 @@ export default function AdminDashboard({
                   </div>
                 </div>
               )}
-<<<<<<< HEAD
-              {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
-                <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                   <Database className="w-3.5 h-3.5 text-brand-blue" />
-                   Database Batch: {dbPage} (ആകെ ബാച്ച് {dbPage})
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={dbPage <= 1 || isSyncingMembers}
-                    onClick={() => setDbPage(prev => Math.max(1, prev - 1))}
-                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
-                  >
-                    ◀ Prev 50 (മുൻപത്തെ 50)
-                  </Button>
-                  <span className="text-xs font-black text-brand-blue font-mono px-1">Page {dbPage}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={members.length < 50 || isSyncingMembers}
-                    onClick={() => setDbPage(prev => prev + 1)}
-                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
-                  >
-                    Next 50 (അടുത്ത 50) ▶
-                  </Button>
-                </div>
-              </div>
-=======
->>>>>>> new-repo/main
               {filteredMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -4242,11 +3008,7 @@ export default function AdminDashboard({
                           
                           {/* Family claims indicator on Member row */}
                           {(() => {
-<<<<<<< HEAD
-                            const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
-=======
                             const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
->>>>>>> new-repo/main
                             if (mClaims.length === 0) return null;
                             return (
                               <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
@@ -4432,37 +3194,6 @@ export default function AdminDashboard({
                   </div>
                 </div>
               )}
-<<<<<<< HEAD
-              {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
-                <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                   <Database className="w-3.5 h-3.5 text-brand-blue" />
-                   Database Batch: {dbPage} (ആകെ ബാച്ച് {dbPage})
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={dbPage <= 1 || isSyncingMembers}
-                    onClick={() => setDbPage(prev => Math.max(1, prev - 1))}
-                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
-                  >
-                    ◀ Prev 50 (മുൻപത്തെ 50)
-                  </Button>
-                  <span className="text-xs font-black text-brand-blue font-mono px-1">Page {dbPage}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={members.length < 50 || isSyncingMembers}
-                    onClick={() => setDbPage(prev => prev + 1)}
-                    className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
-                  >
-                    Next 50 (അടുത്ത 50) ▶
-                  </Button>
-                </div>
-              </div>
-=======
->>>>>>> new-repo/main
               {filteredValidActiveMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -5407,14 +4138,7 @@ export default function AdminDashboard({
                         
                         // We prefer the current origin unless it's obviously a dev setup AND we have a stable fallback
                         // However, on AI Studio, origin changes frequently, so using window.location.origin is usually SAFEST
-<<<<<<< HEAD
-                        let effectiveBase = currentOrigin || SHARED_URL;
-                        if (effectiveBase.includes('ais-dev') || effectiveBase.includes('google.com')) {
-                          effectiveBase = SHARED_URL;
-                        }
-=======
                         const effectiveBase = currentOrigin || SHARED_URL;
->>>>>>> new-repo/main
 
                         // Remove trailing slash if exists to avoid double slash
                         const cleanBase = effectiveBase.endsWith('/') ? effectiveBase.slice(0, -1) : effectiveBase;
@@ -5559,10 +4283,7 @@ export default function AdminDashboard({
                       <Button 
                         onClick={() => {
                           const ws = XLSX.utils.json_to_sheet(filteredClaims.map(c => ({
-<<<<<<< HEAD
-=======
                             'Token No': c.tokenNo ?? c.serialNo ?? 'N/A',
->>>>>>> new-repo/main
                             'Name': c.userName,
                             'Relation': c.relation === 'Self' ? 'സ്വന്തം (Self)' :
                                        c.relation === 'Mother' ? 'അമ്മ (Mother)' :
@@ -5574,15 +4295,6 @@ export default function AdminDashboard({
                             'Mobile': c.userMobile,
                             'District': c.userDistrict,
                             'HR ID': c.highrichId,
-<<<<<<< HEAD
-                            'Categories': c.categories?.join(', '),
-                            'Total Paid': c.totalPaid,
-                            'Total Received': c.totalReceived,
-                            'Balance Pending': c.totalPending,
-                            'Preference': c.futurePreference,
-                            'Priority': c.priorityStatus,
-                            'Date': c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()
-=======
                             'Categories': formatClaimCategories(c.categories),
                             'Total Paid': c.totalPaid,
                             'Total Received': c.totalReceived,
@@ -5592,7 +4304,6 @@ export default function AdminDashboard({
                                          c.futurePreference === 'continue' ? 'Ready to continue based on future plans' : (c.futurePreference || 'N/A'),
                             'Priority': c.priorityStatus,
                             'Date': formatClaimDate(c.createdAt)
->>>>>>> new-repo/main
                           })));
                           const wb = XLSX.utils.book_new();
                           XLSX.utils.book_append_sheet(wb, ws, "Support Claims");
@@ -5602,8 +4313,6 @@ export default function AdminDashboard({
                       >
                          <Download className="w-4 h-4 mr-2" /> Export Excel
                       </Button>
-<<<<<<< HEAD
-=======
 
                       <Button 
                         onClick={() => {
@@ -5616,13 +4325,10 @@ export default function AdminDashboard({
                       >
                          <Upload className="w-4 h-4 mr-2" /> Import Old Claims
                       </Button>
->>>>>>> new-repo/main
                     </div>
                  </div>
                </Card>
 
-<<<<<<< HEAD
-=======
                {claimsError && (
                  <div className="mb-6 p-6 rounded-3xl bg-rose-50 border border-rose-100 shadow-sm space-y-4">
                    <div className="flex items-start gap-4">
@@ -5695,7 +4401,6 @@ service cloud.firestore {
                  </div>
                )}
 
->>>>>>> new-repo/main
                {/* Claims Table */}
                <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
                   {claimsLoading ? (
@@ -5713,10 +4418,7 @@ service cloud.firestore {
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
-<<<<<<< HEAD
-=======
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Date</TableHead>
->>>>>>> new-repo/main
                           <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -5733,11 +4435,7 @@ service cloud.firestore {
                                 <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
                                 <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
                                 {(() => {
-<<<<<<< HEAD
-                                  const comboCount = claims.filter(c => c.userMobile === claim.userMobile).length;
-=======
                                   const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
->>>>>>> new-repo/main
                                   if (comboCount > 1) {
                                     return (
                                       <div className="mt-1">
@@ -5798,12 +4496,9 @@ service cloud.firestore {
                                   {claim.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
                                </div>
                             </TableCell>
-<<<<<<< HEAD
-=======
                             <TableCell className="text-xs font-bold text-slate-500 whitespace-nowrap">
                               {formatClaimDate(claim.createdAt)}
                             </TableCell>
->>>>>>> new-repo/main
                             <TableCell className="text-right px-6">
                                <div className="flex items-center justify-end gap-1">
                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
@@ -5867,8 +4562,6 @@ service cloud.firestore {
                     </CardDescription>
                   </div>
                 </CardHeader>
-<<<<<<< HEAD
-=======
 
                 {supportTicketsError && (
                   <div className="mx-6 mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm space-y-3">
@@ -5885,7 +4578,6 @@ service cloud.firestore {
                     </div>
                   </div>
                 )}
->>>>>>> new-repo/main
                 
                 {supportTicketsLoading ? (
                   <div className="py-20 text-center">
@@ -6013,9 +4705,6 @@ service cloud.firestore {
                   <div className="flex-1 space-y-2 w-full">
                     <div className="flex flex-col gap-1.5 justify-start">
                       <div className="flex items-center justify-between gap-4">
-<<<<<<< HEAD
-                        <h3 className="text-2xl font-black text-slate-900">{viewingMember.name}</h3>
-=======
                         <div className="flex items-center gap-2 group cursor-pointer" onClick={() => {
                           navigator.clipboard.writeText(viewingMember.name);
                           toast.success('പേര് കോപ്പി ചെയ്തു! (Name copied)');
@@ -6023,7 +4712,6 @@ service cloud.firestore {
                           <h3 className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">{viewingMember.name}</h3>
                           <Copy className="w-4 h-4 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
->>>>>>> new-repo/main
                         <Badge className={viewingMember.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
                           {viewingMember.status.toUpperCase()}
                         </Badge>
@@ -6040,8 +4728,6 @@ service cloud.firestore {
                         )}
                       </div>
                     </div>
-<<<<<<< HEAD
-=======
 
                     {/* Copy Toolkit (കോപ്പി സൂത്രങ്ങൾ) */}
                     <div className="flex items-center gap-2 flex-wrap pt-2 pb-1 border-b border-slate-100">
@@ -6081,7 +4767,6 @@ service cloud.firestore {
                         <Copy className="w-3.5 h-3.5 text-slate-500" /> പേരും വിലാസവും
                       </Button>
                     </div>
->>>>>>> new-repo/main
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
                        <DetailItem label="Mobile" value={viewingMember.mobile} icon={<Smartphone className="w-4 h-4" />} />
                        <DetailItem label="Email" value={viewingMember.email} icon={<Mail className="w-4 h-4" />} />
@@ -6162,11 +4847,7 @@ service cloud.firestore {
 
                 {/* Related Support Claims Section */}
                 {(() => {
-<<<<<<< HEAD
-                  const mClaims = claims.filter(c => c.uid === viewingMember.uid || (viewingMember.mobile && c.userMobile === viewingMember.mobile));
-=======
                   const mClaims = claims.filter(c => c.uid === viewingMember.uid || compareMobiles(c.userMobile, viewingMember.mobile));
->>>>>>> new-repo/main
                   if (mClaims.length === 0) return null;
                   return (
                     <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
@@ -6960,11 +5641,6 @@ service cloud.firestore {
                     </h4>
                     {claimUser && (
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-black">
-<<<<<<< HEAD
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Holder / Claimant (മെമ്പർ / ക്ലെയിം വ്യക്തി)</p>
-                             <p className="font-bold text-slate-850 text-sm flex items-center gap-1.5 flex-wrap">
-=======
                           <div 
                              onClick={() => {
                                 navigator.clipboard.writeText(claimUser.name);
@@ -6979,7 +5655,6 @@ service cloud.firestore {
                                 </span>
                              </p>
                              <p className="font-bold text-slate-850 text-sm flex items-center gap-1.5 flex-wrap bg-white p-2 rounded-xl border border-slate-100">
->>>>>>> new-repo/main
                                 {claimUser.name}
                                 {selectedClaim?.userName && selectedClaim.userName !== claimUser.name && (
                                    <span className="text-slate-500 font-bold">({selectedClaim.userName})</span>
@@ -6997,23 +5672,6 @@ service cloud.firestore {
                                 )}
                              </p>
                           </div>
-<<<<<<< HEAD
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member ID (മെമ്പർ ഐഡി നമ്പർ)</p>
-                             <p className="font-bold text-brand-magenta text-sm font-mono">{claimUser.membershipId || selectedClaim.membershipId || 'PENDING'}</p>
-                           </div>
-                           <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serial Number (സീരിയൽ നമ്പർ)</p>
-                              <p className="font-extrabold text-[#FF1493] text-sm font-mono bg-[#FF1493]/5 border border-[#FF1493]/15 px-2 py-0.5 rounded w-fit">#{selectedClaim.tokenNo ?? selectedClaim.serialNo ?? 'N/A'}</p>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</p>
-                             <p className="font-bold text-slate-800">{claimUser.mobile}</p>
-                          </div>
-                          <div className="space-y-1 sm:col-span-2">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address (മേൽവിലാസം)</p>
-                             <p className="font-medium text-slate-700 leading-relaxed bg-white p-2.5 rounded-lg border border-slate-100 whitespace-pre-wrap">{claimUser.address}</p>
-=======
                           <div className="space-y-1 p-2">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member ID (മെമ്പർ ഐഡി നമ്പർ)</p>
                              <p className="font-bold text-brand-magenta text-sm font-mono bg-white p-2 rounded-xl border border-slate-100">{claimUser.membershipId || selectedClaim.membershipId || 'PENDING'}</p>
@@ -7044,7 +5702,6 @@ service cloud.firestore {
                              <p className="font-medium text-slate-700 leading-relaxed bg-white p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
                                 {claimUser.address}
                              </p>
->>>>>>> new-repo/main
                           </div>
                           <div className="space-y-1">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">District</p>
@@ -7170,11 +5827,7 @@ service cloud.firestore {
 
                  <div className="pt-6 border-t flex items-center justify-between">
                     <div className="text-[10px] font-bold text-slate-400">
-<<<<<<< HEAD
-                       SUBMITTED ON: {selectedClaim.createdAt?.toDate ? selectedClaim.createdAt.toDate().toLocaleString() : 'N/A'}
-=======
                        SUBMITTED ON: {formatClaimDateTime(selectedClaim.createdAt)}
->>>>>>> new-repo/main
                     </div>
                     <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-8">Close</Button>
                  </div>
@@ -7387,8 +6040,6 @@ service cloud.firestore {
             )}
           </DialogContent>
         </Dialog>
-<<<<<<< HEAD
-=======
 
         {/* Claims Bulk Importer Dialog */}
         <Dialog open={isClaimsImportOpen} onOpenChange={(open) => !open && !isClaimsImporting && setIsClaimsImportOpen(false)}>
@@ -7556,7 +6207,6 @@ service cloud.firestore {
             </div>
           </DialogContent>
         </Dialog>
->>>>>>> new-repo/main
           </div>
         </div>
       </div>
@@ -7591,15 +6241,6 @@ function StatsCard({ title, value, icon, color }: { title: string, value: number
 }
 
 function DetailItem({ label, value, icon }: { label: string, value?: string, icon?: React.ReactNode }) {
-<<<<<<< HEAD
-  return (
-    <div className="space-y-1 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
-        {icon && React.cloneElement(icon as React.ReactElement, { className: 'w-3 h-3 text-slate-405' })}
-        {label}
-      </p>
-      <p className="text-sm font-black text-slate-800 leading-tight break-all truncate">
-=======
   const handleCopy = () => {
     if (!value || value === '---' || value === 'N/A') return;
     navigator.clipboard.writeText(value);
@@ -7626,7 +6267,6 @@ function DetailItem({ label, value, icon }: { label: string, value?: string, ico
         )}
       </div>
       <p className="text-sm font-black text-slate-800 leading-tight break-all selection:bg-blue-100">
->>>>>>> new-repo/main
         {value || '---'}
       </p>
     </div>
