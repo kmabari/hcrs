@@ -3,10 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-<<<<<<< HEAD
-=======
 import fs from "fs";
->>>>>>> new-repo/main
 
 dotenv.config();
 
@@ -672,26 +669,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
-<<<<<<< HEAD
-  // Proxy endpoint to download Google Sheet bypassing CORS
-  app.post("/api/proxy-sheet", async (req, res) => {
-    const { url } = req.body;
-    if (!url) {
-      return res.status(400).json({ error: "Google Sheet URL is required." });
-    }
-    try {
-      console.log("Proxying Google Sheet fetch for:", url);
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Google Sheets responded with HTTP status ${response.status}`);
-      }
-      const buffer = await response.arrayBuffer();
-      res.setHeader("Content-Type", "application/octet-stream");
-      res.send(Buffer.from(buffer));
-    } catch (err: any) {
-      console.error("Error proxying Google Sheet fetch:", err);
-      res.status(500).json({ error: "Failed to download Google Sheet: " + err.message });
-=======
   // API endpoint to serve local extracted old users backup
   app.get("/api/local-backup-users", (req, res) => {
     try {
@@ -705,7 +682,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error("Failed to read local backup users:", err);
       res.status(500).json({ error: err.message });
->>>>>>> new-repo/main
     }
   });
 
@@ -716,12 +692,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       appType: "spa",
     });
     app.use(vite.middlewares);
-<<<<<<< HEAD
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
-=======
     
     // Explicit SPA fallback for deep paths in development
     app.get('/*any', async (req, res, next) => {
@@ -747,7 +717,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('/*any', (req, res) => {
->>>>>>> new-repo/main
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
