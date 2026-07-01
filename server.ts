@@ -3,6 +3,10 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+<<<<<<< HEAD
+=======
+import fs from "fs";
+>>>>>>> new-repo/main
 
 dotenv.config();
 
@@ -668,6 +672,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+<<<<<<< HEAD
   // Proxy endpoint to download Google Sheet bypassing CORS
   app.post("/api/proxy-sheet", async (req, res) => {
     const { url } = req.body;
@@ -686,6 +691,21 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error("Error proxying Google Sheet fetch:", err);
       res.status(500).json({ error: "Failed to download Google Sheet: " + err.message });
+=======
+  // API endpoint to serve local extracted old users backup
+  app.get("/api/local-backup-users", (req, res) => {
+    try {
+      const backupPath = path.join(process.cwd(), 'extracted_old_users.json');
+      if (fs.existsSync(backupPath)) {
+        const data = fs.readFileSync(backupPath, 'utf8');
+        res.json(JSON.parse(data));
+      } else {
+        res.status(404).json({ error: "Local backup file not found." });
+      }
+    } catch (err: any) {
+      console.error("Failed to read local backup users:", err);
+      res.status(500).json({ error: err.message });
+>>>>>>> new-repo/main
     }
   });
 
@@ -696,10 +716,38 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       appType: "spa",
     });
     app.use(vite.middlewares);
+<<<<<<< HEAD
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*all', (req, res) => {
+=======
+    
+    // Explicit SPA fallback for deep paths in development
+    app.get('/*any', async (req, res, next) => {
+      // Avoid intercepting API routes that might fall through
+      if (req.originalUrl.startsWith('/api')) {
+        return next();
+      }
+      try {
+        const url = req.originalUrl;
+        const indexHtmlPath = path.resolve(process.cwd(), 'index.html');
+        if (fs.existsSync(indexHtmlPath)) {
+          const html = fs.readFileSync(indexHtmlPath, 'utf-8');
+          const transformedHtml = await vite.transformIndexHtml(url, html);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(transformedHtml);
+        } else {
+          next();
+        }
+      } catch (e) {
+        next(e);
+      }
+    });
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('/*any', (req, res) => {
+>>>>>>> new-repo/main
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

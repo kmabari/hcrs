@@ -10,7 +10,6 @@ import {
   ShieldCheck, 
   Download, 
   Share2, 
-  Database,
   CheckCircle2, 
   XCircle,
   Clock,
@@ -22,7 +21,9 @@ import {
   ArrowRight,
   Camera,
   MessageCircle,
-  X
+  X,
+  Eye,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -75,17 +76,11 @@ import { cn } from '@/lib/utils';
 import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import FastMemberEntry from './FastMemberEntry';
+import MembershipCard from './MembershipCard';
 
 interface OperatorDashboardProps {
   user: UserProfile;
   members: UserProfile[];
-  dbStats?: {
-    total: number;
-    active: number;
-    pending: number;
-    renewals: number;
-    deleted: number;
-  };
   onAddMember: (values: any) => void;
   onUpdate: (uid: string, data: Partial<UserProfile>) => void;
   onDelete?: (uid: string) => void;
@@ -95,21 +90,14 @@ interface OperatorDashboardProps {
   isDirectManual?: boolean;
   isSecondAdmin?: boolean;
   onViewCard?: () => void;
-  onRefreshMembers?: (filters?: {
-    searchTerm?: string;
-    districtFilter?: string;
-    activeTab?: string;
-    categoryFilter?: string;
-    sourceFilter?: string;
-    page?: number;
-  }) => void;
+  onRefreshMembers?: () => void;
   isSyncingMembers?: boolean;
+  onUpdatePhoto?: (file: File, uid: string) => void;
 }
 
 export default function OperatorDashboard({ 
   user,
   members, 
-  dbStats,
   onAddMember, 
   onUpdate,
   onDelete,
@@ -120,11 +108,13 @@ export default function OperatorDashboard({
   isSecondAdmin = false,
   onViewCard,
   onRefreshMembers,
-  isSyncingMembers = false
+  isSyncingMembers = false,
+  onUpdatePhoto
 }: OperatorDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
+  const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const unsub = subscribeToOrgSettings((data) => {
@@ -133,11 +123,6 @@ export default function OperatorDashboard({
     return () => unsub();
   }, []);
   const [isAddingMember, setIsAddingMember] = useState(false);
-  
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [isAddingMember, editingMember]);
-
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<{ id: string, email: string, pin: string, mobile: string, name: string } | null>(null);
   const [formData, setFormData] = useState(() => {
@@ -199,44 +184,10 @@ export default function OperatorDashboard({
     }
   }, [user.district]);
 
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const [dbPage, setDbPage] = useState(1);
-
-  useEffect(() => {
-    setDbPage(1);
-  }, [debouncedSearchTerm]);
-
-  useEffect(() => {
-    if (onRefreshMembers) {
-      onRefreshMembers({
-        searchTerm: debouncedSearchTerm,
-        districtFilter: user.district || 'all',
-        activeTab: 'list',
-        page: dbPage
-      });
-    }
-  }, [debouncedSearchTerm, dbPage, user.district, onRefreshMembers]);
-
-  const stats = useMemo(() => {
-    if (dbStats) {
-      return {
-        myEntries: dbStats.total,
-        active: dbStats.active
-      };
-    }
-    return {
-      myEntries: members.filter(m => m.status !== 'deleted').length,
-      active: members.filter(m => m.status === 'active').length
-    };
-  }, [members, dbStats]);
+  const stats = useMemo(() => ({
+    myEntries: members.filter(m => m.status !== 'deleted').length,
+    active: members.filter(m => m.status === 'active').length
+  }), [members]);
 
   const activeDistrict = user.district || formData.district;
   const districtName = DISTRICTS.find(d => d.code === activeDistrict)?.name || activeDistrict;
@@ -543,6 +494,15 @@ export default function OperatorDashboard({
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
+                                  onClick={() => setViewingMember(member)}
+                                  className="h-9 w-9 p-0 rounded-lg text-brand-blue hover:bg-brand-blue/5"
+                                  title="View Details / Card"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
                                   onClick={() => setEditingMember(member)}
                                   className="h-9 w-9 p-0 rounded-lg text-slate-600 hover:bg-slate-100"
                                 >
@@ -579,35 +539,6 @@ export default function OperatorDashboard({
                       )}
                     </TableBody>
                   </Table>
-                  
-                  {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
-                    <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                       <Database className="w-3.5 h-3.5 text-brand-blue" />
-                       Database Batch: {dbPage} (ആകെ ബാച്ച് {dbPage})
-                    </div>
-                    <div className="flex items-center gap-2 font-sans">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={dbPage <= 1 || isSyncingMembers}
-                        onClick={() => setDbPage(prev => Math.max(1, prev - 1))}
-                        className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
-                      >
-                        ◀ Prev 50 (മുൻപത്തെ 50)
-                      </Button>
-                      <span className="text-xs font-black text-brand-blue font-mono px-1">Page {dbPage}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={members.length < 50 || isSyncingMembers}
-                        onClick={() => setDbPage(prev => prev + 1)}
-                        className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer select-none border-slate-200 bg-white shadow-3xs"
-                      >
-                        Next 50 (അടുത്ത 50) ▶
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1459,6 +1390,15 @@ export default function OperatorDashboard({
                          <Button 
                            variant="ghost" 
                            size="sm" 
+                           onClick={() => setViewingMember(member)}
+                           className="h-10 w-10 p-0 rounded-xl text-brand-blue hover:bg-brand-blue/5 transition-all"
+                           title="View Details / Card"
+                         >
+                           <Eye className="w-4 h-4" />
+                         </Button>
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
                            onClick={() => setEditingMember(member)}
                            className="h-10 w-10 p-0 rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
                          >
@@ -1484,6 +1424,79 @@ export default function OperatorDashboard({
           </>
         )}
       </div>
+
+      {/* View Member Dialog */}
+      <Dialog open={!!viewingMember} onOpenChange={(open) => !open && setViewingMember(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-950 text-white border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-white">
+              <Users className="w-6 h-6 text-brand-blue" />
+              Member Details / കാർഡ് വിവരങ്ങൾ
+            </DialogTitle>
+          </DialogHeader>
+          {viewingMember && (
+            <div className="space-y-6 py-4">
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="w-full overflow-hidden flex justify-center bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                  <div className="scale-[0.8] origin-top mb-[-100px]">
+                    <MembershipCard 
+                      member={viewingMember} 
+                      showCelebration={false} 
+                      isAdmin={true}
+                      onUpdatePhoto={onUpdatePhoto ? (file) => onUpdatePhoto(file, viewingMember.uid) : undefined}
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3 w-full text-slate-200">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 group cursor-pointer" onClick={() => {
+                      navigator.clipboard.writeText(viewingMember.name);
+                      toast.success('പേര് കോപ്പി ചെയ്തു! (Name copied)');
+                    }}>
+                      <h3 className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors">{viewingMember.name}</h3>
+                      <Copy className="w-4 h-4 text-slate-500 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <Badge className={viewingMember.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}>
+                      {viewingMember.status.toUpperCase()}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 text-xs font-medium">
+                    <div className="flex justify-between py-1.5 border-b border-slate-800">
+                      <span className="text-slate-400 font-bold uppercase">Membership ID:</span>
+                      <span className="text-white font-black font-mono">{viewingMember.membershipId || 'PENDING'}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-800">
+                      <span className="text-slate-400 font-bold uppercase">Phone / മൊബൈൽ:</span>
+                      <span className="text-white font-black font-mono">{viewingMember.mobile || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-800">
+                      <span className="text-slate-400 font-bold uppercase">District / ജില്ല:</span>
+                      <span className="text-white font-black">{viewingMember.district || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-800">
+                      <span className="text-slate-400 font-bold uppercase">Assembly / മണ്ഡലം:</span>
+                      <span className="text-white font-black">{viewingMember.assemblyConstituency || 'N/A'}</span>
+                    </div>
+                    {viewingMember.bloodGroup && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-800">
+                        <span className="text-slate-400 font-bold uppercase">Blood Group / രക്തഗ്രൂപ്പ്:</span>
+                        <span className="text-rose-400 font-black font-mono">{viewingMember.bloodGroup}</span>
+                      </div>
+                    )}
+                    {viewingMember.address && (
+                      <div className="py-1.5">
+                        <span className="text-slate-400 font-bold uppercase block mb-1">Address / മേൽവിലാസം:</span>
+                        <p className="text-white bg-slate-900/55 p-3 rounded-xl border border-slate-800 leading-relaxed font-bold">{viewingMember.address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

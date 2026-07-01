@@ -91,11 +91,25 @@ export async function getOrgSettings(): Promise<OrgSettings> {
     const docRef = doc(db, 'settings', SETTINGS_DOC_ID);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data() as OrgSettings;
+      const data = docSnap.data() as OrgSettings;
+      try {
+        localStorage.setItem('hcrs_cached_org_settings', JSON.stringify(data));
+      } catch (e) {
+        console.warn("localStorage set failed:", e);
+      }
+      return data;
     }
     return defaultSettings;
   } catch (error) {
     console.error("Error fetching settings:", error);
+    try {
+      const cached = localStorage.getItem('hcrs_cached_org_settings');
+      if (cached) {
+        return JSON.parse(cached) as OrgSettings;
+      }
+    } catch (e) {
+      console.warn("localStorage read failed:", e);
+    }
     return defaultSettings;
   }
 }
@@ -108,12 +122,28 @@ export async function saveOrgSettings(settings: Partial<OrgSettings>) {
 export function subscribeToOrgSettings(callback: (settings: OrgSettings) => void) {
   return onSnapshot(doc(db, 'settings', SETTINGS_DOC_ID), (docSnap) => {
     if (docSnap.exists()) {
-      callback(docSnap.data() as OrgSettings);
+      const data = docSnap.data() as OrgSettings;
+      try {
+        localStorage.setItem('hcrs_cached_org_settings', JSON.stringify(data));
+      } catch (e) {
+        console.warn("localStorage set failed:", e);
+      }
+      callback(data);
     } else {
       callback(defaultSettings);
     }
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, `settings/${SETTINGS_DOC_ID}`);
+    try {
+      const cached = localStorage.getItem('hcrs_cached_org_settings');
+      if (cached) {
+        callback(JSON.parse(cached) as OrgSettings);
+        return;
+      }
+    } catch (e) {
+      console.warn("localStorage read fallback failed:", e);
+    }
+    callback(defaultSettings);
   });
 }
 
@@ -155,9 +185,24 @@ export function subscribeToGallery(callback: (items: GalleryItem[]) => void) {
       const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
       return timeB - timeA;
     });
+    try {
+      localStorage.setItem('hcrs_cached_gallery', JSON.stringify(items));
+    } catch (e) {
+      console.warn("localStorage set gallery failed:", e);
+    }
     callback(items);
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'gallery');
+    try {
+      const cached = localStorage.getItem('hcrs_cached_gallery');
+      if (cached) {
+        callback(JSON.parse(cached) as GalleryItem[]);
+        return;
+      }
+    } catch (e) {
+      console.warn("localStorage read gallery failed:", e);
+    }
+    callback([]);
   });
 }
 
@@ -196,10 +241,25 @@ export function subscribeToGalleryCategories(callback: (categories: string[]) =>
       });
       // Sort alphabetically
       categories.sort((a, b) => a.localeCompare(b));
+      try {
+        localStorage.setItem('hcrs_cached_gallery_categories', JSON.stringify(categories));
+      } catch (e) {
+        console.warn("localStorage set gallery_categories failed:", e);
+      }
       callback(categories);
     }
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'gallery_categories');
+    try {
+      const cached = localStorage.getItem('hcrs_cached_gallery_categories');
+      if (cached) {
+        callback(JSON.parse(cached) as string[]);
+        return;
+      }
+    } catch (e) {
+      console.warn("localStorage read gallery_categories failed:", e);
+    }
+    callback([]);
   });
 }
 
@@ -246,9 +306,24 @@ export function subscribeToAnnouncements(callback: (items: Announcement[]) => vo
       id: doc.id,
       ...doc.data()
     })) as Announcement[];
+    try {
+      localStorage.setItem('hcrs_cached_announcements', JSON.stringify(items));
+    } catch (e) {
+      console.warn("localStorage set announcements failed:", e);
+    }
     callback(items);
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'announcements');
+    try {
+      const cached = localStorage.getItem('hcrs_cached_announcements');
+      if (cached) {
+        callback(JSON.parse(cached) as Announcement[]);
+        return;
+      }
+    } catch (e) {
+      console.warn("localStorage read announcements failed:", e);
+    }
+    callback([]);
   });
 }
 
@@ -312,9 +387,23 @@ export function subscribeToCommitteeMembers(
       return (a.name || '').localeCompare(b.name || '');
     });
     
+    try {
+      localStorage.setItem('hcrs_cached_committees', JSON.stringify(items));
+    } catch (e) {
+      console.warn("localStorage set committees failed:", e);
+    }
     callback(items);
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'committees');
+    try {
+      const cached = localStorage.getItem('hcrs_cached_committees');
+      if (cached) {
+        callback(JSON.parse(cached) as CommitteeMember[]);
+        return;
+      }
+    } catch (e) {
+      console.warn("localStorage read committees failed:", e);
+    }
     if (errorCallback) {
       errorCallback(err instanceof Error ? err : new Error(String(err)));
     }

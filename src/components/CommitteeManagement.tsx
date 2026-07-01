@@ -8,18 +8,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { 
   Users, Save, Trash2, Plus, RefreshCw, X, AlertTriangle, Edit3, 
+<<<<<<< HEAD
   Crown, MapPin, Grid, Layers, ArrowUpDown, ChevronUp, ChevronDown,
   Upload, Image as ImageIcon, Camera
+=======
+  Crown, MapPin, Grid, Layers, ArrowUpDown, ChevronUp, ChevronDown 
+>>>>>>> new-repo/main
 } from 'lucide-react';
 import { 
   subscribeToCommitteeMembers, addCommitteeMember, updateCommitteeMember, 
   deleteCommitteeMember, CommitteeMember 
 } from '@/src/lib/cms';
 import { DISTRICTS, CONSTITUENCIES } from '@/src/constants';
+<<<<<<< HEAD
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage, db } from '../lib/firebase';
 import { compressImage } from '../lib/imageUtils';
 import { collection, getDocs, query } from 'firebase/firestore';
+=======
+>>>>>>> new-repo/main
 
 export default function CommitteeManagement({ user }: { user: any }) {
   const [members, setMembers] = useState<CommitteeMember[]>([]);
@@ -42,6 +49,7 @@ export default function CommitteeManagement({ user }: { user: any }) {
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterDistrict, setFilterDistrict] = useState<string>('all');
 
+<<<<<<< HEAD
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
@@ -103,6 +111,8 @@ export default function CommitteeManagement({ user }: { user: any }) {
     }
   };
 
+=======
+>>>>>>> new-repo/main
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeToCommitteeMembers(
@@ -484,6 +494,7 @@ export default function CommitteeManagement({ user }: { user: any }) {
                   </div>
                 )}
 
+<<<<<<< HEAD
                 <div className="space-y-4 md:col-span-2 p-5 border border-dashed border-slate-200 bg-slate-50/50 rounded-2xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
@@ -543,6 +554,25 @@ export default function CommitteeManagement({ user }: { user: any }) {
                       Firebase-ലേക്ക് അപ്‌ലോഡ് ചെയ്താൽ ലിങ്ക് തനിയെ ഇവിടെ വരും.
                     </p>
                   </div>
+=======
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="font-bold text-xs text-slate-700">Image url / Link for Photo (ഫോട്ടോ ലിങ്ക് - ImgBB അല്ലെങ്കിൽ മറ്റ് വെബ്‌സൈറ്റ് ലിങ്ക്) *</Label>
+                  <Input 
+                    value={imageUrl} 
+                    onChange={e => {
+                      let val = e.target.value.trim();
+                      // Extract src from pasted ImgBB embed HTML / code:
+                      const srcMatch = val.match(/src=["']([^"']+)["']/i);
+                      if (srcMatch && srcMatch[1]) {
+                        val = srcMatch[1].trim();
+                      }
+                      setImageUrl(val);
+                    }}
+                    placeholder="https://i.ibb.co/..."
+                    className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                  />
+                  <p className="text-[9px] text-slate-400 font-bold uppercase">ImgBB-യിൽ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്ത ശേഷം ലഭിക്കുന്ന HTML കോഡ് മുഴുവനായി പേസ്റ്റ് ചെയ്താലും മതിയാകും!</p>
+>>>>>>> new-repo/main
                 </div>
               </div>
 
@@ -592,6 +622,7 @@ export default function CommitteeManagement({ user }: { user: any }) {
           </CardContent>
         </Card>
       )}
+<<<<<<< HEAD
 
       {/* Gallery Photo Selector Dialog/Modal */}
       {galleryOpen && (
@@ -679,6 +710,8 @@ export default function CommitteeManagement({ user }: { user: any }) {
           </div>
         </div>
       )}
+=======
+>>>>>>> new-repo/main
     </div>
   );
 }

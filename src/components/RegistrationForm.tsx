@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
+import { db } from '../lib/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പേര് നൽകുക'),
@@ -76,7 +78,29 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
     }
     const isValid = await form.trigger();
     if (isValid) {
-      setStep('payment');
+      const loadingToast = toast.loading('Auditing registration status...');
+      try {
+        const cleanMobile = form.getValues('mobile').replace(/\D/g, '').slice(-10);
+        const usersRef = collection(db, 'users');
+        const q = query(
+          usersRef, 
+          where('mobile', '==', cleanMobile), 
+          where('status', 'in', ['pending', 'active', 'offline', 'disabled']),
+          limit(1)
+        );
+        const res = await getDocs(q);
+        if (!res.empty) {
+          toast.error('This mobile number is already registered. Please go back and log in. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ദയവായി ലോഗിൻ ചെയ്യുക.)', { id: loadingToast, duration: 8000 });
+          return;
+        }
+        toast.dismiss(loadingToast);
+        setStep('payment');
+      } catch (err: any) {
+        console.error("Error auditing mobile uniqueness during registrations:", err);
+        toast.dismiss(loadingToast);
+        // Fallback progress if Firestore is temporarily unreachable / blank
+        setStep('payment');
+      }
     }
   };
 

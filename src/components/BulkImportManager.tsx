@@ -55,6 +55,7 @@ interface BulkImportProps {
   onRefresh: () => void;
 }
 
+<<<<<<< HEAD
 interface GoogleImportLink {
   id: string;
   name: string;
@@ -87,6 +88,11 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkDesc, setNewLinkDesc] = useState('');
   const [isSubmittingLink, setIsSubmittingLink] = useState(false);
+=======
+export default function BulkImportManager({ members, adminUser, onRefresh }: BulkImportProps) {
+  // Navigation: "import" or "history"
+  const [panelTab, setPanelTab] = useState<'import' | 'history'>('import');
+>>>>>>> new-repo/main
 
   // Step state: 1: Upload, 2: Map columns, 3: Validate, 4: Live progress, 5: Summary Report
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -166,6 +172,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     }
   };
 
+<<<<<<< HEAD
   const fetchGoogleLinks = async () => {
     setIsLoadingLinks(true);
     try {
@@ -337,6 +344,11 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       fetchMigrationLogs();
     } else if (panelTab === 'google_drive') {
       fetchGoogleLinks();
+=======
+  useEffect(() => {
+    if (panelTab === 'history') {
+      fetchMigrationLogs();
+>>>>>>> new-repo/main
     }
   }, [panelTab]);
 
@@ -593,7 +605,10 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     const existingMobiles = new Set<string>();
     const existingIds = new Set<string>();
     const membersByMobile = new Map<string, UserProfile>();
+<<<<<<< HEAD
     const membersById = new Map<string, UserProfile>();
+=======
+>>>>>>> new-repo/main
 
     members.forEach(m => {
       if (m.mobile) {
@@ -602,6 +617,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         membersByMobile.set(cleanMob, m);
       }
       if (m.membershipId) {
+<<<<<<< HEAD
         const cleanId = m.membershipId.trim().toUpperCase();
         existingIds.add(cleanId);
         membersById.set(cleanId, m);
@@ -612,6 +628,12 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     const internalMobiles = new Set<string>();
     const internalIds = new Set<string>();
 
+=======
+        existingIds.add(m.membershipId.trim().toUpperCase());
+      }
+    });
+
+>>>>>>> new-repo/main
     const ready: any[] = [];
     const dups: any[] = [];
     const inv: any[] = [];
@@ -736,6 +758,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         }
       }
 
+<<<<<<< HEAD
       // Determine duplicate matching state (both database and internal to this sheet)
       const isDbMobileDup = existingMobiles.has(mobileClean);
       const isInternalMobileDup = internalMobiles.has(mobileClean);
@@ -750,6 +773,13 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
       const existingProfile = (isDbMobileDup ? membersByMobile.get(mobileClean) : null) || (isDbIdDup ? membersById.get(cleanOldId) : null);
 
+=======
+      // Determine existing duplicate matching state
+      const isMobileDup = existingMobiles.has(mobileClean);
+      const isIdDup = rawOldId && existingIds.has(rawOldId.toString().trim().toUpperCase());
+      const isDuplicate = isMobileDup || isIdDup;
+
+>>>>>>> new-repo/main
       const record = {
         rowNum: rowIndex + 1,
         name,
@@ -767,6 +797,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         membership_type: 'ADHOC_MEMBER', // Forced to ADHOC_MEMBER to satisfy security rules
         status: 'active',
         mismatched: districtMismatch,
+<<<<<<< HEAD
         mismatchMsg,
         existingProfile
       };
@@ -787,6 +818,18 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         if (cleanOldId) {
           internalIds.add(cleanOldId);
         }
+=======
+        mismatchMsg
+      };
+
+      if (isDuplicate) {
+        dups.push({
+          ...record,
+          duplicateReason: isMobileDup ? 'Mobile Number duplicate' : 'Membership ID duplicate',
+          existingProfile: isMobileDup ? membersByMobile.get(mobileClean) : null
+        });
+      } else {
+>>>>>>> new-repo/main
         ready.push(record);
       }
 
@@ -804,16 +847,26 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
   // Perform bulk transactional seed mapping to firebase firestore
   const beginBulkDataMigration = async () => {
+<<<<<<< HEAD
     // Sort all records chronologically by row number so they process in order
     const listToProcess = [...validatedRecords, ...duplicateRecords].sort((a, b) => a.rowNum - b.rowNum);
+=======
+    const listToProcess = [...validatedRecords];
+    if (duplicateMode === 'update') {
+      listToProcess.push(...duplicateRecords);
+    }
+>>>>>>> new-repo/main
 
     if (listToProcess.length === 0) {
       toast.error("No valid records prepared to seed.");
       return;
     }
 
+<<<<<<< HEAD
     // Set step to 4 to show the live progression queue with logging & monitoring
     setStep(4);
+=======
+>>>>>>> new-repo/main
     setIsImporting(true);
     setIsPaused(false);
     setCurrentProgressIndex(0);
@@ -851,6 +904,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
       setCurrentProgressIndex(i);
       const row = listToProcess[i];
+<<<<<<< HEAD
 
       // If this is a duplicate record and the admin chose to skip duplicates
       if (row.duplicateReason && duplicateMode === 'skip') {
@@ -864,6 +918,9 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       }
 
       const docUid = row.existingProfile?.uid || `hcrs_imp_${row.mobile}`;
+=======
+      const docUid = `hcrs_imp_${row.mobile}`;
+>>>>>>> new-repo/main
       const userRef = doc(db, 'users', docUid);
 
       try {
@@ -924,6 +981,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         };
 
         // Increment or decrement the district registration quotas accordingly
+<<<<<<< HEAD
         if (isUpdateAction && backupData && backupData.district !== row.district) {
           // Decrement old district quota
           if (backupData.district) {
@@ -955,6 +1013,20 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
               used: 1
             });
           } else {
+=======
+        const quotaRef = doc(db, 'districtQuotas', row.district);
+        const quotaSnap = await getDoc(quotaRef);
+        if (!quotaSnap.exists()) {
+          await setDoc(quotaRef, {
+            id: row.district,
+            districtName: DISTRICTS.find(d => d.code === row.district)?.name || row.district,
+            total: 2000,
+            used: 1
+          });
+        } else {
+          // Increment used quota if newly created
+          if (!isUpdateAction) {
+>>>>>>> new-repo/main
             await setDoc(quotaRef, { used: increment(1) }, { merge: true });
           }
         }
@@ -997,8 +1069,13 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       fileName: fileName,
       importedCount: successCount,
       updatedCount: upCount,
+<<<<<<< HEAD
       skippedCount: skippedCount,
       totalRecords: successCount + upCount + skippedCount + failCount,
+=======
+      skippedCount: duplicateMode === 'skip' ? duplicateRecords.length : 0,
+      totalRecords: successCount + upCount + failCount,
+>>>>>>> new-repo/main
       importedUids: importedUids,
       updatedBackup: updatedBackup,
       rolled_back: false
@@ -1006,6 +1083,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
     await setDoc(doc(db, 'migration_logs', logId), logData);
 
+<<<<<<< HEAD
     if (activeImportLinkId) {
       try {
         const linkRef = doc(db, 'google_import_links', activeImportLinkId);
@@ -1026,11 +1104,17 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       }
     }
 
+=======
+>>>>>>> new-repo/main
     setImportStats({
       totalRows: listToProcess.length,
       imported: successCount,
       updated: upCount,
+<<<<<<< HEAD
       skipped: skippedCount,
+=======
+      skipped: duplicateMode === 'skip' ? duplicateRecords.length : 0,
+>>>>>>> new-repo/main
       failed: failCount,
       timestamp: new Date()
     });
@@ -1038,7 +1122,11 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     setIsImporting(false);
     onRefresh();
     setStep(5);
+<<<<<<< HEAD
     toast.success(`Migration completed. ${successCount} Created, ${upCount} Refreshed, ${skippedCount} Skipped, ${failCount} Failed.`);
+=======
+    toast.success(`Migration completed. ${successCount} Created, ${upCount} Refreshed, ${failCount} Failed.`);
+>>>>>>> new-repo/main
   };
 
   // Rollback/Undo operation to restore preceding database state
@@ -1169,7 +1257,11 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
       
+<<<<<<< HEAD
       {/* Sub tabs: Importer Panel vs Migration logs vs Google Drive */}
+=======
+      {/* Sub tabs: Importer Panel vs Migration logs */}
+>>>>>>> new-repo/main
       <div className="flex border-b border-slate-200">
         <button
           onClick={() => setPanelTab('import')}
@@ -1183,6 +1275,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           Master Member Importer
         </button>
         <button
+<<<<<<< HEAD
           onClick={() => setPanelTab('google_drive')}
           className={`pb-3.5 px-6 font-bold text-xs uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all ${
             panelTab === 'google_drive' 
@@ -1194,6 +1287,8 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           Google Sheets & Drive Integrator
         </button>
         <button
+=======
+>>>>>>> new-repo/main
           onClick={() => setPanelTab('history')}
           className={`pb-3.5 px-6 font-bold text-xs uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all ${
             panelTab === 'history' 
@@ -1249,6 +1344,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </p>
               </div>
 
+<<<<<<< HEAD
               {/* Direct Paste Google Sheet Link Form */}
               <div className="bg-emerald-50 border-2 border-emerald-100 p-5 rounded-2xl space-y-4 animate-in fade-in duration-300">
                 <div className="flex items-center gap-3">
@@ -1283,6 +1379,8 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </div>
               </div>
 
+=======
+>>>>>>> new-repo/main
               {availableSpreadsheets.length > 0 && (
                 <div className="p-5 border border-amber-200 bg-amber-50/20 rounded-2xl space-y-3">
                   <p className="text-xs font-bold text-amber-800 flex items-center gap-2">
@@ -1515,6 +1613,50 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </div>
               )}
 
+<<<<<<< HEAD
+=======
+              {/* Duplicate conflict audit list */}
+              {duplicateRecords.length > 0 && (
+                <div className="border border-rose-200 bg-rose-50/10 p-5 rounded-2xl space-y-3">
+                  <p className="text-xs font-bold text-rose-800 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    Duplicate Records Alert (തനിപ്പകർപ്പുകൾ): Detected {duplicateRecords.length} profiles that already exist in the system database.
+                  </p>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    താഴെ കാണിക്കുന്ന റെക്കോർഡുകൾ നിലവിലെ യൂസർ ഡാറ്റാബേസിലുള്ള വിവരങ്ങളുമായി മാച്ച് ചെയ്യുന്നതിനാൽ അവ ഓട്ടോമാറ്റിക്കായി ഒഴിവാക്കപ്പെട്ടവയാണ് (Skipped). ഇവർ ഏതൊക്കെയാണെന്ന് കാണുക:
+                  </p>
+                  
+                  <div className="max-h-[220px] overflow-y-auto border border-rose-100 rounded-xl bg-white text-[10.5px]">
+                    <table className="w-full text-left table-auto">
+                      <thead className="bg-rose-50/40 text-rose-900 border-b border-rose-100 font-bold sticky top-0">
+                        <tr>
+                          <th className="p-2 w-14">Row</th>
+                          <th className="p-2">Name (പേര്)</th>
+                          <th className="p-2">Mobile (ഫോൺ)</th>
+                          <th className="p-2">Reason (ഒഴിവാക്കപ്പെടാനുള്ള കാരണം)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-rose-50 font-semibold text-rose-950">
+                        {duplicateRecords.map((dup, id) => (
+                          <tr key={id} className="hover:bg-rose-50/20">
+                            <td className="p-2 font-mono text-slate-400">{dup.rowNum}</td>
+                            <td className="p-2 text-slate-900 font-bold">{dup.name}</td>
+                            <td className="p-2">{dup.mobile || 'N/A'}</td>
+                            <td className="p-2">
+                              <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase">
+                                {dup.duplicateReason === 'Mobile Number duplicate' ? 'ഫോൺ നമ്പർ ദ ഡ്യൂപ്ലിക്കേറ്റ്' : 'മെമ്പർഷിപ്പ് ഐഡി ഡ്യൂപ്ലിക്കേറ്റ്'} 
+                                <span className="font-mono font-normal">({dup.duplicateReason})</span>
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+>>>>>>> new-repo/main
               {/* Duplicate conflict options configuration */}
               <div className="space-y-3 bg-slate-50 p-6 rounded-2xl border border-slate-200">
                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Configure Duplicate Collisions Treatment:</h4>
@@ -1600,13 +1742,22 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
               {/* Progress bar */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
+<<<<<<< HEAD
                   <span>Processed {currentProgressIndex + 1} / {validatedRecords.length + duplicateRecords.length}</span>
                   <span>{Math.round(((currentProgressIndex + 1) / (validatedRecords.length + duplicateRecords.length)) * 100)}%</span>
+=======
+                  <span>Processed {currentProgressIndex + 1} / {validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0)}</span>
+                  <span>{Math.round(((currentProgressIndex + 1) / (validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0))) * 100)}%</span>
+>>>>>>> new-repo/main
                 </div>
                 <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-150">
                   <div 
                     className="h-full bg-gradient-to-r from-brand-blue to-blue-500 rounded-full transition-all duration-300"
+<<<<<<< HEAD
                     style={{ width: `${((currentProgressIndex + 1) / (validatedRecords.length + duplicateRecords.length)) * 100}%` }}
+=======
+                    style={{ width: `${((currentProgressIndex + 1) / (validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0))) * 100}%` }}
+>>>>>>> new-repo/main
                   />
                 </div>
               </div>
@@ -1709,6 +1860,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           )}
 
         </div>
+<<<<<<< HEAD
       ) : panelTab === 'google_drive' ? (
         <div className="space-y-6 animate-in fade-in duration-200 text-left">
           {/* Header Card */}
@@ -1943,6 +2095,8 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
             </div>
           </div>
         </div>
+=======
+>>>>>>> new-repo/main
       ) : (
         /* History logs and transactional recovery dashboard rollbacks */
         <Card className="p-6 border border-slate-205 bg-white rounded-3xl text-left space-y-6 animate-in fade-in duration-300">

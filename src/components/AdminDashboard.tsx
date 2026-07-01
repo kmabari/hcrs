@@ -8,14 +8,24 @@ import LanguageManager from './LanguageManager';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
+<<<<<<< HEAD
 import DbMigrationManager from './DbMigrationManager';
 import { 
   Crown,
   Sparkles,
+=======
+import BackupRestoreManager from './BackupRestoreManager';
+import { 
+  Crown,
+>>>>>>> new-repo/main
   Users, 
   Search, 
   Filter, 
   Download, 
+<<<<<<< HEAD
+=======
+  Upload,
+>>>>>>> new-repo/main
   UserPlus, 
   MoreVertical, 
   CheckCircle2, 
@@ -27,6 +37,10 @@ import {
   Eye,
   Camera,
   Database,
+<<<<<<< HEAD
+=======
+  FileSpreadsheet,
+>>>>>>> new-repo/main
   Receipt,
   Plus,
   Pencil,
@@ -47,7 +61,12 @@ import {
   Bell,
   ChevronRight,
   Headphones,
+<<<<<<< HEAD
   Loader2
+=======
+  Loader2,
+  Copy
+>>>>>>> new-repo/main
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -99,6 +118,7 @@ import { cn } from '@/lib/utils';
 interface AdminDashboardProps {
   user?: UserProfile | null;
   members: UserProfile[];
+<<<<<<< HEAD
   dbStats?: {
     total: number;
     active: number;
@@ -107,6 +127,8 @@ interface AdminDashboardProps {
     deleted: number;
     validActive?: number;
   };
+=======
+>>>>>>> new-repo/main
   onApprove: (id: string) => void;
   onAddOffline: (data: any) => void;
   onUpdate: (id: string, data: Partial<UserProfile>) => void;
@@ -119,6 +141,7 @@ interface AdminDashboardProps {
   districtQuotasUsed?: Record<string, number>;
   handleLogout: () => void;
   onViewCard?: () => void;
+<<<<<<< HEAD
   onRefreshMembers?: (filters?: {
     searchTerm?: string;
     districtFilter?: string;
@@ -127,6 +150,9 @@ interface AdminDashboardProps {
     sourceFilter?: string;
     page?: number;
   }) => void;
+=======
+  onRefreshMembers?: () => void;
+>>>>>>> new-repo/main
   isSyncingMembers?: boolean;
 }
 
@@ -135,11 +161,19 @@ const MAIN_ADMINS = [
   'hcrsindia@gmail.com',
   'admin@hcrs.society',
   '9645934571@hcrs.society',
+<<<<<<< HEAD
   'mabarikiyafoods@gmail.com'
 ];
 
 const SECOND_ADMINS = [
   'hcrskerala@gmail.com',
+=======
+  'mabarikiyafoods@gmail.com',
+  'hcrskerala@gmail.com'
+];
+
+const SECOND_ADMINS = [
+>>>>>>> new-repo/main
   'hcrskasaragod@hcrs.society',
   'hcrsksd@hcrs.society',
   'hcrskannur@hcrs.society',
@@ -193,6 +227,7 @@ const hasValidity = (u: any) => {
   return expDate.getTime() > Date.now();
 };
 
+<<<<<<< HEAD
 const isProtectedFrom2025 = (m: any) => {
   if (m.role === 'admin' || m.role === 'operator') return true;
 
@@ -216,6 +251,8 @@ const isProtectedFrom2025 = (m: any) => {
   return false;
 };
 
+=======
+>>>>>>> new-repo/main
 const getCategoryLabel = (catId: string) => {
   const mapping: Record<string, string> = {
     'digital': 'Digital Redeem Coupon (ഡിജിറ്റൽ റെഡീം കൂപ്പൺ)',
@@ -232,7 +269,10 @@ const getCategoryLabel = (catId: string) => {
 export default function AdminDashboard({ 
   user,
   members, 
+<<<<<<< HEAD
   dbStats,
+=======
+>>>>>>> new-repo/main
   onApprove, 
   onAddOffline, 
   onUpdate, 
@@ -266,6 +306,108 @@ export default function AdminDashboard({
     return byName ? byName.code : normalized;
   };
 
+<<<<<<< HEAD
+=======
+  const compareMobiles = (m1: any, m2: any): boolean => {
+    if (!m1 || !m2) return false;
+    const clean1 = String(m1).replace(/\D/g, '');
+    const clean2 = String(m2).replace(/\D/g, '');
+    if (clean1 === clean2) return true;
+    
+    // Fallback to last 10 digits
+    const last10_1 = clean1.slice(-10);
+    const last10_2 = clean2.slice(-10);
+    return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
+  };
+
+  const formatClaimDate = (createdAt: any): string => {
+    if (!createdAt) return 'N/A';
+    
+    if (typeof createdAt.toDate === 'function') {
+      try {
+        return createdAt.toDate().toLocaleDateString('en-IN');
+      } catch (e) {
+        console.warn("toDate failed:", e);
+      }
+    }
+    
+    if (typeof createdAt === 'string' || typeof createdAt === 'number') {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-IN');
+      }
+    }
+    
+    const secs = createdAt.seconds ?? createdAt._seconds;
+    if (typeof secs === 'number') {
+      const d = new Date(secs * 1000);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-IN');
+      }
+    }
+
+    const fallbackDate = new Date(createdAt);
+    if (!isNaN(fallbackDate.getTime())) {
+      return fallbackDate.toLocaleDateString('en-IN');
+    }
+
+    return 'N/A';
+  };
+
+  const formatClaimDateTime = (createdAt: any): string => {
+    if (!createdAt) return 'N/A';
+    
+    if (typeof createdAt.toDate === 'function') {
+      try {
+        return createdAt.toDate().toLocaleString('en-IN');
+      } catch (e) {
+        console.warn("toDate failed:", e);
+      }
+    }
+    
+    if (typeof createdAt === 'string' || typeof createdAt === 'number') {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('en-IN');
+      }
+    }
+    
+    const secs = createdAt.seconds ?? createdAt._seconds;
+    if (typeof secs === 'number') {
+      const d = new Date(secs * 1000);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('en-IN');
+      }
+    }
+
+    const fallbackDate = new Date(createdAt);
+    if (!isNaN(fallbackDate.getTime())) {
+      return fallbackDate.toLocaleString('en-IN');
+    }
+
+    return 'N/A';
+  };
+
+  const formatClaimCategories = (categories: any): string => {
+    if (!categories) return '';
+    if (Array.isArray(categories)) {
+      return categories.map(cat => getCategoryLabel(cat)).join(', ');
+    }
+    if (typeof categories === 'string') {
+      try {
+        if (categories.startsWith('[') && categories.endsWith(']')) {
+          const parsed = JSON.parse(categories);
+          if (Array.isArray(parsed)) {
+            return parsed.map(cat => getCategoryLabel(cat)).join(', ');
+          }
+        }
+      } catch (e) {}
+      return categories.split(',').map(s => getCategoryLabel(s.trim())).join(', ');
+    }
+    return String(categories);
+  };
+
+>>>>>>> new-repo/main
   const getAssemblyCode = (name: string) => {
     if (!name) return 'OTH';
     const clean = name.trim().toUpperCase().replace(/\s/g, '');
@@ -291,12 +433,19 @@ export default function AdminDashboard({
     return clean.substring(0, 3);
   };
 
+<<<<<<< HEAD
   const isSuperAdmin = MAIN_ADMINS.some(email => email.toLowerCase() === (user?.email || '').toLowerCase().trim());
+=======
+  const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
+>>>>>>> new-repo/main
   
   const countOf2026Members = useMemo(() => {
     return members.filter(m => {
       if (m.role === 'admin' || m.role === 'operator') return false;
+<<<<<<< HEAD
       if (isProtectedFrom2025(m)) return false;
+=======
+>>>>>>> new-repo/main
       const regDate = m.registrationDate;
       if (!regDate) return true; // If missing, count it
       const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
@@ -466,6 +615,7 @@ export default function AdminDashboard({
   const [currentPage, setCurrentPage] = useState(1);
   const [validActivePage, setValidActivePage] = useState(1);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+<<<<<<< HEAD
   const [dbPage, setDbPage] = useState(1);
 
   useEffect(() => {
@@ -480,11 +630,14 @@ export default function AdminDashboard({
     }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+=======
+>>>>>>> new-repo/main
 
   // Automatically reset to page 1 on search or filter changes
   useEffect(() => {
     setCurrentPage(1);
     setValidActivePage(1);
+<<<<<<< HEAD
   }, [debouncedSearchTerm, districtFilter, statusFilter, sourceFilter]);
 
   useEffect(() => {
@@ -504,6 +657,9 @@ export default function AdminDashboard({
       });
     }
   }, [debouncedSearchTerm, districtFilter, activeTab, categoryFilter, sourceFilter, dbPage, onRefreshMembers]);
+=======
+  }, [searchTerm, districtFilter, statusFilter, sourceFilter]);
+>>>>>>> new-repo/main
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
@@ -512,6 +668,19 @@ export default function AdminDashboard({
   const [editingClaim, setEditingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
 
+<<<<<<< HEAD
+=======
+  // Claims Bulk Import States
+  const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
+  const [claimsImportFile, setClaimsImportFile] = useState<File | null>(null);
+  const [claimsImportRows, setClaimsImportRows] = useState<any[]>([]);
+  const [isClaimsImporting, setIsClaimsImporting] = useState(false);
+  const [claimsImportProgress, setClaimsImportProgress] = useState(0);
+  const [claimsImportLogs, setClaimsImportLogs] = useState<string[]>([]);
+  const [claimsImportColumns, setClaimsImportColumns] = useState<string[]>([]);
+  const [claimsColumnMapping, setClaimsColumnMapping] = useState<Record<string, string>>({});
+
+>>>>>>> new-repo/main
   // States for Editing Claim Dialog
   const [editClaimHighrichId, setEditClaimHighrichId] = useState('');
   const [editClaimNoBreakup, setEditClaimNoBreakup] = useState(false);
@@ -552,6 +721,230 @@ export default function AdminDashboard({
     }
   }, [editingClaim]);
 
+<<<<<<< HEAD
+=======
+  // Claims File Upload Change Parser
+  const handleClaimsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setClaimsImportFile(f);
+    setClaimsImportLogs([`ഫയൽ ലോഡ് ചെയ്തു: ${f.name} (${(f.size / 1024).toFixed(1)} KB)`]);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        if (data.length === 0) {
+          toast.error("ശൂന്യമായ ഫയൽ ആണ് നിങ്ങൾ തിരഞ്ഞെടുത്തത്. (Empty file uploaded)");
+          return;
+        }
+
+        setClaimsImportRows(data);
+        const headers = Object.keys(data[0] || {});
+        setClaimsImportColumns(headers);
+
+        const autoMap: Record<string, string> = {};
+        const fieldKeywords: Record<string, string[]> = {
+          userName: ['name', 'username', 'user name', 'അംഗത്തിന്റെ പേര്', 'പേര്', 'userName'],
+          userMobile: ['mobile', 'phone', 'contact', 'മൊബൈൽ', 'ഫോൺ', 'userMobile', 'telephone'],
+          userDistrict: ['district', 'dist', 'ജില്ല', 'userDistrict'],
+          highrichId: ['highrich id', 'hr id', 'id', 'ഹൈറിച്ച് ഐഡി', 'highrichId', 'hr_id'],
+          totalPaid: ['total paid', 'invested', 'paid amount', 'അടച്ച തുക', 'തുക', 'totalPaid', 'paid'],
+          totalReceived: ['total received', 'received', 'തിരികെ ലഭിച്ച തുക', 'received amount', 'totalReceived', 'withdrawn'],
+          totalPending: ['total pending', 'pending', 'balance pending', 'ബാക്കി തുക', 'pending amount', 'totalPending', 'balance'],
+          relation: ['relation', 'ബന്ധം', 'relationLabel'],
+          futurePreference: ['preference', 'future preference', 'മുൻഗണന', 'futurePreference'],
+          priorityStatus: ['priority', 'priority status', 'സ്റ്റാറ്റസ്', 'priorityStatus', 'urgency'],
+          date: ['date', 'time', 'created at', 'തീയതി', 'tdate', 'dateSubmitted']
+        };
+
+        headers.forEach(h => {
+          const lowerH = h.toLowerCase().trim();
+          for (const [field, keywords] of Object.entries(fieldKeywords)) {
+            if (keywords.some(k => lowerH.includes(k) || k.toLowerCase() === lowerH)) {
+              if (!autoMap[field]) {
+                autoMap[field] = h;
+              }
+            }
+          }
+        });
+
+        setClaimsColumnMapping(autoMap);
+        setClaimsImportLogs(prev => [
+          ...prev, 
+          `ആകെ ${data.length} വരികൾ കണ്ടെത്തി.`,
+          `കണ്ടെത്തിയ കോളം വിവരങ്ങൾ: ${headers.join(', ')}`,
+          `ആപ്പ് സ്വയം കോളം മാപ്പ് ചെയ്തിട്ടുണ്ട്. ബാക്കി കളങ്ങൾ ആവശ്യമെങ്കിൽ ക്രമീകരിക്കുക.`
+        ]);
+      } catch (err: any) {
+        console.error(err);
+        setClaimsImportLogs(prev => [...prev, `⚠️ പിശക്: ഫയൽ വായിക്കാൻ പറ്റിയില്ല: ${err.message}`]);
+        toast.error("ഫയൽ വായിക്കുന്നതിൽ പിശക്!");
+      }
+    };
+    reader.readAsBinaryString(f);
+  };
+
+  // Claims Database Bulk Settle & Write Action
+  const handleClaimsBulkImportSave = async () => {
+    const nameMap = claimsColumnMapping['userName'];
+    const mobileMap = claimsColumnMapping['userMobile'];
+    if (!nameMap || !mobileMap) {
+      toast.error("അംഗത്തിന്റെ പേരും മൊബൈൽ നമ്പറും മാപ്പ് ചെയ്യേണ്ടത് നിർബന്ധമാണ്. (Name and Mobile columns must be mapped)");
+      return;
+    }
+
+    setIsClaimsImporting(true);
+    setClaimsImportProgress(0);
+    const logs = ["ക്ലെയിം പെറ്റീഷൻ മൈഗ്രേഷൻ പ്രക്രിയ ആരംഭിക്കുന്നു...", `ആകെ റെക്കോർഡുകൾ: ${claimsImportRows.length}`];
+    setClaimsImportLogs(logs);
+
+    let importedCount = 0;
+    let duplicateSkipped = 0;
+    
+    const { writeBatch, doc: fireDoc, collection: fireCollection, getDocs: fireGetDocs } = await import('firebase/firestore');
+
+    const addLog = (msg: string) => {
+      setClaimsImportLogs(prev => [...prev, msg]);
+    };
+
+    try {
+      addLog("നിലവിലുള്ള ക്ലെയിമുകളുടെ സ്റ്റാറ്റസ് വിലയിരുത്തുന്നു...");
+      const existingClaimsSnap = await fireGetDocs(fireCollection(db, 'claims'));
+      const existingRefs = new Set<string>();
+      existingClaimsSnap.forEach(d => {
+        const data = d.data();
+        const normName = String(data.userName || '').toLowerCase().trim();
+        const normMob = String(data.userMobile || '').replace(/\D/g, '');
+        const normHr = String(data.highrichId || '').toLowerCase().trim();
+        if (normMob) existingRefs.add(`${normMob}_${normName}`);
+        if (normHr && normHr !== 'n/a') existingRefs.add(`hr_${normHr}`);
+      });
+
+      let batch = writeBatch(db);
+      let batchCount = 0;
+
+      for (let i = 0; i < claimsImportRows.length; i++) {
+        const row = claimsImportRows[i];
+        
+        const rawName = String(row[claimsColumnMapping['userName']] || '').trim();
+        const rawMobile = String(row[claimsColumnMapping['userMobile']] || '').trim().replace(/\D/g, '');
+        const rawDistrict = String(row[claimsColumnMapping['userDistrict']] || 'KSD').trim();
+        const rawHighrichId = String(row[claimsColumnMapping['highrichId']] || '').trim();
+        const rawTotalPaid = parseFloat(row[claimsColumnMapping['totalPaid']] || '0') || 0;
+        const rawTotalReceived = parseFloat(row[claimsColumnMapping['totalReceived']] || '0') || 0;
+        const rawTotalPending = parseFloat(row[claimsColumnMapping['totalPending']] || '0') || (rawTotalPaid - rawTotalReceived);
+        const rawRelation = String(row[claimsColumnMapping['relation']] || 'Self').trim();
+        const rawPreference = String(row[claimsColumnMapping['futurePreference']] || 'settlement').trim().toLowerCase();
+        const rawPriority = String(row[claimsColumnMapping['priorityStatus']] || 'ORANGE').trim().toUpperCase();
+        const rawDate = row[claimsColumnMapping['date']] || new Date().toISOString();
+
+        if (!rawName || !rawMobile) {
+          continue;
+        }
+
+        const lookupKeyName = `${rawMobile}_${rawName.toLowerCase()}`;
+        const lookupKeyHr = rawHighrichId && rawHighrichId.toLowerCase() !== 'n/a' ? `hr_${rawHighrichId.toLowerCase()}` : '';
+        if (existingRefs.has(lookupKeyName) || (lookupKeyHr && existingRefs.has(lookupKeyHr))) {
+          duplicateSkipped++;
+          continue;
+        }
+
+        const matchedMember = members.find(m => compareMobiles(m.mobile, rawMobile));
+        const finalUid = matchedMember?.uid || `offline_claim_${rawMobile}_${Math.floor(Math.random() * 1000)}`;
+        const finalMembershipId = matchedMember?.membershipId || 'N/A';
+
+        let normalizedRelation = 'Self';
+        if (rawRelation.includes('അമ്മ') || rawRelation.toLowerCase() === 'mother') normalizedRelation = 'Mother';
+        else if (rawRelation.includes('അച്ഛൻ') || rawRelation.toLowerCase() === 'father') normalizedRelation = 'Father';
+        else if (rawRelation.includes('മകൻ') || rawRelation.toLowerCase() === 'son') normalizedRelation = 'Son';
+        else if (rawRelation.includes('മകൾ') || rawRelation.toLowerCase() === 'daughter') normalizedRelation = 'Daughter';
+        else if (rawRelation.includes('ഭാര്യ') || rawRelation.toLowerCase() === 'wife') normalizedRelation = 'Wife';
+        else if (rawRelation.includes('ഭർത്താവ്') || rawRelation.toLowerCase() === 'husband') normalizedRelation = 'Husband';
+
+        let finalPreference = 'settlement';
+        if (rawPreference.includes('wait') || rawPreference.includes('കാത്തിരിക്കാൻ')) finalPreference = 'wait';
+        else if (rawPreference.includes('continue') || rawPreference.includes('തുടരാൻ')) finalPreference = 'continue';
+
+        let finalPriority = 'ORANGE';
+        if (['RED', 'EMERGENCY RED', 'GREEN', 'ORANGE'].includes(rawPriority)) {
+          finalPriority = rawPriority;
+        } else if (rawPriority.includes('ചുവപ്പ്') || rawPriority.includes('അടിയന്തിരം') || rawPriority.includes('RED')) {
+          finalPriority = 'RED';
+        } else if (rawPriority.includes('പച്ച') || rawPriority.includes('GREEN')) {
+          finalPriority = 'GREEN';
+        }
+
+        const claimDocId = `claim_${rawMobile}_${rawHighrichId.replace(/[^a-zA-Z0-9]/g, '') || Math.floor(Math.random() * 10000)}`;
+
+        const claimDoc = {
+          uid: finalUid,
+          membershipId: finalMembershipId,
+          userName: rawName,
+          userMobile: rawMobile,
+          userDistrict: getDistrictCode(rawDistrict),
+          highrichId: rawHighrichId || 'N/A',
+          categories: ['other'],
+          otherCategory: 'Old Site Imported Claim (പഴയ വെബ്സൈറ്റിൽ നിന്നുള്ളത്)',
+          noBreakup: true,
+          totalPaid: rawTotalPaid,
+          totalReceived: rawTotalReceived,
+          totalPending: rawTotalPending,
+          futurePreference: finalPreference,
+          hardshipStatus: [],
+          isEmergency: finalPriority === 'EMERGENCY RED',
+          priorityStatus: finalPriority,
+          tokenNo: Math.floor(100000 + Math.random() * 900000),
+          createdAt: typeof rawDate === 'string' && !isNaN(Date.parse(rawDate)) ? new Date(rawDate).toISOString() : new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        const claimRef = fireDoc(db, 'claims', claimDocId);
+        batch.set(claimRef, claimDoc);
+        batchCount++;
+
+        existingRefs.add(lookupKeyName);
+        if (lookupKeyHr) existingRefs.add(lookupKeyHr);
+
+        importedCount++;
+
+        if (batchCount >= 100) {
+          await batch.commit();
+          batch = writeBatch(db);
+          batchCount = 0;
+          const progress = Math.round((i / claimsImportRows.length) * 100);
+          setClaimsImportProgress(progress);
+          addLog(`പ്രോസസ്സ് വിജയകരമായി ബാച്ചുകളായി എഴുതുന്നു... (${i + 1} പൂർത്തിയായി)`);
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      setClaimsImportProgress(100);
+      addLog(`👉 മൈഗ്രേഷൻ പ്രക്രിയ പൂർത്തിയായി!`);
+      addLog(`🎉 ആകെ റീകൺസൈൽ ചെയ്ത പഴയ അപേക്ഷകൾ: ${importedCount}`);
+      if (duplicateSkipped > 0) {
+        addLog(`സ്മാർട്ട് സ്കിപ്പ്: ഇതിനകം പുതിയ സൈറ്റിൽ നേരിട്ട് സമർപ്പിച്ച ${duplicateSkipped} എണ്ണം വിജയകരമായി ഒഴിവാക്കി.`);
+      }
+
+      toast.success(`വിജയകരമായി ${importedCount} പുതിയ ക്ലെയിമുകൾ റെക്കോർഡിലേക്ക് ചേർത്തു!`);
+    } catch (err: any) {
+      console.error(err);
+      addLog(`⚠️ പിശക്: എഴുതാൻ താൽക്കാലിക തടസ്സം: ${err.message}`);
+      toast.error('ചില റെക്കോർഡുകൾ ചേർക്കാൻ പറ്റിയിട്ടില്ല: ' + err.message);
+    } finally {
+      setIsClaimsImporting(false);
+    }
+  };
+
+>>>>>>> new-repo/main
   const claimUser = useMemo(() => {
     if (!selectedClaim) return null;
     const found = members?.find((m: any) => m.uid === selectedClaim.uid);
@@ -646,6 +1039,7 @@ export default function AdminDashboard({
 
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [supportTicketsLoading, setSupportTicketsLoading] = useState(false);
+<<<<<<< HEAD
 
   useEffect(() => {
     if (!user) return;
@@ -653,11 +1047,56 @@ export default function AdminDashboard({
     const q = query(collection(db, 'support_tickets'), orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+=======
+  const [claimsError, setClaimsError] = useState<string | null>(null);
+  const [supportTicketsError, setSupportTicketsError] = useState<string | null>(null);
+
+   useEffect(() => {
+    if (!user) return;
+    setSupportTicketsLoading(true);
+    setSupportTicketsError(null);
+    if (user.uid === 'offline_admin') {
+      try {
+        const cached = localStorage.getItem('hcrs_cached_support_tickets');
+        if (cached) {
+          setSupportTickets(JSON.parse(cached));
+        } else {
+          setSupportTickets([]);
+        }
+      } catch (e) {
+        setSupportTickets([]);
+      }
+      setSupportTicketsLoading(false);
+      return;
+    }
+    const q = query(collection(db, 'support_tickets'), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      try {
+        localStorage.setItem('hcrs_cached_support_tickets', JSON.stringify(data));
+      } catch (e) {
+        console.warn("localStorage set tickets failed:", e);
+      }
+>>>>>>> new-repo/main
       setSupportTickets(data);
       setSupportTicketsLoading(false);
     }, (err: any) => {
       console.error("Support tickets fetch error:", err);
+<<<<<<< HEAD
       // Suppress or handle empty collection
+=======
+      setSupportTicketsError(err.code || err.message || "permission-denied");
+      try {
+        const cached = localStorage.getItem('hcrs_cached_support_tickets');
+        if (cached) {
+          setSupportTickets(JSON.parse(cached));
+          setSupportTicketsLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("localStorage read tickets failed:", e);
+      }
+>>>>>>> new-repo/main
       setSupportTickets([]);
       setSupportTicketsLoading(false);
     });
@@ -692,14 +1131,61 @@ export default function AdminDashboard({
   useEffect(() => {
     if (!user) return;
     setClaimsLoading(true);
+<<<<<<< HEAD
     
     const q = query(collection(db, 'claims'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+=======
+    setClaimsError(null);
+    if (user.uid === 'offline_admin') {
+      try {
+        const cached = localStorage.getItem('hcrs_cached_claims');
+        if (cached) {
+          setClaims(JSON.parse(cached));
+        } else {
+          setClaims([]);
+        }
+      } catch (e) {
+        setClaims([]);
+      }
+      setClaimsLoading(false);
+      return;
+    }
+    
+    const q = query(collection(db, 'claims'));
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      // Sort client-side so that old claims without 'createdAt' are still included and displayed
+      data.sort((a: any, b: any) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      });
+      try {
+        localStorage.setItem('hcrs_cached_claims', JSON.stringify(data));
+      } catch (e) {
+        console.warn("localStorage set claims failed:", e);
+      }
+>>>>>>> new-repo/main
       setClaims(data);
       setClaimsLoading(false);
     }, (err: any) => {
       console.error("Claims fetch error:", err);
+<<<<<<< HEAD
+=======
+      setClaimsError(err.code || err.message || "permission-denied");
+      try {
+        const cached = localStorage.getItem('hcrs_cached_claims');
+        if (cached) {
+          setClaims(JSON.parse(cached));
+          setClaimsLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("localStorage read claims failed:", e);
+      }
+>>>>>>> new-repo/main
       setClaimsLoading(false);
     });
     return () => unsubscribe();
@@ -782,7 +1268,10 @@ export default function AdminDashboard({
   const handleAlignAllDatesTo2025 = async () => {
     const targets = members.filter(m => {
       if (m.role === 'admin' || m.role === 'operator') return false;
+<<<<<<< HEAD
       if (isProtectedFrom2025(m)) return false;
+=======
+>>>>>>> new-repo/main
       const regDate = m.registrationDate;
       if (!regDate) return true; // Align if date is missing
       const d = regDate.toDate ? regDate.toDate() : (regDate.seconds ? new Date(regDate.seconds * 1000) : new Date(regDate));
@@ -828,6 +1317,7 @@ export default function AdminDashboard({
     }
   };
 
+<<<<<<< HEAD
   const safeToDate = (val: any): Date => {
     if (!val) return new Date();
     if (val instanceof Date) return val;
@@ -838,6 +1328,8 @@ export default function AdminDashboard({
     return new Date();
   };
 
+=======
+>>>>>>> new-repo/main
   const handleApproveRenewal = async (member: UserProfile) => {
     const loadingToast = toast.loading('Approving renewal...');
     try {
@@ -845,6 +1337,7 @@ export default function AdminDashboard({
       const expiry = new Date();
       expiry.setFullYear(now.getFullYear() + 1);
 
+<<<<<<< HEAD
       // Robust helper to get safe ISO string without throwing RangeError on invalid dates
       const getSafeISOString = (val: any): string => {
         try {
@@ -870,6 +1363,18 @@ export default function AdminDashboard({
       };
 
       await onUpdate(member.uid, payload as any);
+=======
+      await onUpdate(member.uid, {
+        status: 'active',
+        isApproved: true,
+        renewalPending: false,
+        issueDate: serverTimestamp(), // Update issue date on renewal approval
+        registrationDate: member.registrationDate || serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
+        renewalDate: serverTimestamp(), // Store renewal date permanently
+        expiryDate: expiry,
+        paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
+      });
+>>>>>>> new-repo/main
       
       const message = `അഭിനന്ദനങ്ങൾ! താങ്കളുടെ HCRS മെമ്പർഷിപ്പ് റിന്യൂവൽ അപ്പ്രൂവ് ചെയ്തിരിക്കുന്നു. സർവീസ് കാലാവധി ഒരു വർഷത്തേക്ക് കൂടി പുതുക്കിയിട്ടുണ്ട്.`;
       
@@ -878,9 +1383,14 @@ export default function AdminDashboard({
       }, 500);
 
       toast.success('Renewal approved successfully', { id: loadingToast });
+<<<<<<< HEAD
     } catch (error: any) {
       console.error("Renewal approval error details:", error);
       toast.error(`Renewal approval failed: ${error.message || error}`, { id: loadingToast });
+=======
+    } catch (error) {
+      toast.error('Renewal approval failed', { id: loadingToast });
+>>>>>>> new-repo/main
     }
   };
 
@@ -995,9 +1505,12 @@ export default function AdminDashboard({
   }, [members]);
 
   const stats = useMemo(() => {
+<<<<<<< HEAD
     if (dbStats) {
       return dbStats;
     }
+=======
+>>>>>>> new-repo/main
     let total = 0;
     let active = 0;
     let pending = 0;
@@ -1018,7 +1531,11 @@ export default function AdminDashboard({
     }
 
     return { total, active, pending, renewals };
+<<<<<<< HEAD
   }, [actualMembers, districtFilter, dbStats]);
+=======
+  }, [actualMembers, districtFilter]);
+>>>>>>> new-repo/main
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -1089,9 +1606,12 @@ export default function AdminDashboard({
     }).length;
   }, [members, districtFilter, categoryFilter]);
 
+<<<<<<< HEAD
   const finalValidActiveCount = stats.validActive ?? validActiveCount;
   const finalDeletedCount = stats.deleted ?? members.filter(m => m.status === 'deleted').length;
 
+=======
+>>>>>>> new-repo/main
   const filteredValidActiveMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const districtMap = new Map(DISTRICTS.map(d => [d.code, d.name.toLowerCase()]));
@@ -1263,6 +1783,7 @@ export default function AdminDashboard({
         </div>
 
         {/* Navigation Items */}
+<<<<<<< HEAD
         <nav className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Group 1: Core Operations */}
           <div className="space-y-1">
@@ -1511,6 +2032,93 @@ export default function AdminDashboard({
               >
                 <div className="flex items-center gap-3">
                   <Download className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
+=======
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
+          <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2">Management Console</p>
+          <button
+            onClick={() => setActiveTab2('list')}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'list' 
+                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'list' ? 'text-white' : 'text-slate-400')} />
+              <span>Member Directory</span>
+            </div>
+            {stats.active > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              )}>
+                {stats.active}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('requests')}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'requests' 
+                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' ? 'text-white' : 'text-slate-400')} />
+              <span>New Requests</span>
+            </div>
+            {stats.pending > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-brand-magenta/5 text-brand-magenta'
+              )}>
+                {stats.pending}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('claims')}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'claims' 
+                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' ? 'text-white' : 'text-slate-400')} />
+              <span>Claims Support</span>
+            </div>
+            {claims.length > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'claims' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
+              )}>
+                {claims.length}
+              </span>
+            )}
+          </button>
+
+          {isSuperAdmin && (
+            <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
+              <p className="px-3.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Data Migration</p>
+              <button
+                onClick={() => setActiveTab2('bulk_import')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'bulk_import' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
+>>>>>>> new-repo/main
                   <span>Import Old Members</span>
                 </div>
               </button>
@@ -1518,14 +2126,22 @@ export default function AdminDashboard({
               <button
                 onClick={() => setActiveTab2('committee_mgmt')}
                 className={cn(
+<<<<<<< HEAD
                   "w-full flex items-center justify-between px-3.5 py-2 rounded-xl font-bold text-xs transition-all group tracking-tight",
                   activeTab === 'committee_mgmt' 
                     ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
                     : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+=======
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'committee_mgmt' 
+                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+>>>>>>> new-repo/main
                 )}
               >
                 <div className="flex items-center gap-3">
                   <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'committee_mgmt' ? 'text-white' : 'text-slate-400')} />
+<<<<<<< HEAD
                   <span>Committees</span>
                 </div>
               </button>
@@ -1542,10 +2158,14 @@ export default function AdminDashboard({
                 <div className="flex items-center gap-3">
                   <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'db_migration' ? 'text-white' : 'text-slate-400')} />
                   <span>DB Migration</span>
+=======
+                  <span>Committee Members</span>
+>>>>>>> new-repo/main
                 </div>
               </button>
             </div>
           )}
+<<<<<<< HEAD
 
           {/* Group 4: Customization */}
           <div className="space-y-1 pt-2 border-t border-slate-100">
@@ -1602,6 +2222,8 @@ export default function AdminDashboard({
               </button>
             )}
           </div>
+=======
+>>>>>>> new-repo/main
         </nav>
 
         {/* Sidebar Footer */}
@@ -1645,6 +2267,7 @@ export default function AdminDashboard({
                 <X className="w-3.5 h-3.5" />
               </Button>
             </div>
+<<<<<<< HEAD
             <nav className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Group 1: Core Operations */}
               <div className="space-y-1">
@@ -1871,11 +2494,57 @@ export default function AdminDashboard({
                       <Download className={cn("w-4 h-4", activeTab === 'bulk_import' ? 'text-brand-blue' : 'text-slate-400')} />
                       <span>Import Old Members</span>
                     </div>
+=======
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
+              <button 
+                onClick={() => { setActiveTab2('list'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'list' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Users className="w-4 h-4 text-slate-400" />
+                <span>Member directory</span>
+              </button>
+              <button 
+                onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'requests' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <UserPlus className="w-4 h-4 text-slate-400" />
+                <span>New Requests</span>
+              </button>
+              <button 
+                onClick={() => { setActiveTab2('claims'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'claims' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <MessageCircle className="w-4 h-4 text-slate-400" />
+                <span>Claims Support</span>
+              </button>
+
+              {isSuperAdmin && (
+                <>
+                  <button 
+                    onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <Database className="w-4 h-4 text-slate-400" />
+                    <span>Import Old Members</span>
+>>>>>>> new-repo/main
                   </button>
 
                   <button 
                     onClick={() => { setActiveTab2('committee_mgmt'); setMobileSidebarOpen(false); }} 
                     className={cn(
+<<<<<<< HEAD
                       "w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
                       activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
                     )}
@@ -1950,6 +2619,17 @@ export default function AdminDashboard({
                   </button>
                 )}
               </div>
+=======
+                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <Users className="w-4 h-4 text-slate-400" />
+                    <span>Committee Members</span>
+                  </button>
+                </>
+              )}
+>>>>>>> new-repo/main
             </nav>
             <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
                {onViewCard && (
@@ -2265,6 +2945,7 @@ export default function AdminDashboard({
                     </div>
                   </div>
 
+<<<<<<< HEAD
                   <div className="space-y-2">
                     <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
                     <Input 
@@ -2289,6 +2970,32 @@ export default function AdminDashboard({
                       onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
                     />
                   </div>
+=======
+                    <div className="space-y-2">
+                      <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
+                      <Input 
+                        id="s-email" 
+                        type="email"
+                        required 
+                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
+                        placeholder="example@mail.com" 
+                        value={manualFormData.email} 
+                        onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="s-member-pin" className="font-bold text-slate-700">Member Password (പാസ്സ്‌വേർഡ്)</Label>
+                      <Input 
+                        id="s-member-pin" 
+                        type="text"
+                        required 
+                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
+                        placeholder="Set member password" 
+                        value={manualFormData.pin} 
+                        onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
+                      />
+                    </div>
+>>>>>>> new-repo/main
 
                   <div className="space-y-2">
                     <Label htmlFor="s-address" className="font-bold text-slate-700">Full Address (മേൽവിലാസം)</Label>
@@ -2389,6 +3096,7 @@ export default function AdminDashboard({
                       value={manualFormData.bloodGroup} 
                       onValueChange={v => setManualFormData({...manualFormData, bloodGroup: v})}
                     >
+<<<<<<< HEAD
                       <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
                         <SelectValue placeholder="Blood Group" />
                       </SelectTrigger>
@@ -2401,6 +3109,20 @@ export default function AdminDashboard({
                   </div>
 
                   <Button 
+=======
+                        <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
+                          <SelectValue placeholder="Blood Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BLOOD_GROUPS.map(bg => (
+                            <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+>>>>>>> new-repo/main
                     type="submit" 
                     disabled={(user?.quota !== undefined && (user?.quotaUsed || 0) >= user.quota) || isSubmitting}
                     className="w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-brand-magenta/20 bg-brand-magenta text-white hover:bg-brand-magenta/90 disabled:opacity-50"
@@ -2419,6 +3141,7 @@ export default function AdminDashboard({
             </Card>
           </div>
         </div>
+<<<<<<< HEAD
 
         {/* District Members List Card */}
         <Card className="border-none shadow-sm overflow-hidden bg-white rounded-3xl">
@@ -2678,6 +3401,10 @@ export default function AdminDashboard({
         </Card>
       </div>
     ) : (
+=======
+      </div>
+        ) : (
+>>>>>>> new-repo/main
           <>
             <div className="space-y-6">
               {/* Membership Statistics Section */}
@@ -2706,6 +3433,7 @@ export default function AdminDashboard({
               </div>
             </div>
 
+<<<<<<< HEAD
             {isSuperAdmin && countOf2026Members > 0 && (
               <div className="bg-brand-magenta/5 border border-brand-magenta/25 rounded-2xl p-5 text-left animate-in slide-in-from-top-4 duration-300 mt-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
@@ -2714,6 +3442,22 @@ export default function AdminDashboard({
                       <Sparkles className="w-4 h-4" /> 2026 അംഗങ്ങളുടെ തീയതി ക്രമീകരിക്കുക (Align Joining Dates to 2025)
                     </p>
                     <p className="text-[10px] text-slate-400 font-bold leading-normal">
+=======
+            {false && isSuperAdmin && countOf2026Members > 0 && (
+              <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-brand-magenta/20 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5 text-brand-magenta animate-pulse" />
+                      <h4 className="font-black text-slate-800 text-sm uppercase tracking-wide">
+                        അംഗങ്ങളുടെ ജോയിനിംഗ് തീയതി ക്രമീകരണ അസിസ്റ്റന്റ് (Super Admin Mode)
+                      </h4>
+                    </div>
+                    <p className="text-slate-600 text-xs font-semibold leading-relaxed">
+                      ലിസ്റ്റിൽ രജിസ്റ്റർ ചെയ്തവരും മൈഗ്രേറ്റ് ചെയ്തതുമായ <span className="font-black text-brand-magenta text-sm underline">{countOf2026Members}</span> മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി ഇപ്പോഴും 2026 ലാണ് കിടക്കുന്നത്. ഇവരെ എത്രയും വേഗം 2025 ലേക്ക് മാറ്റുകയും കാർഡ് കാലാവധി കഴിഞ്ഞ് പുതുക്കേണ്ട സമയം കഴിഞ്ഞതായി (Renewal Required) രേഖപ്പെടുത്തുകയും വേണം. അംഗങ്ങൾക്ക് ലോഗിൻ ചെയ്യുമ്പോൾ റിന്യൂവൽ പേജ് വരാൻ ഇത് സഹായിക്കും.
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
+>>>>>>> new-repo/main
                       Align {countOf2026Members} members to joining year 2025. This makes their cards expired (due for ₹100 renewal) and prompts them to renew when they access their account.
                     </p>
                   </div>
@@ -2811,9 +3555,15 @@ export default function AdminDashboard({
                     </TabsTrigger>
                   )}
                   {isSuperAdmin && (
+<<<<<<< HEAD
                     <TabsTrigger value="db_migration" className="data-[state=active]:bg-white data-[state=active]:text-rose-650 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                       <Database className="w-3 h-3 text-rose-500" />
                       DB Migration (ഡേറ്റാ മൈഗ്രേഷൻ)
+=======
+                    <TabsTrigger value="backup_restore" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                      <Database className="w-3 h-3 text-slate-400" />
+                      Database Restore (ബാക്കപ്പ്)
+>>>>>>> new-repo/main
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -2913,12 +3663,15 @@ export default function AdminDashboard({
                 )}
               </TabsContent>
 
+<<<<<<< HEAD
               <TabsContent value="db_migration">
                 {isSuperAdmin && (
                   <DbMigrationManager user={user} />
                 )}
               </TabsContent>
 
+=======
+>>>>>>> new-repo/main
               <TabsContent value="gallery_mgmt">
                 <GalleryManagement user={user} />
               </TabsContent>
@@ -2927,6 +3680,18 @@ export default function AdminDashboard({
                 <CommitteeManagement user={user} />
               </TabsContent>
 
+<<<<<<< HEAD
+=======
+              {isSuperAdmin && (
+                <TabsContent value="backup_restore">
+                  <BackupRestoreManager 
+                    adminUser={user} 
+                    onRefresh={onRefreshMembers || (() => {})} 
+                  />
+                </TabsContent>
+              )}
+
+>>>>>>> new-repo/main
               <TabsContent value="branding">
                 <BrandingManager />
               </TabsContent>
@@ -3090,7 +3855,11 @@ export default function AdminDashboard({
                           
                           {/* Family claims indicator on Member row */}
                           {(() => {
+<<<<<<< HEAD
                             const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
+=======
+                            const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
+>>>>>>> new-repo/main
                             if (mClaims.length === 0) return null;
                             return (
                               <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
@@ -3362,6 +4131,7 @@ export default function AdminDashboard({
                   </div>
                 </div>
               )}
+<<<<<<< HEAD
               {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
                 <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -3390,6 +4160,8 @@ export default function AdminDashboard({
                   </Button>
                 </div>
               </div>
+=======
+>>>>>>> new-repo/main
               {filteredMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -3470,7 +4242,11 @@ export default function AdminDashboard({
                           
                           {/* Family claims indicator on Member row */}
                           {(() => {
+<<<<<<< HEAD
                             const mClaims = claims.filter(c => c.uid === member.uid || (member.mobile && c.userMobile === member.mobile));
+=======
+                            const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
+>>>>>>> new-repo/main
                             if (mClaims.length === 0) return null;
                             return (
                               <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
@@ -3656,6 +4432,7 @@ export default function AdminDashboard({
                   </div>
                 </div>
               )}
+<<<<<<< HEAD
               {/* Database Batch Pagination (മുഴുവൻ ഡാറ്റ വായിക്കാതെ റീഡ് കുറയ്ക്കാനുള്ള ഒപ്റ്റിമൈസേഷൻ) */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/70">
                 <div className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -3684,6 +4461,8 @@ export default function AdminDashboard({
                   </Button>
                 </div>
               </div>
+=======
+>>>>>>> new-repo/main
               {filteredValidActiveMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -4628,10 +5407,14 @@ export default function AdminDashboard({
                         
                         // We prefer the current origin unless it's obviously a dev setup AND we have a stable fallback
                         // However, on AI Studio, origin changes frequently, so using window.location.origin is usually SAFEST
+<<<<<<< HEAD
                         let effectiveBase = currentOrigin || SHARED_URL;
                         if (effectiveBase.includes('ais-dev') || effectiveBase.includes('google.com')) {
                           effectiveBase = SHARED_URL;
                         }
+=======
+                        const effectiveBase = currentOrigin || SHARED_URL;
+>>>>>>> new-repo/main
 
                         // Remove trailing slash if exists to avoid double slash
                         const cleanBase = effectiveBase.endsWith('/') ? effectiveBase.slice(0, -1) : effectiveBase;
@@ -4776,6 +5559,10 @@ export default function AdminDashboard({
                       <Button 
                         onClick={() => {
                           const ws = XLSX.utils.json_to_sheet(filteredClaims.map(c => ({
+<<<<<<< HEAD
+=======
+                            'Token No': c.tokenNo ?? c.serialNo ?? 'N/A',
+>>>>>>> new-repo/main
                             'Name': c.userName,
                             'Relation': c.relation === 'Self' ? 'സ്വന്തം (Self)' :
                                        c.relation === 'Mother' ? 'അമ്മ (Mother)' :
@@ -4787,6 +5574,7 @@ export default function AdminDashboard({
                             'Mobile': c.userMobile,
                             'District': c.userDistrict,
                             'HR ID': c.highrichId,
+<<<<<<< HEAD
                             'Categories': c.categories?.join(', '),
                             'Total Paid': c.totalPaid,
                             'Total Received': c.totalReceived,
@@ -4794,6 +5582,17 @@ export default function AdminDashboard({
                             'Preference': c.futurePreference,
                             'Priority': c.priorityStatus,
                             'Date': c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()
+=======
+                            'Categories': formatClaimCategories(c.categories),
+                            'Total Paid': c.totalPaid,
+                            'Total Received': c.totalReceived,
+                            'Balance Pending': c.totalPending,
+                            'Preference': c.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' : 
+                                         c.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' : 
+                                         c.futurePreference === 'continue' ? 'Ready to continue based on future plans' : (c.futurePreference || 'N/A'),
+                            'Priority': c.priorityStatus,
+                            'Date': formatClaimDate(c.createdAt)
+>>>>>>> new-repo/main
                           })));
                           const wb = XLSX.utils.book_new();
                           XLSX.utils.book_append_sheet(wb, ws, "Support Claims");
@@ -4803,10 +5602,100 @@ export default function AdminDashboard({
                       >
                          <Download className="w-4 h-4 mr-2" /> Export Excel
                       </Button>
+<<<<<<< HEAD
+=======
+
+                      <Button 
+                        onClick={() => {
+                          setClaimsImportFile(null);
+                          setClaimsImportRows([]);
+                          setClaimsImportLogs([]);
+                          setIsClaimsImportOpen(true);
+                        }}
+                        className="h-11 px-6 rounded-xl bg-brand-blue text-white font-black text-[10px] uppercase shadow-lg shadow-brand-blue/20"
+                      >
+                         <Upload className="w-4 h-4 mr-2" /> Import Old Claims
+                      </Button>
+>>>>>>> new-repo/main
                     </div>
                  </div>
                </Card>
 
+<<<<<<< HEAD
+=======
+               {claimsError && (
+                 <div className="mb-6 p-6 rounded-3xl bg-rose-50 border border-rose-100 shadow-sm space-y-4">
+                   <div className="flex items-start gap-4">
+                     <div className="p-3 bg-rose-100 rounded-2xl text-rose-600">
+                       <ShieldAlert className="w-6 h-6" />
+                     </div>
+                     <div className="space-y-1 flex-1">
+                       <h4 className="font-extrabold text-[#D00000] text-sm md:text-base">കണക്റ്റിവിറ്റി ലിമിറ്റ് കണ്ടെത്തി (Firebase Permission Denied)</h4>
+                       <p className="text-xs text-rose-700 leading-relaxed font-bold">
+                         ഫയർബേസ് സെക്യൂരിറ്റി റൂൾസ് (Firestore Security Rules) 'claims' കളക്ഷൻ്റെ അഡ്മിൻ റീഡ് പെർമിഷൻ തടയുന്നു. ഈ പ്രശ്നം പരിഹരിക്കുന്നതിനായി താഴെ നൽകിയിരിക്കുന്ന കോഡ് കോപ്പി ചെയ്ത് ഫയർബേസ് കൺസോളിൽ റൂൾസ് അപ്ഡേറ്റ് ചെയ്യുക.
+                       </p>
+                     </div>
+                   </div>
+                   <div className="space-y-2">
+                     <div className="flex justify-between items-center bg-slate-100 py-2 px-4 rounded-xl">
+                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">പകർത്തേണ്ട കോഡ് (New firestore.rules)</span>
+                       <Button 
+                         onClick={() => {
+                           navigator.clipboard.writeText(`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // claims match split (resolves compile-time get/list deadlock)
+    match /claims/{claimId} {
+      allow get: if request.auth != null;
+      allow list: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+    // support_tickets match
+    match /support_tickets/{ticketId} {
+      allow read, write: if request.auth != null;
+    }
+    // Global rule
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}`);
+                           toast.success('സെക്യൂരിറ്റി റൂൾ കോഡ് കോപ്പി ചെയ്തു!');
+                         }}
+                         variant="ghost"
+                         className="h-8 px-3 rounded-lg text-rose-600 hover:bg-rose-100/50 text-[10px] font-black uppercase"
+                       >
+                         <Copy className="w-3.5 h-3.5 mr-1" /> കോപ്പി ചെയ്യുക
+                       </Button>
+                     </div>
+                     <pre className="p-4 rounded-2xl bg-[#1e1e1e] text-[#d4d4d4] text-[10px] sm:text-xs font-mono overflow-x-auto border border-zinc-800 leading-relaxed max-y-48 overflow-y-auto shadow-inner">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // claims match split (resolves compile-time get/list deadlock)
+    match /claims/{claimId} {
+      allow get: if request.auth != null;
+      allow list: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+    // support_tickets match
+    match /support_tickets/{ticketId} {
+      allow read, write: if request.auth != null;
+    }
+    // Global rule
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}`}
+                     </pre>
+                   </div>
+                 </div>
+               )}
+
+>>>>>>> new-repo/main
                {/* Claims Table */}
                <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
                   {claimsLoading ? (
@@ -4824,6 +5713,10 @@ export default function AdminDashboard({
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
+<<<<<<< HEAD
+=======
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Date</TableHead>
+>>>>>>> new-repo/main
                           <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -4840,7 +5733,11 @@ export default function AdminDashboard({
                                 <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
                                 <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
                                 {(() => {
+<<<<<<< HEAD
                                   const comboCount = claims.filter(c => c.userMobile === claim.userMobile).length;
+=======
+                                  const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
+>>>>>>> new-repo/main
                                   if (comboCount > 1) {
                                     return (
                                       <div className="mt-1">
@@ -4901,6 +5798,12 @@ export default function AdminDashboard({
                                   {claim.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
                                </div>
                             </TableCell>
+<<<<<<< HEAD
+=======
+                            <TableCell className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                              {formatClaimDate(claim.createdAt)}
+                            </TableCell>
+>>>>>>> new-repo/main
                             <TableCell className="text-right px-6">
                                <div className="flex items-center justify-end gap-1">
                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
@@ -4964,6 +5867,25 @@ export default function AdminDashboard({
                     </CardDescription>
                   </div>
                 </CardHeader>
+<<<<<<< HEAD
+=======
+
+                {supportTicketsError && (
+                  <div className="mx-6 mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm space-y-3">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 bg-amber-100 rounded-xl text-amber-600">
+                        <ShieldAlert className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <h4 className="font-extrabold text-[#B7791F] text-xs md:text-sm">ഗേറ്റ്‌വേ പെർമിഷൻ ലിമിറ്റ് കണ്ടെത്തി (Firebase Permission Denied)</h4>
+                        <p className="text-[11px] text-amber-700 leading-relaxed font-bold">
+                          ഫയർബേസ് സെക്യൂരിറ്റി റൂൾസ് (Firestore Security Rules) 'support_tickets' കളക്ഷൻ്റെ അഡ്മിൻ റീഡ് പെർമിഷൻ തടയുന്നു. ഈ പ്രശ്നം പരിഹരിക്കുന്നതിനായി സപ്പോർട്ട് ക്ലെയിമുകളുടെ പേജിൽ നൽകിയിരിക്കുന്ന പുതിയ സെക്യൂരിറ്റി റൂൾസ് കോപ്പി ചെയ്ത് ഫയർബേസ് കൺസോളിൽ അപ്ഡേറ്റ് ചെയ്യുക.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+>>>>>>> new-repo/main
                 
                 {supportTicketsLoading ? (
                   <div className="py-20 text-center">
@@ -5091,7 +6013,17 @@ export default function AdminDashboard({
                   <div className="flex-1 space-y-2 w-full">
                     <div className="flex flex-col gap-1.5 justify-start">
                       <div className="flex items-center justify-between gap-4">
+<<<<<<< HEAD
                         <h3 className="text-2xl font-black text-slate-900">{viewingMember.name}</h3>
+=======
+                        <div className="flex items-center gap-2 group cursor-pointer" onClick={() => {
+                          navigator.clipboard.writeText(viewingMember.name);
+                          toast.success('പേര് കോപ്പി ചെയ്തു! (Name copied)');
+                        }}>
+                          <h3 className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">{viewingMember.name}</h3>
+                          <Copy className="w-4 h-4 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+>>>>>>> new-repo/main
                         <Badge className={viewingMember.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
                           {viewingMember.status.toUpperCase()}
                         </Badge>
@@ -5108,6 +6040,48 @@ export default function AdminDashboard({
                         )}
                       </div>
                     </div>
+<<<<<<< HEAD
+=======
+
+                    {/* Copy Toolkit (കോപ്പി സൂത്രങ്ങൾ) */}
+                    <div className="flex items-center gap-2 flex-wrap pt-2 pb-1 border-b border-slate-100">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          navigator.clipboard.writeText(viewingMember.name);
+                          toast.success('പേര് കോപ്പി ചെയ്തു!');
+                        }}
+                        className="h-8 px-2.5 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[10px] md:text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200/50"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" /> പേര് കോപ്പി ചെയ്യുക
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const addrText = `${viewingMember.address || ''}${viewingMember.postOffice ? ', ' + viewingMember.postOffice + ' (P.O)' : ''}${viewingMember.pincode ? ', PIN: ' + viewingMember.pincode : ''}`;
+                          navigator.clipboard.writeText(addrText);
+                          toast.success('മേൽവിലാസം കോപ്പി ചെയ്തു!');
+                        }}
+                        className="h-8 px-2.5 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[10px] md:text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200/50"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" /> വിലാസം കോപ്പി ചെയ്യുക
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const labelText = `${viewingMember.name || ''}\n${viewingMember.address || ''}\n${viewingMember.postOffice ? viewingMember.postOffice + ' (P.O)' : ''}\nPIN: ${viewingMember.pincode || ''}\nPhone: ${viewingMember.mobile || ''}`;
+                          navigator.clipboard.writeText(labelText);
+                          toast.success('ലേബൽ വിവരങ്ങൾ കോപ്പി ചെയ്തു!');
+                        }}
+                        className="h-8 px-2.5 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[10px] md:text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200/50"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" /> പേരും വിലാസവും
+                      </Button>
+                    </div>
+>>>>>>> new-repo/main
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
                        <DetailItem label="Mobile" value={viewingMember.mobile} icon={<Smartphone className="w-4 h-4" />} />
                        <DetailItem label="Email" value={viewingMember.email} icon={<Mail className="w-4 h-4" />} />
@@ -5188,7 +6162,11 @@ export default function AdminDashboard({
 
                 {/* Related Support Claims Section */}
                 {(() => {
+<<<<<<< HEAD
                   const mClaims = claims.filter(c => c.uid === viewingMember.uid || (viewingMember.mobile && c.userMobile === viewingMember.mobile));
+=======
+                  const mClaims = claims.filter(c => c.uid === viewingMember.uid || compareMobiles(c.userMobile, viewingMember.mobile));
+>>>>>>> new-repo/main
                   if (mClaims.length === 0) return null;
                   return (
                     <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
@@ -5982,9 +6960,26 @@ export default function AdminDashboard({
                     </h4>
                     {claimUser && (
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-black">
+<<<<<<< HEAD
                           <div className="space-y-1">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Holder / Claimant (മെമ്പർ / ക്ലെയിം വ്യക്തി)</p>
                              <p className="font-bold text-slate-850 text-sm flex items-center gap-1.5 flex-wrap">
+=======
+                          <div 
+                             onClick={() => {
+                                navigator.clipboard.writeText(claimUser.name);
+                                toast.success('പേര് കോപ്പി ചെയ്തു! (Name copied)');
+                             }}
+                             className="space-y-1 cursor-pointer group hover:bg-slate-100/50 p-2 rounded-2xl transition-all border border-transparent hover:border-slate-200"
+                          >
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                                <span>Account Holder / Claimant (മെമ്പർ / ക്ലെയിം വ്യക്തി)</span>
+                                <span className="text-slate-450 group-hover:text-blue-600 flex items-center gap-1 text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <Copy className="w-2.5 h-2.5" /> click to copy
+                                </span>
+                             </p>
+                             <p className="font-bold text-slate-850 text-sm flex items-center gap-1.5 flex-wrap bg-white p-2 rounded-xl border border-slate-100">
+>>>>>>> new-repo/main
                                 {claimUser.name}
                                 {selectedClaim?.userName && selectedClaim.userName !== claimUser.name && (
                                    <span className="text-slate-500 font-bold">({selectedClaim.userName})</span>
@@ -6002,6 +6997,7 @@ export default function AdminDashboard({
                                 )}
                              </p>
                           </div>
+<<<<<<< HEAD
                           <div className="space-y-1">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member ID (മെമ്പർ ഐഡി നമ്പർ)</p>
                              <p className="font-bold text-brand-magenta text-sm font-mono">{claimUser.membershipId || selectedClaim.membershipId || 'PENDING'}</p>
@@ -6017,6 +7013,38 @@ export default function AdminDashboard({
                           <div className="space-y-1 sm:col-span-2">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address (മേൽവിലാസം)</p>
                              <p className="font-medium text-slate-700 leading-relaxed bg-white p-2.5 rounded-lg border border-slate-100 whitespace-pre-wrap">{claimUser.address}</p>
+=======
+                          <div className="space-y-1 p-2">
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member ID (മെമ്പർ ഐഡി നമ്പർ)</p>
+                             <p className="font-bold text-brand-magenta text-sm font-mono bg-white p-2 rounded-xl border border-slate-100">{claimUser.membershipId || selectedClaim.membershipId || 'PENDING'}</p>
+                           </div>
+                           <div className="space-y-1 p-2">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serial Number (സീരിയൽ നമ്പർ)</p>
+                              <div className="bg-white p-2 rounded-xl border border-slate-100">
+                                <p className="font-extrabold text-[#FF1493] text-sm font-mono bg-[#FF1493]/5 border border-[#FF1493]/15 px-2 py-0.5 rounded w-fit">#{selectedClaim.tokenNo ?? selectedClaim.serialNo ?? 'N/A'}</p>
+                              </div>
+                          </div>
+                          <div className="space-y-1 p-2">
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</p>
+                             <p className="font-bold text-slate-800 bg-white p-2 rounded-xl border border-slate-100">{claimUser.mobile}</p>
+                          </div>
+                          <div 
+                             onClick={() => {
+                                navigator.clipboard.writeText(claimUser.address);
+                                toast.success('വിലാസം കോപ്പി ചെയ്തു! (Address copied)');
+                             }}
+                             className="space-y-1 sm:col-span-2 cursor-pointer group hover:bg-slate-100/50 p-2 rounded-2xl transition-all border border-transparent hover:border-slate-200"
+                          >
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                                <span>Address (മേൽവിലാസം)</span>
+                                <span className="text-slate-450 group-hover:text-blue-600 flex items-center gap-1 text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <Copy className="w-2.5 h-2.5" /> click to copy
+                                </span>
+                             </p>
+                             <p className="font-medium text-slate-700 leading-relaxed bg-white p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                                {claimUser.address}
+                             </p>
+>>>>>>> new-repo/main
                           </div>
                           <div className="space-y-1">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">District</p>
@@ -6142,7 +7170,11 @@ export default function AdminDashboard({
 
                  <div className="pt-6 border-t flex items-center justify-between">
                     <div className="text-[10px] font-bold text-slate-400">
+<<<<<<< HEAD
                        SUBMITTED ON: {selectedClaim.createdAt?.toDate ? selectedClaim.createdAt.toDate().toLocaleString() : 'N/A'}
+=======
+                       SUBMITTED ON: {formatClaimDateTime(selectedClaim.createdAt)}
+>>>>>>> new-repo/main
                     </div>
                     <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-8">Close</Button>
                  </div>
@@ -6355,6 +7387,176 @@ export default function AdminDashboard({
             )}
           </DialogContent>
         </Dialog>
+<<<<<<< HEAD
+=======
+
+        {/* Claims Bulk Importer Dialog */}
+        <Dialog open={isClaimsImportOpen} onOpenChange={(open) => !open && !isClaimsImporting && setIsClaimsImportOpen(false)}>
+          <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-[32px] p-6 border-none shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black text-brand-blue uppercase flex items-center gap-2 tracking-tight">
+                <Upload className="w-5 h-5 text-brand-magenta animate-bounce" /> Import Old Site Claims (ക്ലെയിമുകൾ കയറ്റുക)
+              </DialogTitle>
+              <DialogDescription className="text-[11px] font-bold text-slate-400 mt-1 uppercase">
+                പഴയ വെബ്സൈറ്റിലെ ക്ലെയിം പെറ്റീഷൻ ഫയലുകൾ (Excel/CSV) അപ്‌ലോഡ് ചെയ്ത് നിലവിലുള്ള സിസ്റ്റത്തിലേക്ക് ലോഗ് ചെയ്യുക
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-5 mt-4">
+              {/* File Select */}
+              <div 
+                onClick={() => !isClaimsImporting && document.getElementById('claims-import-input')?.click()}
+                className={cn(
+                  "border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-brand-blue/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200",
+                  isClaimsImporting && "opacity-50 pointer-events-none"
+                )}
+              >
+                <div className="h-10 w-10 rounded-xl bg-brand-blue/10 border border-brand-blue/15 flex items-center justify-center text-brand-blue shrink-0">
+                  <FileSpreadsheet className="w-5 h-5 text-brand-blue" />
+                </div>
+                <div className="text-center space-y-1 select-none">
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-wide">Select Claims Excel / CSV File</p>
+                  <p className="text-[9.5px] text-slate-400 font-bold uppercase">ആകെ തുക, അടച്ച തുക, ഫോൺ നമ്പർ എന്നിവയുള്ള ഷീറ്റ് തിരഞ്ഞെടുക്കുക</p>
+                </div>
+                <input 
+                  id="claims-import-input"
+                  type="file" 
+                  accept=".xlsx,.xls,.csv" 
+                  className="hidden" 
+                  onChange={handleClaimsFileChange}
+                />
+              </div>
+
+              {/* Column Mapping Section if Columns loaded */}
+              {claimsImportColumns.length > 0 && (
+                <Card className="p-4 border border-slate-150 rounded-2xl bg-slate-50/30">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Database className="w-3.5 h-3.5 text-brand-magenta" /> Column Match Configuration (കോളം ക്രമീകരണം)
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                    {[
+                      { field: 'userName', label: 'Member Name (പേര്)*' },
+                      { field: 'userMobile', label: 'Mobile Number (മൊബൈൽ)*' },
+                      { field: 'highrichId', label: 'Highrich ID (ഹൈക്കുറിച്ച് ഐഡി)' },
+                      { field: 'totalPaid', label: 'Total Paid (അടച്ച തുക)' },
+                      { field: 'totalReceived', label: 'Total Received (തിരികെ ലഭിച്ച തുക)' },
+                      { field: 'totalPending', label: 'Balance Pending (ബാക്കി തുക)' },
+                      { field: 'userDistrict', label: 'District (ജില്ല)' },
+                      { field: 'relation', label: 'Relation (ബന്ധം)' },
+                      { field: 'futurePreference', label: 'Preference (முൻഗണന)' },
+                      { field: 'priorityStatus', label: 'Priority Status (സ്റ്റാറ്റസ്)' },
+                      { field: 'date', label: 'Submission Date (തീയതി)' }
+                    ].map(fieldObj => (
+                      <div key={fieldObj.field} className="flex flex-col gap-1 text-left bg-white p-2.5 rounded-xl border border-slate-100 shadow-3xs">
+                        <span className="text-[9.5px] font-black text-slate-650">{fieldObj.label}</span>
+                        <select
+                          className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-1.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                          value={claimsColumnMapping[fieldObj.field] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setClaimsColumnMapping(prev => ({ ...prev, [fieldObj.field]: val }));
+                          }}
+                        >
+                          <option value="">-- Skip/വാതകമല്ല --</option>
+                          {claimsImportColumns.map(col => (
+                            <option key={col} value={col}>{col}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* First 3 Rows Preview */}
+              {claimsImportRows.length > 0 && !isClaimsImporting && (
+                <div className="space-y-1 text-left">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Document Preview (ആദ്യ 3 വരികളുടെ പ്രിവ്യൂ):</p>
+                  <div className="border border-slate-150 rounded-2xl overflow-hidden bg-white shadow-3xs">
+                    <Table>
+                      <TableHeader className="bg-slate-50 font-bold text-[9px] uppercase tracking-wider text-slate-400">
+                        <TableRow>
+                          <TableHead>Row</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Mobile</TableHead>
+                          <TableHead>Pending</TableHead>
+                          <TableHead>District</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="text-[10.5px] font-extrabold text-slate-700">
+                        {claimsImportRows.slice(0, 3).map((row, idx) => {
+                          const nameVal = row[claimsColumnMapping['userName']] || 'N/A';
+                          const mobVal = row[claimsColumnMapping['userMobile']] || 'N/A';
+                          const pendingVal = row[claimsColumnMapping['totalPending']] || row[claimsColumnMapping['totalPaid']] || '0';
+                          const distVal = row[claimsColumnMapping['userDistrict']] || 'KSD';
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell className="font-mono text-[9px] text-slate-400 font-normal">#{idx+1}</TableCell>
+                              <TableCell className="font-sans truncate max-w-[120px]">{String(nameVal)}</TableCell>
+                              <TableCell className="font-mono text-xs">{String(mobVal)}</TableCell>
+                              <TableCell className="font-mono text-xs text-brand-magenta">₹{parseFloat(pendingVal as string || '0').toLocaleString('en-IN')}</TableCell>
+                              <TableCell className="font-sans text-[10px] uppercase text-slate-500 font-bold">{String(distVal)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Progress and Logs Console */}
+              {claimsImportLogs.length > 0 && (
+                <div className="space-y-2 text-left font-sans font-bold">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <span>Active Consolidation Progress</span>
+                    <span className="font-mono text-brand-magenta">{claimsImportProgress}%</span>
+                  </div>
+                  {isClaimsImporting && (
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-250">
+                      <div 
+                        className="bg-brand-blue h-full transition-all duration-300"
+                        style={{ width: `${claimsImportProgress}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="bg-slate-900 border border-slate-850 rounded-2xl p-3.5 h-32 overflow-y-auto font-mono text-[9.5px] leading-relaxed text-emerald-400 text-left whitespace-pre-wrap shadow-inner animate-pulse-short">
+                    {claimsImportLogs.map((log, lidx) => (
+                      <div key={lidx} className="flex gap-1.5 items-start">
+                        <span className="text-slate-500 shrink-0 select-none">&gt;</span>
+                        <span className="text-emerald-400">{log}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons panel */}
+              <DialogFooter className="gap-2 pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  disabled={isClaimsImporting} 
+                  onClick={() => setIsClaimsImportOpen(false)} 
+                  className="rounded-xl font-bold text-xs"
+                >
+                  Cancel / വേണ്ട
+                </Button>
+                {claimsImportRows.length > 0 && (
+                  <Button 
+                    disabled={isClaimsImporting} 
+                    onClick={handleClaimsBulkImportSave} 
+                    className="rounded-xl font-black uppercase text-xs bg-brand-magenta text-white"
+                  >
+                    {isClaimsImporting ? 'Processing Migration...' : 'Confirm & Settle Claims Migration'}
+                  </Button>
+                )}
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+>>>>>>> new-repo/main
           </div>
         </div>
       </div>
@@ -6389,6 +7591,7 @@ function StatsCard({ title, value, icon, color }: { title: string, value: number
 }
 
 function DetailItem({ label, value, icon }: { label: string, value?: string, icon?: React.ReactNode }) {
+<<<<<<< HEAD
   return (
     <div className="space-y-1 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
@@ -6396,6 +7599,34 @@ function DetailItem({ label, value, icon }: { label: string, value?: string, ico
         {label}
       </p>
       <p className="text-sm font-black text-slate-800 leading-tight break-all truncate">
+=======
+  const handleCopy = () => {
+    if (!value || value === '---' || value === 'N/A') return;
+    navigator.clipboard.writeText(value);
+    toast.success(`${label} കോപ്പി ചെയ്തു!`);
+  };
+
+  const isCopyable = value && value !== '---' && value !== 'N/A';
+
+  return (
+    <div 
+      onClick={isCopyable ? handleCopy : undefined}
+      className={cn(
+        "space-y-1 bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative group transition-all",
+        isCopyable ? "cursor-pointer hover:border-slate-300 hover:bg-slate-50/70 active:scale-[0.98]" : ""
+      )}
+    >
+      <div className="flex justify-between items-center">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
+          {icon && React.cloneElement(icon as React.ReactElement, { className: 'w-3 h-3 text-slate-400' })}
+          {label}
+        </p>
+        {isCopyable && (
+          <Copy className="w-3 h-3 text-slate-300 opacity-40 group-hover:opacity-100 transition-opacity whitespace-nowrap ml-1 shrink-0" />
+        )}
+      </div>
+      <p className="text-sm font-black text-slate-800 leading-tight break-all selection:bg-blue-100">
+>>>>>>> new-repo/main
         {value || '---'}
       </p>
     </div>

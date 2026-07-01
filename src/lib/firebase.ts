@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, memoryLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import firebaseConfig from './firebase-applet-config.json';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 // Support external deployment (Vercel, Netlify, etc.) using custom environment variables
 const getFirebaseConfig = () => {
@@ -38,18 +38,23 @@ const getSafeFirestoreSettings = () => {
     if (typeof window === 'undefined' || !window.indexedDB) {
       return { localCache: memoryLocalCache() };
     }
+
+    const isDevHost = window.location.hostname.includes('ais-dev') || 
+                      window.location.hostname.includes('ais-pre') || 
+                      window.location.hostname.includes('localhost') || 
+                      window.location.hostname.includes('127.0.0.1') || 
+                      window.location.hostname.includes('google.com');
+                      
+    const inIframe = window.self !== window.top;
+    
+    if (inIframe || isDevHost) {
+      console.log("Memory cache enabled for preview/iframe environment to avoid IndexedDB crashes.");
+      return { localCache: memoryLocalCache() };
+    }
+
     // Proactively verify we can access IndexedDB
     // Often merely accessing window.indexedDB throws a SecurityError in sandboxed iframes.
     const _ = window.indexedDB;
-    
-    // Check if we are running in an iframe, and if we are, use simple persistentLocalCache
-    // or skip multi-tab synchronization to avoid cross-frame locking issues.
-    const inIframe = window.self !== window.top;
-    if (inIframe) {
-      return {
-        localCache: persistentLocalCache({}) // Single tab persistence, no multi-tab manager locks
-      };
-    }
 
     return {
       localCache: persistentLocalCache({
@@ -62,8 +67,12 @@ const getSafeFirestoreSettings = () => {
   }
 };
 
-export const db = initializeFirestore(app, getSafeFirestoreSettings(), finalConfig.firestoreDatabaseId);
-export const secondaryDb = initializeFirestore(secondaryApp, getSafeFirestoreSettings(), finalConfig.firestoreDatabaseId);
+const databaseId = finalConfig.firestoreDatabaseId && finalConfig.firestoreDatabaseId !== '(default)' 
+  ? finalConfig.firestoreDatabaseId 
+  : undefined;
+
+export const db = initializeFirestore(app, getSafeFirestoreSettings(), databaseId);
+export const secondaryDb = initializeFirestore(secondaryApp, getSafeFirestoreSettings(), databaseId);
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const storage = getStorage(app);
