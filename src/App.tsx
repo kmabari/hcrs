@@ -15,21 +15,13 @@ import { UserProfile } from './types';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToAnnouncements, Announcement } from './lib/cms';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
-<<<<<<< HEAD
-import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode, getAssemblyCode, generateNewMembershipId, SHARED_URL } from './constants';
-=======
 import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode, getAssemblyCode, generateNewMembershipId } from './constants';
->>>>>>> new-repo/main
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
 import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
-<<<<<<< HEAD
-import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, getCountFromServer } from 'firebase/firestore';
-=======
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit } from 'firebase/firestore';
->>>>>>> new-repo/main
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
@@ -39,19 +31,11 @@ const MAIN_ADMINS = [
   'hcrsindia@gmail.com',
   'admin@hcrs.society',
   '9645934571@hcrs.society',
-<<<<<<< HEAD
-  'mabarikiyafoods@gmail.com'
-];
-
-const SECOND_ADMINS = [
-  'hcrskerala@gmail.com',
-=======
   'mabarikiyafoods@gmail.com',
   'hcrskerala@gmail.com'
 ];
 
 const SECOND_ADMINS = [
->>>>>>> new-repo/main
   'hcrskasaragod@hcrs.society',
   'hcrsksd@hcrs.society',
   'hcrskannur@hcrs.society',
@@ -114,10 +98,6 @@ export default function App() {
   const currentViewRef = useRef(view);
   useEffect(() => {
     currentViewRef.current = view;
-<<<<<<< HEAD
-    window.scrollTo(0, 0);
-=======
->>>>>>> new-repo/main
   }, [view]);
 
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -137,67 +117,12 @@ export default function App() {
   const [claimRefreshTrigger, setClaimRefreshTrigger] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
-<<<<<<< HEAD
-  const [dbStats, setDbStats] = useState({
-    total: 0,
-    active: 0,
-    pending: 0,
-    renewals: 0,
-    deleted: 0,
-    validActive: 0,
-  });
-=======
->>>>>>> new-repo/main
   const isSyncingRef = useRef(false);
   const hasInitialSyncedRef = useRef(false);
   const lastAuthUserUidRef = useRef<string | null>(null);
 
-<<<<<<< HEAD
-  const refreshMembersList = useCallback(async (
-    customUserOrFilters?: UserProfile | {
-      searchTerm?: string;
-      districtFilter?: string;
-      activeTab?: string;
-      categoryFilter?: string;
-      sourceFilter?: string;
-      page?: number;
-    },
-    explicitFilters?: {
-      searchTerm?: string;
-      districtFilter?: string;
-      activeTab?: string;
-      categoryFilter?: string;
-      sourceFilter?: string;
-      page?: number;
-    }
-  ) => {
-    let activeUser = user;
-    let filterObj: {
-      searchTerm?: string;
-      districtFilter?: string;
-      activeTab?: string;
-      categoryFilter?: string;
-      sourceFilter?: string;
-      page?: number;
-    } = {};
-
-    if (customUserOrFilters) {
-      const isEvent = (customUserOrFilters instanceof Event) || 
-                      (typeof customUserOrFilters === 'object' && ('nativeEvent' in customUserOrFilters || 'preventDefault' in customUserOrFilters));
-      if (isEvent) {
-        filterObj = {};
-      } else if ('uid' in (customUserOrFilters as any) && typeof (customUserOrFilters as any).uid === 'string' && (customUserOrFilters as any).uid) {
-        activeUser = customUserOrFilters as UserProfile;
-        filterObj = explicitFilters || {};
-      } else {
-        filterObj = customUserOrFilters as any;
-      }
-    }
-
-=======
   const refreshMembersList = useCallback(async (customUser?: UserProfile) => {
     const activeUser = customUser || user;
->>>>>>> new-repo/main
     if (!activeUser) return;
     const isAdmin = activeUser.role === 'admin' || activeUser.isAdmin;
     const isOperator = activeUser.role === 'operator';
@@ -207,180 +132,6 @@ export default function App() {
     isSyncingRef.current = true;
     setIsSyncingDocs(true);
 
-<<<<<<< HEAD
-    console.log("refreshMembersList: Querying with server-side pagination & filters:", {
-      uid: activeUser?.uid,
-      role: activeUser?.role,
-      filters: filterObj
-    });
-
-    const loadingToast = 'syncing_db_entries';
-    toast.loading('Syncing database entries...', { id: loadingToast });
-
-    try {
-      const currentEmail = (activeUser.email || '').toLowerCase().trim();
-      const isSuper = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) || !activeUser.district;
-
-      const baseQ = collection(db, 'users');
-      const countConstraints: any[] = [];
-
-      // 1. Enforce Role & District Isolation constraints
-      if (!isSuper) {
-        if (activeUser.district) {
-          countConstraints.push(where('district', '==', activeUser.district));
-        } else {
-          countConstraints.push(where('registeredBy', '==', activeUser.uid));
-        }
-      } else {
-        const distVal = filterObj.districtFilter || 'all';
-        if (distVal !== 'all') {
-          countConstraints.push(where('district', '==', distVal));
-        }
-      }
-
-      // 2. Fetch Aggregated Counts (Using hyper-efficient getCountFromServer - practically 0 read cost!)
-      const qCountActive = query(baseQ, ...countConstraints, where('status', '==', 'active'));
-      const qCountPending = query(baseQ, ...countConstraints, where('status', '==', 'pending'));
-      const qCountDeleted = query(baseQ, ...countConstraints, where('status', '==', 'deleted'));
-      const qCountRenewals = query(baseQ, ...countConstraints, where('renewalPending', '==', true));
-      const qCountValidActive = query(baseQ, ...countConstraints, where('status', '==', 'active'), where('expiryDate', '>', new Date()));
-
-      const [snapActive, snapPending, snapDeleted, snapRenewals, snapValidActive] = await Promise.all([
-        getCountFromServer(qCountActive),
-        getCountFromServer(qCountPending),
-        getCountFromServer(qCountDeleted),
-        getCountFromServer(qCountRenewals),
-        getCountFromServer(qCountValidActive).catch(err => {
-          console.warn("Index not ready for valid active count, falling back:", err);
-          return null;
-        })
-      ]);
-
-      const activeC = snapActive.data().count;
-      const pendingC = snapPending.data().count;
-      const deletedC = snapDeleted.data().count;
-      const renewalsC = snapRenewals.data().count;
-      const validActiveC = snapValidActive ? snapValidActive.data().count : activeC;
-
-      setDbStats({
-        active: activeC,
-        pending: pendingC,
-        deleted: deletedC,
-        renewals: renewalsC,
-        validActive: validActiveC,
-        total: activeC + renewalsC, // Verified active or renewal pending
-      });
-
-      // 3. Document Query Construction
-      let snapDocs: UserProfile[] = [];
-      const term = (filterObj.searchTerm || '').trim();
-
-      if (term) {
-        // High-efficiency specific search term lookup to bypass reading thousands of entries
-        const cleanPhone = term.replace(/\D/g, '');
-        const searchQueries = [];
-
-        if (cleanPhone && cleanPhone.length >= 4) {
-          searchQueries.push(query(baseQ, ...countConstraints, where('mobile', '==', cleanPhone)));
-          if (!isNaN(Number(cleanPhone))) {
-            searchQueries.push(query(baseQ, ...countConstraints, where('mobile', '==', Number(cleanPhone))));
-          }
-        }
-        if (term.length >= 3) {
-          searchQueries.push(query(baseQ, ...countConstraints, where('membershipId', '==', term.toUpperCase())));
-          searchQueries.push(query(baseQ, ...countConstraints, where('membershipId', '==', term)));
-        }
-        if (term.length >= 2) {
-          searchQueries.push(query(
-            baseQ, 
-            ...countConstraints, 
-            where('name', '>=', term), 
-            where('name', '<=', term + '\uf8ff'),
-            limit(50)
-          ));
-          const cappedTerm = term.charAt(0).toUpperCase() + term.slice(1);
-          if (cappedTerm !== term) {
-            searchQueries.push(query(
-              baseQ, 
-              ...countConstraints, 
-              where('name', '>=', cappedTerm), 
-              where('name', '<=', cappedTerm + '\uf8ff'),
-              limit(50)
-            ));
-          }
-        }
-
-        const snaps = await Promise.all(searchQueries.map(sq => getDocs(sq)));
-        const seenUids = new Set<string>();
-
-        snaps.forEach(snapshot => {
-          snapshot.docs.forEach(docSnap => {
-            if (!seenUids.has(docSnap.id)) {
-              seenUids.add(docSnap.id);
-              const uData = docSnap.data() as any;
-              const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (uData.email || '').toLowerCase());
-              if (!isMainAdmin) {
-                snapDocs.push({ uid: docSnap.id, ...(uData as any) });
-              }
-            }
-          });
-        });
-      } else {
-        // Build the normal query
-        const queryConstraints = [...countConstraints];
-
-        // Status constraint matching current view/tab context
-        const tab = filterObj.activeTab || 'list';
-        if (tab === 'requests') {
-          queryConstraints.push(where('status', '==', 'pending'));
-        } else if (tab === 'deleted') {
-          queryConstraints.push(where('status', '==', 'deleted'));
-        } else if (tab === 'renewals') {
-          queryConstraints.push(where('renewalPending', '==', true));
-        } else if (tab === 'life_members') {
-          queryConstraints.push(where('status', '==', 'active'));
-          queryConstraints.push(where('membership_type', '==', 'LIFE_MEMBER'));
-        } else if (tab === 'valid_active') {
-          queryConstraints.push(where('status', '==', 'active'));
-          queryConstraints.push(where('expiryDate', '>', new Date()));
-        } else {
-          queryConstraints.push(where('status', '==', 'active'));
-        }
-
-        // Category filter
-        if (tab !== 'life_members' && tab !== 'valid_active') {
-          const cat = filterObj.categoryFilter || 'all';
-          if (cat === 'LIFE_MEMBER') {
-            queryConstraints.push(where('membership_type', '==', 'LIFE_MEMBER'));
-          } else if (cat === 'ADHOC_MEMBER') {
-            queryConstraints.push(where('membership_type', '==', 'ADHOC_MEMBER'));
-          }
-        }
-
-        const pageNum = filterObj.page || 1;
-        const PAGE_SIZE = 50;
-
-        const paginatedQ = query(
-          baseQ,
-          ...queryConstraints,
-          limit(pageNum * PAGE_SIZE)
-        );
-
-        const snapshot = await getDocs(paginatedQ);
-        const mappedList = snapshot.docs
-          .map(doc => ({ uid: doc.id, ...(doc.data() as any) } as UserProfile))
-          .filter(u => {
-            const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
-            return !isMainAdmin;
-          });
-
-        const sliceStart = Math.max(0, (pageNum - 1) * PAGE_SIZE);
-        snapDocs = mappedList.slice(sliceStart, sliceStart + PAGE_SIZE);
-      }
-
-      let cleanList = [...snapDocs];
-
-=======
     const loadingToast = 'syncing_db_entries';
     toast.loading('Syncing database entries...', { id: loadingToast });
 
@@ -455,16 +206,12 @@ export default function App() {
         }
       }
       
->>>>>>> new-repo/main
       // AUTO-CLEANUP DUPLICATE LIFE MEMBER SERIAL NO 1
       const life1s = cleanList.filter(u => u.membership_type === 'LIFE_MEMBER' && u.serialNo === 1);
       if (life1s.length > 1) {
         console.log("Database Maintenance: Found duplicate Life Members with serialNo = 1:", life1s.map(l => l.uid));
         
-<<<<<<< HEAD
-=======
         // Sort to keep the earliest/original profile, delete later duplicates
->>>>>>> new-repo/main
         const sorted = [...life1s].sort((a, b) => {
           const t1 = a.registrationDate 
             ? (typeof a.registrationDate.toDate === 'function' 
@@ -479,10 +226,7 @@ export default function App() {
           return t1 - t2;
         });
 
-<<<<<<< HEAD
-=======
         // Keep sorted[0] (earliest), delete subsequent duplicates
->>>>>>> new-repo/main
         const toDelete = sorted.slice(1);
         for (const duplicateToKill of toDelete) {
           console.log(`Auto-deleting duplicate Life Member with serialNo=1, UID: ${duplicateToKill.uid}`);
@@ -494,38 +238,12 @@ export default function App() {
           }
         }
 
-<<<<<<< HEAD
-=======
         // Exclude deleted profiles from local state
->>>>>>> new-repo/main
         const deletedUids = toDelete.map(u => u.uid);
         cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
       }
 
-<<<<<<< HEAD
-      // AUTO-HEAL MISSING EXPIRY DATE FOR LIFE MEMBERS TO ALIGN WITH DYNAMIC QUERIES
-      const lifeMembersToHeal = cleanList.filter(u => 
-        String(u.membership_type || u.membershipType || '').toUpperCase().includes('LIFE') && 
-        (!u.expiryDate || u.expiryDate === null)
-      );
-      if (lifeMembersToHeal.length > 0) {
-        console.log("Database Maintenance: Healing Life Members with missing expiryDate:", lifeMembersToHeal.map(l => l.uid));
-        const farFuture = new Date('2099-12-31T23:59:59Z');
-        for (const m of lifeMembersToHeal) {
-          try {
-            await updateDoc(doc(db, 'users', m.uid), { expiryDate: farFuture });
-            m.expiryDate = farFuture;
-          } catch (err) {
-            console.error("Failed to heal expiry date for life member:", m.uid, err);
-          }
-        }
-      }
-
       setMembers(cleanList);
-      setIsQuotaExceeded(false);
-=======
-      setMembers(cleanList);
->>>>>>> new-repo/main
       toast.success('Database entries synchronized successfully.', { id: loadingToast });
     } catch (err: any) {
       console.error("Members fetch error during refresh:", err);
@@ -693,17 +411,10 @@ export default function App() {
           { 
             id: loadingToast,
             duration: 15000, 
-<<<<<<< HEAD
-            description: `പരിഹാരം: ദയവായി താഴെ കാണുന്ന ബട്ടൺ ക്ലിക്ക് ചെയ്തു ലോഗിൻ ചെയ്ത ശേഷം നിങ്ങളുടെ പാസ്‌വേഡ്/പിൻ ക്രമീകരിക്കുക. ശേഷം നിങ്ങളുടെ ഇമെയിലും ആ പാസ്‌വേഡും ഉപയോഗിച്ച് നേരിട്ട് www.hcrs.in ലോഗിൻ ചെയ്യുക!`,
-            action: {
-              label: 'ലോഗിൻ ചെയ്യുക (Login via Shared)',
-              onClick: () => window.open(SHARED_URL, '_blank')
-=======
             description: 'പരിഹാരം: ദയവായി https://hcrs-kappa.vercel.app ഓപ്പൺ ചെയ്ത് ഗൂഗിൾ ലോഗിൻ വഴി കയറി മുകളിൽ കാണുന്ന "Set Domain PIN" വഴി നിങ്ങളുടെ പാസ്‌വേഡ് സെറ്റ് ചെയ്യുക. ശേഷം നിങ്ങളുടെ ഇമെയിലും ആ പാസ്‌വേഡും ഉപയോഗിച്ച് നേരിട്ട് www.hcrs.in ലോഗിൻ ചെയ്യുക!',
             action: {
               label: 'Vercel fallback വഴി തുറക്കുക',
               onClick: () => window.open('https://hcrs-kappa.vercel.app', '_blank')
->>>>>>> new-repo/main
             }
           }
         );
@@ -739,15 +450,9 @@ export default function App() {
       const totals: Record<string, number> = {};
       const used: Record<string, number> = {};
       
-<<<<<<< HEAD
-      // Initialize with 0s for all districts to ensure consistent display
-      DISTRICTS.forEach(d => {
-        totals[d.code] = 0;
-=======
       // Initialize with default 1000 registrations quota for all districts to ensure smooth out-of-the-box registrations on blank databases
       DISTRICTS.forEach(d => {
         totals[d.code] = 1000;
->>>>>>> new-repo/main
         used[d.code] = 0;
       });
 
@@ -757,8 +462,6 @@ export default function App() {
         totals[id] = data.total || 0;
         used[id] = data.used || 0;
       });
-<<<<<<< HEAD
-=======
 
       try {
         localStorage.setItem('hcrs_cached_district_quotas_totals', JSON.stringify(totals));
@@ -767,13 +470,10 @@ export default function App() {
         console.warn("localStorage quota caching error:", e);
       }
 
->>>>>>> new-repo/main
       setDistrictQuotas(totals);
       setDistrictQuotasUsed(used);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'districtQuotas');
-<<<<<<< HEAD
-=======
       try {
         const cachedTotals = localStorage.getItem('hcrs_cached_district_quotas_totals');
         const cachedUsed = localStorage.getItem('hcrs_cached_district_quotas_used');
@@ -784,7 +484,6 @@ export default function App() {
       } catch (e) {
         console.warn("localStorage quota retrieval fallback error:", e);
       }
->>>>>>> new-repo/main
     });
     return () => unsubscribe();
   }, []);
@@ -822,18 +521,11 @@ export default function App() {
     
     if (distLogin) {
       console.log("District login intent detected:", distLogin);
-<<<<<<< HEAD
-      // We don't automatically log in, but we skip the landing page
-      setView('login');
-=======
->>>>>>> new-repo/main
       // Store the intent to guide the user to the correct dashboard after login
       sessionStorage.setItem('hcrs_district_intent', distLogin);
       sessionStorage.setItem('hcrs_direct_manual', 'true');
       setIsDirectManual(true);
       
-<<<<<<< HEAD
-=======
       // We don't automatically log in, but we skip the landing page
       setView('login');
       
@@ -847,7 +539,6 @@ export default function App() {
           console.error("Sign-out failed during district link redirect:", err);
         });
       
->>>>>>> new-repo/main
       // Clean up the URL so the distLogin query param doesn't stay in the address bar
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -954,31 +645,6 @@ export default function App() {
           if (isSuperAdminEmail) setView('admin');
           else setView('operator'); // Second admins go to operator (district) view by default unless approved
         }
-<<<<<<< HEAD
-
-        // --- SELF-HEALING LINKING LOGIC FOR GOOGLE-SIGNED-IN ADMINS ---
-        try {
-          const providers = authUser.providerData.map(p => p.providerId);
-          if (providers.includes('google.com') && !providers.includes('password')) {
-            console.log("Admin logged in via Google. Automatically linking email/password credential with PIN 246810...");
-            import('firebase/auth').then(({ EmailAuthProvider, linkWithCredential }) => {
-              const credential = EmailAuthProvider.credential(currentEmail, '246810');
-              linkWithCredential(authUser, credential)
-                .then(() => console.log("Successfully linked email/password login to admin Google account!"))
-                .catch(err => {
-                  if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
-                    console.log("Admin email/password provider is already registered or in use elsewhere.");
-                  } else {
-                    console.error("Failed to link email/password provider to admin Google account:", err);
-                  }
-                });
-            });
-          }
-        } catch (linkError) {
-          console.error("Non-blocking error during admin link:", linkError);
-        }
-=======
->>>>>>> new-repo/main
       }
 
       if (unsubscribeUser) { unsubscribeUser(); unsubscribeUser = null; }
@@ -1162,19 +828,11 @@ export default function App() {
             let querySnap = null;
 
             // Collect all possible query candidates to leave absolutely no chance of failure
-<<<<<<< HEAD
-            const candidates: { field: string; value: string | number; desc: string }[] = [];
-=======
             const candidates: { field: string; value: string; desc: string }[] = [];
->>>>>>> new-repo/main
             
             // Candidate 1: extracted loginMobile from email (most common)
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
               candidates.push({ field: 'mobile', value: loginMobile, desc: 'extracted mobile from email prefix' });
-<<<<<<< HEAD
-              candidates.push({ field: 'mobile', value: Number(loginMobile), desc: 'extracted numeric mobile from email prefix' });
-=======
->>>>>>> new-repo/main
             }
             
             // Candidate 2: current authenticating email
@@ -1196,10 +854,6 @@ export default function App() {
                 
                 if (sessionMobile && /^\d{10}$/.test(sessionMobile)) {
                   candidates.push({ field: 'mobile', value: sessionMobile, desc: 'session mobile number' });
-<<<<<<< HEAD
-                  candidates.push({ field: 'mobile', value: Number(sessionMobile), desc: 'session numeric mobile number' });
-=======
->>>>>>> new-repo/main
                   candidates.push({ field: 'email', value: `${sessionMobile}@hcrs-life.society`, desc: 'session life member placeholder email' });
                   candidates.push({ field: 'email', value: `${sessionMobile}@hcrs.society`, desc: 'session placeholder email' });
                 }
@@ -1217,11 +871,7 @@ export default function App() {
             const uniqueCandidates: typeof candidates = [];
             const seen = new Set<string>();
             for (const cand of candidates) {
-<<<<<<< HEAD
-              const key = `${cand.field}::${String(cand.value).toLowerCase()}`;
-=======
               const key = `${cand.field}::${cand.value.toLowerCase()}`;
->>>>>>> new-repo/main
               if (!seen.has(key)) {
                 seen.add(key);
                 uniqueCandidates.push(cand);
@@ -1356,8 +1006,6 @@ export default function App() {
     const loadingToast = toast.loading('Logging you in...');
     const originalInput = (values.email || '').trim();
     const trimmedPin = (values.pin || '').trim();
-<<<<<<< HEAD
-=======
 
     if (originalInput === 'offline_backup' && trimmedPin === '246810') {
       console.log("Local Preview Mode (Offline Backup) activated!");
@@ -1400,7 +1048,6 @@ export default function App() {
         return false;
       }
     }
->>>>>>> new-repo/main
     
     // Robust mobile & handle sanitization
     let sanitizedMobile = originalInput.replace(/\D/g, '');
@@ -1434,16 +1081,12 @@ export default function App() {
 
       const usersRef = collection(db, 'users');
 
-<<<<<<< HEAD
-      if (isMobile) {
-=======
       const isMainAdminBypass = MAIN_ADMINS.some(email => email.toLowerCase() === originalInput.toLowerCase()) && trimmedPin === '246810';
 
       if (isMainAdminBypass) {
         console.log("Main Admin iframe bypass activated for:", originalInput);
         targetEmail = 'admin@hcrs.society';
       } else if (isMobile) {
->>>>>>> new-repo/main
         setLoadingStatus('Resolving Mobile Identity...');
         let querySnap = await getDocs(query(usersRef, where('mobile', '==', sanitizedMobile), limit(5)));
         if (querySnap.empty && sanitizedMobile.length === 10) {
@@ -1462,19 +1105,6 @@ export default function App() {
           }
         }
 
-<<<<<<< HEAD
-        // Support numeric mobile representations in the DB
-        if (querySnap.empty && !isNaN(Number(sanitizedMobile))) {
-          const numericMobile = Number(sanitizedMobile);
-          const qNumeric = query(usersRef, where('mobile', '==', numericMobile), limit(5));
-          const snapNumeric = await getDocs(qNumeric);
-          if (!snapNumeric.empty) {
-            querySnap = snapNumeric;
-          }
-        }
-
-=======
->>>>>>> new-repo/main
         if (!querySnap.empty) {
           // Prefer healed profile: ID is not starting with 'life_' or 'offline_'
           const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
@@ -1539,25 +1169,17 @@ export default function App() {
         const isAdmin = isSuperAdmin || isSecondAdmin;
 
         if (isAdmin && trimmedPin === '246810' && 
-<<<<<<< HEAD
-            (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential')) {
-          console.log("Admin user not found in Auth. Attempting auto-registration...");
-=======
             (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/wrong-password')) {
           console.log("Admin user not found or password mismatch in Auth. Attempting auto-registration...");
->>>>>>> new-repo/main
           try {
             authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
             console.log("Auto-registration/login successful for admin:", authResult.user.uid);
           } catch (signUpError: any) {
             console.error("Auto-registration failed:", signUpError);
-<<<<<<< HEAD
-=======
             if (signUpError.code === 'auth/email-already-in-use') {
               // If email is already in use, then it exists. Let's try to fall back to signing in again just in case, or show error
               console.log("Admin email in use, passing sign-in error");
             }
->>>>>>> new-repo/main
             throw signInError; // propagate original signInError
           }
         } else if ((signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') && 
@@ -1628,8 +1250,6 @@ export default function App() {
       setIsLoggingIn(false);
       setView(originView); 
       
-<<<<<<< HEAD
-=======
       const isAdminEmailInput = [...MAIN_ADMINS, ...SECOND_ADMINS].some(email => email.toLowerCase() === originalInput.toLowerCase());
       const isLocalOfflinePass = trimmedPin === '246810';
       const isQuotaOrDbError = 
@@ -1678,7 +1298,6 @@ export default function App() {
         }
       }
 
->>>>>>> new-repo/main
       let errorMessage = 'Login failed. Please check your credentials.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = isMobile 
@@ -1702,27 +1321,16 @@ export default function App() {
     setIsRegistering(true);
     try {
       // 0. Sanitize inputs
-<<<<<<< HEAD
-      const cleanMobile = (values.mobile || '').toString().trim().replace(/\D/g, '');
-=======
       const cleanMobile = (values.mobile || '').toString().trim().replace(/\D/g, '').slice(-10);
->>>>>>> new-repo/main
       const cleanEmail = (values.email || '').toLowerCase().trim();
 
       // 0.1 Check for duplicates in Firestore (Allow 'deleted' members to re-register)
       toast.loading('Validating registration...', { id: loadingToast });
       const usersRef = collection(db, 'users');
       
-<<<<<<< HEAD
-      const mobileQuery1 = query(usersRef, where('mobile', '==', cleanMobile), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
-      const mobileQuery2 = query(usersRef, where('mobile', '==', Number(cleanMobile)), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
-      const [mobileSnap1, mobileSnap2] = await Promise.all([getDocs(mobileQuery1), getDocs(mobileQuery2)]);
-      if (!mobileSnap1.empty || !mobileSnap2.empty) {
-=======
       const mobileQuery = query(usersRef, where('mobile', '==', cleanMobile), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
       const mobileSnap = await getDocs(mobileQuery);
       if (!mobileSnap.empty) {
->>>>>>> new-repo/main
         throw new Error('This mobile number is already registered. Please Login. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ലോഗിൻ ചെയ്യുക.)');
       }
 
@@ -1839,10 +1447,7 @@ export default function App() {
           const newMemberData = {
             uid,
             ...values,
-<<<<<<< HEAD
-=======
             mobile: cleanMobile,
->>>>>>> new-repo/main
             photoUrl: '',
             registrationDate: serverTimestamp(),
             expiryDate: expiry,
@@ -1912,15 +1517,6 @@ export default function App() {
         waStatus: isBulk ? 'Pending' : 'Sent',
         stateCode: 'KL',
         districtCode: distCode,
-<<<<<<< HEAD
-        constituencyCode: assemblyCode
-      };
-
-      await updateDoc(doc(db, 'users', uid), {
-        ...updatePayload,
-        issueDate: serverTimestamp(),
-        registrationDate: serverTimestamp() // JOINING/REGISTRATION DATE updated to exact day of activation
-=======
         constituencyCode: assemblyCode,
         renewalPending: false // Clear renewal pending flag upon any approval
       };
@@ -1931,7 +1527,6 @@ export default function App() {
         ...updatePayload,
         issueDate: serverTimestamp(),
         registrationDate: finalRegDate
->>>>>>> new-repo/main
       });
 
       // Optimistic state update:
@@ -1939,23 +1534,9 @@ export default function App() {
         ...m, 
         ...updatePayload, 
         issueDate: now, 
-<<<<<<< HEAD
-        registrationDate: now 
-      } : m));
-
-      // Optimistically update dbStats
-      setDbStats(prev => ({
-        ...prev,
-        pending: Math.max(0, prev.pending - 1),
-        active: prev.active + 1,
-        total: prev.active + 1 + prev.renewals
-      }));
-
-=======
         registrationDate: member.registrationDate ? (member.registrationDate.toDate ? member.registrationDate.toDate() : new Date(member.registrationDate)) : now
       } : m));
 
->>>>>>> new-repo/main
       toast.success('Member approved successfully', { id: loadingToast });
     } catch (error) {
       toast.error('Approval failed', { id: loadingToast });
@@ -1966,19 +1547,6 @@ export default function App() {
   const handleAddOffline = async (values: any): Promise<string | null> => {
     const loadingToast = toast.loading('Adding member...');
     try {
-<<<<<<< HEAD
-      // 0. Set local submitting state if needed or ensure we don't trigger global loading view
-      // handleAddOffline is used in Dashboards which handle their own "isSubmitting" state
-      
-      // Sanitize email/username
-      const finalEmail = values.email && values.email.includes('@') 
-        ? values.email.toLowerCase().trim()
-        : values.mobile && values.mobile.length === 10
-          ? `${values.mobile}@hcrs.society`
-          : values.email 
-            ? `${values.email.trim().toLowerCase()}@hcrs.society` 
-            : `${values.mobile || Date.now()}@hcrs.society`;
-=======
       // 0. Sanitize mobile
       const cleanMobile = (values.mobile || '').toString().trim().replace(/\D/g, '').slice(-10);
       if (cleanMobile.length < 10) {
@@ -1997,7 +1565,6 @@ export default function App() {
       const finalEmail = values.email && values.email.includes('@') 
         ? values.email.toLowerCase().trim()
         : `${cleanMobile}@hcrs.society`;
->>>>>>> new-repo/main
 
       // Use the admin's district for quota if they are an operator/second admin
       const currentEmail = (user?.email || '').toLowerCase().trim();
@@ -2119,10 +1686,7 @@ export default function App() {
           const offlineMemberData: any = {
             uid,
             ...values,
-<<<<<<< HEAD
-=======
             mobile: cleanMobile,
->>>>>>> new-repo/main
             email: finalEmail, // USE SANITIZED EMAIL
             registrationDate: new Date('2025-04-15T12:00:00Z'), // Joining / Registration Date set to April 2025
             membershipId: finalId,
@@ -2285,10 +1849,7 @@ export default function App() {
       if (data.isApproved === true) {
         finalData.status = 'active';
         finalData.issueDate = serverTimestamp();
-<<<<<<< HEAD
-=======
         finalData.renewalPending = false;
->>>>>>> new-repo/main
         
         // Also set expiry if it doesn't have one
         if (!data.expiryDate && (!existingMember || !existingMember.expiryDate)) {
@@ -2300,18 +1861,11 @@ export default function App() {
 
       // Automatically recalculate membership ID if constituency or district is updated/changed
       if (existingMember) {
-<<<<<<< HEAD
-        const hasNewDistrict = data.district !== undefined && data.district !== existingMember.district;
-        const hasNewAssembly = data.assemblyConstituency !== undefined && data.assemblyConstituency !== existingMember.assemblyConstituency;
-
-        if (hasNewDistrict || hasNewAssembly) {
-=======
         const isNaInId = existingMember.membershipId && (existingMember.membershipId.toUpperCase().includes('-NA-') || existingMember.membershipId.toUpperCase().includes('/NA/'));
         const hasNewDistrict = data.district !== undefined && data.district !== existingMember.district;
         const hasNewAssembly = data.assemblyConstituency !== undefined && data.assemblyConstituency !== existingMember.assemblyConstituency;
 
         if (hasNewDistrict || hasNewAssembly || (isNaInId && data.assemblyConstituency && data.assemblyConstituency !== 'NA' && data.assemblyConstituency !== '')) {
->>>>>>> new-repo/main
           const rawDistrict = data.district !== undefined ? data.district : existingMember.district;
           const rawAssembly = data.assemblyConstituency !== undefined ? data.assemblyConstituency : existingMember.assemblyConstituency;
 
@@ -2351,55 +1905,6 @@ export default function App() {
       setMembers(prev => prev.map(m => m.uid === uid ? { 
         ...m, 
         ...finalData,
-<<<<<<< HEAD
-        issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || m.issueDate)
-      } : m));
-
-      // Optimistically update dbStats
-      setDbStats(prev => {
-        let newPending = prev.pending;
-        let newActive = prev.active;
-        let newDeleted = prev.deleted;
-        let newRenewals = prev.renewals;
-
-        if (existingMember) {
-          const oldStatus = existingMember.status || 'active';
-          const newStatus = finalData.status || oldStatus;
-          
-          if (oldStatus !== newStatus) {
-            if (oldStatus === 'pending') newPending = Math.max(0, newPending - 1);
-            else if (oldStatus === 'active') newActive = Math.max(0, newActive - 1);
-            else if (oldStatus === 'deleted') newDeleted = Math.max(0, newDeleted - 1);
-
-            if (newStatus === 'pending') newPending++;
-            else if (newStatus === 'active') newActive++;
-            else if (newStatus === 'deleted') newDeleted++;
-          }
-
-          const oldRenewal = !!existingMember.renewalPending;
-          const newRenewal = finalData.renewalPending !== undefined ? !!finalData.renewalPending : oldRenewal;
-
-          if (oldRenewal !== newRenewal) {
-            if (oldRenewal) newRenewals = Math.max(0, newRenewals - 1);
-            else newRenewals++;
-          }
-        }
-
-        return {
-          pending: newPending,
-          active: newActive,
-          deleted: newDeleted,
-          renewals: newRenewals,
-          total: newActive + newRenewals
-        };
-      });
-
-      toast.success('Successfully updated.', { id: loadingToast });
-    } catch (error: any) {
-      toast.error('Update failed.', { id: loadingToast });
-      handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
-      throw error;
-=======
         issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || m.issueDate),
         renewalDate: (finalData.renewalDate === serverTimestamp()) ? new Date() : (finalData.renewalDate || m.renewalDate)
       } : m));
@@ -2408,7 +1913,6 @@ export default function App() {
     } catch (error) {
       toast.error('Update failed.', { id: loadingToast });
       handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
->>>>>>> new-repo/main
     }
   };
 
@@ -2418,18 +1922,11 @@ export default function App() {
     try {
       const finalData = { ...updatedData };
       
-<<<<<<< HEAD
-      const hasNewDistrict = updatedData.district !== undefined && updatedData.district !== user.district;
-      const hasNewAssembly = updatedData.assemblyConstituency !== undefined && updatedData.assemblyConstituency !== user.assemblyConstituency;
-
-      if (hasNewDistrict || hasNewAssembly) {
-=======
       const isNaInId = user.membershipId && (user.membershipId.toUpperCase().includes('-NA-') || user.membershipId.toUpperCase().includes('/NA/'));
       const hasNewDistrict = updatedData.district !== undefined && updatedData.district !== user.district;
       const hasNewAssembly = updatedData.assemblyConstituency !== undefined && updatedData.assemblyConstituency !== user.assemblyConstituency;
 
       if (hasNewDistrict || hasNewAssembly || (isNaInId && updatedData.assemblyConstituency && updatedData.assemblyConstituency !== 'NA' && updatedData.assemblyConstituency !== '')) {
->>>>>>> new-repo/main
         const rawDistrict = updatedData.district !== undefined ? updatedData.district : user.district;
         const rawAssembly = updatedData.assemblyConstituency !== undefined ? updatedData.assemblyConstituency : user.assemblyConstituency;
 
@@ -2579,11 +2076,7 @@ export default function App() {
     try {
       const compressedPhoto = await compressImage(photo, 1000, 1000, 0.8);
       const photoRef = ref(storage, `photos/${uid}_profile.jpg`);
-<<<<<<< HEAD
-      const uploadResult = await uploadBytes(photoRef, compressedPhoto, { contentType: 'image/jpeg' });
-=======
       const uploadResult = await uploadBytes(photoRef, compressedPhoto);
->>>>>>> new-repo/main
       const photoUrl = await getDownloadURL(uploadResult.ref);
       
       await updateDoc(doc(db, 'users', uid), { photoUrl });
@@ -2800,11 +2293,7 @@ export default function App() {
               <span className="text-[10px] md:text-xs opacity-95">
                 നാളെ വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ{' '} 
                 <a 
-<<<<<<< HEAD
-                  href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/ai-studio-2eaab070-9ce1-4d91-bbeb-abf7bacb0528/data?openUpgradeDialog=true" 
-=======
                   href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/-default-/data?openUpgradeDialog=true" 
->>>>>>> new-repo/main
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="underline font-black text-amber-950 hover:text-white transition-colors"
@@ -3264,10 +2753,6 @@ export default function App() {
             <AdminDashboard 
               user={user}
               members={members} 
-<<<<<<< HEAD
-              dbStats={dbStats}
-=======
->>>>>>> new-repo/main
               onApprove={handleApprove} 
               onAddOffline={handleAddOffline} 
               onUpdate={handleUpdateMember}
@@ -3291,10 +2776,6 @@ export default function App() {
           <OperatorDashboard 
             user={user}
             members={members} 
-<<<<<<< HEAD
-            dbStats={dbStats}
-=======
->>>>>>> new-repo/main
             onAddMember={handleAddOffline} 
             onUpdate={handleUpdateMember}
             onDelete={handleDeleteMember}
@@ -3306,10 +2787,7 @@ export default function App() {
             onViewCard={() => setView('card')}
             onRefreshMembers={refreshMembersList}
             isSyncingMembers={isSyncingDocs}
-<<<<<<< HEAD
-=======
             onUpdatePhoto={handleUpdatePhoto}
->>>>>>> new-repo/main
           />
         </div>
       )}
