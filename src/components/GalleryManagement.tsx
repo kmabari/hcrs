@@ -256,11 +256,7 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
         // 2. Upload to Firebase Storage sandbox
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 6)}_${item.file.name}`;
         const storageRef = ref(storage, `gallery/${fileName}`);
-<<<<<<< HEAD
-        const uploadResult = await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-=======
         const uploadResult = await uploadBytes(storageRef, compressed);
->>>>>>> new-repo/main
         const url = await getDownloadURL(uploadResult.ref);
 
         // 3. Add record to Firestore
