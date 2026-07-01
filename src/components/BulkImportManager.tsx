@@ -55,44 +55,9 @@ interface BulkImportProps {
   onRefresh: () => void;
 }
 
-<<<<<<< HEAD
-interface GoogleImportLink {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-  createdAt: string;
-  lastImportedCount?: number;
-  totalImportedCount?: number;
-  lastImportDate?: string;
-  status?: 'success' | 'error' | 'pending' | 'none';
-}
-
-export default function BulkImportManager({ members, adminUser, onRefresh }: BulkImportProps) {
-  // Navigation: "import" or "history" or "google_drive"
-  const [panelTab, setPanelTab] = useState<'import' | 'history' | 'google_drive'>('import');
-
-  // Google Sheets link states
-  const [googleLinks, setGoogleLinks] = useState<GoogleImportLink[]>([]);
-  const [isLoadingLinks, setIsLoadingLinks] = useState<boolean>(false);
-  const [activeImportLinkId, setActiveImportLinkId] = useState<string | null>(null);
-  const [isFetchingSheet, setIsFetchingSheet] = useState<boolean>(false);
-  const [corsErrorLink, setCorsErrorLink] = useState<GoogleImportLink | null>(null);
-
-  // Direct Google Sheets fetch state for Step 1
-  const [directSheetUrl, setDirectSheetUrl] = useState<string>('');
-  const [isFetchingDirectSheet, setIsFetchingDirectSheet] = useState<boolean>(false);
-
-  // Form states for registering link
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
-  const [newLinkDesc, setNewLinkDesc] = useState('');
-  const [isSubmittingLink, setIsSubmittingLink] = useState(false);
-=======
 export default function BulkImportManager({ members, adminUser, onRefresh }: BulkImportProps) {
   // Navigation: "import" or "history"
   const [panelTab, setPanelTab] = useState<'import' | 'history'>('import');
->>>>>>> new-repo/main
 
   // Step state: 1: Upload, 2: Map columns, 3: Validate, 4: Live progress, 5: Summary Report
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -172,183 +137,9 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     }
   };
 
-<<<<<<< HEAD
-  const fetchGoogleLinks = async () => {
-    setIsLoadingLinks(true);
-    try {
-      const q = query(collection(db, 'google_import_links'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      const links: GoogleImportLink[] = [];
-      snap.forEach(docSnap => {
-        links.push({ id: docSnap.id, ...docSnap.data() } as GoogleImportLink);
-      });
-      setGoogleLinks(links);
-    } catch (err) {
-      console.error("Error loading google import links:", err);
-    } finally {
-      setIsLoadingLinks(false);
-    }
-  };
-
-  const handleAddLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLinkName.trim() || !newLinkUrl.trim()) {
-      toast.error("தயവുசெய்து പേരും ലിങ്കും നൽകുക (Please fill in name and URL)");
-      return;
-    }
-
-    setIsSubmittingLink(true);
-    try {
-      const id = `glink_${Date.now()}`;
-      const newLink: GoogleImportLink = {
-        id,
-        name: newLinkName.trim(),
-        url: newLinkUrl.trim(),
-        description: newLinkDesc.trim(),
-        createdAt: new Date().toISOString(),
-        lastImportedCount: 0,
-        totalImportedCount: 0,
-        lastImportDate: '',
-        status: 'none'
-      };
-
-      await setDoc(doc(db, 'google_import_links', id), newLink);
-      toast.success("ഗൂഗിൾ ഷീറ്റ്സ് ലിങ്ക് വിജയകരമായി രജിസ്റ്റർ ചെയ്തു! (Google Sheets link registered!)");
-      setNewLinkName('');
-      setNewLinkUrl('');
-      setNewLinkDesc('');
-      fetchGoogleLinks();
-    } catch (err: any) {
-      console.error("Error adding link:", err);
-      toast.error("Failed to register link: " + err.message);
-    } finally {
-      setIsSubmittingLink(false);
-    }
-  };
-
-  const handleDeleteLink = async (id: string) => {
-    if (!window.confirm("ഈ രജിസ്റ്റർ ചെയ്ത ലിങ്ക് ഡിലീറ്റ് ചെയ്യണമെന്നുറപ്പാണോ? ഇത് മെമ്പർ ഡാറ്റയെ ബാധിക്കില്ല. (Are you sure you want to delete this link? It won't affect members.)")) {
-      return;
-    }
-
-    try {
-      await deleteDoc(doc(db, 'google_import_links', id));
-      toast.success("ലിങ്ക് വിജയകരമായി ഒഴിവാക്കി (Link deleted)");
-      fetchGoogleLinks();
-    } catch (err: any) {
-      console.error("Error deleting link:", err);
-      toast.error("Failed to delete link.");
-    }
-  };
-
-  const getGoogleSheetsExportUrl = (url: string): string | null => {
-    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (match && match[1]) {
-      return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=xlsx`;
-    }
-    return null;
-  };
-
-  const handleFetchGoogleSheet = async (link: GoogleImportLink) => {
-    setIsFetchingSheet(true);
-    setCorsErrorLink(null);
-    const exportUrl = getGoogleSheetsExportUrl(link.url);
-    
-    if (!exportUrl) {
-      toast.error("സാധുവായ ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് കണ്ടെത്താനായില്ല. (Could not parse valid Google Sheets ID)");
-      setIsFetchingSheet(false);
-      return;
-    }
-
-    const loadingToast = toast.loading("ഗൂഗിൾ ഷീറ്റിൽ നിന്നും വിവരങ്ങൾ ശേഖരിക്കുന്നു... (Fetching Sheet...)");
-    try {
-      // Fetch via server proxy to completely bypass CORS restrictions
-      const response = await fetch("/api/proxy-sheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: exportUrl })
-      });
-      if (!response.ok) {
-        throw new Error(`Google Sheets responded with HTTP status ${response.status}`);
-      }
-      const buffer = await response.arrayBuffer();
-      toast.dismiss(loadingToast);
-      toast.success("വിവരങ്ങൾ വിജയകരമായി ശേഖരിച്ചു! കോളം മാപ്പിംഗിലേക്ക് മാറ്റുന്നു... (Sheet Loaded!)");
-      
-      setActiveImportLinkId(link.id);
-      setFileName(`Google Sheet: ${link.name}`);
-      setZipPhotos(new Map());
-      
-      parseSpreadsheetBuffer(buffer, link.name);
-      setPanelTab('import');
-      setStep(2);
-    } catch (err: any) {
-      console.error("CORS proxy or Google Sheets fetch issue:", err);
-      toast.dismiss(loadingToast);
-      setCorsErrorLink(link);
-      toast.warning("Google Sheet കണക്ഷൻ തടസ്സപ്പെട്ടു (CORS restriction). ദയവായി താഴെയുള്ള ഡൗൺലോഡ് സഹായി ഉപയോഗിക്കുക.");
-    } finally {
-      setIsFetchingSheet(false);
-    }
-  };
-
-  const handleFetchDirectSheet = async () => {
-    if (!directSheetUrl) {
-      toast.error("ദയവായി ഒരു സാധുവായ ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് നൽകുക. (Please enter a valid Google Sheets URL.)");
-      return;
-    }
-    
-    setIsFetchingDirectSheet(true);
-    const exportUrl = getGoogleSheetsExportUrl(directSheetUrl);
-    
-    if (!exportUrl) {
-      toast.error("സാധുവായ ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് കണ്ടെത്താനായില്ല. (Could not parse valid Google Sheets ID from the link.)");
-      setIsFetchingDirectSheet(false);
-      return;
-    }
-
-    const loadingToast = toast.loading("ഗൂഗിൾ ഷീറ്റിൽ നിന്നും വിവരങ്ങൾ ശേഖരിക്കുന്നു... (Fetching Sheet...)");
-    try {
-      // Fetch via server proxy to completely bypass CORS restrictions
-      const response = await fetch("/api/proxy-sheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: exportUrl })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Google Sheets responded with HTTP status ${response.status}`);
-      }
-      
-      const buffer = await response.arrayBuffer();
-      toast.dismiss(loadingToast);
-      toast.success("വിവരങ്ങൾ വിജയകരമായി ശേഖരിച്ചു! കോളം മാപ്പിംഗിലേക്ക് മാറ്റുന്നു... (Google Sheet Loaded!)");
-      
-      setActiveImportLinkId(null); // Direct import has no registered link id
-      setFileName(`Google Sheet Link: ${directSheetUrl.substring(0, 45)}...`);
-      setZipPhotos(new Map());
-      
-      parseSpreadsheetBuffer(buffer, "Direct Google Sheet");
-      setStep(2);
-    } catch (err: any) {
-      console.error("Direct Google Sheets fetch issue:", err);
-      toast.dismiss(loadingToast);
-      toast.error("ഷീറ്റ് വിവരങ്ങൾ ശേഖരിക്കാൻ കഴിഞ്ഞില്ല. ഗൂഗിൾ ഷീറ്റിൽ 'Anyone with the link can view' എന്ന് നൽകിയിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുക. (Failed to load Google Sheet. Please check sharing settings.)");
-    } finally {
-      setIsFetchingDirectSheet(false);
-    }
-  };
-
   useEffect(() => {
     if (panelTab === 'history') {
       fetchMigrationLogs();
-    } else if (panelTab === 'google_drive') {
-      fetchGoogleLinks();
-=======
-  useEffect(() => {
-    if (panelTab === 'history') {
-      fetchMigrationLogs();
->>>>>>> new-repo/main
     }
   }, [panelTab]);
 
@@ -605,10 +396,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     const existingMobiles = new Set<string>();
     const existingIds = new Set<string>();
     const membersByMobile = new Map<string, UserProfile>();
-<<<<<<< HEAD
-    const membersById = new Map<string, UserProfile>();
-=======
->>>>>>> new-repo/main
 
     members.forEach(m => {
       if (m.mobile) {
@@ -617,23 +404,10 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         membersByMobile.set(cleanMob, m);
       }
       if (m.membershipId) {
-<<<<<<< HEAD
-        const cleanId = m.membershipId.trim().toUpperCase();
-        existingIds.add(cleanId);
-        membersById.set(cleanId, m);
-      }
-    });
-
-    // Tracking for internal duplicates inside the uploaded spreadsheet/sheet itself
-    const internalMobiles = new Set<string>();
-    const internalIds = new Set<string>();
-
-=======
         existingIds.add(m.membershipId.trim().toUpperCase());
       }
     });
 
->>>>>>> new-repo/main
     const ready: any[] = [];
     const dups: any[] = [];
     const inv: any[] = [];
@@ -758,28 +532,11 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         }
       }
 
-<<<<<<< HEAD
-      // Determine duplicate matching state (both database and internal to this sheet)
-      const isDbMobileDup = existingMobiles.has(mobileClean);
-      const isInternalMobileDup = internalMobiles.has(mobileClean);
-      const isMobileDup = isDbMobileDup || isInternalMobileDup;
-
-      const cleanOldId = rawOldId ? rawOldId.toString().trim().toUpperCase() : '';
-      const isDbIdDup = cleanOldId && existingIds.has(cleanOldId);
-      const isInternalIdDup = cleanOldId && internalIds.has(cleanOldId);
-      const isIdDup = isDbIdDup || isInternalIdDup;
-
-      const isDuplicate = isMobileDup || isIdDup;
-
-      const existingProfile = (isDbMobileDup ? membersByMobile.get(mobileClean) : null) || (isDbIdDup ? membersById.get(cleanOldId) : null);
-
-=======
       // Determine existing duplicate matching state
       const isMobileDup = existingMobiles.has(mobileClean);
       const isIdDup = rawOldId && existingIds.has(rawOldId.toString().trim().toUpperCase());
       const isDuplicate = isMobileDup || isIdDup;
 
->>>>>>> new-repo/main
       const record = {
         rowNum: rowIndex + 1,
         name,
@@ -797,28 +554,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         membership_type: 'ADHOC_MEMBER', // Forced to ADHOC_MEMBER to satisfy security rules
         status: 'active',
         mismatched: districtMismatch,
-<<<<<<< HEAD
-        mismatchMsg,
-        existingProfile
-      };
-
-      if (isDuplicate) {
-        let reason = 'Duplicate';
-        if (isDbMobileDup) reason = 'Mobile Number already exists in system';
-        else if (isInternalMobileDup) reason = 'Mobile Number duplicated inside this sheet';
-        else if (isDbIdDup) reason = 'Membership ID already exists in system';
-        else if (isInternalIdDup) reason = 'Membership ID duplicated inside this sheet';
-
-        dups.push({
-          ...record,
-          duplicateReason: reason
-        });
-      } else {
-        internalMobiles.add(mobileClean);
-        if (cleanOldId) {
-          internalIds.add(cleanOldId);
-        }
-=======
         mismatchMsg
       };
 
@@ -829,7 +564,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           existingProfile: isMobileDup ? membersByMobile.get(mobileClean) : null
         });
       } else {
->>>>>>> new-repo/main
         ready.push(record);
       }
 
@@ -847,26 +581,16 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
   // Perform bulk transactional seed mapping to firebase firestore
   const beginBulkDataMigration = async () => {
-<<<<<<< HEAD
-    // Sort all records chronologically by row number so they process in order
-    const listToProcess = [...validatedRecords, ...duplicateRecords].sort((a, b) => a.rowNum - b.rowNum);
-=======
     const listToProcess = [...validatedRecords];
     if (duplicateMode === 'update') {
       listToProcess.push(...duplicateRecords);
     }
->>>>>>> new-repo/main
 
     if (listToProcess.length === 0) {
       toast.error("No valid records prepared to seed.");
       return;
     }
 
-<<<<<<< HEAD
-    // Set step to 4 to show the live progression queue with logging & monitoring
-    setStep(4);
-=======
->>>>>>> new-repo/main
     setIsImporting(true);
     setIsPaused(false);
     setCurrentProgressIndex(0);
@@ -904,23 +628,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
       setCurrentProgressIndex(i);
       const row = listToProcess[i];
-<<<<<<< HEAD
-
-      // If this is a duplicate record and the admin chose to skip duplicates
-      if (row.duplicateReason && duplicateMode === 'skip') {
-        skippedCount++;
-        activeLogs.unshift({
-          type: 'skip',
-          message: `[ആൾറെഡി വെബ്സൈറ്റിൽ ഉള്ളത് - SKIPPED] #${row.rowNum}: ${row.name} (${row.mobile}) - ${row.duplicateReason} (ഇറക്കുമതി ചെയ്തില്ല)`
-        });
-        setImportLog([...activeLogs]);
-        continue;
-      }
-
-      const docUid = row.existingProfile?.uid || `hcrs_imp_${row.mobile}`;
-=======
       const docUid = `hcrs_imp_${row.mobile}`;
->>>>>>> new-repo/main
       const userRef = doc(db, 'users', docUid);
 
       try {
@@ -981,39 +689,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         };
 
         // Increment or decrement the district registration quotas accordingly
-<<<<<<< HEAD
-        if (isUpdateAction && backupData && backupData.district !== row.district) {
-          // Decrement old district quota
-          if (backupData.district) {
-            const oldQuotaRef = doc(db, 'districtQuotas', backupData.district);
-            await setDoc(oldQuotaRef, { used: increment(-1) }, { merge: true });
-          }
-          // Increment new district quota
-          const newQuotaRef = doc(db, 'districtQuotas', row.district);
-          const newQuotaSnap = await getDoc(newQuotaRef);
-          if (!newQuotaSnap.exists()) {
-            await setDoc(newQuotaRef, {
-              id: row.district,
-              districtName: DISTRICTS.find(d => d.code === row.district)?.name || row.district,
-              total: 2000,
-              used: 1
-            });
-          } else {
-            await setDoc(newQuotaRef, { used: increment(1) }, { merge: true });
-          }
-        } else if (!isUpdateAction) {
-          // Greenfield import: increment used quota for the district
-          const quotaRef = doc(db, 'districtQuotas', row.district);
-          const quotaSnap = await getDoc(quotaRef);
-          if (!quotaSnap.exists()) {
-            await setDoc(quotaRef, {
-              id: row.district,
-              districtName: DISTRICTS.find(d => d.code === row.district)?.name || row.district,
-              total: 2000,
-              used: 1
-            });
-          } else {
-=======
         const quotaRef = doc(db, 'districtQuotas', row.district);
         const quotaSnap = await getDoc(quotaRef);
         if (!quotaSnap.exists()) {
@@ -1026,7 +701,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
         } else {
           // Increment used quota if newly created
           if (!isUpdateAction) {
->>>>>>> new-repo/main
             await setDoc(quotaRef, { used: increment(1) }, { merge: true });
           }
         }
@@ -1069,13 +743,8 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
       fileName: fileName,
       importedCount: successCount,
       updatedCount: upCount,
-<<<<<<< HEAD
-      skippedCount: skippedCount,
-      totalRecords: successCount + upCount + skippedCount + failCount,
-=======
       skippedCount: duplicateMode === 'skip' ? duplicateRecords.length : 0,
       totalRecords: successCount + upCount + failCount,
->>>>>>> new-repo/main
       importedUids: importedUids,
       updatedBackup: updatedBackup,
       rolled_back: false
@@ -1083,38 +752,11 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
     await setDoc(doc(db, 'migration_logs', logId), logData);
 
-<<<<<<< HEAD
-    if (activeImportLinkId) {
-      try {
-        const linkRef = doc(db, 'google_import_links', activeImportLinkId);
-        const linkSnap = await getDoc(linkRef);
-        let existingTotal = 0;
-        if (linkSnap.exists()) {
-          existingTotal = linkSnap.data().totalImportedCount || 0;
-        }
-        await setDoc(linkRef, {
-          lastImportDate: new Date().toISOString(),
-          lastImportedCount: successCount + upCount,
-          totalImportedCount: existingTotal + successCount + upCount,
-          status: 'success'
-        }, { merge: true });
-        setActiveImportLinkId(null); // Clear active import link ID
-      } catch (err) {
-        console.error("Failed to update Google import link stats:", err);
-      }
-    }
-
-=======
->>>>>>> new-repo/main
     setImportStats({
       totalRows: listToProcess.length,
       imported: successCount,
       updated: upCount,
-<<<<<<< HEAD
-      skipped: skippedCount,
-=======
       skipped: duplicateMode === 'skip' ? duplicateRecords.length : 0,
->>>>>>> new-repo/main
       failed: failCount,
       timestamp: new Date()
     });
@@ -1122,11 +764,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
     setIsImporting(false);
     onRefresh();
     setStep(5);
-<<<<<<< HEAD
-    toast.success(`Migration completed. ${successCount} Created, ${upCount} Refreshed, ${skippedCount} Skipped, ${failCount} Failed.`);
-=======
     toast.success(`Migration completed. ${successCount} Created, ${upCount} Refreshed, ${failCount} Failed.`);
->>>>>>> new-repo/main
   };
 
   // Rollback/Undo operation to restore preceding database state
@@ -1257,11 +895,7 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
       
-<<<<<<< HEAD
-      {/* Sub tabs: Importer Panel vs Migration logs vs Google Drive */}
-=======
       {/* Sub tabs: Importer Panel vs Migration logs */}
->>>>>>> new-repo/main
       <div className="flex border-b border-slate-200">
         <button
           onClick={() => setPanelTab('import')}
@@ -1275,20 +909,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           Master Member Importer
         </button>
         <button
-<<<<<<< HEAD
-          onClick={() => setPanelTab('google_drive')}
-          className={`pb-3.5 px-6 font-bold text-xs uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all ${
-            panelTab === 'google_drive' 
-              ? 'border-brand-blue text-brand-blue font-black' 
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          Google Sheets & Drive Integrator
-        </button>
-        <button
-=======
->>>>>>> new-repo/main
           onClick={() => setPanelTab('history')}
           className={`pb-3.5 px-6 font-bold text-xs uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all ${
             panelTab === 'history' 
@@ -1344,43 +964,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </p>
               </div>
 
-<<<<<<< HEAD
-              {/* Direct Paste Google Sheet Link Form */}
-              <div className="bg-emerald-50 border-2 border-emerald-100 p-5 rounded-2xl space-y-4 animate-in fade-in duration-300">
-                <div className="flex items-center gap-3">
-                  <div className="bg-emerald-100 p-2.5 rounded-xl text-emerald-700 shrink-0">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
-                  <div className="text-left space-y-0.5">
-                    <h4 className="text-xs font-black text-emerald-850 uppercase tracking-tight">ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് നേരിട്ട് ഇംപോർട്ട് ചെയ്യുക (Directly Import Google Sheet Link)</h4>
-                    <p className="text-[10px] text-emerald-600 font-bold leading-none">Paste any Google Sheet URL to instantly parse and extract members</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="url"
-                    placeholder="ഉദാ: https://docs.google.com/spreadsheets/d/..."
-                    value={directSheetUrl}
-                    onChange={(e) => setDirectSheetUrl(e.target.value)}
-                    className="flex-1 h-11 px-3.5 rounded-xl border border-emerald-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white font-semibold font-mono text-[11px]"
-                  />
-                  <Button
-                    onClick={handleFetchDirectSheet}
-                    disabled={isFetchingDirectSheet}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[11px] tracking-wider rounded-xl h-11 px-5 flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer shadow-sm"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isFetchingDirectSheet ? 'animate-spin' : ''}`} />
-                    {isFetchingDirectSheet ? 'ഷീറ്റ് ലോഡ് ചെയ്യുന്നു...' : 'ലിങ്ക് കണക്ട് ചെയ്യുക ✓'}
-                  </Button>
-                </div>
-                <div className="text-[10px] text-emerald-700/85 font-semibold leading-relaxed">
-                  💡 <strong>പ്രധാനം:</strong> ഗൂഗിൾ ഷീറ്റിൽ ഷെയർ ഓപ്ഷനിൽ പോയി <strong>&quot;Anyone with the link can view&quot;</strong> എന്ന് നൽകാൻ മറക്കരുത്. പ്രൊക്സി കണക്ഷൻ ഉള്ളതിനാൽ ബ്രൗസർ തടസ്സങ്ങൾ ഒന്നും ഉണ്ടാകില്ല!
-                </div>
-              </div>
-
-=======
->>>>>>> new-repo/main
               {availableSpreadsheets.length > 0 && (
                 <div className="p-5 border border-amber-200 bg-amber-50/20 rounded-2xl space-y-3">
                   <p className="text-xs font-bold text-amber-800 flex items-center gap-2">
@@ -1613,8 +1196,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </div>
               )}
 
-<<<<<<< HEAD
-=======
               {/* Duplicate conflict audit list */}
               {duplicateRecords.length > 0 && (
                 <div className="border border-rose-200 bg-rose-50/10 p-5 rounded-2xl space-y-3">
@@ -1656,7 +1237,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
                 </div>
               )}
 
->>>>>>> new-repo/main
               {/* Duplicate conflict options configuration */}
               <div className="space-y-3 bg-slate-50 p-6 rounded-2xl border border-slate-200">
                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Configure Duplicate Collisions Treatment:</h4>
@@ -1742,22 +1322,13 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
               {/* Progress bar */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
-<<<<<<< HEAD
-                  <span>Processed {currentProgressIndex + 1} / {validatedRecords.length + duplicateRecords.length}</span>
-                  <span>{Math.round(((currentProgressIndex + 1) / (validatedRecords.length + duplicateRecords.length)) * 100)}%</span>
-=======
                   <span>Processed {currentProgressIndex + 1} / {validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0)}</span>
                   <span>{Math.round(((currentProgressIndex + 1) / (validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0))) * 100)}%</span>
->>>>>>> new-repo/main
                 </div>
                 <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-150">
                   <div 
                     className="h-full bg-gradient-to-r from-brand-blue to-blue-500 rounded-full transition-all duration-300"
-<<<<<<< HEAD
-                    style={{ width: `${((currentProgressIndex + 1) / (validatedRecords.length + duplicateRecords.length)) * 100}%` }}
-=======
                     style={{ width: `${((currentProgressIndex + 1) / (validatedRecords.length + (duplicateMode === 'update' ? duplicateRecords.length : 0))) * 100}%` }}
->>>>>>> new-repo/main
                   />
                 </div>
               </div>
@@ -1860,243 +1431,6 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
           )}
 
         </div>
-<<<<<<< HEAD
-      ) : panelTab === 'google_drive' ? (
-        <div className="space-y-6 animate-in fade-in duration-200 text-left">
-          {/* Header Card */}
-          <Card className="p-6 border border-slate-200/60 bg-white rounded-3xl space-y-4 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600">
-                <FileSpreadsheet className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-tight">Google Sheets & Drive Integration (ഗൂഗിൾ ഷീറ്റ്സ് ലിങ്കുകൾ)</h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  ഗൂഗിൾ ഡ്രൈവിലോ ഗൂഗിൾ ഷീറ്റിലോ സൂക്ഷിച്ചിരിക്കുന്ന മെമ്പർ വിവരങ്ങളുടെ ലിങ്കുകൾ ഇവിടെ നൽകി സൂക്ഷിക്കാം. ഇതോടൊപ്പം ബൾക്ക് അപ്‌ലോഡ് ചെയ്യുന്നതിനായി ലിങ്ക് നേരിട്ട് കണക്ട് ചെയ്തു ഡാറ്റ റീഡ് ചെയ്യാനും, ഓരോ ലിങ്കിലൂടെയും എത്ര അപ്‌ലോഡുകൾ നടന്നു എന്ന് കൃത്യമായി നിരീക്ഷിക്കാനും (Monitoring) ഈ സിസ്റ്റം സഹായിക്കും.
-                </p>
-                <div className="bg-amber-50 border border-amber-200/50 p-3.5 rounded-xl text-[11px] text-amber-700 font-semibold leading-relaxed mt-2.5">
-                  ⚠️ <strong>പ്രധാന നിർദ്ദേശം:</strong> ഗൂഗിൾ ഷീറ്റുകൾ ഇംപോർട്ട് ചെയ്യുന്നതിനായി നിങ്ങളുടെ ഗൂഗിൾ ഷീറ്റിൽ ഷെയർ ഓപ്ഷനിൽ പോയി <strong>"Anyone with the link can view" (ലിങ്ക് ഉള്ള ആർക്കും കാണാം)</strong> എന്ന് സജ്ജമാക്കിയിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുക.
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left side: Add link form */}
-            <div className="lg:col-span-4 space-y-6">
-              <Card className="p-5 border border-slate-200 bg-white rounded-3xl space-y-4 shadow-sm">
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">ഷീറ്റ് ലിങ്ക് രജിസ്റ്റർ ചെയ്യാം</h4>
-                  <p className="text-[10px] text-slate-400 font-bold">Register Google Sheet Link</p>
-                </div>
-
-                <form onSubmit={handleAddLink} className="space-y-4 text-xs font-bold text-slate-600">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px]">ഷീറ്റ് ബാച്ചിന്റെ പേര് (Name)</label>
-                    <input
-                      type="text"
-                      placeholder="ഉദാ: Wayanad Renewal Batch"
-                      value={newLinkName}
-                      onChange={(e) => setNewLinkName(e.target.value)}
-                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 bg-slate-50/50 font-semibold text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px]">ഗൂഗിൾ ഷീറ്റ് ലിങ്ക് (Google Sheet URL)</label>
-                    <input
-                      type="url"
-                      placeholder="https://docs.google.com/spreadsheets/d/..."
-                      value={newLinkUrl}
-                      onChange={(e) => setNewLinkUrl(e.target.value)}
-                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 bg-slate-50/50 font-semibold font-mono text-[10.5px]"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px]">വിവരണം / നോട്ട്സ് (Optional Description)</label>
-                    <textarea
-                      placeholder="കൂടുതൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ..."
-                      value={newLinkDesc}
-                      onChange={(e) => setNewLinkDesc(e.target.value)}
-                      rows={3}
-                      className="w-full p-3.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 bg-slate-50/50 font-semibold leading-relaxed text-xs"
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmittingLink}
-                    className="w-full h-11 bg-brand-blue hover:bg-brand-blue/95 text-white font-black uppercase text-[11px] tracking-wider rounded-xl transition-all cursor-pointer"
-                  >
-                    {isSubmittingLink ? 'രജിസ്റ്റർ ചെയ്യുന്നു...' : 'ലിങ്ക് രജിസ്റ്റർ ചെയ്യുക ✓'}
-                  </Button>
-                </form>
-              </Card>
-            </div>
-
-            {/* Right side: List and Monitoring */}
-            <div className="lg:col-span-8 space-y-6">
-              <Card className="p-5 border border-slate-200 bg-white rounded-3xl space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">രജിസ്റ്റർ ചെയ്ത ലിങ്കുകളും മോണിറ്ററിംഗും</h4>
-                    <p className="text-[10px] text-slate-400 font-bold">Registered Links & Real-Time Monitoring</p>
-                  </div>
-                  <Button
-                    onClick={fetchGoogleLinks}
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-[10px] font-bold uppercase tracking-wider border-slate-200"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 mr-1 text-slate-500" /> Refresh
-                  </Button>
-                </div>
-
-                {/* CORS error block inside card if active */}
-                {corsErrorLink && (
-                  <div className="bg-rose-50 border-2 border-rose-200 p-4.5 rounded-2xl text-xs space-y-3.5 animate-in slide-in-from-top-4 duration-350 text-left">
-                    <div className="flex items-center gap-2 text-rose-700 font-extrabold uppercase text-[11px]">
-                      <AlertCircle className="w-4 h-4 text-rose-600 animate-pulse" />
-                      ബ്രൗസർ കണക്ഷൻ നിയന്ത്രണം (CORS Block Warning)
-                    </div>
-                    <p className="text-slate-600 font-semibold leading-relaxed text-[11px]">
-                      ഗൂഗിൾ സെക്യൂരിറ്റി പോളിസി കാരണം നേരിട്ട് മെമ്പർ ഡാറ്റ റീഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വിഷമിക്കേണ്ടതില്ല! ഈ 2 ലളിതമായ സ്റ്റെപ്പുകൾ ചെയ്യുക:
-                    </p>
-                    <div className="space-y-2 bg-white/70 border border-rose-200/50 p-3 rounded-xl font-semibold text-slate-700 text-[11px] leading-relaxed">
-                      <div>1. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്തു എക്സൽ ഷീറ്റ് ഡൗൺലോഡ് ചെയ്യുക (1 സെക്കൻഡ് എടുക്കും):</div>
-                      <a
-                        href={getGoogleSheetsExportUrl(corsErrorLink.url) || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase mt-1 transition-all"
-                      >
-                        <Download className="w-3.5 h-3.5" /> ഷീറ്റ് ഡൗൺലോഡ് ചെയ്യുക (Download Spreadsheet)
-                      </a>
-                    </div>
-                    <div className="space-y-1.5 font-semibold text-[11px]">
-                      <div>2. ഡൗൺലോഡ് ചെയ്ത ആ ഫയൽ താഴെയുള്ള അപ്‌ലോഡറിലേക്ക് ഡ്രോപ്പ് ചെയ്യുക:</div>
-                      <input
-                        type="file"
-                        accept=".xlsx,.xls,.csv"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setActiveImportLinkId(corsErrorLink.id);
-                          setFileName(`Google Sheet (Local Sync): ${corsErrorLink.name}`);
-                          setZipPhotos(new Map());
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            const buffer = event.target?.result as ArrayBuffer;
-                            parseSpreadsheetBuffer(buffer, file.name);
-                            setPanelTab('import');
-                            setStep(2);
-                            setCorsErrorLink(null);
-                          };
-                          reader.readAsArrayBuffer(file);
-                        }}
-                        className="block w-full text-[10.5px] text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200"
-                      />
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCorsErrorLink(null)}
-                        className="h-7 text-[9px] font-black uppercase tracking-wider text-slate-400"
-                      >
-                        ചെറുതാക്കുക (Minimize helper)
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {isLoadingLinks ? (
-                  <div className="py-12 text-center text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4 text-slate-400 animate-spin" />
-                    Loading registered links...
-                  </div>
-                ) : googleLinks.length === 0 ? (
-                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl text-center text-xs font-bold text-slate-400">
-                    രജിസ്റ്റർ ചെയ്ത ഗൂഗിൾ ഷീറ്റ് ലിങ്കുകൾ ഒന്നും കണ്ടെത്തിയില്ല.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {googleLinks.map((link) => (
-                      <div key={link.id} className="p-4 border border-slate-150 rounded-2xl bg-slate-50/40 hover:bg-slate-50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="space-y-2 text-left flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-xs text-slate-800">{link.name}</span>
-                            {link.status === 'success' && (
-                              <span className="text-[8px] bg-green-100 text-green-700 font-extrabold uppercase px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                                <CheckCircle2 className="w-2.5 h-2.5 text-green-600" /> Active
-                              </span>
-                            )}
-                            {link.status === 'none' && (
-                              <span className="text-[8px] bg-slate-100 text-slate-500 font-extrabold uppercase px-1.5 py-0.5 rounded-md">
-                                Pending Sync
-                              </span>
-                            )}
-                          </div>
-
-                          {link.description && (
-                            <p className="text-[10.5px] text-slate-500 font-medium leading-relaxed">
-                              {link.description}
-                            </p>
-                          )}
-
-                          <div className="text-[10px] text-slate-400 font-semibold truncate hover:text-slate-600 transition-all">
-                            <a href={link.url} target="_blank" rel="noreferrer" className="underline font-mono inline-flex items-center gap-1">
-                              View Google Sheet Link ↗
-                            </a>
-                          </div>
-
-                          {/* Monitoring dashboard elements */}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white p-3 rounded-xl border border-slate-150 text-[10.5px] font-extrabold mt-1">
-                            <div className="space-y-0.5">
-                              <span className="text-slate-400 text-[9px] uppercase font-bold leading-none block">Total Imported</span>
-                              <span className="text-slate-700 font-mono text-xs">{link.totalImportedCount || 0} Members</span>
-                            </div>
-                            <div className="space-y-0.5">
-                              <span className="text-slate-400 text-[9px] uppercase font-bold leading-none block">Last Sync Count</span>
-                              <span className="text-green-600 font-mono text-xs">+{link.lastImportedCount || 0}</span>
-                            </div>
-                            <div className="space-y-0.5 col-span-2 sm:col-span-1">
-                              <span className="text-slate-400 text-[9px] uppercase font-bold leading-none block">Last Sync Date</span>
-                              <span className="text-slate-600 font-mono text-xs">
-                                {link.lastImportDate ? new Date(link.lastImportDate).toLocaleDateString('en-IN') : 'Never'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap self-end md:self-center">
-                          <Button
-                            onClick={() => handleFetchGoogleSheet(link)}
-                            disabled={isFetchingSheet}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider h-10 px-4 rounded-xl flex items-center gap-1.5 transition-all select-none cursor-pointer"
-                          >
-                            <RefreshCw className={`w-3.5 h-3.5 ${isFetchingSheet ? 'animate-spin' : ''}`} /> Run Seeding & Sync
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteLink(link.id)}
-                            className="h-10 w-10 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-slate-150 transition-all cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </div>
-          </div>
-        </div>
-=======
->>>>>>> new-repo/main
       ) : (
         /* History logs and transactional recovery dashboard rollbacks */
         <Card className="p-6 border border-slate-205 bg-white rounded-3xl text-left space-y-6 animate-in fade-in duration-300">
