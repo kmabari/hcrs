@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
-<<<<<<< HEAD
-import { db, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-=======
 import { db, secondaryDb, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
->>>>>>> new-repo/main
 import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment } from 'firebase/firestore';
 import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
 import { Button } from '@/components/ui/button';
@@ -261,45 +256,6 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           // Generate Structured Membership ID: HCRS-KL-District-Constituency-Serial (4 digits)
           finalMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
           valResult += ` | [Transaction] Formulated legal structured Membership ID: ${finalMembershipId}`;
-<<<<<<< HEAD
-
-          // Write member profile doc directly inside the transaction
-          valResult += ` | [Transaction] Writing user profile document to users/${finalUid}...`;
-          const newProfile: any = {
-            uid: finalUid,
-            name: name.trim(),
-            mobile: cleanMobile,
-            email: '', // empty initially as required
-            state: state,
-            district: district,
-            assemblyConstituency: mandalam,
-            address: '',
-            pincode: '',
-            postOffice: '',
-            bloodGroup: '',
-            gender: '',
-            dob: '',
-            membershipId: finalMembershipId,
-            status: 'active', // Approved and Active instantly
-            isPaid: true,
-            isApproved: true,
-            isAdmin: false,
-            role: 'member',
-            serialNo: nextSerial,
-            registrationDate: new Date('2025-04-15T12:00:00Z'), // Manual entry defaults to join date April 2025
-            expiryDate: new Date('2026-04-15T12:00:00Z'), // Expiry set to April 2026 so they require renewal
-            registeredBy: adminUser?.uid || 'district_admin',
-            registeredByName: adminUser?.name || 'District Admin',
-            waStatus: 'Pending',
-            stateCode: 'KL',
-            districtCode: getDistrictCode(district).toUpperCase(),
-            constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
-            isQuotaCounted: countsTowardQuota
-          };
-          transaction.set(userRef, newProfile);
-        });
-        valResult += ' | runTransaction completed successfully in the cloud.';
-=======
         });
         valResult += ' | runTransaction completed successfully in the cloud.';
 
@@ -348,7 +304,6 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         // Sign out secondary session securely
         await signOut(secondaryAuth);
         valResult += ' | [SecondarySession] Secondary session clean signed out.';
->>>>>>> new-repo/main
       } catch (error: any) {
         valResult += ` | runTransaction FAILED! Direct exception details: ${error?.message || error}`;
         const errMsg = error?.message || String(error);
