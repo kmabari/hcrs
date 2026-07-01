@@ -8,25 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { 
   Users, Save, Trash2, Plus, RefreshCw, X, AlertTriangle, Edit3, 
-<<<<<<< HEAD
-  Crown, MapPin, Grid, Layers, ArrowUpDown, ChevronUp, ChevronDown,
-  Upload, Image as ImageIcon, Camera
-=======
   Crown, MapPin, Grid, Layers, ArrowUpDown, ChevronUp, ChevronDown 
->>>>>>> new-repo/main
 } from 'lucide-react';
 import { 
   subscribeToCommitteeMembers, addCommitteeMember, updateCommitteeMember, 
   deleteCommitteeMember, CommitteeMember 
 } from '@/src/lib/cms';
 import { DISTRICTS, CONSTITUENCIES } from '@/src/constants';
-<<<<<<< HEAD
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage, db } from '../lib/firebase';
-import { compressImage } from '../lib/imageUtils';
-import { collection, getDocs, query } from 'firebase/firestore';
-=======
->>>>>>> new-repo/main
 
 export default function CommitteeManagement({ user }: { user: any }) {
   const [members, setMembers] = useState<CommitteeMember[]>([]);
@@ -49,70 +37,6 @@ export default function CommitteeManagement({ user }: { user: any }) {
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterDistrict, setFilterDistrict] = useState<string>('all');
 
-<<<<<<< HEAD
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [galleryItems, setGalleryItems] = useState<any[]>([]);
-  const [galleryLoading, setGalleryLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  const openGallerySelector = async () => {
-    setGalleryOpen(true);
-    setGalleryLoading(true);
-    try {
-      const q = query(collection(db, 'gallery'));
-      const snapshot = await getDocs(q);
-      const itemsData = snapshot.docs.map(docSnap => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }));
-      // Sort items: order or createdAt desc
-      itemsData.sort((a: any, b: any) => {
-        const orderA = a.order !== undefined ? Number(a.order) : 0;
-        const orderB = b.order !== undefined ? Number(b.order) : 0;
-        if (orderA !== orderB) return orderA - orderB;
-        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-        return timeB - timeA;
-      });
-      setGalleryItems(itemsData);
-    } catch (err) {
-      console.error("Error fetching gallery items:", err);
-      toast.error("ഗാലറി ചിത്രങ്ങൾ ലോഡ് ചെയ്യാനായില്ല");
-    } finally {
-      setGalleryLoading(false);
-    }
-  };
-
-  const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
-    
-    setUploadingImage(true);
-    const progressToast = toast.loading('Uploading committee photo to Firebase Storage...');
-    try {
-      // 1. Compress
-      const compressed = await compressImage(file, 600, 600, 0.7);
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `committees/${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${fileExt}`;
-      
-      // 2. Upload to Firebase Storage under assets/committees
-      const storageRef = ref(storage, `assets/${fileName}`);
-      const uploadResult = await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-      const url = await getDownloadURL(uploadResult.ref);
-      
-      // 3. Set the imageUrl
-      setImageUrl(url);
-      toast.success('ഫോട്ടോ വിജയകരമായി അപ്‌ലോഡ് ചെയ്തു!', { id: progressToast });
-    } catch (err: any) {
-      console.error("Direct upload failed:", err);
-      toast.error(`അപ്‌ലോഡ് പരാജയപ്പെട്ടു: ${err.message || err}`, { id: progressToast });
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-=======
->>>>>>> new-repo/main
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeToCommitteeMembers(
@@ -494,67 +418,6 @@ export default function CommitteeManagement({ user }: { user: any }) {
                   </div>
                 )}
 
-<<<<<<< HEAD
-                <div className="space-y-4 md:col-span-2 p-5 border border-dashed border-slate-200 bg-slate-50/50 rounded-2xl">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <Label className="font-bold text-xs text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-                        <ImageIcon className="w-4 h-4 text-brand-blue" />
-                        Committee Photo (കമ്മിറ്റി അംഗത്തിന്റെ ഫോട്ടോ) *
-                      </Label>
-                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                        Choose a photo from your computer/phone, select from HCRS Gallery, or paste a web URL.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {/* Direct File Upload button */}
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 bg-white border border-slate-200 hover:border-brand-blue/50 hover:bg-slate-50 text-slate-700 font-bold text-[10px] uppercase tracking-wider py-2 px-3.5 rounded-lg shadow-sm transition-all">
-                        <Upload className="w-3.5 h-3.5 text-slate-500" />
-                        {uploadingImage ? 'Uploading...' : 'Upload Direct (ഫയൽ അപ്‌ലോഡ്)'}
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*" 
-                          disabled={uploadingImage}
-                          onChange={handleDirectUpload} 
-                        />
-                      </label>
-
-                      {/* Connect to Gallery button */}
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={openGallerySelector}
-                        className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-[10px] uppercase tracking-wider h-auto py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Grid className="w-3.5 h-3.5 text-slate-500" />
-                        Select from Gallery (ഗാലറിയിൽ നിന്ന്)
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                    <Label className="font-bold text-[10px] uppercase text-slate-500">Or Paste Image URL/Link (അല്ലെങ്കിൽ ഫോട്ടോ ലിങ്ക് പേസ്റ്റ് ചെയ്യുക)</Label>
-                    <Input 
-                      value={imageUrl} 
-                      onChange={e => {
-                        let val = e.target.value.trim();
-                        // Extract src from pasted ImgBB embed HTML / code:
-                        const srcMatch = val.match(/src=["']([^"']+)["']/i);
-                        if (srcMatch && srcMatch[1]) {
-                          val = srcMatch[1].trim();
-                        }
-                        setImageUrl(val);
-                      }}
-                      placeholder="https://firebasestorage.googleapis.com/... or https://i.ibb.co/..."
-                      className="h-10 rounded-xl border-slate-200 text-xs font-semibold bg-white"
-                    />
-                    <p className="text-[9px] text-slate-400 font-semibold uppercase">
-                      Firebase-ലേക്ക് അപ്‌ലോഡ് ചെയ്താൽ ലിങ്ക് തനിയെ ഇവിടെ വരും.
-                    </p>
-                  </div>
-=======
                 <div className="space-y-2 md:col-span-2">
                   <Label className="font-bold text-xs text-slate-700">Image url / Link for Photo (ഫോട്ടോ ലിങ്ക് - ImgBB അല്ലെങ്കിൽ മറ്റ് വെബ്‌സൈറ്റ് ലിങ്ക്) *</Label>
                   <Input 
@@ -572,7 +435,6 @@ export default function CommitteeManagement({ user }: { user: any }) {
                     className="h-11 rounded-xl border-slate-200 text-xs font-bold"
                   />
                   <p className="text-[9px] text-slate-400 font-bold uppercase">ImgBB-യിൽ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്ത ശേഷം ലഭിക്കുന്ന HTML കോഡ് മുഴുവനായി പേസ്റ്റ് ചെയ്താലും മതിയാകും!</p>
->>>>>>> new-repo/main
                 </div>
               </div>
 
@@ -622,96 +484,6 @@ export default function CommitteeManagement({ user }: { user: any }) {
           </CardContent>
         </Card>
       )}
-<<<<<<< HEAD
-
-      {/* Gallery Photo Selector Dialog/Modal */}
-      {galleryOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div>
-                <h3 className="font-black text-slate-800 text-base uppercase tracking-tight flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-brand-blue" />
-                  Select Photo from HCRS Gallery (HCRS ഗാലറിയിൽ നിന്ന് തിരഞ്ഞെടുക്കുക)
-                </h3>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                  Click on any photo below to instantly use it as the committee member's photo
-                </p>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setGalleryOpen(false)}
-                className="rounded-full w-8 h-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-100/50">
-              {galleryLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <RefreshCw className="w-8 h-8 animate-spin text-brand-magenta" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Loading gallery images...</p>
-                </div>
-              ) : galleryItems.length === 0 ? (
-                <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl bg-white p-6 max-w-md mx-auto animate-in fade-in duration-200">
-                  <ImageIcon className="w-12 h-12 text-slate-350 mx-auto mb-4" />
-                  <p className="font-bold text-sm text-slate-700">ഗാലറിയിൽ ഫോട്ടോകൾ ഒന്നും തന്നെയില്ല!</p>
-                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1.5">
-                    ഗാലറി മാനേജ്‌മെന്റ് വിഭാഗത്തിൽ ഫോട്ടോകൾ അപ്‌ലോഡ് ചെയ്ത ശേഷം ഇവിടെ തിരഞ്ഞെടുക്കാം.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {galleryItems.map((item: any) => (
-                    <div 
-                      key={item.id}
-                      onClick={() => {
-                        setImageUrl(item.url);
-                        setGalleryOpen(false);
-                        toast.success('ഫോട്ടോ തിരഞ്ഞെടുത്തിരിക്കുന്നു!');
-                      }}
-                      className="group bg-white border border-slate-200 rounded-xl overflow-hidden cursor-pointer hover:border-brand-blue/60 hover:shadow-md transition-all flex flex-col relative"
-                    >
-                      <div className="aspect-square bg-slate-50 overflow-hidden relative border-b border-slate-100">
-                        <img 
-                          src={item.url} 
-                          alt={item.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="absolute inset-0 bg-brand-blue/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-[10px] uppercase tracking-wider">
-                          Select Photo
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <p className="font-bold text-[10px] text-slate-800 uppercase truncate leading-tight">{item.title}</p>
-                        {item.category && (
-                          <span className="inline-block bg-slate-100 text-slate-650 font-black text-[7px] uppercase tracking-wider px-1.5 py-0.5 rounded mt-1">
-                            {item.category}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-200 flex justify-end bg-slate-50">
-              <Button 
-                onClick={() => setGalleryOpen(false)}
-                className="bg-slate-700 hover:bg-slate-800 text-white rounded-xl px-5 h-10 text-[10px] font-black uppercase tracking-wider cursor-pointer"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-=======
->>>>>>> new-repo/main
     </div>
   );
 }
