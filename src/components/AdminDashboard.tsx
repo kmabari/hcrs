@@ -49,7 +49,8 @@ import {
   ChevronRight,
   Headphones,
   Loader2,
-  Copy
+  Copy,
+  AlertTriangle
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -472,6 +473,21 @@ export default function AdminDashboard({
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  const searchDigits = useMemo(() => {
+    return searchTerm.replace(/\D/g, '');
+  }, [searchTerm]);
+
+  const otherDistrictMatch = useMemo(() => {
+    if (!searchDigits || searchDigits.length < 3) return null;
+    if (!isSecondary || !user?.district) return null;
+    return members.find(m => 
+      m.status !== 'deleted' && 
+      (m.mobile || '').replace(/\D/g, '').includes(searchDigits) && 
+      m.district !== user.district
+    );
+  }, [members, searchDigits, isSecondary, user?.district]);
+
   const [selectedProof, setSelectedProof] = useState<string | null>(null);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   
@@ -1324,7 +1340,7 @@ export default function AdminDashboard({
     // Cache district map for faster lookup
     const districtMap = new Map(DISTRICTS.map(d => [d.code, d.name.toLowerCase()]));
 
-    return members.filter(m => {
+    const filtered = members.filter(m => {
       // Hide Admins (both Main and District) from members list to avoid confusion
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
@@ -1360,6 +1376,56 @@ export default function AdminDashboard({
       
       return matchesSearch && matchesDistrict && matchesStatus && matchesSource && matchesCategory;
     });
+
+    // De-duplicate members by mobile number to hide older historical duplicates
+    const groups = new Map<string, UserProfile[]>();
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) continue;
+      if (!groups.has(mob)) {
+        groups.set(mob, []);
+      }
+      groups.get(mob)!.push(m);
+    }
+
+    const result: UserProfile[] = [];
+    const processedMobs = new Set<string>();
+
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) {
+        result.push(m);
+        continue;
+      }
+      if (processedMobs.has(mob)) continue;
+      processedMobs.add(mob);
+
+      const group = groups.get(mob)!;
+      if (group.length === 1) {
+        result.push(group[0]);
+      } else {
+        const best = group.sort((a, b) => {
+          const statusA = a.status || '';
+          const statusB = b.status || '';
+          if (statusA === 'active' && statusB !== 'active') return -1;
+          if (statusB === 'active' && statusA !== 'active') return 1;
+
+          if (statusA === 'pending' && statusB !== 'pending') return -1;
+          if (statusB === 'pending' && statusA !== 'pending') return 1;
+
+          const expA = a.expiryDate ? (a.expiryDate.toDate ? a.expiryDate.toDate().getTime() : new Date(a.expiryDate).getTime()) : 0;
+          const expB = b.expiryDate ? (b.expiryDate.toDate ? b.expiryDate.toDate().getTime() : new Date(b.expiryDate).getTime()) : 0;
+          if (expA !== expB) return expB - expA;
+
+          const regA = a.registrationDate ? (a.registrationDate.toDate ? a.registrationDate.toDate().getTime() : new Date(a.registrationDate).getTime()) : 0;
+          const regB = b.registrationDate ? (b.registrationDate.toDate ? b.registrationDate.toDate().getTime() : new Date(b.registrationDate).getTime()) : 0;
+          return regB - regA;
+        })[0];
+        result.push(best);
+      }
+    }
+
+    return result;
   }, [members, searchTerm, districtFilter, statusFilter, sourceFilter, categoryFilter]);
 
   const itemsPerPage = 10;
@@ -1369,7 +1435,7 @@ export default function AdminDashboard({
   }, [filteredMembers, currentPage, itemsPerPage]);
 
   const validActiveCount = useMemo(() => {
-    return members.filter(m => {
+    const filtered = members.filter(m => {
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
@@ -1385,14 +1451,29 @@ export default function AdminDashboard({
         }
       }
       return matchesCategory && hasValidity(m);
-    }).length;
+    });
+
+    const uniqueMobs = new Set<string>();
+    let count = 0;
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) {
+        count++;
+        continue;
+      }
+      if (!uniqueMobs.has(mob)) {
+        uniqueMobs.add(mob);
+        count++;
+      }
+    }
+    return count;
   }, [members, districtFilter, categoryFilter]);
 
   const filteredValidActiveMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const districtMap = new Map(DISTRICTS.map(d => [d.code, d.name.toLowerCase()]));
 
-    return members.filter(m => {
+    const filtered = members.filter(m => {
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
 
@@ -1419,6 +1500,53 @@ export default function AdminDashboard({
       
       return matchesSearch && matchesDistrict && matchesCategory && hasValidity(m);
     });
+
+    // De-duplicate by mobile number to show only the live/newest one
+    const groups = new Map<string, UserProfile[]>();
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) continue;
+      if (!groups.has(mob)) {
+        groups.set(mob, []);
+      }
+      groups.get(mob)!.push(m);
+    }
+
+    const result: UserProfile[] = [];
+    const processedMobs = new Set<string>();
+
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) {
+        result.push(m);
+        continue;
+      }
+      if (processedMobs.has(mob)) continue;
+      processedMobs.add(mob);
+
+      const group = groups.get(mob)!;
+      if (group.length === 1) {
+        result.push(group[0]);
+      } else {
+        const best = group.sort((a, b) => {
+          const statusA = a.status || '';
+          const statusB = b.status || '';
+          if (statusA === 'active' && statusB !== 'active') return -1;
+          if (statusB === 'active' && statusA !== 'active') return 1;
+
+          const expA = a.expiryDate ? (a.expiryDate.toDate ? a.expiryDate.toDate().getTime() : new Date(a.expiryDate).getTime()) : 0;
+          const expB = b.expiryDate ? (b.expiryDate.toDate ? b.expiryDate.toDate().getTime() : new Date(b.expiryDate).getTime()) : 0;
+          if (expA !== expB) return expB - expA;
+
+          const regA = a.registrationDate ? (a.registrationDate.toDate ? a.registrationDate.toDate().getTime() : new Date(a.registrationDate).getTime()) : 0;
+          const regB = b.registrationDate ? (b.registrationDate.toDate ? b.registrationDate.toDate().getTime() : new Date(b.registrationDate).getTime()) : 0;
+          return regB - regA;
+        })[0];
+        result.push(best);
+      }
+    }
+
+    return result;
   }, [members, searchTerm, districtFilter, categoryFilter]);
 
   const paginatedValidActiveMembers = useMemo(() => {
@@ -2317,14 +2445,18 @@ export default function AdminDashboard({
                   <TabsTrigger value="valid_active" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
                     Active & Valid (വാലിഡിറ്റിയുള്ളവർ) <Badge className="ml-1.5 bg-green-100 text-green-600 border-none text-[8px] px-1.5 py-0">{validActiveCount}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <Settings className="w-3 h-3 text-slate-400" />
-                    Settings & Quotas (വാട്സപ്പ് സെറ്റിങ്സ്/കോട്ട)
-                  </TabsTrigger>
-                  <TabsTrigger value="districts" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    District URLs
-                  </TabsTrigger>
+                  {!isSecondary && (
+                    <>
+                      <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                        <Settings className="w-3 h-3 text-slate-400" />
+                        Settings & Quotas (വാട്സപ്പ് സെറ്റിങ്സ്/കോട്ട)
+                      </TabsTrigger>
+                      <TabsTrigger value="districts" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                        <Lock className="w-3 h-3 text-slate-400" />
+                        District URLs
+                      </TabsTrigger>
+                    </>
+                  )}
                   <TabsTrigger value="claims" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                     <MessageCircle className="w-3 h-3 text-brand-magenta" />
                     Claims <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{claims.length}</Badge>
@@ -2589,6 +2721,34 @@ export default function AdminDashboard({
              </Card>
           </TabsContent>
           <TabsContent value="list">
+            {otherDistrictMatch && (
+              <div className="mb-6 p-5 bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-500/30 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-start md:items-center animate-in fade-in slide-in-from-top-2 duration-300 font-sans text-slate-800">
+                <div className="flex gap-3.5 items-start">
+                  <div className="bg-amber-100 dark:bg-amber-900/30 p-2.5 rounded-xl text-amber-600 dark:text-amber-400 flex-shrink-0">
+                    <AlertTriangle className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-black text-amber-900 dark:text-amber-200 text-sm leading-relaxed">
+                      ഈ കസ്റ്റമർ നിലവിൽ എന്റർ ചെയ്തിട്ടുണ്ട്, എന്നാൽ ഈ ജില്ലയിൽ അല്ല
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 font-black">
+                      നിലവിലെ ജില്ല (Current District): <span className="underline">{DISTRICTS.find(d => d.code === otherDistrictMatch.district)?.name || otherDistrictMatch.district}</span>
+                    </p>
+                    <p className="text-[10px] text-amber-500 dark:text-amber-400 font-bold uppercase mt-1">
+                      Security Note: District Admin has restricted view access for other districts.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setViewingMember(otherDistrictMatch)}
+                  className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all active:scale-95"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>കാണുക (View Card)</span>
+                </Button>
+              </div>
+            )}
             <Card className="border-none shadow-sm overflow-hidden">
               <Table>
                 <TableHeader className="bg-slate-50/50">
@@ -5581,7 +5741,7 @@ service cloud.firestore {
                   </div>
                 </div>
 
-                {(editingMember.role === 'operator' || editingMember.role === 'admin') && (
+                {(editingMember.role === 'operator' || editingMember.role === 'admin') && !isSecondary && (
                   <div className="p-4 bg-brand-blue/5 rounded-2xl space-y-4 border border-brand-blue/10">
                     <div className="flex items-center gap-2 text-brand-blue font-black text-xs uppercase tracking-widest">
                       <Lock className="w-3.5 h-3.5" /> Quota Settings

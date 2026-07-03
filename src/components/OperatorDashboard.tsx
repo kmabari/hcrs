@@ -23,7 +23,8 @@ import {
   MessageCircle,
   X,
   Eye,
-  Copy
+  Copy,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -193,14 +194,75 @@ export default function OperatorDashboard({
   const districtName = DISTRICTS.find(d => d.code === activeDistrict)?.name || activeDistrict;
 
   const filteredMembers = useMemo(() => {
-    return members.filter(m => 
+    const filtered = members.filter(m => 
       m.status !== 'deleted' && (
         (m?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (m?.mobile || '').includes(searchTerm) ||
         (m?.membershipId || '').toLowerCase().includes(searchTerm.toLowerCase())
       ) && (!user.district || m.district === user.district)
     );
+
+    // De-duplicate by mobile number to show only the live/newest one
+    const groups = new Map<string, UserProfile[]>();
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) continue;
+      if (!groups.has(mob)) {
+        groups.set(mob, []);
+      }
+      groups.get(mob)!.push(m);
+    }
+
+    const result: UserProfile[] = [];
+    const processedMobs = new Set<string>();
+
+    for (const m of filtered) {
+      const mob = (m.mobile || '').trim().replace(/\D/g, '');
+      if (!mob) {
+        result.push(m);
+        continue;
+      }
+      if (processedMobs.has(mob)) continue;
+      processedMobs.add(mob);
+
+      const group = groups.get(mob)!;
+      if (group.length === 1) {
+        result.push(group[0]);
+      } else {
+        const best = group.sort((a, b) => {
+          const statusA = a.status || '';
+          const statusB = b.status || '';
+          if (statusA === 'active' && statusB !== 'active') return -1;
+          if (statusB === 'active' && statusA !== 'active') return 1;
+
+          const expA = a.expiryDate ? (a.expiryDate.toDate ? a.expiryDate.toDate().getTime() : new Date(a.expiryDate).getTime()) : 0;
+          const expB = b.expiryDate ? (b.expiryDate.toDate ? b.expiryDate.toDate().getTime() : new Date(b.expiryDate).getTime()) : 0;
+          if (expA !== expB) return expB - expA;
+
+          const regA = a.registrationDate ? (a.registrationDate.toDate ? a.registrationDate.toDate().getTime() : new Date(a.registrationDate).getTime()) : 0;
+          const regB = b.registrationDate ? (b.registrationDate.toDate ? b.registrationDate.toDate().getTime() : new Date(b.registrationDate).getTime()) : 0;
+          return regB - regA;
+        })[0];
+        result.push(best);
+      }
+    }
+
+    return result;
   }, [members, searchTerm, user.district]);
+
+  const searchDigits = useMemo(() => {
+    return searchTerm.replace(/\D/g, '');
+  }, [searchTerm]);
+
+  const otherDistrictMatch = useMemo(() => {
+    if (!searchDigits || searchDigits.length < 3) return null;
+    return members.find(m => 
+      m.status !== 'deleted' && 
+      (m.mobile || '').replace(/\D/g, '').includes(searchDigits) && 
+      user.district && 
+      m.district !== user.district
+    );
+  }, [members, searchDigits, user.district]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDirectManual, setShowDirectManual] = useState(isDirectManual);
@@ -446,6 +508,34 @@ export default function OperatorDashboard({
                       className="pl-12 h-12 bg-slate-50 border-slate-200 rounded-xl font-bold focus:border-brand-magenta/20 text-sm"
                     />
                   </div>
+                  {otherDistrictMatch && (
+                    <div className="mt-4 p-4 bg-amber-50 border-2 border-amber-500/30 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-start md:items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex gap-3 items-start">
+                        <div className="bg-amber-100 p-2 rounded-xl text-amber-600 flex-shrink-0">
+                          <AlertTriangle className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div className="space-y-1 font-sans">
+                          <p className="font-black text-amber-900 text-sm leading-relaxed">
+                            ഈ കസ്റ്റമർ നിലവിൽ എന്റർ ചെയ്തിട്ടുണ്ട്, എന്നാൽ ഈ ജില്ലയിൽ അല്ല
+                          </p>
+                          <p className="text-xs text-amber-700 font-bold">
+                            നിലവിലെ ജില്ല (Current District): <span className="underline font-black">{DISTRICTS.find(d => d.code === otherDistrictMatch.district)?.name || otherDistrictMatch.district}</span>
+                          </p>
+                          <p className="text-[10px] text-amber-500 font-bold uppercase mt-1">
+                            Security Note: District Admin has restricted view access for other districts.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setViewingMember(otherDistrictMatch)}
+                        className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all active:scale-95"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>കാണുക (View Card)</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1325,6 +1415,35 @@ export default function OperatorDashboard({
             </div>
           </div>
 
+          {otherDistrictMatch && (
+            <div className="mx-6 my-4 p-5 bg-amber-50 border-2 border-amber-500/30 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-start md:items-center animate-in fade-in slide-in-from-top-2 duration-300 font-sans">
+              <div className="flex gap-3.5 items-start">
+                <div className="bg-amber-100 p-2.5 rounded-xl text-amber-600 flex-shrink-0">
+                  <AlertTriangle className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-black text-amber-900 text-sm leading-relaxed">
+                    ഈ കസ്റ്റമർ നിലവിൽ എന്റർ ചെയ്തിട്ടുണ്ട്, എന്നാൽ ഈ ജില്ലയിൽ അല്ല
+                  </p>
+                  <p className="text-xs text-amber-700 font-black">
+                    നിലവിലെ ജില്ല (Current District): <span className="underline">{DISTRICTS.find(d => d.code === otherDistrictMatch.district)?.name || otherDistrictMatch.district}</span>
+                  </p>
+                  <p className="text-[10px] text-amber-500 font-bold uppercase mt-1">
+                    Security Note: District Admin has restricted view access for other districts.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setViewingMember(otherDistrictMatch)}
+                className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all active:scale-95"
+              >
+                <Eye className="w-4 h-4" />
+                <span>കാണുക (View Card)</span>
+              </Button>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50">
@@ -1337,86 +1456,99 @@ export default function OperatorDashboard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMembers.map((member) => (
-                  <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                    <TableCell className="py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-200 overflow-hidden flex-shrink-0 shadow-sm">
-                          {member.photoUrl ? (
-                            <img src={member.photoUrl} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-black">
-                              {(member.name || '?').charAt(0)}
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-black text-slate-800 leading-tight">{member.name}</p>
-                          <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1.5 uppercase tracking-wide">
-                             <Phone className="w-3 h-3" />
-                             {member.mobile}
-                          </p>
-                          {member.details && (
-                            <p className="text-[9px] text-slate-500 font-bold italic truncate max-w-[150px]">
-                              {member.details}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                       <p className="text-sm font-black text-brand-blue font-mono tracking-normal">{member.membershipId}</p>
-                       <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wider">Ref: {member.transactionId || '---'}</p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="rounded-lg border-slate-200 font-black text-[9px] uppercase tracking-wide">
-                        {member.district}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {member.status === 'active' ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <Clock className="w-4 h-4 text-amber-500" />
-                        )}
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${member.status === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
-                          {member.status}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <div className="flex items-center justify-end gap-2">
-                         <Button 
-                           variant="ghost" 
-                           size="sm" 
-                           onClick={() => setViewingMember(member)}
-                           className="h-10 w-10 p-0 rounded-xl text-brand-blue hover:bg-brand-blue/5 transition-all"
-                           title="View Details / Card"
-                         >
-                           <Eye className="w-4 h-4" />
-                         </Button>
-                         <Button 
-                           variant="ghost" 
-                           size="sm" 
-                           onClick={() => setEditingMember(member)}
-                           className="h-10 w-10 p-0 rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
-                         >
-                           <Pencil className="w-4 h-4" />
-                         </Button>
-                         <Button 
-                           variant="ghost" 
-                           size="sm" 
-                           onClick={() => handleShareCard(member)}
-                           className="h-10 px-4 rounded-xl text-brand-blue font-black text-[10px] uppercase gap-2 hover:bg-brand-blue/5 transition-all"
-                         >
-                           <Share2 className="w-3.5 h-3.5" />
-                           Share Card
-                         </Button>
-                       </div>
+                {filteredMembers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16">
+                      <p className="text-sm font-black text-slate-400 uppercase tracking-wider">No members found in {districtName}</p>
+                      {otherDistrictMatch && (
+                        <p className="text-[11px] text-amber-600 font-bold mt-1 uppercase">
+                          Note: A match exists in another district. Check the alert box above.
+                        </p>
+                      )}
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredMembers.map((member) => (
+                    <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                      <TableCell className="py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-200 overflow-hidden flex-shrink-0 shadow-sm">
+                            {member.photoUrl ? (
+                              <img src={member.photoUrl} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-black">
+                                {(member.name || '?').charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-black text-slate-800 leading-tight">{member.name}</p>
+                            <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                               <Phone className="w-3 h-3" />
+                               {member.mobile}
+                            </p>
+                            {member.details && (
+                              <p className="text-[9px] text-slate-500 font-bold italic truncate max-w-[150px]">
+                                {member.details}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                         <p className="text-sm font-black text-brand-blue font-mono tracking-normal">{member.membershipId}</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wider">Ref: {member.transactionId || '---'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="rounded-lg border-slate-200 font-black text-[9px] uppercase tracking-wide">
+                          {member.district}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {member.status === 'active' ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-amber-500" />
+                          )}
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${member.status === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
+                            {member.status}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                         <div className="flex items-center justify-end gap-2">
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             onClick={() => setViewingMember(member)}
+                             className="h-10 w-10 p-0 rounded-xl text-brand-blue hover:bg-brand-blue/5 transition-all"
+                             title="View Details / Card"
+                           >
+                             <Eye className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             onClick={() => setEditingMember(member)}
+                             className="h-10 w-10 p-0 rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
+                           >
+                             <Pencil className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             onClick={() => handleShareCard(member)}
+                             className="h-10 px-4 rounded-xl text-brand-blue font-black text-[10px] uppercase gap-2 hover:bg-brand-blue/5 transition-all"
+                           >
+                             <Share2 className="w-3.5 h-3.5" />
+                             Share Card
+                           </Button>
+                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

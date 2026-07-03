@@ -1079,6 +1079,52 @@ export default function App() {
       let mappedUserData: any = null;
       let targetEmail = '';
 
+      const selectBestDocument = (docs: any[]) => {
+        if (!docs || docs.length === 0) return null;
+        // Sort documents to prioritize the active, non-expired/latest valid account
+        const sorted = [...docs].sort((a, b) => {
+          const dataA = a.data();
+          const dataB = b.data();
+          
+          // Priority 1: standard/healed ID (not starting with 'life_' or 'offline_')
+          const idA_starts = a.id.startsWith('life_') || a.id.startsWith('offline_');
+          const idB_starts = b.id.startsWith('life_') || b.id.startsWith('offline_');
+          if (!idA_starts && idB_starts) return -1;
+          if (idA_starts && !idB_starts) return 1;
+
+          // Priority 2: status active
+          const statusA = dataA.status || '';
+          const statusB = dataB.status || '';
+          if (statusA === 'active' && statusB !== 'active') return -1;
+          if (statusB === 'active' && statusA !== 'active') return 1;
+
+          // Priority 3: status pending
+          if (statusA === 'pending' && statusB !== 'pending') return -1;
+          if (statusB === 'pending' && statusA !== 'pending') return 1;
+
+          // Priority 4: newest expiryDate
+          const getExpiryTime = (data: any) => {
+            const exp = data.expiryDate;
+            if (!exp) return 0;
+            return exp.toDate ? exp.toDate().getTime() : (exp.seconds ? exp.seconds * 1000 : new Date(exp).getTime());
+          };
+          const expA = getExpiryTime(dataA);
+          const expB = getExpiryTime(dataB);
+          if (expA !== expB) return expB - expA;
+
+          // Priority 5: newest registrationDate
+          const getRegTime = (data: any) => {
+            const reg = data.registrationDate;
+            if (!reg) return 0;
+            return reg.toDate ? reg.toDate().getTime() : (reg.seconds ? reg.seconds * 1000 : new Date(reg).getTime());
+          };
+          const regA = getRegTime(dataA);
+          const regB = getRegTime(dataB);
+          return regB - regA;
+        });
+        return sorted[0];
+      };
+
       const usersRef = collection(db, 'users');
 
       const isMainAdminBypass = MAIN_ADMINS.some(email => email.toLowerCase() === originalInput.toLowerCase()) && trimmedPin === '246810';
@@ -1106,10 +1152,8 @@ export default function App() {
         }
 
         if (!querySnap.empty) {
-          // Prefer healed profile: ID is not starting with 'life_' or 'offline_'
-          const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
-          const selectedDoc = healedDoc || querySnap.docs[0];
-          mappedUserData = selectedDoc.data();
+          const selectedDoc = selectBestDocument(querySnap.docs);
+          mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
           targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
         } else {
           targetEmail = `${sanitizedMobile}@hcrs.society`;
@@ -1126,18 +1170,16 @@ export default function App() {
         }
 
         if (!querySnap.empty) {
-          const healedDoc = querySnap.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
-          const selectedDoc = healedDoc || querySnap.docs[0];
-          mappedUserData = selectedDoc.data();
+          const selectedDoc = selectBestDocument(querySnap.docs);
+          mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
           targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
         } else if (originalInput.includes('@')) {
           setLoadingStatus('Resolving Email Identity...');
           const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase()), limit(5));
           const querySnapEmail = await getDocs(qEmail);
           if (!querySnapEmail.empty) {
-            const healedDoc = querySnapEmail.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
-            const selectedDoc = healedDoc || querySnapEmail.docs[0];
-            mappedUserData = selectedDoc.data();
+            const selectedDoc = selectBestDocument(querySnapEmail.docs);
+            mappedUserData = selectedDoc?.data() || querySnapEmail.docs[0].data();
             targetEmail = mappedUserData.email;
           } else {
             targetEmail = originalInput.toLowerCase();
@@ -1148,9 +1190,8 @@ export default function App() {
           const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(5));
           const querySnapFallback = await getDocs(qFallback);
           if (!querySnapFallback.empty) {
-            const healedDoc = querySnapFallback.docs.find(d => !d.id.startsWith('life_') && !d.id.startsWith('offline_'));
-            const selectedDoc = healedDoc || querySnapFallback.docs[0];
-            mappedUserData = selectedDoc.data();
+            const selectedDoc = selectBestDocument(querySnapFallback.docs);
+            mappedUserData = selectedDoc?.data() || querySnapFallback.docs[0].data();
             targetEmail = mappedUserData.email;
           } else {
             targetEmail = fallbackEmail;

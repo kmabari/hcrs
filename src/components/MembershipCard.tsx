@@ -389,15 +389,29 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               )}
 
               {/* Central Rubber Stamp Watermark for Security */}
-              {isPending && (
-                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
-                  <div className="border-[4px] border-double border-rose-600/80 p-2 px-3 rounded-xl flex flex-col items-center justify-center bg-white/10 backdrop-blur-[0.5px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
-                    <span className="text-[12px] font-black tracking-[0.12em] text-rose-600 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)] font-sans uppercase">
-                      PENDING APPROVAL
+              {isExpired && !isBanned && (
+                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-40 pointer-events-none select-none">
+                  <div className="border-[4px] border-double border-red-600 p-2 px-4 rounded-xl flex flex-col items-center justify-center bg-white/20 backdrop-blur-[1px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
+                    <span className="text-[13px] font-black tracking-[0.1em] text-red-600 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)] font-sans uppercase text-center leading-none">
+                      YOU HAVE EXPIRED
                     </span>
-                    <div className="w-full h-[1.5px] bg-rose-600/80 my-1" />
-                    <span className="text-[11.5px] font-extrabold text-rose-600 tracking-tight text-center font-sans">
-                      അപ്പ്രൂവൽ പെൻഡിങ്
+                    <div className="w-full h-[1.5px] bg-red-600 my-1" />
+                    <span className="text-[12px] font-extrabold text-red-600 tracking-tight text-center font-sans leading-none">
+                      കാലാവധി കഴിഞ്ഞു
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {isPending && !isBanned && !isExpired && (
+                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
+                  <div className="border-[4px] border-double border-rose-600/90 p-2 px-4 rounded-xl flex flex-col items-center justify-center bg-white/20 backdrop-blur-[1px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
+                    <span className="text-[13px] font-black tracking-[0.1em] text-rose-600/90 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)] font-sans uppercase text-center leading-none">
+                      PENDING
+                    </span>
+                    <div className="w-full h-[1.5px] bg-rose-600/90 my-1" />
+                    <span className="text-[12px] font-extrabold text-rose-600/90 tracking-tight text-center font-sans leading-none">
+                      പെൻഡിങ്
                     </span>
                   </div>
                 </div>
