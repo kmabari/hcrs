@@ -27,6 +27,11 @@ export default function CommitteeManagement({ user }: { user: any }) {
   const [designation, setDesignation] = useState('');
   const [designationMl, setDesignationMl] = useState('');
   const [level, setLevel] = useState<'state' | 'district' | 'mandalam'>('state');
+  
+  // Custom design additions
+  const [formType, setFormType] = useState<'state' | 'district_poster' | 'mandalam_poster'>('state');
+  const [predefinedDesignation, setPredefinedDesignation] = useState<string>('');
+  
   const [district, setDistrict] = useState('all');
   const [mandalam, setMandalam] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -60,6 +65,8 @@ export default function CommitteeManagement({ user }: { user: any }) {
     setDesignation('');
     setDesignationMl('');
     setLevel('state');
+    setFormType('state');
+    setPredefinedDesignation('');
     setDistrict('all');
     setMandalam('');
     setImageUrl('');
@@ -68,45 +75,133 @@ export default function CommitteeManagement({ user }: { user: any }) {
 
   const handleEdit = (m: CommitteeMember) => {
     setEditingId(m.id || null);
-    setName(m.name);
-    setNameMl(m.nameMl || '');
-    setDesignation(m.designation);
-    setDesignationMl(m.designationMl || '');
-    setLevel(m.level);
-    setDistrict(m.district || 'all');
-    setMandalam(m.mandalam || '');
     setImageUrl(m.imageUrl || '');
     setOrder(m.order || 0);
+    setDistrict(m.district || 'all');
+    setMandalam(m.mandalam || '');
+
+    if (m.designation === 'Poster') {
+      setName(m.name);
+      setNameMl(m.nameMl || '');
+      setDesignation(m.designation);
+      setDesignationMl(m.designationMl || '');
+      setLevel(m.level);
+      if (m.level === 'district') {
+        setFormType('district_poster');
+      } else {
+        setFormType('mandalam_poster');
+      }
+    } else {
+      setName(m.name);
+      setNameMl(m.nameMl || '');
+      setDesignation(m.designation);
+      setDesignationMl(m.designationMl || '');
+      setLevel('state');
+      setFormType('state');
+      
+      // Match predefined role
+      const desLower = m.designation.toLowerCase();
+      if (desLower === 'state president') setPredefinedDesignation('president');
+      else if (desLower === 'state secretary') setPredefinedDesignation('secretary');
+      else if (desLower === 'state treasurer') setPredefinedDesignation('treasurer');
+      else if (desLower === 'vice president') setPredefinedDesignation('vice_president');
+      else if (desLower === 'joint secretary') setPredefinedDesignation('joint_secretary');
+      else if (desLower === 'executive member') setPredefinedDesignation('executive');
+      else setPredefinedDesignation('custom');
+    }
     setActiveTab('form');
+  };
+
+  const handlePredefinedDesignationChange = (val: string) => {
+    setPredefinedDesignation(val);
+    if (val === 'president') {
+      setDesignation('State President');
+      setDesignationMl('സംസ്ഥാന പ്രസിഡന്റ്');
+    } else if (val === 'secretary') {
+      setDesignation('State Secretary');
+      setDesignationMl('സംസ്ഥാന സെക്രട്ടറി');
+    } else if (val === 'treasurer') {
+      setDesignation('State Treasurer');
+      setDesignationMl('സംസ്ഥാന ട്രഷറർ');
+    } else if (val === 'vice_president') {
+      setDesignation('Vice President');
+      setDesignationMl('വൈസ് പ്രസിഡന്റ്');
+    } else if (val === 'joint_secretary') {
+      setDesignation('Joint Secretary');
+      setDesignationMl('ജോയിന്റ് സെക്രട്ടറി');
+    } else if (val === 'executive') {
+      setDesignation('Executive Member');
+      setDesignationMl('എക്സിക്യൂട്ടീവ് അംഗം');
+    } else if (val === 'custom') {
+      setDesignation('');
+      setDesignationMl('');
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !designation.trim()) {
-      toast.error('പേര്, പദവി എന്നിവ നൽകുക! Name and Designation are required.');
-      return;
+
+    let finalName = name.trim();
+    let finalNameMl = nameMl.trim();
+    let finalDesignation = designation.trim();
+    let finalDesignationMl = designationMl.trim();
+    let finalLevel: 'state' | 'district' | 'mandalam' = 'state';
+    let finalDistrict = '';
+    let finalMandalam = '';
+
+    if (formType === 'district_poster' || formType === 'mandalam_poster') {
+      if (district === 'all' || !district) {
+        toast.error('ദയവായി ഒരു ജില്ല തിരഞ്ഞെടുക്കുക! (Please select a district)');
+        return;
+      }
+      if (!imageUrl.trim()) {
+        toast.error('ദയവായി പോസ്റ്റർ ഇമേജ് ലിങ്ക് നൽകുക! (Please provide poster image url)');
+        return;
+      }
+      const distName = getDistrictName(district);
+      finalDesignation = 'Poster';
+      finalDesignationMl = 'പോസ്റ്റർ';
+      
+      if (formType === 'district_poster') {
+        finalName = `District Committee Poster - ${district}`;
+        finalNameMl = `${distName} ജില്ലാ കമ്മിറ്റി പോസ്റ്റർ`;
+        finalLevel = 'district';
+        finalDistrict = district;
+      } else {
+        finalName = `Mandalam Committee Poster - ${district}`;
+        finalNameMl = `${distName} മണ്ഡലം കമ്മിറ്റി പോസ്റ്റർ`;
+        finalLevel = 'mandalam';
+        finalDistrict = district;
+      }
+    } else {
+      // state level
+      if (!finalName || !finalDesignation) {
+        toast.error('പേര്, പദവി എന്നിവ നൽകുക! Name and Designation are required.');
+        return;
+      }
+      finalLevel = 'state';
     }
 
     setSaving(true);
     const data: Omit<CommitteeMember, 'id' | 'createdAt'> = {
-      name: name.trim(),
-      nameMl: nameMl.trim() || "",
-      designation: designation.trim(),
-      designationMl: designationMl.trim() || "",
-      level,
+      name: finalName,
+      nameMl: finalNameMl || "",
+      designation: finalDesignation,
+      designationMl: finalDesignationMl || "",
+      level: finalLevel,
       imageUrl: imageUrl.trim() || "",
       order: Number(order) || 0,
-      district: level !== 'state' ? district : "",
-      mandalam: level === 'mandalam' ? mandalam : ""
+      district: finalDistrict,
+      mandalam: finalMandalam
     };
 
     try {
       if (editingId) {
         await updateCommitteeMember(editingId, data);
-        toast.success('കമ്മിറ്റി അംഗത്തെ വിജയകരമായി എഡിറ്റ് ചെയ്തു (Committee member updated successfully)');
+        toast.success('കമ്മിറ്റി ഭാരവാഹി വിവരങ്ങൾ തിരുത്തി (Committee details updated successfully)');
       } else {
         await addCommitteeMember(data);
-        toast.success('പുതിയ കമ്മിറ്റി അംഗത്തെ ചേർത്തു (New committee member added successfully)');
+        toast.success('പുതിയ വിവരങ്ങൾ വിജയകരമായി ചേർത്തു (Committee details added successfully)');
       }
       resetForm();
       setActiveTab('list');
@@ -223,208 +318,245 @@ export default function CommitteeManagement({ user }: { user: any }) {
 
           {filteredMembers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMembers.map((m) => (
-                <Card 
-                  key={m.id} 
-                  className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-                >
-                  <div className="p-5 flex gap-4 text-left">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/80 shrink-0 shadow-sm">
-                      <img 
-                        src={m.imageUrl || 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'} 
-                        alt={m.name} 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
-                        }}
-                      />
-                    </div>
-
-                    <div className="space-y-1 overflow-hidden">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase text-white ${
-                          m.level === 'state' ? 'bg-amber-500' : m.level === 'district' ? 'bg-brand-blue' : 'bg-brand-magenta'
-                        }`}>
-                          {m.level}
-                        </span>
-                        <span className="text-[9px] font-mono text-slate-400 font-bold">POS #{m.order || 0}</span>
+              {filteredMembers.map((m) => {
+                const isPoster = m.designation === 'Poster';
+                return (
+                  <Card 
+                    key={m.id} 
+                    className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div className="p-5 flex gap-4 text-left">
+                      <div className={`${isPoster ? 'w-16 h-24' : 'w-16 h-16'} rounded-xl overflow-hidden bg-slate-100 border border-slate-200/80 shrink-0 shadow-sm`}>
+                        <img 
+                          src={m.imageUrl || 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'} 
+                          alt={m.name} 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
+                          }}
+                        />
                       </div>
-                      
-                      <h3 className="text-sm font-semibold text-slate-800 leading-snug truncate">
-                        {m.name}
-                      </h3>
-                      {m.nameMl && (
-                        <p className="text-[11px] font-bold text-slate-400 truncate leading-none malayalam-text">
-                          {m.nameMl}
-                        </p>
-                      )}
-                      
-                      <p className="text-xs text-brand-blue font-bold truncate">
-                        {m.designation}
-                        {m.designationMl && <span className="text-slate-405 font-medium ml-1">({m.designationMl})</span>}
-                      </p>
 
-                      {m.level !== 'state' && (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pt-1">
-                          <MapPin className="w-3 h-3 text-slate-400" />
-                          <span>{getDistrictName(m.district)}</span>
-                          {m.level === 'mandalam' && m.mandalam && (
-                            <span className="text-brand-magenta font-semibold ml-1">• {m.mandalam}</span>
-                          )}
+                      <div className="space-y-1 overflow-hidden flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase text-white ${
+                            m.level === 'state' ? 'bg-amber-500' : m.level === 'district' ? 'bg-brand-blue' : 'bg-brand-magenta'
+                          }`}>
+                            {isPoster ? `${m.level} poster` : m.level}
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-400 font-bold">POS #{m.order || 0}</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        
+                        <h3 className="text-sm font-semibold text-slate-800 leading-snug truncate">
+                          {isPoster ? (m.level === 'district' ? 'ജില്ലാ കമ്മിറ്റി പോസ്റ്റർ' : 'മണ്ഡലം കമ്മിറ്റി പോസ്റ്റർ') : m.name}
+                        </h3>
+                        {m.nameMl && (
+                          <p className="text-[11px] font-bold text-slate-400 truncate leading-none malayalam-text">
+                            {m.nameMl}
+                          </p>
+                        )}
+                        
+                        <p className="text-xs text-brand-blue font-bold truncate">
+                          {isPoster ? 'Poster' : m.designation}
+                          {!isPoster && m.designationMl && <span className="text-slate-400 font-medium ml-1">({m.designationMl})</span>}
+                        </p>
 
-                  <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
-                    <span className="text-[9px] font-bold uppercase text-slate-400">Order: {m.order || 0}</span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEdit(m)}
-                        className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg cursor-pointer"
-                        title="Edit member details"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(m.id || '', m.name)}
-                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
-                        title="Remove member"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                        {m.level !== 'state' && (
+                          <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pt-1">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            <span>{getDistrictName(m.district)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+
+                    <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+                      <span className="text-[9px] font-bold uppercase text-slate-400">Order: {m.order || 0}</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEdit(m)}
+                          className="h-8 w-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg cursor-pointer"
+                          title="Edit details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDelete(m.id || '', isPoster ? (m.level === 'district' ? 'ജില്ലാ പോസ്റ്റർ' : 'മണ്ഡലം പോസ്റ്റർ') : m.name)}
+                          className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
-            <div className="py-20 bg-white border border-dashed border-slate-200 rounded-[24px] flex flex-col items-center justify-center text-center">
-              <Users className="w-12 h-12 text-slate-300 mb-3" />
-              <p className="text-xs uppercase font-bold tracking-widest text-slate-400">No Committee Members Found</p>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">തന്നിരിക്കുന്ന ഫിൽട്ടറിൽ അംഗങ്ങളെ കണ്ടെത്താനായില്ല. പുതിയ ഒരാളെ ചേർക്കുക!</p>
+            <div className="text-center py-12 bg-slate-50 border border-slate-200/60 rounded-3xl">
+              <span className="text-slate-400 text-xs font-semibold uppercase">No members or posters found matching filter.</span>
             </div>
           )}
         </div>
       ) : (
-        <Card className="border border-slate-200 rounded-[28px] overflow-hidden bg-white shadow-sm text-left">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6 md:p-8">
-            <CardTitle className="text-lg font-bold text-slate-850 uppercase tracking-tight">
-              {editingId ? 'കമ്മിറ്റി അംഗത്തിന്റെ വിവരങ്ങൾ തിരുത്തുക' : 'കമ്മിറ്റിയിലേക്ക് പുതിയ അംഗത്തെ ചേർക്കുക'}
-            </CardTitle>
-            <CardDescription className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-              {editingId ? 'Edit the selected committee member profiles and settings' : 'Fill in the details to add a state, district or mandalam committee node'}
-            </CardDescription>
-          </CardHeader>
-
+        <Card className="border border-slate-200/60 rounded-3xl overflow-hidden shadow-sm bg-white">
           <CardContent className="p-6 md:p-8">
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs text-slate-700">English Name (പേര് ഇംഗ്ലീഷിൽ) *</Label>
-                  <Input 
-                    value={name} 
-                    onChange={e => setName(e.target.value)}
-                    placeholder="E.g. Jayachandaran Nair"
-                    className="h-11 rounded-xl border-slate-200 text-xs font-bold"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs text-slate-700">Malayalam Name (പേര് മലയാളത്തിൽ)</Label>
-                  <Input 
-                    value={nameMl} 
-                    onChange={e => setNameMl(e.target.value)}
-                    placeholder="ഉദാ: ജയചന്ദ്രൻ നായർ"
-                    className="h-11 rounded-xl border-slate-200 text-xs font-bold"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs text-slate-700">Designation (പദവി ഇംഗ്ലീഷിൽ) *</Label>
-                  <Input 
-                    value={designation} 
-                    onChange={e => setDesignation(e.target.value)}
-                    placeholder="E.g. State President, District Treasurer"
-                    className="h-11 rounded-xl border-slate-200 text-xs font-bold"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs text-slate-700">Designation in Malayalam (പദവി മലയാളത്തിൽ)</Label>
-                  <Input 
-                    value={designationMl} 
-                    onChange={e => setDesignationMl(e.target.value)}
-                    placeholder="ഉദാ: സംസ്ഥാന പ്രസിഡന്റ്"
-                    className="h-11 rounded-xl border-slate-200 text-xs font-bold"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs text-slate-700">Committee Level (കമ്മിറ്റി തരം) *</Label>
-                  <Select value={level} onValueChange={(val: any) => setLevel(val)}>
+                
+                {/* Form Type Selector */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="font-bold text-xs text-slate-700">Committee Category (കമ്മിറ്റി തരം) *</Label>
+                  <Select value={formType} onValueChange={(val: any) => {
+                    setFormType(val);
+                    if (val === 'state') {
+                      setLevel('state');
+                    } else if (val === 'district_poster') {
+                      setLevel('district');
+                    } else if (val === 'mandalam_poster') {
+                      setLevel('mandalam');
+                    }
+                  }}>
                     <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl text-xs font-bold">
-                      <SelectValue placeholder="Select Level" />
+                      <SelectValue placeholder="Select Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="state">State Committee (സംസ്ഥാന കമ്മിറ്റി)</SelectItem>
-                      <SelectItem value="district">District Committee (ജില്ലാ കമ്മിറ്റി)</SelectItem>
-                      <SelectItem value="mandalam">Mandalam Committee (മണ്ഡലം കമ്മിറ്റി)</SelectItem>
+                      <SelectItem value="state">State Committee Member (സംസ്ഥാന കമ്മിറ്റി ഭാരവാഹികൾ)</SelectItem>
+                      <SelectItem value="district_poster">District Committee Poster (ജില്ലാ കമ്മിറ്റി പോസ്റ്റർ)</SelectItem>
+                      <SelectItem value="mandalam_poster">Mandalam Committee Poster (മണ്ഡലം കമ്മിറ്റി പോസ്റ്റർ)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs text-slate-700">Sort Positioning Order (ലിസ്റ്റിൽ കാണിക്കേണ്ട ക്രമം) *</Label>
-                  <Input 
-                    type="number" 
-                    value={order} 
-                    onChange={e => setOrder(Number(e.target.value))}
-                    className="h-11 rounded-xl border-slate-200 text-xs font-bold"
-                  />
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">കുറഞ്ഞ സംഖ്യകൾ ആദ്യം കാണിക്കും (Lowest values shown first. 0, 1, 2, ...)</p>
-                </div>
+                {formType === 'state' ? (
+                  <>
+                    {/* Predefined State Designations */}
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="font-bold text-xs text-slate-700">Select Role / Designation (അംഗത്വ പദവി) *</Label>
+                      <Select value={predefinedDesignation} onValueChange={handlePredefinedDesignationChange}>
+                        <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl text-xs font-bold">
+                          <SelectValue placeholder="Select Designation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="president">State President (സംസ്ഥാന പ്രസിഡന്റ്)</SelectItem>
+                          <SelectItem value="secretary">State Secretary (സംസ്ഥാന സെക്രട്ടറി)</SelectItem>
+                          <SelectItem value="treasurer">State Treasurer (സംസ്ഥാന ട്രഷറർ)</SelectItem>
+                          <SelectItem value="vice_president">Vice President (വൈസ് പ്രസിഡന്റ്)</SelectItem>
+                          <SelectItem value="joint_secretary">Joint Secretary (ജോയിന്റ് സെക്രട്ടറി)</SelectItem>
+                          <SelectItem value="executive">Executive Member (എക്സിക്യൂട്ടീവ് അംഗം)</SelectItem>
+                          <SelectItem value="custom">Other Custom Role (മറ്റ് പദവികൾ)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                {level !== 'state' && (
-                  <div className="space-y-2">
-                    <Label className="font-bold text-xs text-slate-700">Select District (ജില്ല തിരഞ്ഞെടുക്കുക) *</Label>
-                    <Select value={district} onValueChange={setDistrict}>
-                      <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl text-xs font-bold">
-                        <SelectValue placeholder="Select District" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60 overflow-y-auto">
-                        {DISTRICTS.map(d => (
-                          <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                    <div className="space-y-2">
+                      <Label className="font-bold text-xs text-slate-700">English Name (പേര് ഇംഗ്ലീഷിൽ) *</Label>
+                      <Input 
+                        value={name} 
+                        onChange={e => setName(e.target.value)}
+                        placeholder="E.g. Jayachandaran Nair"
+                        className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                      />
+                    </div>
 
-                {level === 'mandalam' && (
-                  <div className="space-y-2">
-                    <Label className="font-bold text-xs text-slate-700">Select constituency / Mandalam (മണ്ഡലം എഴുതുക) *</Label>
-                    <Input 
-                      value={mandalam} 
-                      onChange={e => setMandalam(e.target.value)}
-                      placeholder="ഉദാ: Guruvayur, Attingal (ഇംഗ്ലീഷിൽ)"
-                      className="h-11 rounded-xl border-slate-200 text-xs font-bold"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold text-xs text-slate-700">Malayalam Name (പേര് മലയാളത്തിൽ)</Label>
+                      <Input 
+                        value={nameMl} 
+                        onChange={e => setNameMl(e.target.value)}
+                        placeholder="ഉദാ: ജയചന്ദ്രൻ നായർ"
+                        className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                      />
+                    </div>
+
+                    {(predefinedDesignation === 'custom' || !predefinedDesignation) && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="font-bold text-xs text-slate-700">Designation (പദവി ഇംഗ്ലീഷിൽ) *</Label>
+                          <Input 
+                            value={designation} 
+                            onChange={e => setDesignation(e.target.value)}
+                            placeholder="E.g. Committee Member"
+                            className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-bold text-xs text-slate-700">Designation in Malayalam (പദവി മലയാളത്തിൽ)</Label>
+                          <Input 
+                            value={designationMl} 
+                            onChange={e => setDesignationMl(e.target.value)}
+                            placeholder="ഉദാ: കമ്മിറ്റി അംഗം"
+                            className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="font-bold text-xs text-slate-700">Sort Positioning Order (ലിസ്റ്റിൽ കാണിക്കേണ്ട ക്രമം) *</Label>
+                      <Input 
+                        type="number" 
+                        value={order} 
+                        onChange={e => setOrder(Number(e.target.value))}
+                        className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                      />
+                      <p className="text-[9px] text-slate-400 font-bold uppercase">കുറഞ്ഞ സംഖ്യകൾ ആദ്യം കാണിക്കും (Lowest values shown first. 0, 1, 2, ...)</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Poster District Selection */}
+                    <div className="space-y-2 md:col-span-2 bg-slate-50 border border-slate-200/60 p-4 rounded-xl mb-2">
+                      <span className="text-xs font-bold text-brand-blue flex items-center gap-1.5 uppercase">
+                        <Layers className="w-4 h-4" />
+                        Committee Poster Information
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                        തിരഞ്ഞെടുക്കുന്ന ജില്ലയുടെ കീഴിലുള്ള {formType === 'district_poster' ? 'ജില്ലാ കമ്മിറ്റി പോസ്റ്റർ' : 'മണ്ഡലം കമ്മിറ്റി പോസ്റ്റർ'} ആയി ഈ ഒരൊറ്റ ഇമേജ് ഹോംപേജിൽ പ്രദർശിപ്പിക്കുന്നതാണ്.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="font-bold text-xs text-slate-700">Select District (ജില്ല തിരഞ്ഞെടുക്കുക) *</Label>
+                      <Select value={district} onValueChange={setDistrict}>
+                        <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl text-xs font-bold">
+                          <SelectValue placeholder="Select District" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto">
+                          {DISTRICTS.map(d => (
+                            <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="font-bold text-xs text-slate-700">Poster Sort Order (ക്രമം) *</Label>
+                      <Input 
+                        type="number" 
+                        value={order} 
+                        onChange={e => setOrder(Number(e.target.value))}
+                        className="h-11 rounded-xl border-slate-200 text-xs font-bold"
+                      />
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label className="font-bold text-xs text-slate-700">Image url / Link for Photo (ഫോട്ടോ ലിങ്ക് - ImgBB അല്ലെങ്കിൽ മറ്റ് വെബ്‌സൈറ്റ് ലിങ്ക്) *</Label>
+                  <Label className="font-bold text-xs text-slate-700">
+                    {formType === 'state' ? 'Image url / Link for Photo (ഫോട്ടോ ലിങ്ക്) *' : 'Image url / Link for Poster (പോസ്റ്റർ ഇമേജ് ലിങ്ക്) *'}
+                  </Label>
                   <Input 
                     value={imageUrl} 
                     onChange={e => {
                       let val = e.target.value.trim();
-                      // Extract src from pasted ImgBB embed HTML / code:
                       const srcMatch = val.match(/src=["']([^"']+)["']/i);
                       if (srcMatch && srcMatch[1]) {
                         val = srcMatch[1].trim();
@@ -434,14 +566,14 @@ export default function CommitteeManagement({ user }: { user: any }) {
                     placeholder="https://i.ibb.co/..."
                     className="h-11 rounded-xl border-slate-200 text-xs font-bold"
                   />
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">ImgBB-യിൽ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്ത ശേഷം ലഭിക്കുന്ന HTML കോഡ് മുഴുവനായി പേസ്റ്റ് ചെയ്താലും മതിയാകും!</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase">ImgBB-യിൽ അപ്‌ലോഡ് ചെയ്ത ശേഷം ലഭിക്കുന്ന HTML കോഡ് മുഴുവനായി പേസ്റ്റ് ചെയ്താലും ലിങ്ക് തനിയെ ലഭിക്കുന്നതാണ്!</p>
                 </div>
               </div>
 
               {imageUrl && (
                 <div className="p-4 border border-slate-200/60 rounded-2xl bg-slate-50/55 inline-flex flex-col items-center gap-1.5 mt-2">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-none">Photo Live Preview:</span>
-                  <div className="w-20 h-20 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-none">Live Preview:</span>
+                  <div className={`${formType === 'state' ? 'w-20 h-20 rounded-full' : 'w-48 h-64 rounded-xl'} bg-white overflow-hidden border border-slate-200 shadow-sm`}>
                     <img 
                       src={imageUrl} 
                       alt="Preview" 
@@ -477,7 +609,7 @@ export default function CommitteeManagement({ user }: { user: any }) {
                   ) : (
                     <Save className="w-4 h-4" />
                   )}
-                  {editingId ? 'Save Changes' : 'Add Committee Member'}
+                  {editingId ? 'Save Changes' : (formType === 'state' ? 'Add Committee Member' : 'Save Committee Poster')}
                 </Button>
               </div>
             </form>

@@ -92,10 +92,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 selection:bg-brand-blue/20 relative overflow-hidden">
-      {/* Dynamic Background Accents */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 selection:bg-[#0A2E5C]/10 relative overflow-hidden">
+      {/* Subtle Blue and Pink Accent Orbs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#0A2E5C]/5 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-[#D91E63]/4 blur-3xl pointer-events-none" />
 
       {/* Floating Language Switcher */}
       <div className="absolute top-4 right-4 z-50">
@@ -105,33 +105,33 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="max-w-md w-full z-10"
       >
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-white shadow-premium rounded-[28px] mb-4 border border-slate-100 transition-all hover:scale-105">
+        {/* Prominently Centered Brand Header */}
+        <div className="text-center mb-6">
+          <div className="inline-block p-4 bg-white shadow-premium rounded-[28px] mb-4 border border-slate-200/80 transition-all hover:scale-105 duration-300">
             <Logo className="scale-110 mx-auto" />
           </div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">
             {t('login_title', 'Account Login')}
           </h2>
-          <p className="text-[10px] font-black text-brand-magenta mt-2.5 uppercase tracking-widest leading-none">
+          <p className="text-[10px] font-black text-[#D91E63] mt-2.5 uppercase tracking-widest leading-none">
             {t('hero_title_1', 'HIGHRICH COMMUNITY')} {t('hero_title_2', 'REVIVAL SOCIETY')}
           </p>
         </div>
 
-        {/* glassmorphism Card */}
-        <div className="bg-white border-2 border-slate-150 p-8 rounded-[36px] shadow-premium">
+        {/* Centered Card with Subtle Border Glow and Kerala Kasavu Border Pattern */}
+        <div className="relative bg-white border border-slate-200 p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-[#0A2E5C] before:via-[#D91E63] before:to-[#1E5AA8] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:bg-gradient-to-r after:from-[#1E5AA8] after:via-[#D91E63] after:to-[#0A2E5C]">
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-brand-magenta/10 flex items-center justify-center text-brand-magenta shadow-sm">
-              <KeyRound className="w-6 h-6 animate-pulse" />
+            <div className="w-12 h-12 rounded-xl bg-[#0A2E5C]/5 flex items-center justify-center text-[#0A2E5C] shadow-sm border border-[#0A2E5C]/10">
+              <KeyRound className="w-6 h-6 animate-pulse text-[#0A2E5C]" />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
                 {t('login_title', 'Account Login')}
               </h3>
-              <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mt-1 leading-none">
+              <p className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest mt-1 leading-none">
                 {t('hero_title_1', 'HIGHRICH COMMUNITY')}
               </p>
             </div>
@@ -149,13 +149,13 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-brand-magenta' : 'text-slate-300'}`} />
+                        <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#D91E63]' : 'text-slate-300'}`} />
                         <Input 
                           {...field} 
                           type="text" 
                           placeholder="********** / admin@hcrs.society" 
                           disabled={isLoading}
-                          className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#0A2E5C] focus:ring-1 focus:ring-[#0A2E5C]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 placeholder-slate-400 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -177,21 +177,21 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                         type="button" 
                         disabled={isLoading}
                         onClick={handleForgotPassword}
-                        className="text-[10px] text-brand-magenta hover:text-brand-magenta/80 hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50"
+                        className="text-[10px] text-[#D91E63] hover:text-[#C2185B] hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50"
                       >
                         {t('btn_reset_password', 'Reset Password')}
                       </button>
                     </div>
                     <FormControl>
                       <div className="relative">
-                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-brand-magenta' : 'text-slate-300'}`} />
+                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#D91E63]' : 'text-slate-300'}`} />
                         <Input 
                           {...field} 
                           type="password" 
                           placeholder="••••" 
                           disabled={isLoading}
                           maxLength={12}
-                          className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-magenta/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#0A2E5C] focus:ring-1 focus:ring-[#0A2E5C]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -203,15 +203,15 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-13 rounded-2xl text-xs font-black shadow-lg shadow-brand-magenta/15 hover:shadow-brand-magenta/25 transition-all hover:translate-y-[-1px] active:translate-y-0 group uppercase tracking-widest bg-gradient-to-r from-brand-magenta to-pink-500 text-white hover:opacity-95"
+                className="w-full h-13 rounded-2xl text-xs font-black shadow-md shadow-[#0A2E5C]/10 transition-all hover:scale-[1.01] active:scale-100 group uppercase tracking-widest bg-gradient-to-r from-[#0A2E5C] to-[#1E5AA8] hover:from-[#1E5AA8] hover:to-[#0A2E5C] text-white hover:opacity-95 flex items-center justify-center gap-2"
               >
-                {isLoading ? t('btn_processing', 'Processing...') : t('login_btn', 'Log In')}
+                {isLoading ? t('btn_processing', 'Processing...') : `${t('login_btn', 'Log In')} →`}
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />}
               </Button>
 
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-150" />
+                  <span className="w-full border-t border-slate-100" />
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-slate-400">
                   <span className="bg-white px-3 font-sans">OR</span>
@@ -223,7 +223,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 variant="outline"
                 disabled={isLoading}
                 onClick={onGoogleLogin}
-                className="w-full h-13 rounded-2xl text-xs font-black border-2 border-slate-200 hover:bg-slate-50 transition-all hover:translate-y-[-1px] active:translate-y-0 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-705 bg-white font-sans"
+                className="w-full h-13 rounded-2xl text-xs font-black border-2 border-slate-200 hover:bg-slate-50 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-700 bg-white font-sans"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -251,9 +251,9 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                   variant="outline"
                   disabled={isLoading}
                   onClick={() => onLogin({ email: "offline_backup", pin: "246810" })}
-                  className="w-full h-12 rounded-2xl text-xs font-black border-2 border-dashed border-slate-300 hover:border-brand-blue hover:bg-brand-blue/5 text-slate-650 transition-all uppercase tracking-widest flex items-center justify-center gap-1.5 bg-slate-50/50"
+                  className="w-full h-12 rounded-2xl text-xs font-black border-2 border-dashed border-slate-200 hover:border-[#0A2E5C] hover:bg-[#0A2E5C]/5 text-slate-600 transition-all uppercase tracking-widest flex items-center justify-center gap-1.5 bg-slate-50/50"
                 >
-                  <ShieldCheck className="w-4 h-4 text-brand-blue animate-pulse" />
+                  <ShieldCheck className="w-4 h-4 text-[#0A2E5C] animate-pulse" />
                   ലോക്കൽ പ്രിവ്യൂ മോഡ് (Local Offline Backup)
                 </Button>
               </div>
@@ -267,21 +267,21 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
             variant="ghost" 
             onClick={onBack}
             disabled={isLoading}
-            className="text-slate-400 hover:text-slate-600 font-extrabold uppercase tracking-widest text-[10px] hover:bg-white/40 rounded-2xl px-6 h-11 transition-all"
+            className="text-slate-400 hover:text-slate-700 font-extrabold uppercase tracking-widest text-[10px] hover:bg-slate-100 rounded-2xl px-6 h-11 transition-all"
           >
-            <ArrowLeft className="mr-1.5 w-4 h-4" />
+            <ArrowLeft className="mr-1.5 w-4 h-4 text-[#D91E63]" />
             {t('btn_back_home', 'Go to Home Page')}
           </Button>
 
-          <div className="pt-4 border-t border-slate-200/60 w-full flex justify-center">
+          <div className="pt-4 border-t border-slate-100 w-full flex justify-center">
             <button
                type="button"
                disabled={isLoading}
                onClick={onGoogleLogin}
-               className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-blue transition-all flex items-center gap-1.5 group"
+               className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 hover:text-[#0A2E5C] transition-all flex items-center gap-1.5 group"
             >
-              <ShieldCheck className="w-4 h-4 text-slate-300 group-hover:text-brand-blue/50" />
-              Verified Official Channel
+               <ShieldCheck className="w-4 h-4 text-[#D91E63] group-hover:text-[#0A2E5C] transition-colors" />
+               Verified Official Channel
             </button>
           </div>
         </div>

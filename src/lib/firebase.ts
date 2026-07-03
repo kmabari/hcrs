@@ -36,7 +36,10 @@ const secondaryApp = initializeApp(finalConfig, 'Secondary');
 const getSafeFirestoreSettings = () => {
   try {
     if (typeof window === 'undefined' || !window.indexedDB) {
-      return { localCache: memoryLocalCache() };
+      return { 
+        localCache: memoryLocalCache(),
+        experimentalForceLongPolling: true
+      };
     }
 
     const isDevHost = window.location.hostname.includes('ais-dev') || 
@@ -49,7 +52,10 @@ const getSafeFirestoreSettings = () => {
     
     if (inIframe || isDevHost) {
       console.log("Memory cache enabled for preview/iframe environment to avoid IndexedDB crashes.");
-      return { localCache: memoryLocalCache() };
+      return { 
+        localCache: memoryLocalCache(),
+        experimentalForceLongPolling: true
+      };
     }
 
     // Proactively verify we can access IndexedDB
@@ -59,11 +65,15 @@ const getSafeFirestoreSettings = () => {
     return {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
-      })
+      }),
+      experimentalForceLongPolling: true
     };
   } catch (e) {
     console.warn("IndexedDB access is restricted or threw an error. Falling back to memory cache.", e);
-    return { localCache: memoryLocalCache() };
+    return { 
+      localCache: memoryLocalCache(),
+      experimentalForceLongPolling: true
+    };
   }
 };
 

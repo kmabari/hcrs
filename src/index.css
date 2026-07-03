@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;850;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -9,7 +9,7 @@
 @theme inline {
     --font-heading: "Poppins", sans-serif;
     --font-sans: "Inter", sans-serif;
-    --font-mono: "Space Grotesk", monospace;
+    --font-mono: "Space Grotesk", sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,78 +61,85 @@
 }
 
 :root {
-    /* Government Portal & Corporate Theme Palette */
+    /* Premium Style 2 Palette: Blue (#0A2E5C), Light Blue (#1E5AA8), HCRS Pink (#D91E63) */
     --brand-blue: #0A2E5C;
     --brand-secondary-blue: #1E5AA8;
     --brand-magenta: #D91E63;
-    --brand-navy: #222222;
+    --brand-navy: #0A2E5C;
     --brand-dark-purple: #0A2E5C;
-    --brand-purple: #1E5AA8;
-    --clay: #FFFFFF;
-    --clay-dark: #F5F7FA;
+    --brand-purple: #D91E63;
+    --clay: #F8FAFC;
+    --clay-dark: #F1F5F9;
 
-    --background: #FFFFFF;
-    --foreground: #222222;
+    --background: #FFFFFF; /* Pure clean background */
+    --foreground: #0F172A; /* Slate 900 for modern readability */
     
     --card: #FFFFFF;
-    --card-foreground: #222222;
+    --card-foreground: #0F172A;
     
     --popover: #FFFFFF;
-    --popover-foreground: #222222;
+    --popover-foreground: #0F172A;
     
-    --primary: var(--brand-blue);
+    --primary: #0A2E5C;
     --primary-foreground: #FFFFFF;
     
-    --secondary: var(--brand-secondary-blue);
+    --secondary: #D91E63;
     --secondary-foreground: #FFFFFF;
     
-    --muted: #E5E7EB;
-    --muted-foreground: #4B5563;
+    --muted: #F8FAFC;
+    --muted-foreground: #64748B;
     
-    --accent: var(--clay-dark);
-    --accent-foreground: var(--brand-blue);
+    --accent: #F1F5F9;
+    --accent-foreground: #0A2E5C;
     
-    --destructive: #DC2626;
-    --border: #E5E7EB;
-    --input: #E5E7EB;
-    --ring: var(--brand-blue);
+    --destructive: #EF4444;
+    --border: #E2E8F0;
+    --input: #E2E8F0;
+    --ring: #0A2E5C;
     
-    --radius: 0.625rem;
+    --radius: 0.75rem; /* Generous clean modern rounding */
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
     @apply bg-background text-foreground;
-     background-color: #FFFFFF;
-     background-attachment: fixed;
-    }
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    background-image: radial-gradient(at 0% 0%, rgba(241, 245, 249, 0.5) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(30, 90, 168, 0.03) 0, transparent 50%);
+    background-attachment: fixed;
+  }
   html {
-    @apply font-sans antialiased text-[#222222];
-    }
+    @apply font-sans antialiased text-[#0F172A];
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+  }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading tracking-tight text-[#222222] font-semibold;
+    @apply font-heading tracking-tight text-[#0A2E5C] font-semibold;
+    color: #0A2E5C !important;
   }
 }
 
 @layer utilities {
   .shadow-premium {
-    box-shadow: 0 4px 12px rgba(10, 46, 92, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 4px 20px rgba(10, 46, 92, 0.05), 0 1px 3px rgba(0, 0, 0, 0.01);
   }
   
   .shadow-projected {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 30px -5px rgba(10, 46, 92, 0.08), 0 4px 12px -2px rgba(10, 46, 92, 0.03);
   }
   
   .shadow-projected-active {
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
   }
-
+  
   .glass-card {
-    @apply bg-white border border-slate-200;
-    box-shadow: 0 4px 12px rgba(10, 46, 92, 0.05);
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 10px 30px -10px rgba(10, 46, 92, 0.06) !important;
   }
 }
 
@@ -141,14 +148,214 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(128, 74, 138, 0.05);
+  background: rgba(10, 46, 92, 0.05);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(128, 74, 138, 0.2);
+  background: rgba(217, 30, 99, 0.2);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-purple);
+  background: #D91E63;
+}
+
+/* Force light style variables on specific components */
+.bg-white, [class*="bg-white"] {
+  background-color: #FFFFFF !important;
+}
+
+.bg-slate-50, [class*="bg-slate-50"] {
+  background-color: #F8FAFC !important;
+}
+
+.bg-slate-100, [class*="bg-slate-100"] {
+  background-color: #F1F5F9 !important;
+}
+
+.bg-slate-200, [class*="bg-slate-200"] {
+  background-color: #E2E8F0 !important;
+}
+
+.bg-slate-300, [class*="bg-slate-300"] {
+  background-color: #CBD5E1 !important;
+}
+
+/* Light text values */
+.text-slate-900, .text-gray-900, .text-slate-800, .text-slate-700, .text-gray-800, .text-slate-950, .text-slate-850 {
+  color: #0F172A !important;
+}
+
+.text-slate-500, .text-slate-600, .text-gray-500, .text-gray-600 {
+  color: #64748B !important;
+}
+
+.text-slate-400, .text-gray-400 {
+  color: #94A3B8 !important;
+}
+
+.border-slate-100, .border-slate-150, .border-slate-200, .border-slate-300, .border-gray-100, .border-gray-200 {
+  border-color: #E2E8F0 !important;
+}
+
+/* Input styling */
+input, select, textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #E2E8F0 !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #1E5AA8 !important;
+  box-shadow: 0 0 12px rgba(30, 90, 168, 0.15) !important;
+  background-color: #FFFFFF !important;
+}
+
+/* Hover scales */
+button, .btn {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+button:hover, .btn:hover {
+  transform: translateY(-1px) scale(1.02) !important;
+  box-shadow: 0 8px 20px -6px rgba(10, 46, 92, 0.12) !important;
+}
+
+/* Brand Button style gradients (Blue + Pink) */
+.bg-brand-magenta, .from-brand-magenta, .to-pink-500 {
+  background: linear-gradient(135deg, #D91E63 0%, #EC407A 100%) !important;
+  color: #FFFFFF !important;
+}
+
+.bg-brand-blue, .from-brand-blue, .to-brand-blue {
+  background: linear-gradient(135deg, #0A2E5C 0%, #1E5AA8 100%) !important;
+  color: #FFFFFF !important;
+}
+
+/* Premium Shimmer for Blue + Pink */
+@keyframes shimmer-shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-button {
+  background: linear-gradient(120deg, #0A2E5C 30%, #1E5AA8 40%, #0A2E5C 50%) !important;
+  background-size: 200% auto !important;
+}
+.shimmer-button:hover {
+  animation: shimmer-shine 1.5s infinite linear !important;
+  box-shadow: 0 8px 25px rgba(10, 46, 92, 0.25) !important;
+}
+
+/* Premium organization styling rules */
+.glass-card, .card, [class*="rounded-[36px]"], [class*="rounded-3xl"] {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 10px 30px -10px rgba(10, 46, 92, 0.06), 0 1px 3px rgba(10, 46, 92, 0.02) !important;
+  border: 1px solid #E2E8F0 !important;
+}
+.glass-card:hover, .card:hover {
+  box-shadow: 0 20px 40px -15px rgba(10, 46, 92, 0.12), 0 1px 4px rgba(10, 46, 92, 0.03) !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Active status badge pulsing */
+.pulse-badge, [class*="bg-green-500"], [class*="bg-emerald-500"] {
+  animation: pulse-blue 2.5s infinite !important;
+}
+
+@keyframes pulse-blue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(30, 90, 168, 0.4);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(30, 90, 168, 0);
+    transform: scale(1.03);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(30, 90, 168, 0);
+    transform: scale(1);
+  }
+}
+
+/* Menu Slide */
+.menu-item-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.menu-item-hover:hover {
+  transform: translateX(3px) !important;
+  color: #D91E63 !important;
+}
+
+/* Loading Spinner */
+.custom-spinner {
+  border: 3px solid rgba(10, 46, 92, 0.1) !important;
+  border-top: 3px solid #D91E63 !important;
+  border-radius: 50% !important;
+  width: 32px;
+  height: 32px;
+  animation: spin 0.8s linear infinite !important;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Slide-in and fade-in animations */
+.fade-in-load {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in-success {
+  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Specific Style 2 adjustments for clean government portals */
+nav.fixed {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+  backdrop-filter: blur(16px) !important;
+  box-shadow: 0 4px 20px rgba(10, 46, 92, 0.03) !important;
+}
+nav.fixed h1 {
+  color: #0A2E5C !important;
+}
+nav.fixed p {
+  color: #D91E63 !important;
+}
+
+.bg-white.border.border-slate-200.px-5.py-2 {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Government Portal Style Card gradients and outlines */
+[class*="bg-[#F5F7FA]"] {
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 8px 30px rgba(10, 46, 92, 0.04) !important;
+}
+
+[class*="bg-slate-50"] {
+  background-color: #F8FAFC !important;
+}
+
+.border-pink-200, .border-pink-150 {
+  border-color: rgba(217, 30, 99, 0.2) !important;
+}
+.bg-pink-100, .bg-pink-50 {
+  background-color: rgba(217, 30, 99, 0.05) !important;
 }

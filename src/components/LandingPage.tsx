@@ -234,36 +234,38 @@ export default function LandingPage({
   }, [stage]);
 
   return (
-    <div className="min-h-screen bg-white text-[#222222] font-sans selection:bg-[#0A2E5C]/10 relative overflow-x-hidden pb-12">
-      {/* Absolute brand ambient graphics deleted for professional flat style */}
+    <div className="min-h-screen bg-white text-[#0F172A] font-sans selection:bg-[#0A2E5C]/10 relative overflow-x-hidden pb-12">
+      {/* Subtle Ambient Backglows inspired by Reference #2's premium orange/blue gradient glow */}
+      <div className="absolute top-0 left-1/4 w-[40rem] h-[35rem] bg-gradient-to-br from-[#0A2E5C]/5 to-transparent rounded-full blur-[100px] pointer-events-none -z-10" />
+      <div className="absolute top-20 right-1/4 w-[35rem] h-[35rem] bg-gradient-to-br from-[#D91E63]/4 to-transparent rounded-full blur-[110px] pointer-events-none -z-10" />
 
       {/* Navigation Bar */}
       <nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 shadow-sm px-4 md:px-8 py-3.5 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-slate-100 shadow-premium px-4 md:px-8 py-3 transition-all duration-300"
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer group" 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="bg-white p-1.5 rounded-lg shadow-sm border border-slate-200 group-hover:scale-105 transition-all">
-              <Logo size="sm" className="h-[32px] w-auto" />
+            <div className="bg-white p-1.5 rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300">
+              <Logo size="sm" className="h-[34px] w-auto" />
             </div>
             <div>
-              <h1 className="text-xs font-semibold text-slate-900 uppercase tracking-wider leading-none">HCRS Portal</h1>
-              <p className="text-[9px] font-bold text-[#D91E63] uppercase tracking-widest mt-1">Kerala Division</p>
+              <h1 className="text-xs font-bold text-[#0A2E5C] uppercase tracking-wider leading-none font-heading">HCRS Portal</h1>
+              <p className="text-[9px] font-black text-[#D91E63] uppercase tracking-widest mt-1.5">Kerala Division</p>
             </div>
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-semibold uppercase tracking-wider text-slate-650 hover:text-[#0A2E5C] transition-colors">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#0A2E5C] transition-colors duration-200">
               {t('nav_home', 'Home')}
             </button>
-            <button onClick={onGalleryClick} className="text-[11px] font-bold uppercase tracking-wider text-[#D91E63] hover:text-[#D91E63]/80 transition-colors flex items-center gap-1.5">
+            <button onClick={onGalleryClick} className="text-[11px] font-extrabold uppercase tracking-wider text-[#D91E63] hover:text-[#D91E63]/85 transition-colors duration-200 flex items-center gap-1.5">
               {t('nav_archives', 'Archives')}
               <span className="w-1.5 h-1.5 rounded-full bg-[#D91E63] animate-pulse" />
             </button>
-            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-semibold uppercase tracking-wider text-slate-650 hover:text-[#0A2E5C] transition-colors">
+            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#0A2E5C] transition-colors duration-200">
               {t('nav_contact', 'Contact')}
             </button>
           </div>
@@ -273,12 +275,12 @@ export default function LandingPage({
             <Button 
               variant="outline" 
               onClick={onLoginClick}
-              className="text-[11px] font-bold uppercase tracking-wider text-slate-800 border border-slate-300 hover:bg-slate-50 rounded-[10px] h-10 px-4 transition-all shadow-sm"
+              className="text-[11px] font-bold uppercase tracking-wider text-[#0A2E5C] border border-slate-200 hover:bg-slate-50 rounded-xl h-10 px-4 transition-all shadow-premium"
             >
               {t('nav_sign_in', 'Sign In')}
             </Button>
             <Button 
-              className="bg-[#0A2E5C] hover:bg-[#1E5AA8] text-white rounded-[10px] px-5 h-10 font-bold uppercase text-[11px] tracking-wider shadow-sm transition-all border border-[#0A2E5C]"
+              className="bg-[#0A2E5C] hover:bg-[#1E5AA8] text-white rounded-xl px-5 h-10 font-bold uppercase text-[11px] tracking-wider shadow-premium transition-all border border-[#0A2E5C] hover:border-[#1E5AA8] hover:-translate-y-0.5 duration-200"
               onClick={onRenew}
             >
               {t('nav_get_id_card', 'Get ID Card')}
@@ -287,64 +289,64 @@ export default function LandingPage({
         </div>
       </nav>
 
-      {/* Main Showcase / Hero Cover - Government Portal Style */}
-      <div className="w-full max-w-6xl mx-auto pt-24 pb-16 px-4">
+      {/* Main Showcase / Hero Cover - Reference #2 White Card with Ambient Background Glow */}
+      <div className="w-full max-w-6xl mx-auto pt-28 pb-16 px-4">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative bg-[#F5F7FA] rounded-[20px] p-8 md:p-14 overflow-hidden border border-slate-200 shadow-sm"
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="relative bg-white border border-slate-200/70 rounded-[28px] p-8 md:p-16 overflow-hidden shadow-projected"
         >
-          {/* Flat Grid Layer */}
-          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
-
+          {/* Subtle grid mesh decoration */}
+          <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(#0A2E5C_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none" />
+          
           {/* Core Content */}
           <div className="relative flex flex-col items-center text-center">
             
             {/* Top Registration Badge */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-full shadow-sm mb-8 transition-all cursor-default"
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-5 py-2 rounded-full shadow-premium mb-8 transition-all duration-300 hover:border-slate-300 cursor-default"
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-600 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <div className="w-2 h-2 rounded-full bg-emerald-500 flex items-center justify-center">
+                <div className="w-1 h-1 rounded-full bg-white animate-ping" />
               </div>
-              <span className="font-bold text-[10px] md:text-xs text-[#0A2E5C] uppercase tracking-wider">
+              <span className="font-extrabold text-[10px] md:text-xs text-[#0A2E5C] uppercase tracking-wider">
                 {t('hero_reg_badge', 'Govt. Registered Society • Reg No: TSR/TC/93/2025')}
               </span>
             </motion.div>
  
-            {/* Logo */}
+            {/* Logo container inspired by Reference #2's centered branding */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="p-3 bg-white shadow-sm rounded-[12px] border border-slate-200 mb-8"
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="p-4 bg-white shadow-premium rounded-2xl border border-slate-100 mb-8"
             >
-              <Logo className="scale-100" />
+              <Logo className="scale-100 h-16 w-auto" />
             </motion.div>
 
-            {/* Main Title & Subtitle */}
+            {/* Main Title & Subtitle with crisp, high-contrast, beautiful typography */}
             <div className="max-w-4xl space-y-4 mb-8">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-[#0A2E5C] tracking-tight uppercase leading-[1.2]">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0A2E5C] tracking-tight uppercase leading-[1.25] font-heading">
                 {t('hero_title_1', 'HIGHRICH COMMUNITY')}<br />
                 <span className="text-[#D91E63]">
                   {t('hero_title_2', 'REVIVAL SOCIETY')}
-                </span> (HCRS)
+                </span> <span className="text-slate-400">(HCRS)</span>
               </h1>
-              <p className="text-slate-650 font-normal text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+              <p className="text-slate-500 font-medium text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
                 {t('hero_subtitle', 'A Registered Society Committed To Reviving & Supporting The Highrich Community')}
               </p>
             </div>
 
             {/* Horizontal Line divider */}
-            <div className="w-full max-w-xs h-px bg-slate-200 mb-10" />
+            <div className="w-full max-w-xs h-0.5 bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-10" />
 
             {/* Core Pillars / Professional Icons Grid */}
             <div className="w-full max-w-5xl">
-              <p className="text-[10px] md:text-xs font-bold text-[#D91E63] uppercase tracking-wider mb-6">
+              <p className="text-[10px] md:text-xs font-black text-[#D91E63] uppercase tracking-widest mb-8">
                 {t('hero_core_pillars', 'Our Core Pillars')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
@@ -354,48 +356,49 @@ export default function LandingPage({
                     titleDefault: "Community Welfare",
                     descDefault: "Fostering kinship, solidarity and mutual group communication among all members.",
                     icon: Users,
-                    color: "text-[#0A2E5C] bg-[#0A2E5C]/10 border-[#0A2E5C]/20"
+                    color: "text-[#0A2E5C] bg-[#0A2E5C]/8 border-[#0A2E5C]/15"
                   },
                   {
                     key: "revival",
                     titleDefault: "Revival Efforts",
                     descDefault: "Rebuilding community confidence, outlining dynamic revival strategies, and restoring legal clarity.",
                     icon: Sparkles,
-                    color: "text-[#1E5AA8] bg-[#1E5AA8]/10 border-[#1E5AA8]/20"
+                    color: "text-[#1E5AA8] bg-[#1E5AA8]/8 border-[#1E5AA8]/15"
                   },
                   {
                     key: "support",
                     titleDefault: "Medical & Social Support",
                     descDefault: "Active social welfare initiatives, essential educational support, and continuous medical aid guidance.",
                     icon: HeartHandshake,
-                    color: "text-[#D91E63] bg-[#D91E63]/10 border-[#D91E63]/20"
+                    color: "text-[#D91E63] bg-[#D91E63]/8 border-[#D91E63]/15"
                   },
                   {
                     key: "legal",
                     titleDefault: "Legal Assistance",
                     descDefault: "Providing lawful help mechanisms, structured representation, and protecting member interests in forums.",
                     icon: Shield,
-                    color: "text-emerald-700 bg-emerald-50 border-emerald-150"
+                    color: "text-emerald-700 bg-emerald-50 border-emerald-100"
                   }
                 ].map((pillar, i) => {
                   const IconComponent = pillar.icon;
                   return (
                     <motion.div
                       key={pillar.key}
-                      initial={{ opacity: 0, y: 15 }}
+                      initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
-                      className="bg-white border border-slate-200 rounded-[10px] p-6 shadow-sm hover:border-[#1E5AA8]/40 transition-[border-color,box-shadow] duration-200 flex flex-col justify-between"
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      whileHover={{ y: -5, borderColor: "rgba(30, 90, 168, 0.25)" }}
+                      className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium transition-all duration-300 flex flex-col justify-between"
                     >
                       <div>
-                        <div className={`w-10 h-10 rounded-[8px] flex items-center justify-center border ${pillar.color} mb-4 shrink-0`}>
-                          <IconComponent className="w-5 h-5" />
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${pillar.color} mb-5 shrink-0 shadow-sm`}>
+                          <IconComponent className="w-5 h-5 stroke-[2]" />
                         </div>
-                        <h3 className="text-[#222222] font-semibold text-sm md:text-base leading-tight uppercase">
+                        <h3 className="text-[#0A2E5C] font-extrabold text-sm md:text-base leading-tight uppercase font-heading">
                           {t(`pillar_${pillar.key}_title`, pillar.titleDefault)}
                         </h3>
                       </div>
-                      <p className="text-slate-600 text-xs font-normal leading-relaxed mt-2.5">
+                      <p className="text-slate-500 text-xs font-normal leading-relaxed mt-3">
                         {t(`pillar_${pillar.key}_desc`, pillar.descDefault)}
                       </p>
                     </motion.div>
@@ -426,7 +429,7 @@ export default function LandingPage({
               return (
                 <div 
                   id="home_announcement_box" 
-                  className="max-w-4xl mx-auto w-full bg-white border-l-4 border-[#0A2E5C] border-y border-r border-slate-200 rounded-[10px] p-6 md:p-8 shadow-sm relative overflow-hidden transition-all duration-300 text-left"
+                  className="max-w-4xl mx-auto w-full bg-white border-l-4 border-[#0A2E5C] border-y border-r border-slate-200/80 rounded-2xl p-6 md:p-10 shadow-premium relative overflow-hidden transition-all duration-300 text-left"
                   onMouseEnter={() => {
                     setIsAutoPlaying(false);
                     setUserInteracted(true);
@@ -436,16 +439,16 @@ export default function LandingPage({
                     setUserInteracted(true);
                   }}
                 >
-                  {/* Top Accent Strip */}
-                  <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-[#0A2E5C] to-[#D91E63]" />
+                  {/* Top Accent line */}
+                  <div className="absolute top-0 inset-x-0 h-[2.5px] bg-gradient-to-r from-[#0A2E5C] via-[#1E5AA8] to-[#D91E63]" />
 
                   {/* Header Status & Navigation indicators */}
                   <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-[#0A2E5C] text-white font-bold uppercase px-3.5 py-1.5 rounded-[4px] text-[10px] md:text-xs tracking-wider border border-[#0A2E5C] flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="bg-slate-50 text-[#0A2E5C] font-extrabold uppercase px-4 py-2 rounded-lg text-[10px] md:text-xs tracking-wider border border-slate-200/60 flex items-center gap-2">
                         <span className={cn(
                           "w-2 h-2 rounded-full",
-                          isAutoPlaying ? "bg-emerald-400 animate-pulse" : "bg-white"
+                          isAutoPlaying ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
                         )}></span>
                         ഏറ്റവും പുതിയ വിവരങ്ങൾ / NEW LIVE UPDATE
                       </span>
@@ -458,7 +461,7 @@ export default function LandingPage({
                             setIsAutoPlaying(!isAutoPlaying);
                             setUserInteracted(true);
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-750 rounded-full p-2 border border-slate-200 transition-all text-xs"
+                          className="bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl p-2 border border-slate-200 transition-all duration-200 text-xs shadow-sm"
                           title={isAutoPlaying ? "Auto-scroll Pause" : "Auto-scroll Play"}
                         >
                           {isAutoPlaying ? <Pause className="w-3.5 h-3.5 text-[#0A2E5C]" /> : <Play className="w-3.5 h-3.5 text-[#D91E63]" />}
@@ -470,10 +473,10 @@ export default function LandingPage({
                       <div className="flex flex-col sm:flex-row items-center gap-3 self-center md:self-auto">
                         {/* Auto scroll status indicator badge */}
                         <span className={cn(
-                          "text-[9px] font-bold tracking-wider uppercase px-3 py-1 rounded-[4px] border",
+                          "text-[9px] font-extrabold tracking-widest uppercase px-3.5 py-1.5 rounded-lg border",
                           isAutoPlaying 
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-150 animate-pulse"
-                            : "bg-amber-50 text-amber-850 border-amber-150"
+                            ? "bg-emerald-50 text-emerald-850 border-emerald-150 animate-pulse"
+                            : "bg-amber-50/50 text-amber-800 border-amber-100"
                         )}>
                           {isAutoPlaying 
                             ? "🔄 ഓട്ടോ സ്ക്രോൾ വിവരങ്ങൾ (Auto Scrolling)"
@@ -481,7 +484,7 @@ export default function LandingPage({
                           }
                         </span>
 
-                        <span className="bg-slate-50 text-[#222222] font-mono text-xs font-bold px-4 py-1.5 rounded-[4px] border border-slate-200 shadow-sm">
+                        <span className="bg-slate-50 text-slate-600 font-mono text-[10px] font-extrabold px-4 py-1.5 rounded-lg border border-slate-200 shadow-sm uppercase tracking-wider">
                           UPDATE {currentAnnounceIndex + 1} OF {activeAnnouncementsList.length}
                         </span>
                       </div>
@@ -490,7 +493,7 @@ export default function LandingPage({
 
                   {/* Bullet progress / Dot Indicator page control panel */}
                   {activeAnnouncementsList.length > 1 && (
-                    <div className="flex justify-center items-center gap-2 mb-6 bg-slate-50 py-2 px-4 rounded-[6px] border border-slate-200 max-w-sm mx-auto">
+                    <div className="flex justify-center items-center gap-2 mb-6 bg-slate-50/80 py-2.5 px-4 rounded-xl border border-slate-200 max-w-sm mx-auto shadow-sm">
                       {activeAnnouncementsList.map((ann, idx) => (
                         <button
                           key={ann.id || idx}
@@ -525,77 +528,77 @@ export default function LandingPage({
                       className="space-y-6"
                     >
                       {currentAnn.imageUrl && (
-                        <div className="mb-6 flex justify-center max-w-lg mx-auto overflow-hidden rounded-[10px] border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
+                        <div className="mb-6 flex justify-center max-w-lg mx-auto overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 p-2 shadow-premium">
                           <img 
-                             src={extractDirectImageUrl(currentAnn.imageUrl)} 
+                            src={extractDirectImageUrl(currentAnn.imageUrl)} 
                             alt={currentAnn.title}
-                            className="w-full h-auto max-h-[450px] object-contain rounded-[8px] transition-transform duration-500 hover:scale-[1.01]"
+                            className="w-full h-auto max-h-[450px] object-contain rounded-xl transition-transform duration-500 hover:scale-[1.01]"
                             referrerPolicy="no-referrer"
                             loading="lazy"
                           />
                         </div>
                       )}
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200 text-left">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100 text-left">
                         <div className="flex items-center gap-3">
-                          <span className="p-2.5 rounded-lg bg-[#0A2E5C]/10 text-[#0A2E5C] flex items-center justify-center">
-                            <RefreshCw className="w-5 h-5 text-[#0A2E5C]" />
+                          <span className="p-3 rounded-xl bg-[#0A2E5C]/6 text-[#0A2E5C] flex items-center justify-center border border-[#0A2E5C]/10 shadow-sm">
+                            <RefreshCw className="w-5 h-5 text-[#0A2E5C] stroke-[2]" />
                           </span>
                           <div>
-                            <h3 className="text-lg md:text-xl font-semibold text-[#0A2E5C] uppercase tracking-tight">
+                            <h3 className="text-lg md:text-xl font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
                               {currentAnn.title}
                             </h3>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Notification Center / അറിയിപ്പ് കോളം</p>
+                            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mt-1">Notification Center / അറിയിപ്പ് കോളം</p>
                           </div>
                         </div>
                         {currentAnn.caseDate && (
-                          <span className="self-start sm:self-center bg-[#D91E63] text-white px-4 py-1.5 rounded-[4px] font-bold text-xs tracking-wider uppercase font-mono shadow-sm">
+                          <span className="self-start sm:self-center bg-[#D91E63] text-white px-4 py-1.5 rounded-lg font-bold text-xs tracking-wider uppercase font-mono shadow-sm">
                             {currentAnn.caseDate}
                           </span>
                         )}
                       </div>
 
                       {currentAnn.text && (
-                        <div className="text-[#222222] text-xs md:text-sm font-normal leading-relaxed mb-6 whitespace-pre-wrap bg-slate-50 p-4 md:p-6 rounded-[10px] border border-slate-200 shadow-sm text-left">
+                        <div className="text-slate-600 text-xs md:text-sm font-normal leading-relaxed mb-6 whitespace-pre-wrap bg-slate-50/50 p-5 md:p-6 rounded-xl border border-slate-200/60 shadow-sm text-left">
                           {currentAnn.text}
                         </div>
                       )}
 
                       {/* Case Related Detailed Specifications */}
                       {(currentAnn.caseNo || currentAnn.caseName || currentAnn.court || currentAnn.advocate || currentAnn.judgeBench) && (
-                        <div className="bg-white border border-slate-200 rounded-[10px] p-5 md:p-6 mb-6 space-y-3 shadow-sm relative overflow-hidden text-left">
-                          <div className="absolute top-0 right-0 bg-[#D91E63]/10 text-[#D91E63] font-bold font-mono text-[9px] px-3.5 py-1 rounded-bl-[10px] uppercase tracking-wider">
+                        <div className="bg-white border border-slate-200/60 rounded-xl p-5 md:p-6 mb-6 space-y-3 shadow-premium relative overflow-hidden text-left">
+                          <div className="absolute top-0 right-0 bg-[#D91E63]/10 text-[#D91E63] font-black font-mono text-[9px] px-3.5 py-1.5 rounded-bl-xl uppercase tracking-wider">
                             Case Profile / കേസ് വിവരങ്ങൾ
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                             {currentAnn.caseNo && (
                               <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
-                                <span className="font-bold text-slate-500 uppercase tracking-wider text-[9px]">കേസ് നമ്പർ (Case No.):</span>
-                                <span className="font-semibold text-slate-900 text-sm font-mono">{currentAnn.caseNo}</span>
+                                <span className="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">കേസ് നമ്പർ (Case No.):</span>
+                                <span className="font-bold text-slate-900 text-sm font-mono">{currentAnn.caseNo}</span>
                               </div>
                             )}
                             {currentAnn.caseName && (
                               <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
-                                <span className="font-bold text-slate-500 uppercase tracking-wider text-[9px]">ആയ കേസ് (Case Name):</span>
-                                <span className="font-semibold text-slate-900 text-sm">{currentAnn.caseName}</span>
+                                <span className="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">ആയ കേസ് (Case Name):</span>
+                                <span className="font-bold text-slate-900 text-sm leading-snug">{currentAnn.caseName}</span>
                               </div>
                             )}
                             {currentAnn.court && (
                               <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
-                                <span className="font-bold text-slate-500 uppercase tracking-wider text-[9px]">കോടതി (Court):</span>
-                                <span className="font-semibold text-slate-900 text-sm">{currentAnn.court}</span>
+                                <span className="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">കോടതി (Court):</span>
+                                <span className="font-bold text-slate-900 text-sm">{currentAnn.court}</span>
                               </div>
                             )}
                             {currentAnn.advocate && (
                               <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 md:border-b-0 md:pb-0">
-                                <span className="font-bold text-slate-500 uppercase tracking-wider text-[9px]">അഭിഭാഷകൻ (Advocate):</span>
-                                <span className="font-semibold text-slate-900 text-sm">{currentAnn.advocate}</span>
+                                <span className="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">അഭിഭാഷകൻ (Advocate):</span>
+                                <span className="font-bold text-slate-900 text-sm">{currentAnn.advocate}</span>
                               </div>
                             )}
                             {currentAnn.judgeBench && (
                               <div className="flex flex-col gap-1 col-span-1 md:col-span-2">
-                                <span className="font-bold text-slate-500 uppercase tracking-wider text-[9px]">ബെഞ്ച് (Judge/Bench):</span>
-                                <span className="font-semibold text-slate-900 text-sm leading-tight">{currentAnn.judgeBench}</span>
+                                <span className="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">ബെഞ്ച് (Judge/Bench):</span>
+                                <span className="font-bold text-slate-900 text-sm leading-relaxed">{currentAnn.judgeBench}</span>
                               </div>
                             )}
                           </div>
@@ -606,7 +609,7 @@ export default function LandingPage({
 
                   {/* Multi-announcements dynamic action controllers */}
                   {activeAnnouncementsList.length > 1 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 mt-6">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 mt-6">
                       <Button
                         type="button"
                         variant="ghost"
@@ -616,7 +619,7 @@ export default function LandingPage({
                           setIsAutoPlaying(false);
                           setUserInteracted(true);
                         }}
-                        className="text-slate-550 hover:text-[#0A2E5C] hover:bg-slate-50 rounded-lg py-2 px-4 text-xs font-bold flex items-center gap-1.5 transition-all text-left self-stretch sm:self-auto justify-center"
+                        className="text-slate-500 hover:text-[#0A2E5C] hover:bg-slate-50 rounded-xl py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 transition-all text-left self-stretch sm:self-auto justify-center border border-transparent hover:border-slate-200"
                       >
                         <ChevronLeft className="w-4 h-4 text-[#D91E63]" />
                         മുൻപത്തെ എഴുത്ത് (PREV)
@@ -632,7 +635,7 @@ export default function LandingPage({
                             setUserInteracted(false);
                             toast.success('തിരഞ്ഞെടുപ്പ് ആദ്യ അറിയിപ്പിലേക്ക് റീസെറ്റ് ചെയ്തിരിക്കുന്നു.');
                           }}
-                          className="bg-slate-100 text-slate-600 hover:text-slate-905 hover:bg-slate-200 text-xs font-bold px-4 py-2.5 rounded-[10px] border border-slate-350 flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                          className="bg-slate-50 text-slate-650 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 flex items-center justify-center gap-2 flex-1 sm:flex-initial transition-colors"
                         >
                           <RefreshCw className="w-3.5 h-3.5 text-[#0A2E5C]" />
                           ആദ്യം മുതൽ (RESET)
@@ -646,7 +649,7 @@ export default function LandingPage({
                             setIsAutoPlaying(false);
                             setUserInteracted(true);
                           }}
-                          className="bg-[#D91E63] hover:bg-[#B71C1C] text-white font-bold text-xs px-5 py-2.5 rounded-[10px] flex items-center justify-center gap-2 shadow-sm flex-1 sm:flex-initial transition-all"
+                          className="bg-[#D91E63] hover:bg-[#C2185B] text-white font-bold text-xs px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-premium flex-1 sm:flex-initial transition-all hover:-translate-y-0.5 duration-200"
                         >
                           {t('btn_next_update', "അടുത്ത അപ്ഡേഷൻ (NEXT)")}
                           <ChevronRight className="w-4 h-4 text-white" />
@@ -658,31 +661,31 @@ export default function LandingPage({
               );
             })()}
 
-            {/* Primary Action Bento Grid - Redesigned with Corporate style */}
+            {/* Primary Action Bento Grid - Redesigned to exact Reference #2 specifications */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {/* Enrollment Card */}
               <div
-                className="group relative bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm hover:border-[#D91E63]/30 transition-all text-center flex flex-col items-center justify-between min-h-[380px]"
+                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#D91E63]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#D91E63]/10 w-14 h-14 rounded-[10px] flex items-center justify-center text-[#D91E63] group-hover:scale-105 transition-transform shadow-sm">
-                    <UserPlus className="w-7 h-7" />
+                  <div className="bg-[#D91E63]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#D91E63] group-hover:scale-105 transition-transform shadow-sm border border-[#D91E63]/10">
+                    <UserPlus className="w-8 h-8 stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight uppercase">
+                    <h2 className="text-xl font-extrabold text-[#0A2E5C] tracking-tight uppercase font-heading">
                       {t('card_new_membership_title', 'New Membership')}
                     </h2>
-                    <span className="inline-flex mt-2 bg-[#D91E63]/5 text-[#D91E63] border border-[#D91E63]/10 font-bold text-[10px] tracking-wider uppercase px-3.5 py-0.5 rounded-[4px]">
+                    <span className="inline-flex mt-2.5 bg-[#D91E63]/8 text-[#D91E63] border border-[#D91E63]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
                       {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
                     </span>
-                    <p className="text-slate-650 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
+                    <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
                       {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
                     </p>
                   </div>
                 </div>
                 <Button 
                   onClick={() => setStage('guidelines')}
-                  className="w-full mt-6 h-11 rounded-[10px] text-xs font-semibold bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
+                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_new_membership_btn', 'Register Now')}
                   <ChevronRight className="w-4 h-4" />
@@ -691,27 +694,27 @@ export default function LandingPage({
 
               {/* Renewal Card */}
               <div
-                className="group relative bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm hover:border-[#0A2E5C]/30 transition-all text-center flex flex-col items-center justify-between min-h-[380px]"
+                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#0A2E5C]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#0A2E5C]/10 w-14 h-14 rounded-[10px] flex items-center justify-center text-[#0A2E5C] group-hover:scale-105 transition-transform shadow-sm">
-                    <RefreshCw className="w-7 h-7" />
+                  <div className="bg-[#0A2E5C]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#0A2E5C] group-hover:scale-105 transition-transform shadow-sm border border-[#0A2E5C]/10">
+                    <RefreshCw className="w-8 h-8 stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight uppercase">
+                    <h2 className="text-xl font-extrabold text-[#0A2E5C] tracking-tight uppercase font-heading">
                       {t('card_renew_membership_title', 'Renew card')}
                     </h2>
-                    <span className="inline-flex mt-2 bg-[#0A2E5C]/5 text-[#0A2E5C] border border-[#0A2E5C]/10 font-bold text-[10px] tracking-wider uppercase px-3.5 py-0.5 rounded-[4px]">
+                    <span className="inline-flex mt-2.5 bg-[#0A2E5C]/8 text-[#0A2E5C] border border-[#0A2E5C]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
                       {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
                     </span>
-                    <p className="text-slate-600 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
+                    <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
                       {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
                     </p>
                   </div>
                 </div>
                 <Button 
                   onClick={onRenew}
-                  className="w-full mt-6 h-11 rounded-[10px] text-xs font-semibold bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] transition-all flex items-center justify-center gap-2 uppercase tracking-wider shadow-sm"
+                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_renew_membership_btn', 'Renew Card Now')}
                   <ChevronRight className="w-4 h-4" />
@@ -720,25 +723,25 @@ export default function LandingPage({
 
               {/* Information Registry Card */}
               <div
-                className="group relative bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm hover:border-[#D91E63]/30 transition-all text-center flex flex-col items-center justify-between min-h-[380px]"
+                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#D91E63]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#0A2E5C]/10 w-14 h-14 rounded-[10px] flex items-center justify-center text-[#0A2E5C] group-hover:scale-105 transition-transform shadow-sm">
-                    <Info className="w-7 h-7 text-[#0A2E5C]" />
+                  <div className="bg-[#0A2E5C]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#0A2E5C] group-hover:scale-105 transition-transform shadow-sm border border-[#0A2E5C]/10">
+                    <Info className="w-8 h-8 text-[#0A2E5C] stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 tracking-tight leading-tight uppercase">
+                    <h2 className="text-lg font-extrabold text-[#0A2E5C] tracking-tight leading-snug uppercase font-heading">
                       {t('card_registry_title', 'Member Financial Information Registry')}
                     </h2>
                     <div className="flex flex-col gap-1 items-center mt-2">
-                      <span className="inline-flex bg-[#0A2E5C]/5 text-[#0A2E5C] border border-[#0A2E5C]/10 font-bold text-[9px] tracking-wider uppercase px-2.5 py-0.5 rounded-[4px]">
+                      <span className="inline-flex bg-[#0A2E5C]/8 text-[#0A2E5C] border border-[#0A2E5C]/15 font-extrabold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
                         {t('card_registry_badge', 'Verified Information Collection')}
                       </span>
-                      <span className="text-[10px] font-bold text-[#D91E63] uppercase tracking-wider mt-0.5">
+                      <span className="text-[10px] font-black text-[#D91E63] uppercase tracking-widest mt-1">
                         {t('card_registry_sub_badge', 'Verified Member Information Collection Portal')}
                       </span>
                     </div>
-                    <p className="text-slate-650 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
+                    <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
                       {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
                     </p>
                   </div>
@@ -749,7 +752,7 @@ export default function LandingPage({
                     setClaimResult(null);
                     setStage('claim_check');
                   }}
-                  className="w-full mt-6 h-11 rounded-[10px] text-xs font-semibold bg-[#D91E63] text-white hover:bg-[#B71C1C] transition-all flex items-center justify-center gap-2 uppercase tracking-wide shadow-sm"
+                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#D91E63] text-white hover:bg-[#C2185B] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_registry_btn', 'Access Registry Portal')}
                   <ChevronRight className="w-4 h-4" />
@@ -757,17 +760,18 @@ export default function LandingPage({
               </div>
             </div>
 
-            {/* Micro Access Card - Upgraded */}
-            <div className="flex flex-col items-center max-w-sm mx-auto bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm relative overflow-hidden group">
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-4">Official Logins</span>
+            {/* Micro Access Card - Upgraded to elegant white glass panel */}
+            <div className="flex flex-col items-center max-w-sm mx-auto bg-slate-50/50 border border-slate-200/80 p-8 rounded-2xl shadow-premium relative overflow-hidden group">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mb-4">Official Logins</span>
               <Button 
                 onClick={onLoginClick}
-                className="w-full h-11 rounded-[10px] font-semibold text-white bg-[#0A2E5C] hover:bg-[#1E5AA8] shadow-sm transition-all uppercase tracking-wider text-xs flex items-center justify-center gap-2 group"
+                className="w-full h-11 rounded-xl font-bold text-white bg-[#0A2E5C] hover:bg-[#1E5AA8] shadow-premium transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200"
               >
                 Sign In to Portal
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Button>
             </div>
+
             {/* About HCRS & Our Mission Section - Redesigned to exact specifications */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-6xl mx-auto pt-6 text-left font-sans">
               
@@ -776,56 +780,56 @@ export default function LandingPage({
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.5 }}
                 className="lg:col-span-5 space-y-6 flex flex-col justify-between"
               >
-                <div className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm relative h-full flex flex-col justify-between overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full pointer-events-none" />
+                <div className="bg-white border border-slate-200/80 p-8 md:p-10 rounded-3xl shadow-premium relative h-full flex flex-col justify-between overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50/50 rounded-full pointer-events-none" />
                   
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#D91E63]/5 text-[#D91E63] px-3.5 py-1.5 rounded-[4px] border border-[#D91E63]/10">
-                      <Building2 className="w-4 h-4" />
-                      <span className="font-bold text-[10px] uppercase tracking-wider">About HCRS • ഞങ്ങളെക്കുറിച്ച്</span>
+                    <div className="inline-flex items-center gap-2 bg-[#D91E63]/6 text-[#D91E63] px-3.5 py-1.5 rounded-full border border-[#D91E63]/10">
+                      <Building2 className="w-4 h-4 stroke-[2]" />
+                      <span className="font-extrabold text-[10px] uppercase tracking-widest">About HCRS • ഞങ്ങളെക്കുറിച്ച്</span>
                     </div>
  
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight uppercase leading-none">
+                    <h2 className="text-2xl font-black text-[#0A2E5C] tracking-tight uppercase leading-none font-heading">
                       About <span className="text-[#D91E63]">HCRS</span>
                     </h2>
  
-                    <div className="space-y-5 text-sm text-slate-600 font-normal leading-relaxed">
+                    <div className="space-y-5 text-sm text-slate-650 font-normal leading-relaxed">
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-[6px] bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
                           <Building2 className="w-5 h-5 text-[#D91E63]" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-700">
-                          <strong className="text-slate-950 font-semibold">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a legally registered non-profit organization formed in 2025 in Thrissur, Kerala.
+                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                          <strong className="text-[#0A2E5C] font-extrabold">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a legally registered non-profit organization formed in 2025 in Thrissur, Kerala.
                         </p>
                       </div>
  
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-[6px] bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
                           <Users className="w-5 h-5 text-[#0A2E5C]" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-700">
-                          HCRS was established as a <strong className="text-slate-950 font-semibold">revival committee</strong> for the members of Highrich Online Shoppe.
+                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                          HCRS was established as a <strong className="text-[#0A2E5C] font-extrabold">revival committee</strong> for the members of Highrich Online Shoppe.
                         </p>
                       </div>
  
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-[6px] bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
                           <HeartHandshake className="w-5 h-5 text-emerald-600" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-700">
-                          Efforts are ongoing to support affected community members through welfare initiatives, awareness programs, community support activities, and <strong className="text-slate-950 font-semibold">lawful assistance mechanisms</strong>.
+                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                          Efforts are ongoing to support affected community members through welfare initiatives, awareness programs, community support activities, and <strong className="text-[#0A2E5C] font-extrabold">lawful assistance mechanisms</strong>.
                         </p>
                       </div>
  
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-[6px] bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
                           <Sparkles className="w-5 h-5 text-amber-600" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-700">
-                          HCRS remains committed to helping members <strong className="text-slate-950 font-semibold">rebuild confidence, stability, and opportunities</strong> through collective action.
+                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                          HCRS remains committed to helping members <strong className="text-[#0A2E5C] font-extrabold">rebuild confidence, stability, and opportunities</strong> through collective action.
                         </p>
                       </div>
                     </div>
@@ -833,12 +837,12 @@ export default function LandingPage({
  
                   {/* Registered Status Sub-Card */}
                   <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-[6px] bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-                      <ShieldCheck className="w-5 h-5" />
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0 shadow-sm">
+                      <ShieldCheck className="w-5 h-5 stroke-[2]" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Kerala Division</p>
-                      <p className="text-xs font-semibold text-slate-800 uppercase tracking-wide mt-1.5">Registered Non-Profit</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Kerala Division</p>
+                      <p className="text-xs font-extrabold text-[#0A2E5C] uppercase tracking-wider mt-1.5">Registered Non-Profit</p>
                     </div>
                   </div>
                 </div>
@@ -849,21 +853,21 @@ export default function LandingPage({
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
                 className="lg:col-span-7 space-y-6"
               >
-                <div className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm h-full flex flex-col justify-between">
+                <div className="bg-white border border-slate-200/80 p-8 md:p-10 rounded-3xl shadow-premium h-full flex flex-col justify-between">
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/5 text-[#0A2E5C] px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/10">
-                      <Target className="w-4 h-4" />
-                      <span className="font-bold text-[10px] uppercase tracking-wider">Our Society Mission • ലക്ഷ്യങ്ങൾ</span>
+                    <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/6 text-[#0A2E5C] px-3.5 py-1.5 rounded-full border border-[#0A2E5C]/10">
+                      <Target className="w-4 h-4 stroke-[2]" />
+                      <span className="font-extrabold text-[10px] uppercase tracking-widest">Our Society Mission • ലക്ഷ്യങ്ങൾ</span>
                     </div>
  
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight uppercase leading-none">
+                    <h2 className="text-2xl font-black text-[#0A2E5C] tracking-tight uppercase leading-none font-heading">
                       Our <span className="text-[#0A2E5C]">Mission</span>
                     </h2>
  
-                    <p className="text-sm font-normal text-slate-500 leading-relaxed">
+                    <p className="text-sm font-medium text-slate-400 leading-relaxed">
                       Our society works to restore trust and rebuild livelihoods through:
                     </p>
  
@@ -875,51 +879,51 @@ export default function LandingPage({
                           titleMl: "കമ്മ്യൂണിറ്റി ക്ഷേമം",
                           icon: Users,
                           iconColor: "text-[#0A2E5C]",
-                          bgColor: "bg-slate-50 border-slate-200"
+                          bgColor: "bg-slate-50/50 border-slate-200/65"
                         },
                         {
                           title: "Medical Assistance",
                           titleMl: "ചികിത്സാ സഹായം",
                           icon: Activity,
                           iconColor: "text-rose-600",
-                          bgColor: "bg-slate-50 border-slate-200"
+                          bgColor: "bg-slate-50/50 border-slate-200/65"
                         },
                         {
                           title: "Legal Awareness",
                           titleMl: "നിയമ ബോധവൽക്കരണം",
                           icon: Gavel,
                           iconColor: "text-amber-600",
-                          bgColor: "bg-slate-50 border-slate-200"
+                          bgColor: "bg-slate-50/50 border-slate-200/65"
                         },
                         {
                           title: "Social Support",
                           titleMl: "സാമൂഹിക പിന്തുണ",
                           icon: HeartHandshake,
                           iconColor: "text-emerald-600",
-                          bgColor: "bg-slate-50 border-slate-200"
+                          bgColor: "bg-slate-50/50 border-slate-200/65"
                         },
                         {
                           title: "Financial Guidance",
                           titleMl: "സാമ്പത്തിക മാർഗ്ഗനിർദ്ദേശം",
                           icon: Briefcase,
                           iconColor: "text-[#1E5AA8]",
-                          bgColor: "bg-slate-50 border-slate-200"
+                          bgColor: "bg-slate-50/50 border-slate-200/65"
                         }
                       ].map((item) => {
                         const Icon = item.icon;
                         return (
                           <div 
                             key={item.title}
-                            className={`p-4 rounded-[6px] border ${item.bgColor} flex flex-col justify-between transition-all hover:border-[#1E5AA8]/30 cursor-default`}
+                            className={`p-4 md:p-5 rounded-2xl border ${item.bgColor} flex flex-col justify-between transition-all duration-300 hover:border-[#1E5AA8]/30 hover:bg-white hover:shadow-premium cursor-default`}
                           >
-                            <div className={`w-9 h-9 rounded-[6px] bg-white flex items-center justify-center shadow-sm border border-slate-200 shrink-0 mb-3`}>
-                              <Icon className={`w-4 h-4 ${item.iconColor}`} />
+                            <div className={`w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100 shrink-0 mb-4`}>
+                              <Icon className={`w-4 h-4 ${item.iconColor} stroke-[2]`} />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-slate-900 text-xs leading-snug uppercase tracking-tight">
+                              <h4 className="font-extrabold text-[#0A2E5C] text-xs leading-snug uppercase tracking-tight font-heading">
                                 {item.title}
                               </h4>
-                              <p className="text-[10px] text-slate-500 font-bold tracking-wide mt-1">
+                              <p className="text-[10px] text-slate-400 font-extrabold tracking-widest uppercase mt-1">
                                 {item.titleMl}
                               </p>
                             </div>
@@ -931,35 +935,35 @@ export default function LandingPage({
  
                   {/* Special Attention Priority Segment */}
                   <div className="mt-8 pt-6 border-t border-slate-100">
-                    <div className="bg-slate-50 border border-slate-200 rounded-[10px] p-5 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                       <div className="space-y-1.5 max-w-sm">
-                        <div className="inline-flex items-center gap-1.5 text-[#D91E63] font-bold uppercase text-[10px] tracking-wider leading-none">
-                          <BadgeAlert className="w-3.5 h-3.5" />
+                        <div className="inline-flex items-center gap-1.5 text-[#D91E63] font-extrabold uppercase text-[10px] tracking-widest leading-none">
+                          <BadgeAlert className="w-3.5 h-3.5 stroke-[2]" />
                           Special Attention segment
                         </div>
-                        <p className="text-xs font-semibold text-slate-650 leading-relaxed pt-1">
+                        <p className="text-xs font-bold text-slate-500 leading-relaxed pt-1">
                           Our society pays a prioritized focus and active attention to:
                         </p>
                       </div>
  
                       {/* Pill list targeting priority members */}
-                      <div className="grid grid-cols-2 gap-2.5 shrink-0 w-full sm:w-auto">
+                      <div className="grid grid-cols-2 gap-3 shrink-0 w-full sm:w-auto">
                         {[
                           { lbl: "Women", lblMl: "വനിതകൾ", icon: Heart },
                           { lbl: "Widows", lblMl: "വിധവകൾ", icon: Shield },
                           { lbl: "Senior Citizens", lblMl: "മുതിർന്ന പൗരന്മാർ", icon: Award },
-                          { lbl: "Families", lblMl: "നിരാലംബർ", icon: Users }
+                          { lbl: "Families", lblMl: "निരാലംബർ", icon: Users }
                         ].map((priority) => {
                           const PriIcon = priority.icon;
                           return (
                             <div 
                               key={priority.lbl}
-                              className="bg-white px-3.5 py-2.5 rounded-[6px] border border-slate-200 flex items-center gap-2 shadow-sm shrink-0"
+                              className="bg-white px-4 py-3 rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm shrink-0"
                             >
-                              <PriIcon className="w-3.5 h-3.5 text-[#D91E63] shrink-0" />
+                              <PriIcon className="w-4 h-4 text-[#D91E63] shrink-0" />
                               <div>
-                                <p className="font-semibold text-[10px] text-slate-850 leading-none uppercase">{priority.lbl}</p>
-                                <p className="text-[9px] font-bold text-slate-400 mt-0.5">{priority.lblMl}</p>
+                                <p className="font-extrabold text-[10px] text-slate-800 leading-none uppercase">{priority.lbl}</p>
+                                <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{priority.lblMl}</p>
                               </div>
                             </div>
                           );
@@ -974,16 +978,16 @@ export default function LandingPage({
             </div>
 
             {/* OUR KEY ACTIVITIES SECTION */}
-            <section className="space-y-8 max-w-6xl mx-auto pt-16">
-              <div className="text-center space-y-2 font-sans">
-                <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/5 text-[#0A2E5C] px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/10">
-                  <Activity className="w-4 h-4 text-[#0A2E5C]" />
-                  <span className="font-bold text-[10px] uppercase tracking-wider">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
+            <section className="space-y-10 max-w-6xl mx-auto pt-16">
+              <div className="text-center space-y-3 font-sans">
+                <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/6 text-[#0A2E5C] px-3.5 py-1.5 rounded-full border border-[#0A2E5C]/10">
+                  <Activity className="w-4 h-4 text-[#0A2E5C] stroke-[2]" />
+                  <span className="font-extrabold text-[10px] uppercase tracking-widest">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                  Our Key <span className="text-[#0A2E5C]">Activities</span>
+                <h2 className="text-3xl md:text-3xl font-black text-[#0A2E5C] uppercase tracking-tight font-heading">
+                  Our Key <span className="text-[#D91E63]">Activities</span>
                 </h2>
-                <p className="text-slate-500 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-500 font-medium text-xs md:text-sm max-w-xl mx-auto">
                   We are actively engaged in structured initiatives and programs to restore the community.
                 </p>
               </div>
@@ -991,64 +995,64 @@ export default function LandingPage({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Card 1 */}
                 <div 
-                  className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#0A2E5C]/25 hover:shadow-projected"
                 >
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-[6px] bg-[#0A2E5C]/5 border border-[#0A2E5C]/10 text-[#0A2E5C] flex items-center justify-center shadow-sm">
-                      <IdCard className="w-5 h-5" />
+                  <div className="space-y-5">
+                    <div className="w-12 h-12 rounded-xl bg-[#0A2E5C]/8 border border-[#0A2E5C]/15 text-[#0A2E5C] flex items-center justify-center shadow-sm">
+                      <IdCard className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight">
+                    <h3 className="text-lg font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
                       Membership Campaigns
                     </h3>
-                    <p className="text-slate-600 font-normal text-xs md:text-sm leading-relaxed">
+                    <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
                       HCRS Membership Campaigns unite members and supporters for welfare, awareness, revival initiatives, and community participation.
                     </p>
                   </div>
                   <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#0A2E5C]">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Uniting Members</span>
-                    <span className="w-2 h-2 rounded-full bg-[#0A2E5C]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Uniting Members</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0A2E5C]" />
                   </div>
                 </div>
 
                 {/* Card 2 */}
                 <div 
-                  className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#D91E63]/25 hover:shadow-projected"
                 >
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-[6px] bg-[#D91E63]/5 border border-[#D91E63]/10 text-[#D91E63] flex items-center justify-center shadow-sm">
-                      <HeartHandshake className="w-5 h-5" />
+                  <div className="space-y-5">
+                    <div className="w-12 h-12 rounded-xl bg-[#D91E63]/8 border border-[#D91E63]/15 text-[#D91E63] flex items-center justify-center shadow-sm">
+                      <HeartHandshake className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight">
+                    <h3 className="text-lg font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
                       Welfare Activities
                     </h3>
-                    <p className="text-slate-600 font-normal text-xs md:text-sm leading-relaxed">
+                    <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
                       Supporting members through welfare programs, awareness campaigns, and compassionate assistance initiatives.
                     </p>
                   </div>
                   <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#D91E63]">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Active Relief</span>
-                    <span className="w-2 h-2 rounded-full bg-[#D91E63]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Active Relief</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#D91E63]" />
                   </div>
                 </div>
 
                 {/* Card 3 */}
                 <div 
-                  className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left"
+                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#1E5AA8]/25 hover:shadow-projected"
                 >
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-[6px] bg-[#1E5AA8]/5 border border-[#1E5AA8]/10 text-[#1E5AA8] flex items-center justify-center shadow-sm">
-                      <Coins className="w-5 h-5" />
+                  <div className="space-y-5">
+                    <div className="w-12 h-12 rounded-xl bg-[#1E5AA8]/8 border border-[#1E5AA8]/15 text-[#1E5AA8] flex items-center justify-center shadow-sm">
+                      <Coins className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight">
+                    <h3 className="text-lg font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
                       Financial Support
                     </h3>
-                    <p className="text-slate-600 font-normal text-xs md:text-sm leading-relaxed">
+                    <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
                       Providing support initiatives for education, medical needs, emergencies, and livelihood recovery efforts.
                     </p>
                   </div>
                   <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#1E5AA8]">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Essential Recovery</span>
-                    <span className="w-2 h-2 rounded-full bg-[#1E5AA8]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Essential Recovery</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#1E5AA8]" />
                   </div>
                 </div>
               </div>
@@ -1300,55 +1304,82 @@ export default function LandingPage({
                       We focus on critical development blocks to foster societal health and security.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 font-sans">
+                    <div className="flex flex-col gap-4 pt-2 font-sans">
                       {[
                         {
-                          num: "01",
+                          num: 1,
                           title: "Social Welfare",
                           titleMl: "സാമൂഹിക ക്ഷേമം",
                           desc: "Supporting health, education, and livelihood initiatives.",
                           icon: Heart,
-                          color: "bg-rose-50 border-rose-100 text-rose-600"
+                          tabColor: "bg-[#D91E63]",
+                          numColor: "text-[#D91E63]",
+                          iconColor: "text-[#D91E63]",
                         },
                         {
-                          num: "02",
+                          num: 2,
                           title: "Women & Youth Development",
                           titleMl: "സ്ത്രീ-യുവജന ക്ഷേമം",
                           desc: "Encouraging participation, empowerment, and leadership.",
                           icon: Users,
-                          color: "bg-pink-50 border-pink-100 text-[#D91E63]"
+                          tabColor: "bg-[#0A2E5C]",
+                          numColor: "text-[#0A2E5C]",
+                          iconColor: "text-[#0A2E5C]",
                         },
                         {
-                          num: "03",
+                          num: 3,
                           title: "Community Support",
                           titleMl: "കമ്മ्युनिटी പിന്തുണ",
                           desc: "Building stronger support networks and crisis response structures.",
                           icon: HeartHandshake,
-                          color: "bg-emerald-50 border-emerald-100 text-emerald-600"
+                          tabColor: "bg-[#1E5AA8]",
+                          numColor: "text-[#1E5AA8]",
+                          iconColor: "text-[#1E5AA8]",
                         },
                         {
-                          num: "04",
+                          num: 4,
                           title: "Awareness Programs",
                           titleMl: "ബോധവൽക്കരണം",
                           desc: "Promoting education, legal orientation, and information sharing.",
                           icon: Compass,
-                          color: "bg-blue-50 border-blue-100 text-blue-600"
+                          tabColor: "bg-[#0D9488]",
+                          numColor: "text-[#0D9488]",
+                          iconColor: "text-[#0D9488]",
                         }
                       ].map((area) => {
                         const AreaIcon = area.icon;
                         return (
                           <div 
                             key={area.title} 
-                            className="p-5 bg-slate-50 border border-slate-200 rounded-[6px] flex items-start gap-4 transition-all group"
+                            className="bg-white border border-slate-200/90 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-stretch overflow-hidden relative min-h-[90px]"
                           >
-                            <div className={`w-10 h-10 rounded-[6px] shrink-0 flex items-center justify-center border ${area.color}`}>
-                              <AreaIcon className="w-5 h-5" />
+                            {/* Left Badge/Pill Container - inspired by Reference #7 */}
+                            <div className="w-16 shrink-0 flex items-center justify-center relative bg-slate-50 border-r border-slate-100">
+                              {/* Vertical Color Tab Accent */}
+                              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${area.tabColor}`} />
+                              {/* Number Circle */}
+                              <div className={`w-9 h-9 rounded-full ${area.tabColor} flex items-center justify-center shadow-sm text-white font-extrabold text-xs`}>
+                                {area.num}
+                              </div>
                             </div>
-                            <div className="space-y-1 font-sans">
-                              <span className="text-[10px] font-bold text-slate-400 block tracking-wider uppercase">Area {area.num}</span>
-                              <h4 className="text-slate-900 font-semibold text-sm uppercase leading-tight">{area.title}</h4>
-                              <p className="text-[10px] text-[#D91E63] font-bold uppercase tracking-wider">{area.titleMl}</p>
+
+                            {/* Main Card Content */}
+                            <div className="flex-1 p-4 pr-12 flex flex-col justify-center text-left">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                <h4 className="text-slate-900 font-bold text-xs md:text-sm uppercase tracking-wide leading-tight">
+                                  {area.title}
+                                </h4>
+                                <span className="text-[10px] text-[#D91E63] font-bold uppercase tracking-wider hidden sm:inline">•</span>
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                  {area.titleMl}
+                                </span>
+                              </div>
                               <p className="text-slate-500 text-xs font-normal leading-relaxed pt-1">{area.desc}</p>
+                            </div>
+
+                            {/* Right Icon - inspired by Reference #7 */}
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300">
+                              <AreaIcon className="w-5 h-5 stroke-[1.5]" />
                             </div>
                           </div>
                         );
@@ -1494,6 +1525,64 @@ export default function LandingPage({
                       return acc;
                     }, { main: [] as CommitteeMember[], second: [] as CommitteeMember[], executive: [] as CommitteeMember[] });
 
+                    // Support district & mandalam single large poster representation
+                    const posterMember = filtered.find(m => m.designation === 'Poster');
+                    if (activeCommTab !== 'state') {
+                      if (posterMember) {
+                        return (
+                          <div className="max-w-4xl mx-auto space-y-4">
+                            <motion.div
+                              initial={{ opacity: 0, y: 15 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="bg-white border border-slate-200 p-3 rounded-[24px] shadow-sm overflow-hidden flex flex-col items-center"
+                            >
+                              <img
+                                src={posterMember.imageUrl}
+                                alt={posterMember.nameMl || posterMember.name}
+                                className="w-full h-auto rounded-[18px] object-contain max-h-[850px] shadow-sm transition-transform hover:scale-[1.01]"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
+                                }}
+                              />
+                              {posterMember.nameMl && (
+                                <p className="mt-4 text-sm font-black text-[#0A2E5C] uppercase tracking-wider malayalam-text text-center">
+                                  {posterMember.nameMl}
+                                </p>
+                              )}
+                            </motion.div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="py-16 px-4 bg-slate-50 border border-slate-200/60 rounded-[24px] text-center max-w-xl mx-auto space-y-2">
+                            <Users className="w-10 h-10 text-slate-400 mx-auto" />
+                            <h4 className="text-sm font-bold text-slate-800">പോസ്റ്റർ ലഭ്യമല്ല! (Poster Not Available)</h4>
+                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                              ഈ കമ്മിറ്റിയുടെ വിവരങ്ങൾ അടങ്ങുന്ന സിംഗിൾ ഇമേജ് പോസ്റ്റർ അഡ്മിൻ പാനലിൽ നിന്നും അപ്‌ലോഡ് ചെയ്തിട്ടില്ല.
+                            </p>
+                          </div>
+                        );
+                      }
+                    }
+
+                    const isVicePresident = (m: CommitteeMember) => {
+                      const des = (m.designation || '').toLowerCase();
+                      const desMl = (m.designationMl || '').toLowerCase();
+                      return des.includes('vice') || desMl.includes('വൈസ്');
+                    };
+
+                    const isJointSecretary = (m: CommitteeMember) => {
+                      const des = (m.designation || '').toLowerCase();
+                      const desMl = (m.designationMl || '').toLowerCase();
+                      return des.includes('joint') || desMl.includes('ജോയിന്റ്') || desMl.includes('ജോയന്റ്') || desMl.includes('ജോയിൻ');
+                    };
+
+                    const vicePresidents = categorized.second.filter(isVicePresident);
+                    const jointSecretaries = categorized.second.filter(isJointSecretary);
+                    const otherSecond = categorized.second.filter(m => !isVicePresident(m) && !isJointSecretary(m));
+
                     const renderMemberCard = (m: CommitteeMember) => (
                       <motion.div
                         key={m.id}
@@ -1527,81 +1616,180 @@ export default function LandingPage({
                           <p className="text-[10px] text-[#D91E63] font-black uppercase tracking-wider pt-0.5 truncate">
                             {m.designationMl || m.designation}
                           </p>
-                          
-                          {m.level === 'mandalam' && m.mandalam && (
-                            <div className="inline-flex items-center gap-1 text-[8px] text-slate-500 font-bold uppercase mt-1">
-                              <MapPin className="w-2.5 h-2.5 text-slate-400" />
-                              <span>{m.mandalam} मണ്ഡലം</span>
-                            </div>
-                          )}
                         </div>
                       </motion.div>
                     );
 
                     return (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full text-left font-sans items-start">
-                        {/* COLUMN 1: MAIN OFFICE BEARERS */}
-                        <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
-                          <div className="flex items-center gap-2 border-b border-indigo-100/60 pb-3 mb-2 shrink-0">
-                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
-                            <h3 className="font-black text-[12px] text-slate-705 uppercase tracking-wider">
-                              പ്രസിഡന്റ് / സെക്രട്ടറി / ട്രഷറർ
-                              <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Main Office Bearers</span>
-                            </h3>
+                      <div className="space-y-12 w-full text-left font-sans">
+                        {/* 1. TOP TIER LEADERSHIP (PRESIDENT, SECRETARY, TREASURER) WITH SLIGHTLY LARGER PHOTOS */}
+                        {categorized.main.length > 0 && (
+                          <div className="space-y-6 w-full">
+                            <div className="flex items-center gap-3 border-b border-amber-100 pb-3 justify-center">
+                              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
+                              <h3 className="font-black text-xs text-slate-800 uppercase tracking-wider text-center">
+                                സംസ്ഥാന പ്രധാന ഭാരവാഹികൾ
+                                <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">State Leaders</span>
+                              </h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto justify-center">
+                              {categorized.main.map((m) => (
+                                <motion.div
+                                  key={m.id}
+                                  initial={{ opacity: 0, y: 15 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.3 }}
+                                  className="bg-white border border-amber-200/60 rounded-[24px] p-6 shadow-xs hover:shadow-md transition-all flex flex-col items-center text-center group relative overflow-hidden"
+                                >
+                                  <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500/80" />
+                                  
+                                  {/* LARGER PHOTOS AS SPECIFIED BY THE USER */}
+                                  <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-amber-500/10 bg-slate-50 shadow-sm mb-4 transition-transform duration-300 group-hover:scale-105 shrink-0">
+                                    <img
+                                      src={m.imageUrl || 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'}
+                                      alt={m.name}
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  <div className="space-y-1 w-full">
+                                    <h3 className="font-bold text-slate-800 text-sm md:text-base tracking-tight leading-snug">
+                                      {m.name}
+                                    </h3>
+                                    {m.nameMl && (
+                                      <p className="text-xs font-bold text-slate-400 leading-none malayalam-text">
+                                        {m.nameMl}
+                                      </p>
+                                    )}
+                                    <div className="pt-2">
+                                      <span className="inline-flex px-3 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200/50 tracking-wider">
+                                        {m.designationMl || m.designation}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
                           </div>
-                          
-                          {categorized.main.length > 0 ? (
-                            <div className="space-y-4">
-                              {categorized.main.map((m) => renderMemberCard(m))}
-                            </div>
-                          ) : (
-                            <div className="py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-                              No Members Found
-                            </div>
-                          )}
-                        </div>
+                        )}
 
-                        {/* COLUMN 2: VICE PRESIDENTS & JOINT SECRETARIES */}
-                        <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
-                          <div className="flex items-center gap-2 border-b border-indigo-100/60 pb-3 mb-2 shrink-0">
-                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
-                            <h3 className="font-black text-[12px] text-slate-705 uppercase tracking-wider">
-                              വൈസ് പ്രസിഡന്റ് / ജോയിന്റ് സെക്രട്ടറി
-                              <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Vice Presidents & Joint Secretaries</span>
-                            </h3>
-                          </div>
-                          
-                          {categorized.second.length > 0 ? (
-                            <div className="space-y-4">
-                              {categorized.second.map((m) => renderMemberCard(m))}
-                            </div>
-                          ) : (
-                            <div className="py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-                              No Members Found
-                            </div>
-                          )}
-                        </div>
+                        {/* 2. VICE PRESIDENTS & JOINT SECRETARIES */}
+                        {(vicePresidents.length > 0 || jointSecretaries.length > 0 || otherSecond.length > 0) && (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
+                            {/* VICE PRESIDENTS */}
+                            {vicePresidents.length > 0 && (
+                              <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
+                                <div className="flex items-center justify-between border-b border-indigo-100 pb-3 mb-2 shrink-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                                    <h3 className="font-black text-[11px] text-slate-700 uppercase tracking-wider">
+                                      വൈസ് പ്രസിഡന്റുമാർ
+                                      <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Vice Presidents (Max 2)</span>
+                                    </h3>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {vicePresidents.map((m) => renderMemberCard(m))}
+                                </div>
+                              </div>
+                            )}
 
-                        {/* COLUMN 3: EXECUTIVE MEMBERS */}
-                        <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
-                          <div className="flex items-center gap-2 border-b border-indigo-100/60 pb-3 mb-2 shrink-0">
-                            <div className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></div>
-                            <h3 className="font-black text-[12px] text-slate-705 uppercase tracking-wider">
-                              എക്സിക്യൂട്ടീവ് അംഗങ്ങൾ
-                              <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Executive Members</span>
-                            </h3>
+                            {/* JOINT SECRETARIES */}
+                            {jointSecretaries.length > 0 && (
+                              <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40">
+                                <div className="flex items-center justify-between border-b border-indigo-100 pb-3 mb-2 shrink-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+                                    <h3 className="font-black text-[11px] text-slate-700 uppercase tracking-wider">
+                                      ജോയിന്റ് സെക്രട്ടറിമാർ
+                                      <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Joint Secretaries (Max 2)</span>
+                                    </h3>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {jointSecretaries.map((m) => renderMemberCard(m))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* OTHER SECOND LEVEL OFFICE BEARERS (IF ANY) */}
+                            {otherSecond.length > 0 && (
+                              <div className="space-y-4 bg-slate-50/50 p-5 rounded-[22px] border border-slate-200/40 lg:col-span-2">
+                                <div className="flex items-center gap-2 border-b border-indigo-100 pb-3 mb-2 shrink-0">
+                                  <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                  <h3 className="font-black text-[11px] text-slate-700 uppercase tracking-wider">
+                                    മറ്റ് ഭാരവാഹികൾ
+                                    <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Other Office Bearers</span>
+                                  </h3>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                  {otherSecond.map((m) => renderMemberCard(m))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          
-                          {categorized.executive.length > 0 ? (
-                            <div className="space-y-4">
-                              {categorized.executive.map((m) => renderMemberCard(m))}
+                        )}
+
+                        {/* 3. EXECUTIVE MEMBERS COMPACT ADJACENT CLUSTER */}
+                        {categorized.executive.length > 0 && (
+                          <div className="space-y-4 bg-slate-50/50 p-6 rounded-[22px] border border-slate-200/40 w-full">
+                            <div className="flex items-center gap-2 border-b border-pink-100 pb-3 mb-4 shrink-0">
+                              <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
+                              <h3 className="font-black text-[11px] text-slate-800 uppercase tracking-wider">
+                                എക്സിക്യൂട്ടീവ് അംഗങ്ങൾ
+                                <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Executive Members</span>
+                              </h3>
                             </div>
-                          ) : (
-                            <div className="py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-                              No Members Found
+                            
+                            <div className="flex flex-wrap gap-3 justify-start">
+                              {categorized.executive.map((m) => {
+                                const hasImage = m.imageUrl && m.imageUrl.trim() !== '';
+                                return (
+                                  <motion.div
+                                    key={m.id}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full shadow-xs hover:shadow-sm hover:border-[#0A2E5C]/20 transition-all shrink-0"
+                                  >
+                                    {hasImage ? (
+                                      <div className="w-6 h-6 rounded-full overflow-hidden border border-[#0A2E5C]/10 bg-slate-50 shrink-0">
+                                        <img
+                                          src={m.imageUrl}
+                                          alt={m.name}
+                                          className="w-full h-full object-cover"
+                                          referrerPolicy="no-referrer"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).src = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
+                                          }}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-50 to-brand-blue/10 border border-indigo-100 flex items-center justify-center text-[9px] font-black text-brand-blue uppercase shrink-0">
+                                        {m.name.charAt(0)}
+                                      </div>
+                                    )}
+                                    <div className="text-left leading-none">
+                                      <h4 className="font-bold text-slate-800 text-[10px] md:text-xs">
+                                        {m.name}
+                                      </h4>
+                                      {m.nameMl && (
+                                        <p className="text-[9px] font-bold text-slate-400 mt-0.5 malayalam-text leading-none">
+                                          {m.nameMl}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
