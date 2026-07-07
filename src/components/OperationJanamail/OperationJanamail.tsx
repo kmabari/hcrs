@@ -1,5 +1,5 @@
 import React from "react";
-
+import CampaignInfo from "./CampaignInfo";
 export default function OperationJanamail() {
   return (
     <main className="min-h-screen bg-white">
