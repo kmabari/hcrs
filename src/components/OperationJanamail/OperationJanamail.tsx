@@ -48,39 +48,7 @@ export default function OperationJanamail() {
 
       {/* Placeholder */}
 
-      <section className="mx-auto max-w-6xl px-6 py-20">
-
-        <div className="rounded-3xl border border-gray-200 p-10 shadow-lg">
-
-          <h2 className="text-3xl font-bold">
-
-            Website Under Development
-
-          </h2>
-
-          <p className="mt-6 text-lg leading-8 text-gray-700">
-
-            അടുത്ത ഘട്ടത്തിൽ ഇവിടെ
-
-            • Campaign Information
-
-            • Email Editor
-
-            • Gmail Button
-
-            • Disclaimer
-
-            • FAQ
-
-            • QR Section
-
-            എന്നിവ ചേർക്കുന്നതാണ്.
-
-          </p>
-
-        </div>
-
-      </section>
+      <<CampaignInfo />
 
     </main>
   );
