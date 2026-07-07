@@ -25,7 +25,7 @@ import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDo
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
-
+import OperationJanamail from "./components/OperationJanamail";
 const MAIN_ADMINS = [
   'kmabarikiyafoods@gmail.com',
   'hcrsindia@gmail.com',
