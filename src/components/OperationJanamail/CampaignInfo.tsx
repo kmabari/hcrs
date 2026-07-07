@@ -1,4 +1,5 @@
 import React from "react";
+import CampaignInfo from "./CampaignInfo";
 
 export default function CampaignInfo() {
   return (
