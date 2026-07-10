@@ -1,0 +1,11 @@
+{
+  "projectId": "hcrs-membership",
+  "appId": "1:739674403429:web:c8a088e14981ead61f0c8c",
+  "apiKey": "AIzaSyCaXenet2_IGJUNp9koD1PiEgC6p8HHKNk",
+  "authDomain": "hcrs-membership.firebaseapp.com",
+  "databaseURL": "https://hcrs-membership-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "hcrs-membership.firebasestorage.app",
+  "messagingSenderId": "739674403429",
+  "measurementId": "G-DB4NFRT6H7"
+}

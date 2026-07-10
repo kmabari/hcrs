@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Auth Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+    
+    function isMainAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email != null && (
+               request.auth.token.email == 'kmabarikiyafoods@gmail.com' ||
+               request.auth.token.email == 'hcrsindia@gmail.com' ||
+               request.auth.token.email == 'admin@hcrs.society' ||
+               request.auth.token.email == '9645934571@hcrs.society' ||
+               request.auth.token.email == 'mabarikiyafoods@gmail.com' ||
+               request.auth.token.email == 'hcrskerala@gmail.com'
+             );
+    }
+    
+    function isSecondAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email != null && (
+               request.auth.token.email.matches('^hcrs.*@hcrs\\.society$') ||
+               request.auth.token.email.matches('^.*hcrs.*@gmail\\.com$') ||
+               request.auth.token.email.matches('^hcrs\\..*@gmail\\.com$')
+             );
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        isMainAdmin() || isSecondAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'admin'
+          )
+        )
+      );
+    }
+    
+    function isOperator() {
+      return isSignedIn() && (
+        isMainAdmin() || isSecondAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'admin' ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'operator'
+          )
+        )
+      );
+    }
+
+    // --- Rules for Each Collection ---
+    
+    // claims Collection: Split get and list rules to prevent static CEL evaluation failures on whole-collection query
+    match /claims/{claimId} {
+      allow get: if isSignedIn() && (
+        resource == null ||
+        resource.data.uid == request.auth.uid || 
+        isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
+      // Let operators list all claims, and let authenticated users list with a filter/limit if needed
+      allow list: if isOperator() || (request.query.limit != null && request.query.limit <= 5);
+      allow create: if isSignedIn();
+      allow update: if isOperator() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    
+    // support_tickets Collection: Ensure operators can query the list cleanly
+    match /support_tickets/{ticketId} {
+      allow get, list: if isOperator() || resource == null;
+      allow create: if isSignedIn();
+      allow update: if isOperator();
+      allow delete: if isAdmin();
+    }
+    
+    // Default fallback rules for other collections
+    match /users/{userId} {
+      allow get: if isSignedIn() && (userId == request.auth.uid || isOperator() || resource.data.status == 'active' || resource.data.status == 'pending');
+      allow list: if isOperator() || (request.query.limit != null && request.query.limit <= 5);
+      allow create: if isSignedIn();
+      allow update, delete: if isOperator();
+    }
+    
+    match /gallery/{docId} {
+      allow read: if true;
+      allow write: if isOperator();
+    }
+
+    match /announcements/{docId} {
+      allow read: if true;
+      allow write: if isOperator();
+    }
+
+    match /districtQuotas/{docId} {
+      allow read: if true;
+      allow write: if isOperator();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isOperator();
+    }
+
+    match /committees/{docId} {
+      allow read: if true;
+      allow write: if isOperator();
+    }
+
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
