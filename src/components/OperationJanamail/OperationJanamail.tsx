@@ -48,7 +48,7 @@ export default function OperationJanamail() {
 
       {/* Placeholder */}
 
-      <<CampaignInfo />
+      <CampaignInfo />
 
     </main>
   );

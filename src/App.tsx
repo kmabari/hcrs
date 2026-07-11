@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
+
+
+import React, { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import RegistrationForm from './components/RegistrationForm';
 import RenewalForm from './RenewalForm';
@@ -26,18 +28,14 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
 import OperationJanamail from "./components/OperationJanamail";
+
 const MAIN_ADMINS = [
   'kmabarikiyafoods@gmail.com',
-  'hcrsindia@gmail.com',
-  'admin@hcrs.society',
-  '9645934571@hcrs.society',
-  'mabarikiyafoods@gmail.com',
-  'hcrskerala@gmail.com'
-];
-
-const SECOND_ADMINS = [
-  'hcrskasaragod@hcrs.society',
-  'hcrsksd@hcrs.society',
+  'hcrskerala@gmail.com',
+  ];
+  
+  const SECOND_ADMINS = [
+ 'hcrsksd@hcrs.society',
   'hcrskannur@hcrs.society',
   'hcrsknr@hcrs.society',
   'hcrswayanad@hcrs.society',
@@ -92,9 +90,9 @@ const getStrictDistrictFromEmail = (email: string): string | null => {
   
   return null;
 };
-
 export default function App() {
-  const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify'>('loading');
+ const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify' | 'janamail'>('loading');
+
   const currentViewRef = useRef(view);
   useEffect(() => {
     currentViewRef.current = view;
@@ -997,6 +995,7 @@ export default function App() {
       setView('landing');
       toast.success('Signed out successfully', { id: loadingToast });
     } catch (error) {
+
       console.error("Logout error:", error);
       toast.error('Logout failed', { id: loadingToast });
     }
@@ -1496,8 +1495,9 @@ export default function App() {
             status: 'pending',
             isPaid: true,
             isApproved: false,
-            isAdmin: isAdminEmail,
             role: isAdminEmail ? 'admin' : (isOperatorEmail ? 'operator' : 'member'),
+            isAdmin: isAdminEmail,
+
             serialNo: nextSerial,
             waStatus: 'Pending',
             stateCode: 'KL',
@@ -2832,8 +2832,8 @@ export default function App() {
           />
         </div>
       )}
-
-      <AiChatSupport />
+<OperationJanamail />
+ <AiChatSupport />
       <Toaster position="top-center" richColors theme="dark" />
     </div>
   );
