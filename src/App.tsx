@@ -2832,7 +2832,7 @@ export default function App() {
           />
         </div>
       )}
-<OperationJanamail />
+{view === 'janamail' && <OperationJanamail />}
  <AiChatSupport />
       <Toaster position="top-center" richColors theme="dark" />
     </div>
