@@ -1896,36 +1896,7 @@ export default function AdminDashboard({
                     className={cn(
                       "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
                       activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}<div className="p-4 border-t border-slate-100 flex flex-col gap-2">
-          {onViewJanamail && (
-            <Button
-              onClick={onViewJanamail}
-              variant="ghost"
-              className="w-full h-10 text-[9px] font-black rounded-lg tracking-wider uppercase text-green-600 hover:text-green-800 hover:bg-green-50/50 transition-all cursor-pointer"
-            >
-              <Mail className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-              Operation Janamail
-            </Button>
-          )}
-          {onViewCard && (
-            <Button 
-              onClick={onViewCard} 
-              variant="outline" 
-              className="w-full h-10 text-[9px] font-black rounded-lg tracking-wider uppercase border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta hover:bg-brand-magenta/10 hover:text-brand-magenta transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              എന്റെ ഐഡി കാർഡ് (My Card)
-            </Button>
-          )}
-          <Button 
-            onClick={handleLogout} 
-            variant="ghost" 
-            className="w-full h-10 text-[9px] font-black rounded-lg tracking-wider uppercase text-red-500 hover:text-red-700 hover:bg-red-50/50 transition-all cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-            Logout Session
-          </Button>
-        </div>
+                    )}
                   >
                     <Users className="w-4 h-4 text-slate-400" />
                     <span>Committee Members</span>

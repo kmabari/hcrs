@@ -1,5 +1,6 @@
 import React from "react";
 import CampaignInfo from "./CampaignInfo";
+import EmailEditor from "./EmailEditor";
 export default function OperationJanamail() {
   return (
     <main className="min-h-screen bg-white">
@@ -46,9 +47,8 @@ export default function OperationJanamail() {
 
       </section>
 
-      {/* Placeholder */}
-
       <CampaignInfo />
+      <EmailEditor />
 
     </main>
   );
