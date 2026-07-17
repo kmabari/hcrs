@@ -2805,7 +2805,7 @@ export default function App() {
               districtQuotas={districtQuotas}
               districtQuotasUsed={districtQuotasUsed}
               handleLogout={handleLogout}
-              onViewCard={() => setView('card')}
+              onViewCard={() => setView('card')} onViewJanamail={() => setView('janamail')}
               onRefreshMembers={refreshMembersList}
               isSyncingMembers={isSyncingDocs}
             />
@@ -2825,7 +2825,7 @@ export default function App() {
             handleLogout={handleLogout}
             isDirectManual={isDirectManual}
             isSecondAdmin={SECOND_ADMINS.some(email => email.toLowerCase() === (user.email || '').toLowerCase())}
-            onViewCard={() => setView('card')}
+            onViewCard={() => setView('card')} onViewJanamail={() => setView('janamail')}
             onRefreshMembers={refreshMembersList}
             isSyncingMembers={isSyncingDocs}
             onUpdatePhoto={handleUpdatePhoto}
