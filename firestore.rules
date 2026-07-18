@@ -191,6 +191,12 @@ service cloud.firestore {
           )
         )
       );
+
+      // --- Subcollection: receipts ---
+      match /receipts/{receiptId} {
+        allow read: if isOwner(userId) || isOperator();
+        allow write: if isOperator();
+      }
     }
 
     // --- Collection: settings ---

@@ -30,6 +30,23 @@
       },
       "required": ["name", "mobile", "email", "district", "state", "pin"]
     },
+    "Receipt": {
+      "title": "Payment Receipt",
+      "description": "Stores details of a member's registration or renewal payments.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Receipt document ID / Transaction ID" },
+        "receiptNo": { "type": "string", "description": "Unique auto-generated or custom receipt number" },
+        "receiptType": { "type": "string", "enum": ["Membership Fee", "Annual Renewal", "Life Membership"] },
+        "receiptLabel": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Pending"] },
+        "paymentDate": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "year": { "type": "integer" }
+      },
+      "required": ["receiptType", "receiptLabel", "amount", "status", "paymentDate"]
+    },
     "SupportClaim": {
       "title": "Highrich Support Claim",
       "description": "Information collected for member support coordination regarding Highrich investments.",
@@ -201,6 +218,10 @@
     "users": {
       "schema": "User",
       "description": "Collection of HCRS Society members."
+    },
+    "users/{uid}/receipts": {
+      "schema": "Receipt",
+      "description": "Subcollection of payment receipts for each member."
     },
     "districtQuotas": {
       "schema": "DistrictQuota",

@@ -5,6 +5,7 @@ import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import BrandingManager from './BrandingManager';
 import LanguageManager from './LanguageManager';
+import AdminReceiptsModal from './AdminReceiptsModal';
 import GalleryManagement from './GalleryManagement';
 import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
@@ -555,6 +556,7 @@ export default function AdminDashboard({
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+  const [selectedReceiptsMember, setSelectedReceiptsMember] = useState<UserProfile | null>(null);
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
   const [editingClaim, setEditingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
@@ -3061,6 +3063,14 @@ export default function AdminDashboard({
                               >
                                 <Settings className="w-4 h-4 mr-2" />
                                 Make Operator
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="my-1" />
+                              <DropdownMenuItem 
+                                onClick={() => setSelectedReceiptsMember(member)}
+                                className="rounded-md font-semibold text-brand-magenta cursor-pointer"
+                              >
+                                <Receipt className="w-4 h-4 mr-2" />
+                                Manage Receipts
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="my-1" />
                               <DropdownMenuItem 
@@ -6417,6 +6427,12 @@ service cloud.firestore {
           </div>
         </div>
       </div>
+        {selectedReceiptsMember && (
+          <AdminReceiptsModal 
+            member={selectedReceiptsMember} 
+            onClose={() => setSelectedReceiptsMember(null)} 
+          />
+        )}
     </div>
   );
 }

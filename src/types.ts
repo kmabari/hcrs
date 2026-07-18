@@ -73,3 +73,15 @@ export interface AppState {
   loading: boolean;
   error: string | null;
 }
+
+export interface PaymentReceipt {
+  id: string;
+  receiptNo: string;
+  receiptType: 'Membership Fee' | 'Annual Renewal' | 'Life Membership';
+  receiptLabel: string;
+  amount: number;
+  status: 'Paid' | 'Pending';
+  paymentDate: string;
+  createdAt: any;
+  year?: number;
+}

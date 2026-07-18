@@ -6,6 +6,7 @@ import LoginForm from './components/LoginForm';
 import GalleryPage from './components/GalleryPage';
 import MembershipCard from './components/MembershipCard';
 import ProfileEditForm from './components/ProfileEditForm';
+import PaymentReceipts from './components/PaymentReceipts';
 import { SupportClaimForm } from './components/SupportClaimForm';
 import OperatorDashboard from './components/OperatorDashboard';
 import AdminDashboard from './components/AdminDashboard';
@@ -21,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
 import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
-import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit } from 'firebase/firestore';
+import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
@@ -1954,6 +1955,32 @@ export default function App() {
 
       await updateDoc(doc(db, 'users', uid), finalData);
 
+      // Automatically generate a renewal receipt when renewal is approved
+      const isRenewalApproval = finalData.renewalPending === false && existingMember?.renewalPending === true;
+      if (isRenewalApproval && existingMember) {
+        try {
+          const serialNoStr = existingMember.serialNo ? String(existingMember.serialNo).padStart(4, '0') : '1000';
+          const randomId = Math.floor(1000 + Math.random() * 9000);
+          const receiptNo = `HCRS-REN-${serialNoStr}-${randomId}`;
+          const paymentDateStr = existingMember.renewalPaymentDate || new Date().toISOString().split('T')[0];
+          const renewalYear = existingMember.renewalPaymentDate ? new Date(existingMember.renewalPaymentDate).getFullYear() : new Date().getFullYear();
+
+          await addDoc(collection(db, 'users', uid, 'receipts'), {
+            receiptNo,
+            receiptType: 'Annual Renewal',
+            receiptLabel: 'Annual Renewal Receipt',
+            amount: 100,
+            status: 'Paid',
+            paymentDate: paymentDateStr,
+            createdAt: serverTimestamp(),
+            year: renewalYear
+          });
+          console.log(`Successfully generated automatic renewal receipt: ${receiptNo}`);
+        } catch (receiptErr) {
+          console.error("Non-blocking error: Failed to generate automatic renewal receipt:", receiptErr);
+        }
+      }
+
       // Optimistic state update:
       setMembers(prev => prev.map(m => m.uid === uid ? { 
         ...m, 
@@ -2812,6 +2839,7 @@ export default function App() {
                     onUpdatePhoto={handleUpdatePhoto}
                   />
                 </div>
+                <PaymentReceipts user={user} />
               </div>
             </div>
           )}
