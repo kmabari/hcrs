@@ -1,0 +1,302 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isMainAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email != null && (
+               request.auth.token.email in [
+                 'kmabarikiyafoods@gmail.com',
+                 'hcrsindia@gmail.com',
+                 'admin@hcrs.society',
+                 '9645934571@hcrs.society',
+                 'mabarikiyafoods@gmail.com'
+               ]
+             );
+    }
+
+    function isSecondAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email != null && (
+               request.auth.token.email in [
+                 'hcrskerala@gmail.com',
+                 'hcrskasaragod@hcrs.society',
+                 'hcrsksd@hcrs.society',
+                 'hcrskannur@hcrs.society',
+                 'hcrsknr@hcrs.society',
+                 'hcrswayanad@hcrs.society',
+                 'hcrswyd@hcrs.society',
+                 'hcrskozhikode@hcrs.society',
+                 'hcrskoz@hcrs.society',
+                 'hcrsmalappuram@hcrs.society',
+                 'hcrsmlp@hcrs.society',
+                 'hcrsmpm@hcrs.society',
+                 'hcrspalakkad@hcrs.society',
+                 'hcrspkd@hcrs.society',
+                 'hcrsthrissur@hcrs.society',
+                 'hcrstcr@hcrs.society',
+                 'hcrsernakulam@hcrs.society',
+                 'hcrsekm@hcrs.society',
+                 'hcrsidukki@hcrs.society',
+                 'hcrsidk@hcrs.society',
+                 'hcrskottayam@hcrs.society',
+                 'hcrsktm@hcrs.society',
+                 'hcrsalappuzha@hcrs.society',
+                 'hcrsalp@hcrs.society',
+                 'hcrspathanamthitta@hcrs.society',
+                 'hcrspta@hcrs.society',
+                 'hcrskollam@hcrs.society',
+                 'hcrsklm@hcrs.society',
+                 'hcrsthiruvananthapuram@hcrs.society',
+                 'hcrstvm@hcrs.society'
+               ]
+             );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isMainAdmin() || isSecondAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') in ['admin', 'operator'])
+        )
+      );
+    }
+
+    function isOperator() {
+      // Operators include admins and those explicitly assigned the operator role
+      return isSignedIn() && (
+        isAdmin() || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'operator'
+          )
+        )
+      );
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isRole(role) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().get('role', 'member') == role;
+    }
+
+    function isBootstrappedAdmin(data) {
+      return data.email in [
+        'kmabarikiyafoods@gmail.com',
+        'hcrsindia@gmail.com',
+        'hcrskerala@gmail.com',
+        'admin@hcrs.society',
+        '9645934571@hcrs.society'
+      ] || data.mobile == '9645934571';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function hasField(map, field) { return map.get(field, null) != null; }
+
+    // 2. Validation Blueprints (User Entity)
+    function isValidUser(data) {
+      return true;
+    }
+
+    function isValidSettings(data) {
+      return (data.get('fullName', '') is string && data.get('fullName', '').size() <= 200) &&
+             (data.get('shortName', '') is string && data.get('shortName', '').size() <= 50) &&
+             (data.get('aboutUs', '') is string && data.get('aboutUs', '').size() <= 5000) &&
+             (data.get('mission', '') is string && data.get('mission', '').size() <= 2000) &&
+             (data.get('vision', '') is string && data.get('vision', '').size() <= 2000) &&
+             (data.get('address', '') is string && data.get('address', '').size() <= 500) &&
+             (data.get('phone', '') is string && data.get('phone', '').size() <= 50) &&
+             (data.get('email', '') is string && data.get('email', '').size() <= 100) &&
+             (data.get('website', '') is string && data.get('website', '').size() <= 100) &&
+             (data.get('districtDetails', '') is string && data.get('districtDetails', '').size() <= 500);
+    }
+
+    function isValidGallery(data) {
+      return (data.url is string && data.url.size() <= 1000) &&
+             (data.category is string && data.category.size() <= 100) &&
+             (data.title is string && data.title.size() <= 200) &&
+             (!hasField(data, 'description') || (data.description is string && data.description.size() <= 1000));
+    }
+
+    // --- Collection: users ---
+    match /users/{userId} {
+      // allow get if owner, operator, or if it's an active member (for magic links)
+      allow get: if isOwner(userId) || isOperator() || resource.data.status == 'active' || resource.data.status == 'pending';
+      
+      // Allow limited list queries for registration duplicate checks and renewal lookups
+      // This is necessary because these operations happen before authentication or for non-auth lookups
+      allow list: if isOperator() || (request.query.limit != null && request.query.limit <= 5);
+      
+      allow create: if (isSignedIn() && (
+        (isOwner(userId) && request.resource.data.get('isAdmin', false) == false && request.resource.data.get('role', 'member') == 'member') ||
+        isOperator()
+      )) && isValidUser(request.resource.data);
+
+      allow update: if isValidUser(incoming()) && (
+        // Action 1: Admin/Operator Update
+        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details', 'waStatus', 'stateCode', 'districtCode', 'constituencyCode', 'registrationDate', 'renewalPending', 'renewalDate', 'paymentTime', 'paymentProofUrl', 'renewalTransactionId', 'renewalPaymentDate', 'renewalPaymentTime', 'name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'transactionId', 'registeredBy', 'isQuotaCounted']) || isAdmin())) ||
+        
+        // Action 2: User Profile Edit (Self) - restricted fields
+        (isSignedIn() && isOwner(userId) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId'])) ||
+
+        // Action 3: Public General Renewal Submission
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime']) &&
+         incoming().status == 'pending' &&
+         incoming().isApproved == false &&
+         incoming().renewalPending == true)
+      );
+
+      allow delete: if isAdmin() || (
+        isSignedIn() && (
+          (userId.startsWith('offline_') || userId.startsWith('life_')) && (
+            (existing().email != null && existing().email == request.auth.token.email) ||
+            (existing().mobile != null && request.auth.token.email.startsWith(existing().mobile)) ||
+            (
+              exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile == resource.data.mobile ||
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == resource.data.email
+              )
+            )
+          )
+        )
+      );
+    }
+
+    // --- Collection: settings ---
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isAdmin() || 
+                   (settingsId == 'main_config' && isAdmin() && isValidSettings(incoming())) ||
+                   (settingsId == 'janamail_config' && (isAdmin() || isOperator()));
+    }
+
+    // --- Collection: gallery ---
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidGallery(incoming());
+    }
+
+    // --- Collection: announcements ---
+    match /announcements/{annId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Collection: admins ---
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via console or super admin
+    }
+    
+    // --- Collection: metadata ---
+    match /system/totals {
+       allow read, write: if isSignedIn();
+    }
+
+    match /system/ping {
+       allow read: if true;
+    }
+
+    // --- Collection: districtQuotas ---
+    match /districtQuotas/{districtCode} {
+      allow read: if true;
+      allow write: if isAdmin();
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        ((incoming().used == existing().used + 1 || incoming().used == existing().used - 1) && 
+         incoming().total == existing().total &&
+         incoming().id == existing().id)
+      );
+    }
+
+    // --- Collection: claims ---
+    match /claims/{claimId} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
+        isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.uid == request.auth.uid ||
+        isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         request.resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
+      allow update: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
+        isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- Collection: support_tickets ---
+    match /support_tickets/{ticketId} {
+      allow read: if isOperator();
+      allow create: if true; // Allows offline and standard guest and authenticated reports
+      allow update: if isOperator();
+      allow delete: if isAdmin();
+    }
+
+    // --- Collection: migration_logs ---
+    match /migration_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- Collection: google_import_links ---
+    match /google_import_links/{linkId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- Collection: committees ---
+    match /committees/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- Collection: campaign_templates ---
+    match /campaign_templates/{templateId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
+    }
+
+    // --- Collection: janamail_analytics ---
+    match /janamail_analytics/{eventId} {
+      allow create: if true;
+      allow read: if isAdmin() || isOperator();
+    }
+  }
+}
