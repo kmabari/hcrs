@@ -4,8 +4,11 @@ import { db } from '../lib/firebase';
 import { UserProfile, PaymentReceipt } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Receipt, Printer, Download, Eye, X, ShieldCheck } from 'lucide-react';
+import { Receipt, Printer, Download, Eye, X, ShieldCheck, FileDown, Image as ImageIcon } from 'lucide-react';
 import { LOGO_URL } from '../constants';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { toast } from 'sonner';
 
 interface PaymentReceiptsProps {
   user: UserProfile;
@@ -28,13 +31,20 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
 
   useEffect(() => {
     const fetchReceipts = async () => {
+      if (!user?.uid) {
+        console.warn('PaymentReceipts: user.uid is missing or uninitialized. Skipping fetch.');
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
+        console.log(`PaymentReceipts: Fetching receipts for user UID: ${user.uid}`);
         const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'receipts'));
         const dbReceipts = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as PaymentReceipt[];
+        console.log(`PaymentReceipts: Successfully fetched ${dbReceipts.length} receipts from database.`);
 
         // Generate virtual registration receipt
         const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
@@ -115,6 +125,73 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
         </html>
       `);
       printWindow.document.close();
+    }
+  };
+
+  const downloadReceiptImage = async () => {
+    const cardElement = document.getElementById('printable-receipt-card');
+    if (!cardElement) {
+      toast.error('Receipt element not found');
+      return;
+    }
+    const loadingToast = toast.loading('Generating receipt image download...');
+    try {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const canvas = await html2canvas(cardElement, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#FFFFFF'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.png`;
+      link.href = imgData;
+      link.click();
+      
+      toast.success('Receipt image downloaded successfully!', { id: loadingToast });
+    } catch (error) {
+      console.error('Error generating receipt image:', error);
+      toast.error('Could not generate image. Please try Print/Save as PDF.', { id: loadingToast });
+    }
+  };
+
+  const downloadReceiptPDF = async () => {
+    const cardElement = document.getElementById('printable-receipt-card');
+    if (!cardElement) {
+      toast.error('Receipt element not found');
+      return;
+    }
+    const loadingToast = toast.loading('Generating PDF document...');
+    try {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const canvas = await html2canvas(cardElement, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#FFFFFF'
+      });
+      
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      // Calculate width and height in mm
+      const pdfWidth = 148; // custom portrait size
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight]
+      });
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdf.save(`Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.pdf`);
+      
+      toast.success('Receipt PDF downloaded successfully!', { id: loadingToast });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Could not generate PDF. Please try Print/Save as PDF instead.', { id: loadingToast });
     }
   };
 
@@ -316,20 +393,28 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-3 p-6 border-t border-slate-100 bg-slate-50">
+            <div className="flex flex-col sm:flex-row gap-2 px-6 py-5 border-t border-slate-100 bg-slate-50">
               <Button
                 onClick={handlePrint}
-                className="flex-1 bg-[#0054A6] hover:bg-[#004ca0] text-white font-black text-xs uppercase h-12 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] uppercase tracking-wider h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Receipt</span>
               </Button>
               <Button
-                variant="outline"
-                onClick={handlePrint} // Same as print on modern web frame PDF save
-                className="px-4 border-slate-200 font-black rounded-xl h-12 text-xs uppercase hover:bg-slate-50 text-slate-700 transition-all cursor-pointer shadow-sm"
+                onClick={downloadReceiptPDF}
+                className="flex-1 bg-[#0054A6] hover:bg-[#004ca0] text-white font-black text-[10px] uppercase tracking-wider h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
               >
-                <Download className="w-4 h-4" />
+                <FileDown className="w-4 h-4" />
+                <span>Download PDF</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={downloadReceiptImage}
+                className="flex-1 border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-[10px] uppercase tracking-wider h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>Download Image</span>
               </Button>
             </div>
           </div>

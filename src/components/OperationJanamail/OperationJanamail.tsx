@@ -99,7 +99,7 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
-            className="group inline-flex items-center gap-2 text-slate-600 hover:text-[#0A2E5C] transition-colors text-xs font-bold uppercase tracking-widest"
+            className="group inline-flex items-center gap-2 text-slate-600 hover:text-[#1a2b5c] transition-colors text-xs font-bold uppercase tracking-widest"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>മടങ്ങുക / Return Home</span>
@@ -321,7 +321,7 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
                             <IconComponent className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-[#0A2E5C] text-sm md:text-base leading-tight">
+                            <h4 className="font-extrabold text-[#1a2b5c] text-sm md:text-base leading-tight">
                               {section.titleMl}
                             </h4>
                             <p className="text-[10px] md:text-xs text-slate-400 font-bold tracking-wide mt-0.5">

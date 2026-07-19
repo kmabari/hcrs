@@ -1,10 +1,33 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { QrCode, Share2 } from "lucide-react";
+import QRCode from "qrcode";
 
 export default function QRSection() {
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   const currentUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/janamail`
-    : "https://hcrskerala.org/janamail";
+    ? `${window.location.origin}/?view=janamail`
+    : "https://hcrskerala.org/?view=janamail";
+
+  useEffect(() => {
+    if (qrCanvasRef.current) {
+      QRCode.toCanvas(
+        qrCanvasRef.current,
+        currentUrl,
+        {
+          width: 160,
+          margin: 1,
+          color: {
+            dark: "#1e3a8a", // deep blue
+            light: "#ffffff",
+          },
+        },
+        (error) => {
+          if (error) console.error("Error drawing QR code in QRSection:", error);
+        }
+      );
+    }
+  }, [currentUrl, qrCanvasRef]);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -40,12 +63,10 @@ export default function QRSection() {
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-8 md:flex-row">
-          {/* QR Code Graphic Representation using fully scalable SVG */}
-          <div className="relative bg-white p-6 rounded-3xl shadow-xl border border-blue-100 w-56 h-56 flex flex-col items-center justify-center group hover:scale-105 transition-transform duration-300">
-            <svg className="w-full h-full text-blue-900" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2 2h6v6H2V2zm1 1v4h4V3H3zm2 2H5v2H5V5zm6-3h6v6h-6V2zm1 1v4h4V3h-4zm2 2h-1v2h1V5zm-9 9h6v6H2v-6zm1 1v4h4v-4H3zm2 2H5v2H5v-2zm13-8h4v1h-4V7zm0 2h1v1h-1V9zm2 2h2v1h-2v-1zm-4-1h2v1h-2v-1zm1 3h3v1h-3v-1zm-3-1h2v1h-2v-1zm1 3h2v1h-2v-1zm3 0h1v1h-1v-1zm-5-3h1v1h-1v-1zm3-3h1v1h-1V9zm-5 5h1v1h-1v-1zm2 2h1v1h-1v-1zm-2 2h1v1h-1v-1zm8 0h2v1h-2v-1z" />
-            </svg>
-            <div className="absolute inset-0 bg-blue-900/5 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
+          {/* Real Dynamic QR Code Canvas */}
+          <div className="relative bg-white p-5 rounded-3xl shadow-xl border border-blue-100 w-56 h-56 flex flex-col items-center justify-center group hover:scale-105 transition-transform duration-300">
+            <canvas ref={qrCanvasRef} className="w-40 h-40 block" />
+            <div className="absolute inset-0 bg-blue-900/5 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center pointer-events-none">
               <span className="bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-md uppercase tracking-wider">
                 Scan Me
               </span>

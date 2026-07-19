@@ -12,17 +12,32 @@ service cloud.firestore {
     }
 
     function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      return isSignedIn() && request.auth.token.get('email_verified', false) == true;
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isProfileOwner(userId) {
+      return isSignedIn() && (
+        request.auth.uid == userId || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+            (exists(/databases/$(database)/documents/users/$(userId)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') != '' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') == get(/databases/$(database)/documents/users/$(userId)).data.get('mobile', '')) ||
+            (exists(/databases/$(database)/documents/users/$(userId)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('email', '') != '' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('email', '') == get(/databases/$(database)/documents/users/$(userId)).data.get('email', ''))
+          )
+        )
+      );
+    }
+
     function isMainAdmin() {
       return isSignedIn() && 
-             request.auth.token.email != null && (
-               request.auth.token.email in [
+             request.auth.token.get('email', null) != null && (
+               request.auth.token.get('email', null) in [
                  'kmabarikiyafoods@gmail.com',
                  'hcrsindia@gmail.com',
                  'admin@hcrs.society',
@@ -34,8 +49,8 @@ service cloud.firestore {
 
     function isSecondAdmin() {
       return isSignedIn() && 
-             request.auth.token.email != null && (
-               request.auth.token.email in [
+             request.auth.token.get('email', null) != null && (
+               request.auth.token.get('email', null) in [
                  'hcrskerala@gmail.com',
                  'hcrskasaragod@hcrs.society',
                  'hcrsksd@hcrs.society',
@@ -75,7 +90,7 @@ service cloud.firestore {
         isMainAdmin() || isSecondAdmin() || (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
           (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') in ['admin', 'operator'])
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'admin')
         )
       );
     }
@@ -83,9 +98,10 @@ service cloud.firestore {
     function isOperator() {
       // Operators include admins and those explicitly assigned the operator role
       return isSignedIn() && (
-        isAdmin() || (
+        isMainAdmin() || isSecondAdmin() || (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'operator'
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true || 
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') in ['admin', 'operator']
           )
         )
       );
@@ -100,13 +116,13 @@ service cloud.firestore {
     }
 
     function isBootstrappedAdmin(data) {
-      return data.email in [
+      return data.get('email', '') in [
         'kmabarikiyafoods@gmail.com',
         'hcrsindia@gmail.com',
         'hcrskerala@gmail.com',
         'admin@hcrs.society',
         '9645934571@hcrs.society'
-      ] || data.mobile == '9645934571';
+      ] || data.get('mobile', '') == '9645934571';
     }
 
     function incoming() {
@@ -180,12 +196,12 @@ service cloud.firestore {
       allow delete: if isAdmin() || (
         isSignedIn() && (
           (userId.startsWith('offline_') || userId.startsWith('life_')) && (
-            (existing().email != null && existing().email == request.auth.token.email) ||
-            (existing().mobile != null && request.auth.token.email.startsWith(existing().mobile)) ||
+            (existing().get('email', null) != null && existing().get('email', null) == request.auth.token.get('email', null)) ||
+            (existing().get('mobile', null) != null && request.auth.token.get('email', '').startsWith(existing().get('mobile', ''))) ||
             (
               exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile == resource.data.mobile ||
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == resource.data.email
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') == resource.data.get('mobile', '') ||
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('email', '') == resource.data.get('email', '')
               )
             )
           )
@@ -194,7 +210,7 @@ service cloud.firestore {
 
       // --- Subcollection: receipts ---
       match /receipts/{receiptId} {
-        allow read: if isOwner(userId) || isOperator();
+        allow read: if isProfileOwner(userId) || isOperator();
         allow write: if isOperator();
       }
     }

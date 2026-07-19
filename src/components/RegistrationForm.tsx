@@ -136,8 +136,8 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
           <div className="inline-block p-3 bg-white shadow-premium rounded-[26px] mb-4 border border-slate-100 transition-all hover:scale-105">
             <Logo className="scale-105 mx-auto" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">{t('reg_title', 'Membership Registration')}</h2>
-          <p className="text-brand-magenta text-[10px] font-black tracking-widest mt-2 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase leading-none">{t('reg_title', 'Membership Registration')}</h2>
+          <p className="text-[#c9a227] text-[10px] font-black tracking-widest mt-2 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
         </div>
 
         {/* Sleek Form Container */}

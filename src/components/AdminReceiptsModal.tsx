@@ -38,13 +38,20 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
   };
 
   const fetchReceipts = async () => {
+    if (!member?.uid) {
+      console.warn('AdminReceiptsModal: member.uid is missing or uninitialized. Skipping fetch.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
+      console.log(`AdminReceiptsModal: Fetching receipts for member UID: ${member.uid}`);
       const querySnapshot = await getDocs(collection(db, 'users', member.uid, 'receipts'));
       const dbReceipts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as PaymentReceipt[];
+      console.log(`AdminReceiptsModal: Successfully fetched ${dbReceipts.length} receipts from database.`);
 
       // Generate virtual registration receipt
       const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];

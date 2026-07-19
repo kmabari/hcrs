@@ -200,8 +200,8 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       >
         <div className="text-center mb-10">
           <Logo className="mb-4 scale-125" />
-          <h2 className="text-3xl font-black text-brand-blue uppercase tracking-tight mt-6">{t('renewal_title', 'Membership Renewal')}</h2>
-          <p className="text-foreground/50 text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tight mt-6">{t('renewal_title', 'Membership Renewal')}</h2>
+          <p className="text-[#c9a227] text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
         </div>
 
         <Card className="border border-border/60 bg-card/80 backdrop-blur-xl shadow-2xl overflow-hidden rounded-[32px]">

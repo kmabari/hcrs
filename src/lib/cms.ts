@@ -437,6 +437,7 @@ export interface JanamailConfig {
   whyCampaignHeading?: string;
   confirmationSectionTitle?: string;
   confirmationSectionDescription?: string;
+  restrictOneParticipation?: boolean;
 }
 
 export interface CampaignTemplate {
@@ -488,7 +489,8 @@ export function subscribeToJanamailConfig(callback: (config: JanamailConfig) => 
         mainNoticeTitle: "Operation Janamail – പ്രധാന അറിയിപ്പ്",
         whyCampaignHeading: "എന്തുകൊണ്ടാണ് Operation Janamail?",
         confirmationSectionTitle: "സ്ഥിരീകരണം (Mandatory)",
-        confirmationSectionDescription: "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും."
+        confirmationSectionDescription: "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.",
+        restrictOneParticipation: true
       };
       try {
         await setDoc(docRef, {
@@ -512,7 +514,7 @@ export function subscribeToJanamailConfig(callback: (config: JanamailConfig) => 
         endDate: data?.endDate || "",
         artworkUrl: data?.artworkUrl || "",
         campaignIntroduction: data?.campaignIntroduction || "ഓരോ പൗരനും അവരുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട സർക്കാർ അധികാരികളെ മാന്യവും ഉത്തരവാദിത്തപരവുമായി അറിയിക്കാൻ സഹായിക്കുന്ന ഒരു പൊതുപങ്കാളിത്ത ഇ-മെയിൽ ക്യാമ്പയിനാണ് Operation Janamail.",
-        whyThisCampaign: data?.whyThisCampaign || "ഹൈറിച്ച് തട്ടിപ്പ് കേസിലെ ഇരകൾക്ക് നീതി ലഭിക്കുന്നതിനും തട്ടിപ്പുകാർക്കെതിരെ മാതൃകാപരമായ ശിക്ഷാനടപടികൾ സ്വീകരിക്കുന്നതിനും ശക്തമായ അന്വേഷണം ആവശ്യപ്പെട്ട് ഞങ്ങൾ അധികാരികളിലേക്ക് ഈ ഹർജി സമർപ്പിക്കുന്നു.",
+        whyThisCampaign: data?.whyThisCampaign || "ഹൈറിച്ച് തട്ടിപ്പ് കേസിലെ ഇരകൾക്ക് നീതി ലഭിക്കുന്നതിനും തട്ടിപ്പുകാർതിരെ മാതൃകാപരമായ ശിക്ഷാനടപടികൾ സ്വീകരിക്കുന്നതിനും ശക്തമായ അന്വേഷണം ആവശ്യപ്പെട്ട് ഞങ്ങൾ അധികാരികളിലേക്ക് ഈ ഹർജി സമർപ്പിക്കുന്നു.",
         importantNotice: data?.importantNotice || "ദയവായി ഇമെയിൽ അയയ്ക്കുന്നതിനു മുൻപായി നിങ്ങളുടെ വിവരങ്ങൾ കൃത്യമാണെന്നും ഇമെയിൽ ബോഡി ശ്രദ്ധാപൂർവ്വം വായിച്ചിട്ടുണ്ടെന്നും ഉറപ്പാക്കുക. നിയമപരമായ ആവശ്യങ്ങൾക്ക് മാത്രമേ ഈ ക്യാമ്പയിൻ ഉപയോഗിക്കുകയുള്ളൂ.",
         faqItems: data?.faqItems || [
           { question: "ഈ ക്യാമ്പയിൻ എന്തിനാണ്?", answer: "പൊതുജനങ്ങളുടെ അഭിപ്രായം ബന്ധപ്പെട്ട അധികാരികൾക്ക് ഇമെയിൽ വഴി അറിയിക്കാനാണ്." },
@@ -535,6 +537,7 @@ export function subscribeToJanamailConfig(callback: (config: JanamailConfig) => 
         whyCampaignHeading: data?.whyCampaignHeading || "എന്തുകൊണ്ടാണ് Operation Janamail?",
         confirmationSectionTitle: data?.confirmationSectionTitle || "സ്ഥിരീകരണം (Mandatory)",
         confirmationSectionDescription: data?.confirmationSectionDescription || "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.",
+        restrictOneParticipation: data?.restrictOneParticipation !== undefined ? data?.restrictOneParticipation : true,
         lastUpdated: data?.lastUpdated
       });
     }

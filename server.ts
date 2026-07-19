@@ -755,7 +755,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         category,
         selectedSubject,
         dateTime,
-        gmailLaunchStatus
+        gmailLaunchStatus,
+        bypassDuplicateCheck
       } = req.body;
 
       if (!fullName || !mobileNumber) {
@@ -787,33 +788,35 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       // Fetch mobile numbers in Column B to prevent duplicates
       let isDuplicate = false;
-      try {
-        const getRes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId,
-          range: "B:B",
-        });
-        const rows = getRes.data.values;
-        if (rows && Array.isArray(rows)) {
-          // Normalize to last 10 digits to catch variations like +91, 0, or spaces
-          const getNormalizedPhone = (phoneStr: string) => {
-            const digits = String(phoneStr).replace(/\D/g, "");
-            return digits.length >= 10 ? digits.slice(-10) : digits;
-          };
-          const cleanInput = getNormalizedPhone(mobileNumber);
-          if (cleanInput) {
-            for (const row of rows) {
-              if (row && row[0]) {
-                const cleanRowVal = getNormalizedPhone(row[0]);
-                if (cleanRowVal && cleanRowVal === cleanInput && cleanRowVal.match(/^\d+$/)) {
-                  isDuplicate = true;
-                  break;
+      if (!bypassDuplicateCheck) {
+        try {
+          const getRes = await sheets.spreadsheets.values.get({
+            spreadsheetId: sheetId,
+            range: "B:B",
+          });
+          const rows = getRes.data.values;
+          if (rows && Array.isArray(rows)) {
+            // Normalize to last 10 digits to catch variations like +91, 0, or spaces
+            const getNormalizedPhone = (phoneStr: string) => {
+              const digits = String(phoneStr).replace(/\D/g, "");
+              return digits.length >= 10 ? digits.slice(-10) : digits;
+            };
+            const cleanInput = getNormalizedPhone(mobileNumber);
+            if (cleanInput) {
+              for (const row of rows) {
+                if (row && row[0]) {
+                  const cleanRowVal = getNormalizedPhone(row[0]);
+                  if (cleanRowVal && cleanRowVal === cleanInput && cleanRowVal.match(/^\d+$/)) {
+                    isDuplicate = true;
+                    break;
+                  }
                 }
               }
             }
           }
+        } catch (sheetErr: any) {
+          console.warn("Could not read spreadsheet for duplicate check:", sheetErr.message || sheetErr);
         }
-      } catch (sheetErr: any) {
-        console.warn("Could not read spreadsheet for duplicate check:", sheetErr.message || sheetErr);
       }
 
       if (isDuplicate) {

@@ -2568,8 +2568,8 @@ export default function App() {
             <div className="flex items-center gap-4">
               <Logo size="sm" />
               <div>
-                <h1 className="text-[10px] font-black text-foreground tracking-widest uppercase leading-none">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
-                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-[0.2em] mt-1 flex items-center gap-1">
+                <h1 className="text-xs sm:text-sm md:text-base font-black text-foreground tracking-wider uppercase leading-none sm:leading-snug">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
+                <p className="text-[10px] sm:text-xs font-bold text-emerald-500 uppercase tracking-[0.2em] mt-1.5 flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 inline animate-pulse" /> Official Verification Portal
                 </p>
               </div>
@@ -2627,8 +2627,8 @@ export default function App() {
             <div className="flex items-center gap-4">
               <Logo size="sm" />
               <div>
-                <h1 className="text-[10px] font-black text-foreground tracking-widest uppercase leading-none">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
-                <p className="text-[9px] font-bold text-brand-magenta uppercase tracking-[0.2em] mt-1">{user.isAdmin ? 'Admin Console' : 'Official Member'}</p>
+                <h1 className="text-xs sm:text-sm md:text-base font-black text-foreground tracking-wider uppercase leading-none sm:leading-snug">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
+                <p className="text-[10px] sm:text-xs font-bold text-brand-magenta uppercase tracking-[0.2em] mt-1.5">{user.isAdmin ? 'Admin Console' : 'Official Member'}</p>
               </div>
             </div>
           </div>

@@ -299,8 +299,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         {/* Core Premium 3D PVC ID Card with Double Metallic Bevel Frame (Gold theme for Life Member, Slate theme for Adhoc Member) */}
         {(() => {
           const cardBorderClass = isLifeMember 
-            ? "border-[6px] border-[#D4AF37] shadow-[25px_30px_50px_rgba(0,0,0,0.95)] bg-gradient-to-br from-[#24170b] via-[#120803] to-[#040201]"
-            : "border-[6px] border-slate-700/85 shadow-[25px_30px_50px_rgba(0,0,0,0.9)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b]";
+            ? "border-[6px] border-[#D4AF37] shadow-[25px_30px_50px_rgba(0,0,0,0.95)] bg-gradient-to-br from-[#FFFEF6] via-[#FAF4DB] to-[#F1E5C0]"
+            : "border-[6px] border-[#818cf8]/50 shadow-[25px_30px_50px_rgba(0,0,0,0.9)] bg-gradient-to-br from-[#FAFBFD] via-[#F0F4F8] to-[#E2E8F0]";
 
           const itemPlateClass = `border-t border-b rounded-lg p-1.5 flex items-center justify-between transition-all ${
             isLifeMember 
@@ -308,8 +308,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               : 'bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] text-[#0f172a]'
           }`;
 
-          const textTitleClass = `text-[7px] font-black uppercase tracking-wider ${
-            isLifeMember ? 'text-amber-950/80 font-sans' : 'text-slate-500 font-sans'
+          const textTitleClass = `text-[7.5px] font-black uppercase tracking-wider ${
+            isLifeMember ? 'text-amber-950/85 font-sans' : 'text-slate-700 font-sans'
           }`;
 
           const textValueClass = `text-[10px] font-black font-mono transition-all ${
@@ -335,6 +335,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
           const namePlateClass = isLifeMember
             ? "bg-gradient-to-b from-[#FFFDF2] via-[#F5D76E] to-[#C99E32] border-amber-700"
             : "bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-slate-400";
+
+          const bottomSectionBg = isLifeMember
+            ? "bg-amber-950/[0.04] border-t border-amber-800/15"
+            : "bg-slate-900/[0.04] border-t border-slate-350/50";
 
           return (
             <div 
@@ -433,13 +437,13 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 </div>
 
                 {/* Premium Embossed Header Panel */}
-                <div className={`flex-1 p-2 rounded-xl border-t border-b shadow-[inset_0_1.5px_1px_rgba(255,255,255,1),0_2.5px_4px_rgba(0,0,0,0.35)] text-center ${isLifeMember ? 'bg-gradient-to-b from-[#FFFDF5] via-[#F7DC6F] to-[#B7950B] border-amber-600' : 'bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#94a3b8] border-slate-400'}`}>
-                  <h1 className="text-slate-900 text-[8.5px] font-black leading-tight uppercase tracking-tight">
+                <div className={`flex-1 p-2 rounded-xl border-t border-b shadow-[inset_0_1.5px_1px_rgba(255,255,255,1),0_2.5px_4px_rgba(0,0,0,0.35)] text-center ${isLifeMember ? 'bg-gradient-to-b from-[#FFFDF5] via-[#F7DC6F] to-[#B7950B] border-amber-600' : 'bg-gradient-to-b from-[#ffffff] via-[#f1f5f9] to-[#cbd5e1] border-slate-300'}`}>
+                  <h1 className="text-slate-900 text-[11px] font-black leading-tight uppercase tracking-tight">
                     HIGHRICH COMMUNITY REVIVAL SOCIETY
                   </h1>
                   <div className={`w-full h-[1px] my-1 ${isLifeMember ? 'bg-amber-800/35' : 'bg-slate-350'}`} />
-                  <p className={`text-[7px] font-black tracking-widest uppercase leading-none italic ${isLifeMember ? 'text-amber-950 font-sans' : 'text-brand-magenta'}`}>
-                    {isLifeMember ? "FOUNDING LIFE MEMBER" : "TOGETHER WE GROW"}
+                  <p className={`text-[8.5px] font-black tracking-widest uppercase leading-none mt-0.5 italic ${isLifeMember ? 'text-amber-950 font-sans' : 'text-[#1a2b5c]'}`}>
+                    {isLifeMember ? "FOUNDING LIFE MEMBER" : "OFFICIAL MEMBER"}
                   </p>
                 </div>
               </div>
@@ -463,7 +467,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                         </>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 relative">
-                          <User size={34} className="text-slate-400 shrink-0" />
+                           <User size={34} className="text-slate-400 shrink-0" />
                           {!isReadOnly && (
                             <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
                               <Camera size={14} className="text-white" />
@@ -486,12 +490,12 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                  {/* Membership Category Ribbon block */}
                 <div className="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
                   {isLifeMember ? (
-                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-550 to-amber-600 text-white text-[9px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-lg border border-amber-300">
+                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-550 to-amber-600 text-white text-[9.5px] font-black px-4.5 py-1.5 rounded-full uppercase tracking-widest shadow-lg border border-amber-300">
                       👑 LIFE MEMBER
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 bg-[#0b101a] border border-slate-800 text-slate-200 text-[9px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-md">
-                      💼 ADHOC MEMBER
+                    <span className="inline-flex items-center gap-1 bg-[#1a2b5c] border border-slate-800 text-white text-[9.5px] font-black px-4.5 py-1.5 rounded-full uppercase tracking-widest shadow-md">
+                      💼 OFFICIAL MEMBER
                     </span>
                   )}
                 </div>
@@ -505,7 +509,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 )}
 
                 {/* District & Mandalam (Assembly Constituency is Mandalam) */}
-                <p className={`text-[9px] font-black uppercase tracking-wider mt-2 font-sans ${isLifeMember ? 'text-amber-500' : 'text-brand-magenta'}`}>
+                <p className={`text-[9.5px] font-black uppercase tracking-wider mt-2 font-sans ${isLifeMember ? 'text-amber-800' : 'text-slate-950'}`}>
                   {districtName} DISTRICT - {member.constituencyCode || (member.assemblyConstituency ? getAssemblyCode(member.assemblyConstituency) : 'NA')}
                 </p>
               </div>
@@ -539,14 +543,14 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 {/* 5. EXPIRY DATE */}
                 <div className={itemPlateClass}>
                   <span className={textTitleClass}>{isLifeMember ? 'VALIDITY' : 'EXPIRY DATE'}</span>
-                  <span className={`${textValueClass} ${!isLifeMember ? 'text-brand-magenta' : 'text-amber-900 font-extrabold'}`}>
+                  <span className={`${textValueClass} ${!isLifeMember ? 'text-[#1a2b5c]' : 'text-amber-900 font-extrabold'}`}>
                     {isLifeMember ? '⭐ PERMANENT ACTIVE' : getRenewalDate(member.registrationDate)}
                   </span>
                 </div>
               </div>
 
               {/* Bottom section with QR layout & verified signatures on Plates */}
-              <div className="border-t border-slate-800/50 pt-2 px-4 pb-[11px] shrink-0 flex items-center justify-between gap-2 bg-black/40 relative">
+              <div className={`pt-2 px-4 pb-[11px] shrink-0 flex items-center justify-between gap-2 relative ${bottomSectionBg}`}>
                 <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-brand-blue via-transparent to-[#FF1493] z-10" />
 
                 {/* Interactive Live Verification QR Code framed in embossed gold/silver plate */}

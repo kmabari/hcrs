@@ -36,7 +36,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [place, setPlace] = useState(() => localStorage.getItem("janamail_draft_place") || "");
   const [category, setCategory] = useState(() => {
     const saved = localStorage.getItem("janamail_draft_category");
-    if (saved === "Highrich Member" || saved === "HCRS / Highrich Member") {
+    if (saved === "Highrich Member" || saved === "HCRS / Highrich Member" || saved === "General Public") {
       return saved;
     }
     return "HCRS / Highrich Member";
@@ -50,6 +50,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [hasParticipated, setHasParticipated] = useState(false);
+  const [bypassParticipationCheck, setBypassParticipationCheck] = useState(false);
 
   // Auto Save status
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -131,10 +132,35 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   });
 
   const [copied, setCopied] = useState(false);
+  const [copiedTo, setCopiedTo] = useState(false);
+  const [copiedCc, setCopiedCc] = useState(false);
+  
+  const copyToRecipients = () => {
+    const toText = recipients || (config && config.recipients) || "ca.budsact@kerala.gov.in";
+    navigator.clipboard.writeText(toText);
+    setCopiedTo(true);
+    toast.success("Primary Recipient (TO) list copied!");
+    setTimeout(() => setCopiedTo(false), 2000);
+  };
+
+  const copyCcRecipients = () => {
+    const ccText = cc || (config && config.cc) || "";
+    navigator.clipboard.writeText(ccText);
+    setCopiedCc(true);
+    toast.success("Copies (CC) list copied!");
+    setTimeout(() => setCopiedCc(false), 2000);
+  };
+
   const [cc, setCc] = useState("");
 
   const isCampaignActive = config?.active !== false && config?.campaignStatus !== "disabled" && config?.campaignStatus !== "completed";
-  const isFormValid = !!(name.trim() && phone.trim() && district.trim() && place.trim() && category.trim());
+  const isFormValid = !!(
+    (name || "").toString().trim() &&
+    (phone || "").toString().trim() &&
+    (district || "").toString().trim() &&
+    (place || "").toString().trim() &&
+    (category || "").toString().trim()
+  );
   const canSubmit = isFullyConfirmed && isCampaignActive && isFormValid && !isSubmitting;
 
   // Predefined Malayalam petition body template (fallback if DB empty)
@@ -503,14 +529,33 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const handleParticipateNow = async (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>, method: "gmail" | "mailto") => {
     e.preventDefault();
 
+    // Log every required field before validation as requested
+    console.log("Janamail Validation - Required fields before evaluation:", {
+      name: name,
+      phone: phone,
+      district: district,
+      place: place,
+      category: category,
+      nameTrimmed: (name || "").toString().trim(),
+      phoneTrimmed: (phone || "").toString().trim(),
+      districtTrimmed: (district || "").toString().trim(),
+      placeTrimmed: (place || "").toString().trim(),
+      categoryTrimmed: (category || "").toString().trim(),
+      isFormValid,
+      isFullyConfirmed,
+      isCampaignActive,
+      isSubmitting,
+      canSubmit
+    });
+
     if (!canSubmit) {
       if (!isFormValid) {
         const emptyFields = [];
-        if (!name.trim()) emptyFields.push("മുഴുവൻ പേര് (Full Name)");
-        if (!phone.trim()) emptyFields.push("മൊബൈൽ നമ്പർ (Mobile Number)");
-        if (!district.trim()) emptyFields.push("ജില്ല (District)");
-        if (!place.trim()) emptyFields.push("സ്ഥലം (Place)");
-        if (!category.trim()) emptyFields.push("വിഭാഗം (Category)");
+        if (!(name || "").toString().trim()) emptyFields.push("മുഴുവൻ പേര് (Full Name)");
+        if (!(phone || "").toString().trim()) emptyFields.push("മൊബൈൽ നമ്പർ (Mobile Number)");
+        if (!(district || "").toString().trim()) emptyFields.push("ജില്ല (District)");
+        if (!(place || "").toString().trim()) emptyFields.push("സ്ഥലം (Place)");
+        if (!(category || "").toString().trim()) emptyFields.push("വിഭാഗം (Category)");
         toast.error(`വിവരങ്ങൾ പൂർണ്ണമല്ല. ദയവായി താഴെ പറയുന്നവ നൽകുക: ${emptyFields.join(", ")}`);
       } else if (!isCampaignActive) {
         toast.error("ക്യാമ്പയിൻ നിലവിൽ സജീവമല്ല (Campaign is inactive).");
@@ -542,7 +587,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const finalBody = getFinalBodyWithSignature(body, name, phone, district, place, category).trim();
 
     // Guard against multiple participation if they somehow bypassed UI checks
-    if (hasParticipated) {
+    if (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck) {
       toast.error("നിങ്ങൾ ഇതിനകം ഈ ക്യാമ്പയിനിൽ പങ്കെടുത്തിട്ടുണ്ട്.");
       return;
     }
@@ -566,7 +611,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       params.set("su", finalSubject);
       params.set("body", finalBody);
       
-      targetUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20")}`;
+      targetUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
     } else {
       const cleanRecipientsForMailto = formatEmailField(recipients, false);
       const cleanCcForMailto = formatEmailField(cc, false);
@@ -599,7 +644,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           category: category.trim(),
           selectedSubject: finalSubject,
           dateTime: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-          gmailLaunchStatus: `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`
+          gmailLaunchStatus: `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`,
+          bypassDuplicateCheck: !config?.restrictOneParticipation || bypassParticipationCheck
         })
       });
 
@@ -693,56 +739,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           </p>
         </div>
 
-        {/* Auto Save & Draft Control Panel */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 border border-slate-100 p-4.5 rounded-2xl">
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-3 w-3 shrink-0">
-              {saveStatus === "saving" ? (
-                <>
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-                </>
-              ) : (
-                <>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
-                </>
-              )}
-            </div>
-            
-            <div className="space-y-0.5 text-left">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-                  {saveStatus === "saving" ? (
-                    <span className="text-amber-600 flex items-center gap-1">
-                      <span className="inline-block animate-spin text-[10px]">🔄</span>
-                      Saving...
-                    </span>
-                  ) : (
-                    <span className="text-emerald-700 flex items-center gap-1">
-                      Saved ✓
-                    </span>
-                  )}
-                </span>
-                <span className="text-[9px] bg-slate-200/60 text-slate-500 font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                  Auto Save Active
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-450 font-semibold leading-relaxed">
-                നിങ്ങളുടെ വിവരങ്ങളും കത്തും തത്സമയം സുരക്ഷിതമായി സേവ് ചെയ്യപ്പെടുന്നു. (Draft automatically saved in real-time)
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleManualSave}
-            className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-widest px-4.5 py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs hover:scale-[1.02] active:scale-98 transition-all duration-150 shrink-0"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Save Draft
-          </button>
-        </div>
-
         {/* Step 1: User Details */}
         <div className="space-y-4 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl">
           <h3 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
@@ -825,6 +821,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 <option value="" disabled>വിഭാഗം തിരഞ്ഞെടുക്കുക (Select Category)</option>
                 <option value="HCRS / Highrich Member">HCRS / Highrich Member (ഹൈറിച്ച് & HCRS വരിക്കാരൻ)</option>
                 <option value="Highrich Member">Highrich Member (ഹൈറിച്ച് വരിക്കാരൻ)</option>
+                <option value="General Public">General Public (പൊതുജനം)</option>
               </select>
             </div>
           </div>
@@ -836,9 +833,28 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 Primary Recipient (TO)
               </label>
               <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs md:text-sm text-left">
-                <div className="font-extrabold text-slate-800 mb-1 flex items-center gap-1.5 text-sm">
-                  <Shield className="w-4 h-4 text-blue-600" />
-                  <span>Competent Authority</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-extrabold text-slate-800 flex items-center gap-1.5 text-sm">
+                    <Shield className="w-4 h-4 text-blue-600" />
+                    <span>Competent Authority</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyToRecipients}
+                    className="flex items-center gap-1 text-[11px] font-black uppercase text-blue-600 hover:text-blue-800 transition bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-2xs cursor-pointer select-none"
+                  >
+                    {copiedTo ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span className="text-emerald-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy TO List</span>
+                      </>
+                    )}
+                  </button>
                 </div>
                 <div className="font-mono text-slate-600 break-all bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-semibold">
                   {recipients || (config && config.recipients) || "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com"}
@@ -851,9 +867,28 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 Copies (CC)
               </label>
               <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs md:text-sm text-left">
-                <div className="font-extrabold text-slate-800 mb-1 flex items-center gap-1.5 text-sm">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                  <span>ക്യാമ്പയിൻ പകർപ്പ് (Campaign Copies)</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-extrabold text-slate-800 flex items-center gap-1.5 text-sm">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <span>ക്യാമ്പയിൻ പകർപ്പ് (Campaign Copies)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyCcRecipients}
+                    className="flex items-center gap-1 text-[11px] font-black uppercase text-blue-600 hover:text-blue-800 transition bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-2xs cursor-pointer select-none"
+                  >
+                    {copiedCc ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span className="text-emerald-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy CC List</span>
+                      </>
+                    )}
+                  </button>
                 </div>
                 <div className="font-mono text-slate-600 break-all bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-semibold">
                   {cc || (config && config.cc) || "No CC recipients configured"}
@@ -1340,7 +1375,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     params.set("su", finalSubject);
                     params.set("body", finalBody);
                     
-                    const gmailUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20")}`;
+                    const gmailUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
                     window.open(gmailUrl, "_blank");
                   }}
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] hover:shadow-lg text-white font-extrabold text-[11px] uppercase tracking-wider px-5 py-3 rounded-xl transition duration-150 cursor-pointer shadow-md"
@@ -1367,7 +1402,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   <span className="inline-block animate-spin text-sm">🔄</span>
                   Checking participation status...
                 </div>
-              ) : hasParticipated ? (
+              ) : (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck) ? (
                 <div className="w-full bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="flex items-center gap-2 text-rose-800 font-extrabold text-sm">
                     <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600" />
@@ -1379,6 +1414,29 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   <p className="text-[10px] text-rose-500 font-semibold uppercase tracking-wider">
                     Only one campaign participation is allowed per person to maintain campaign authenticity.
                   </p>
+                  <div className="pt-2.5 flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBypassParticipationCheck(true)}
+                      className="inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer shadow-md border-0"
+                    >
+                      വീണ്ടും അയക്കുക (Resend / Send Anyway)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.removeItem("janamail_participated");
+                        if (currentUserProfile?.uid) {
+                          localStorage.removeItem(`janamail_participated_${currentUserProfile.uid}`);
+                        }
+                        setHasParticipated(false);
+                        setBypassParticipationCheck(true);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer border border-slate-300"
+                    >
+                      പങ്കാളിത്തം റീസെറ്റ് ചെയ്യുക (Reset Status)
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>

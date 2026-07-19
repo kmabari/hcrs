@@ -27,6 +27,7 @@ export default function CampaignTemplateManager() {
   const [configRecipients, setConfigRecipients] = useState("");
   const [configCc, setConfigCc] = useState("");
   const [configActive, setConfigActive] = useState(true);
+  const [restrictOneParticipation, setRestrictOneParticipation] = useState(true);
 
   // Remaining Campaign Management Sections State
   const [artworkUrl, setArtworkUrl] = useState("");
@@ -122,6 +123,7 @@ export default function CampaignTemplateManager() {
       setWhyCampaignHeading(conf.whyCampaignHeading || "എന്തുകൊണ്ടാണ് Operation Janamail?");
       setConfirmationSectionTitle(conf.confirmationSectionTitle || "സ്ഥിരീകരണം (Mandatory)");
       setConfirmationSectionDescription(conf.confirmationSectionDescription || "");
+      setRestrictOneParticipation(conf.restrictOneParticipation !== undefined ? conf.restrictOneParticipation : true);
 
       const confTexts = conf.confirmations || ["", "", "", ""];
       const paddedConf = [...confTexts];
@@ -249,6 +251,7 @@ export default function CampaignTemplateManager() {
         active: configActive,
         emailMode,
         artworkUrl,
+        restrictOneParticipation,
       });
       showStatus("Banner Settings saved successfully!", "success");
     } catch (error) {
@@ -533,6 +536,64 @@ export default function CampaignTemplateManager() {
         </div>
       </div>
 
+      {/* Quick Global Activation Status Banner */}
+      <div className={`p-6 rounded-[24px] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 text-left ${
+        configActive 
+          ? "bg-emerald-50/50 border-emerald-100 text-emerald-900 shadow-xs" 
+          : "bg-rose-50/50 border-rose-100 text-rose-900 shadow-xs"
+      }`}>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${configActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-400'}`} />
+            <span className="text-xs font-black uppercase tracking-widest">
+              {configActive ? "Campaign Status: ACTIVE" : "Campaign Status: STOPPED / HIDDEN"}
+            </span>
+          </div>
+          <h3 className="text-sm font-black uppercase text-slate-800">
+            {configActive ? "ക്യാമ്പയിൻ ഇപ്പോൾ സൈറ്റിൽ കാണാം (Active)" : "ക്യാമ്പയിൻ നിർത്തിവെച്ചിരിക്കുകയാണ് (Stopped)"}
+          </h3>
+          <p className="text-[11px] text-slate-500 font-semibold max-w-xl leading-relaxed">
+            {configActive 
+              ? "The featured campaign card is currently visible on the landing page. Users can participate and send emails." 
+              : "The featured campaign card is hidden from the landing page. Users cannot see or access the Janamail screen."}
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-3">
+          <Button
+            type="button"
+            onClick={async () => {
+              const newActive = !configActive;
+              setConfigActive(newActive);
+              try {
+                await updateJanamailConfig({ active: newActive });
+                showStatus(newActive ? "Janamail Campaign Activated Globally!" : "Janamail Campaign Stopped & Hidden Globally!", "success");
+              } catch (err) {
+                console.error(err);
+                showStatus("Failed to update status", "error");
+                setConfigActive(!newActive);
+              }
+            }}
+            className={`px-6 py-4.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer ${
+              configActive 
+                ? "bg-rose-600 hover:bg-rose-700 text-white" 
+                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+            }`}
+          >
+            {configActive ? (
+              <>
+                <PowerOff className="w-4 h-4 mr-1.5" />
+                Stop Campaign / ഹർജി നിർത്തിവെക്കുക
+              </>
+            ) : (
+              <>
+                <Power className="w-4 h-4 mr-1.5" />
+                Start Campaign / ഹർജി സജീവമാക്കുക
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
       {/* RENDER CAMPAIGN SETTINGS SUB-TAB */}
       {subTab === "details" && (
         <div className="space-y-8 text-left">
@@ -674,17 +735,32 @@ export default function CampaignTemplateManager() {
               </div>
 
               {/* Enable Globally Toggle */}
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-                <input 
-                  type="checkbox"
-                  id="config-active-check"
-                  checked={configActive}
-                  onChange={e => setConfigActive(e.target.checked)}
-                  className="h-5 w-5 rounded border-slate-300 text-brand-magenta focus:ring-brand-magenta/20 cursor-pointer"
-                />
-                <label htmlFor="config-active-check" className="text-xs font-black text-slate-700 uppercase tracking-wide cursor-pointer select-none">
-                  Enable Campaign Globally (പൊതു ഹർജി സജീവം ആക്കുക - Active)
-                </label>
+              <div className="flex flex-col gap-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox"
+                    id="config-active-check"
+                    checked={configActive}
+                    onChange={e => setConfigActive(e.target.checked)}
+                    className="h-5 w-5 rounded border-slate-300 text-brand-magenta focus:ring-brand-magenta/20 cursor-pointer"
+                  />
+                  <label htmlFor="config-active-check" className="text-xs font-black text-slate-700 uppercase tracking-wide cursor-pointer select-none">
+                    Enable Campaign Globally (പൊതു ഹർജി സജീവം ആക്കുക - Active)
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox"
+                    id="restrict-one-participation-check"
+                    checked={restrictOneParticipation}
+                    onChange={e => setRestrictOneParticipation(e.target.checked)}
+                    className="h-5 w-5 rounded border-slate-300 text-brand-magenta focus:ring-brand-magenta/20 cursor-pointer"
+                  />
+                  <label htmlFor="restrict-one-participation-check" className="text-xs font-black text-slate-700 uppercase tracking-wide cursor-pointer select-none">
+                    Restrict One Campaign Participation Per Person (ഒരു മൊബൈൽ നമ്പറിൽ നിന്നും ഒരു തവണ മാത്രം പങ്കെടുക്കാൻ അനുവദിക്കുക)
+                  </label>
+                </div>
               </div>
 
               {/* SAVE BUTTON */}

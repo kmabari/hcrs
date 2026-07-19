@@ -127,8 +127,8 @@ export default function LandingPage({
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const campaignUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/janamail`
-    : "https://hcrs.in/janamail";
+    ? `${window.location.origin}/?view=janamail`
+    : "https://hcrs.in/?view=janamail";
 
   useEffect(() => {
     if (qrCanvasRef.current) {
@@ -300,10 +300,10 @@ export default function LandingPage({
   }, [stage]);
 
   return (
-    <div className="min-h-screen bg-white text-[#0F172A] font-sans selection:bg-[#0A2E5C]/10 relative overflow-x-hidden pb-12">
+    <div className="min-h-screen bg-transparent text-slate-100 font-sans selection:bg-[#1a2b5c]/10 relative overflow-x-hidden pb-12">
       {/* Subtle Ambient Backglows inspired by Reference #2's premium orange/blue gradient glow */}
-      <div className="absolute top-0 left-1/4 w-[40rem] h-[35rem] bg-gradient-to-br from-[#0A2E5C]/5 to-transparent rounded-full blur-[100px] pointer-events-none -z-10" />
-      <div className="absolute top-20 right-1/4 w-[35rem] h-[35rem] bg-gradient-to-br from-[#D91E63]/4 to-transparent rounded-full blur-[110px] pointer-events-none -z-10" />
+      <div className="absolute top-0 left-1/4 w-[40rem] h-[35rem] bg-gradient-to-br from-[#1a2b5c]/5 to-transparent rounded-full blur-[100px] pointer-events-none -z-10" />
+      <div className="absolute top-20 right-1/4 w-[35rem] h-[35rem] bg-gradient-to-br from-[#c9a227]/4 to-transparent rounded-full blur-[110px] pointer-events-none -z-10" />
 
       {/* Navigation Bar */}
       <nav 
@@ -318,24 +318,26 @@ export default function LandingPage({
               <Logo size="sm" className="h-[34px] w-auto" />
             </div>
             <div>
-              <h1 className="text-xs font-bold text-[#0A2E5C] uppercase tracking-wider leading-none font-heading">HCRS Portal</h1>
-              <p className="text-[9px] font-black text-[#D91E63] uppercase tracking-widest mt-1.5">Kerala Division</p>
+              <h1 className="text-xs font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading">HCRS Portal</h1>
+              <p className="text-[9px] font-black text-[#c9a227] uppercase tracking-widest mt-1.5">Kerala Division</p>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#0A2E5C] transition-colors duration-200">
+          <div className="hidden md:flex items-center gap-10">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#1a2b5c] transition-colors duration-200">
               {t('nav_home', 'Home')}
             </button>
-            <button onClick={() => document.getElementById('featured-campaign')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 hover:text-blue-850 transition-colors duration-200 flex items-center gap-1">
-              <span>Janamail Campaign</span>
-              <span className="bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">NEW</span>
-            </button>
-            <button onClick={onGalleryClick} className="text-[11px] font-extrabold uppercase tracking-wider text-[#D91E63] hover:text-[#D91E63]/85 transition-colors duration-200 flex items-center gap-1.5">
+            {janamailConfig?.active !== false && (
+              <button onClick={() => document.getElementById('featured-campaign')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 hover:text-blue-850 transition-colors duration-200 flex items-center gap-1">
+                <span>Janamail Campaign</span>
+                <span className="bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">NEW</span>
+              </button>
+            )}
+            <button onClick={onGalleryClick} className="text-[11px] font-extrabold uppercase tracking-wider text-[#c9a227] hover:text-[#c9a227]/85 transition-colors duration-200 flex items-center gap-1.5">
               {t('nav_archives', 'Archives')}
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D91E63] animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#c9a227] animate-pulse" />
             </button>
-            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#0A2E5C] transition-colors duration-200">
+            <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#1a2b5c] transition-colors duration-200">
               {t('nav_contact', 'Contact')}
             </button>
           </div>
@@ -345,12 +347,12 @@ export default function LandingPage({
             <Button 
               variant="outline" 
               onClick={onLoginClick}
-              className="text-[11px] font-bold uppercase tracking-wider text-[#0A2E5C] border border-slate-200 hover:bg-slate-50 rounded-xl h-10 px-4 transition-all shadow-premium"
+              className="text-[11px] font-extrabold uppercase tracking-widest text-[#1a2b5c] border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-10 px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95"
             >
               {t('nav_sign_in', 'Sign In')}
             </Button>
             <Button 
-              className="bg-[#0A2E5C] hover:bg-[#1E5AA8] text-white rounded-xl px-5 h-10 font-bold uppercase text-[11px] tracking-wider shadow-premium transition-all border border-[#0A2E5C] hover:border-[#1E5AA8] hover:-translate-y-0.5 duration-200"
+              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-6 h-10 font-extrabold uppercase text-[11px] tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300"
               onClick={onRenew}
             >
               {t('nav_get_id_card', 'Get ID Card')}
@@ -368,22 +370,22 @@ export default function LandingPage({
           className="relative bg-white border border-slate-200/70 rounded-[28px] p-8 md:p-16 overflow-hidden shadow-projected"
         >
           {/* Subtle grid mesh decoration */}
-          <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(#0A2E5C_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none" />
+          <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(#1a2b5c_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none" />
           
           {/* Core Content */}
-          <div className="relative flex flex-col items-center text-center">
+          <div className="relative flex flex-col items-center justify-center text-center w-full">
             
             {/* Top Registration Badge */}
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-5 py-2 rounded-full shadow-premium mb-8 transition-all duration-300 hover:border-slate-300 cursor-default"
+              className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200/60 px-5 py-2 rounded-full shadow-md shadow-[#1a2b5c]/5 mb-8 transition-all duration-300 hover:border-[#1a2b5c]/20 hover:shadow-lg hover:shadow-[#1a2b5c]/10 cursor-default mx-auto"
             >
-              <div className="w-2 h-2 rounded-full bg-emerald-500 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
                 <div className="w-1 h-1 rounded-full bg-white animate-ping" />
               </div>
-              <span className="font-extrabold text-[10px] md:text-xs text-[#0A2E5C] uppercase tracking-wider">
+              <span className="font-extrabold text-[10px] md:text-xs text-[#1a2b5c] uppercase tracking-wider">
                 {t('hero_reg_badge', 'Govt. Registered Society • Reg No: TSR/TC/93/2025')}
               </span>
             </motion.div>
@@ -393,20 +395,20 @@ export default function LandingPage({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className="p-4 bg-white shadow-premium rounded-2xl border border-slate-100 mb-8"
+              className="p-4 bg-white shadow-premium rounded-2xl border border-slate-100 mb-8 flex items-center justify-center mx-auto"
             >
-              <Logo className="scale-100 h-16 w-auto" />
+              <Logo className="scale-100 flex items-center justify-center mx-auto" size="sm" />
             </motion.div>
 
             {/* Main Title & Subtitle with crisp, high-contrast, beautiful typography */}
-            <div className="max-w-4xl space-y-4 mb-8">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0A2E5C] tracking-tight uppercase leading-[1.25] font-heading">
+            <div className="max-w-4xl space-y-4 mb-8 flex flex-col items-center justify-center text-center mx-auto">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-[#1a2b5c] tracking-tight uppercase leading-[1.2] font-heading text-center">
                 {t('hero_title_1', 'HIGHRICH COMMUNITY')}<br />
-                <span className="text-[#D91E63]">
+                <span className="text-[#c9a227]">
                   {t('hero_title_2', 'REVIVAL SOCIETY')}
                 </span> <span className="text-slate-400">(HCRS)</span>
               </h1>
-              <p className="text-slate-500 font-medium text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+              <p className="text-slate-500 font-medium text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed text-center">
                 {t('hero_subtitle', 'A Registered Society Committed To Reviving & Supporting The Highrich Community')}
               </p>
             </div>
@@ -416,7 +418,7 @@ export default function LandingPage({
 
             {/* Core Pillars / Professional Icons Grid */}
             <div className="w-full max-w-5xl">
-              <p className="text-[10px] md:text-xs font-black text-[#D91E63] uppercase tracking-widest mb-8">
+              <p className="text-[10px] md:text-xs font-black text-[#c9a227] uppercase tracking-widest mb-8">
                 {t('hero_core_pillars', 'Our Core Pillars')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
@@ -426,21 +428,21 @@ export default function LandingPage({
                     titleDefault: "Community Welfare",
                     descDefault: "Fostering kinship, solidarity and mutual group communication among all members.",
                     icon: Users,
-                    color: "text-[#0A2E5C] bg-[#0A2E5C]/8 border-[#0A2E5C]/15"
+                    color: "text-[#1a2b5c] bg-[#1a2b5c]/8 border-[#1a2b5c]/15"
                   },
                   {
                     key: "revival",
                     titleDefault: "Revival Efforts",
                     descDefault: "Rebuilding community confidence, outlining dynamic revival strategies, and restoring legal clarity.",
                     icon: Sparkles,
-                    color: "text-[#1E5AA8] bg-[#1E5AA8]/8 border-[#1E5AA8]/15"
+                    color: "text-[#233875] bg-[#233875]/8 border-[#233875]/15"
                   },
                   {
                     key: "support",
                     titleDefault: "Medical & Social Support",
                     descDefault: "Active social welfare initiatives, essential educational support, and continuous medical aid guidance.",
                     icon: HeartHandshake,
-                    color: "text-[#D91E63] bg-[#D91E63]/8 border-[#D91E63]/15"
+                    color: "text-[#c9a227] bg-[#c9a227]/8 border-[#c9a227]/15"
                   },
                   {
                     key: "legal",
@@ -464,7 +466,7 @@ export default function LandingPage({
                         <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${pillar.color} mb-5 shrink-0 shadow-sm`}>
                           <IconComponent className="w-5 h-5 stroke-[2]" />
                         </div>
-                        <h3 className="text-[#0A2E5C] font-extrabold text-sm md:text-base leading-tight uppercase font-heading">
+                        <h3 className="text-[#1a2b5c] font-extrabold text-sm md:text-base leading-tight uppercase font-heading">
                           {t(`pillar_${pillar.key}_title`, pillar.titleDefault)}
                         </h3>
                       </div>
@@ -491,152 +493,154 @@ export default function LandingPage({
             className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-16 z-10 relative"
           >
             {/* Featured Campaign Section (Moved to absolute top) */}
-            <section className="space-y-8 max-w-6xl mx-auto pt-4" id="featured-campaign">
-              <div className="text-center space-y-3 font-sans">
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3.5 py-1.5 rounded-full border border-blue-100">
-                  <Megaphone className="w-4 h-4 animate-pulse" />
-                  <span className="font-extrabold text-[10px] uppercase tracking-widest">Featured Campaign • ജനകീയ ക്യാമ്പയിൻ</span>
+            {janamailConfig?.active !== false && (
+              <section className="space-y-8 max-w-6xl mx-auto pt-4" id="featured-campaign">
+                <div className="text-center space-y-3 font-sans">
+                  <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-300 px-3.5 py-1.5 rounded-full border border-blue-500/20">
+                    <Megaphone className="w-4 h-4 animate-pulse" />
+                    <span className="font-extrabold text-[10px] uppercase tracking-widest">Featured Campaign • ജനകീയ ക്യാമ്പയിൻ</span>
+                  </div>
+                  <h2 className="text-3xl font-semibold text-white uppercase tracking-tight">
+                    HCRS <span className="text-blue-400">Featured Campaign</span>
+                  </h2>
+                  <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                    Participate in our official active community drives designed to bring attention to member causes.
+                  </p>
                 </div>
-                <h2 className="text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                  HCRS <span className="text-blue-600">Featured Campaign</span>
-                </h2>
-                <p className="text-slate-500 font-normal text-xs md:text-sm max-w-xl mx-auto">
-                  Participate in our official active community drives designed to bring attention to member causes.
-                </p>
-              </div>
 
-              {/* Compact Premium Campaign Card */}
-              <div 
-                onClick={onJanamailClick}
-                className="max-w-2xl mx-auto bg-white border border-slate-200/80 rounded-[28px] p-6 shadow-premium hover:border-blue-300 hover:shadow-projected hover:scale-[1.01] transition-all duration-300 cursor-pointer group/card"
-              >
-                <div className="flex flex-col md:flex-row gap-6 items-center">
-                  {/* Small Banner / Compact cover */}
-                  <div className="w-full md:w-1/3 aspect-[4/3] overflow-hidden rounded-2xl bg-slate-900 shadow-inner shrink-0 relative">
-                    <img
-                      src={janamailConfig?.artworkUrl || "https://i.ibb.co/B5YWH43C/IMG-20260706-WA0108.jpg"}
-                      alt="Operation Janamail Campaign Banner"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
-                    />
-                    {(() => {
-                      const status = janamailConfig?.campaignStatus;
-                      if (status === "draft") {
-                        return (
-                          <div className="absolute top-3 left-3 bg-amber-500 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                            <span>DRAFT CAMPAIGN</span>
-                          </div>
-                        );
-                      } else if (status === "completed" || status === "disabled") {
-                        return (
-                          <div className="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                            <span>CAMPAIGN COMPLETED</span>
-                          </div>
-                        );
-                      } else {
-                        return (
-                          <div className="absolute top-3 left-3 bg-[#D91E63] text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                            <span>ACTIVE CAMPAIGN</span>
-                          </div>
-                        );
-                      }
-                    })()}
+                {/* Compact Premium Campaign Card */}
+                <div 
+                  onClick={onJanamailClick}
+                  className="max-w-2xl mx-auto bg-white border border-slate-200/80 rounded-[28px] p-6 shadow-premium hover:border-blue-300 hover:shadow-projected hover:scale-[1.01] transition-all duration-300 cursor-pointer group/card"
+                >
+                  <div className="flex flex-col md:flex-row gap-6 items-center">
+                    {/* Small Banner / Compact cover */}
+                    <div className="w-full md:w-1/3 aspect-[4/3] overflow-hidden rounded-2xl bg-slate-900 shadow-inner shrink-0 relative">
+                      <img
+                        src={janamailConfig?.artworkUrl || "https://i.ibb.co/B5YWH43C/IMG-20260706-WA0108.jpg"}
+                        alt="Operation Janamail Campaign Banner"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
+                      />
+                      {(() => {
+                        const status = janamailConfig?.campaignStatus;
+                        if (status === "draft") {
+                          return (
+                            <div className="absolute top-3 left-3 bg-amber-500 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                              <span>DRAFT CAMPAIGN</span>
+                            </div>
+                          );
+                        } else if (status === "completed" || status === "disabled") {
+                          return (
+                            <div className="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              <span>CAMPAIGN COMPLETED</span>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="absolute top-3 left-3 bg-[#c9a227] text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                              <span>ACTIVE CAMPAIGN</span>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+
+                    {/* Campaign details */}
+                    <div className="flex-1 text-left space-y-3 font-sans">
+                      <h3 className="text-xl font-black text-[#1a2b5c] tracking-tight leading-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors duration-200">
+                        {janamailConfig?.campaignName || "Operation Janamail"}
+                      </h3>
+                      
+                      {/* Slogan & short description */}
+                      <p className="text-sm font-bold text-red-600 tracking-tight leading-snug">
+                        {janamailConfig?.campaignTagline || "ജനങ്ങൾ ഉണർന്നു... അധികാരികളേ ഉണരൂ"}
+                      </p>
+                      <p className="text-slate-500 font-medium text-xs leading-relaxed line-clamp-3">
+                        {janamailConfig?.campaignIntroduction || "ഭരണകൂടത്തിന്റെ കണ്ണുതുറപ്പിക്കാൻ ഒരു ജനകീയ ഇമെയിൽ പ്രസ്ഥാനം. പൊതുജനങ്ങളുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട അധികാരികളെ അറിയിക്കാനുള്ള പൊതുപങ്കാളിത്ത ഇമെയിൽ ക്യാമ്പയിൻ."}
+                      </p>
+
+                      <div className="pt-2">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onJanamailClick?.();
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-6 py-5 rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 duration-200 flex items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="text-sm">📧</span>
+                          <span>Participate Now / പങ്കാളിയാവുക</span>
+                          <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Directly BELOW the campaign card, create a "Public Sharing" section */}
+                <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
+                  {/* QR Code Canvas */}
+                  <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex items-center justify-center shrink-0">
+                    <canvas ref={qrCanvasRef} className="w-28 h-28 block" />
                   </div>
 
-                  {/* Campaign details */}
-                  <div className="flex-1 text-left space-y-3 font-sans">
-                    <h3 className="text-xl font-black text-[#0A2E5C] tracking-tight leading-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors duration-200">
-                      {janamailConfig?.campaignName || "Operation Janamail"}
-                    </h3>
+                  {/* Sharing details and actions */}
+                  <div className="flex-1 text-left space-y-3 font-sans w-full">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-blue-400 animate-pulse" />
+                      ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
+                    </h4>
                     
-                    {/* Slogan & short description */}
-                    <p className="text-sm font-bold text-red-600 tracking-tight leading-snug">
-                      {janamailConfig?.campaignTagline || "ജനങ്ങൾ ഉണർന്നു... അധികാരികളേ ഉണരൂ"}
-                    </p>
-                    <p className="text-slate-500 font-medium text-xs leading-relaxed line-clamp-3">
-                      {janamailConfig?.campaignIntroduction || "ഭരണകൂടത്തിന്റെ കണ്ണുതുറപ്പിക്കാൻ ഒരു ജനകീയ ഇമെയിൽ പ്രസ്ഥാനം. പൊതുജനങ്ങളുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട അധികാരികളെ അറിയിക്കാനുള്ള പൊതുപങ്കാളിത്ത ഇമെയിൽ ക്യാമ്പയിൻ."}
+                    <p className="text-xs text-slate-350 font-medium leading-relaxed">
+                      ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
                     </p>
 
-                    <div className="pt-2">
+                    {/* Public Campaign Link Box */}
+                    <div className="bg-slate-950/40 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 select-all break-all shadow-inner">
+                      {campaignUrl}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      {/* Share Button */}
                       <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onJanamailClick?.();
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-6 py-5 rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 duration-200 flex items-center gap-2 group cursor-pointer"
+                        onClick={handleShare}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        <span className="text-sm">📧</span>
-                        <span>Participate Now / പങ്കാളിയാവുക</span>
-                        <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>ഷെയർ ചെയ്യാം (Share)</span>
+                      </Button>
+
+                      {/* Copy Link Button */}
+                      <Button
+                        onClick={handleCopyLink}
+                        variant="outline"
+                        className={cn(
+                          "flex-1 font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer border",
+                          copiedLink
+                            ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
+                            : "bg-white/15 border-white/15 text-white hover:bg-white/20"
+                        )}
+                      >
+                        {copiedLink ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-white animate-pulse" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-white" />
+                            <span>Copy Link</span>
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Directly BELOW the campaign card, create a "Public Sharing" section */}
-              <div className="max-w-2xl mx-auto bg-slate-50/50 border border-slate-200/60 rounded-[28px] p-6 shadow-sm flex flex-col md:flex-row items-center gap-6">
-                {/* QR Code Canvas */}
-                <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex items-center justify-center shrink-0">
-                  <canvas ref={qrCanvasRef} className="w-28 h-28 block" />
-                </div>
-
-                {/* Sharing details and actions */}
-                <div className="flex-1 text-left space-y-3 font-sans w-full">
-                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <QrCode className="w-4 h-4 text-blue-600 animate-pulse" />
-                    ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
-                  </h4>
-                  
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                    ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
-                  </p>
-
-                  {/* Public Campaign Link Box */}
-                  <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-600 select-all break-all shadow-inner">
-                    {campaignUrl}
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                    {/* Share Button */}
-                    <Button
-                      onClick={handleShare}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>ഷെയർ ചെയ്യാം (Share)</span>
-                    </Button>
-
-                    {/* Copy Link Button */}
-                    <Button
-                      onClick={handleCopyLink}
-                      variant="outline"
-                      className={cn(
-                        "flex-1 font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer border",
-                        copiedLink
-                          ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
-                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                      )}
-                    >
-                      {copiedLink ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-white animate-pulse" />
-                          <span>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Link</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* TODAY'S UPDATE BOX (ഇന്നത്തെ അപ്ഡേഷൻ) */}
             {(() => {
@@ -647,7 +651,7 @@ export default function LandingPage({
               return (
                 <div 
                   id="home_announcement_box" 
-                  className="max-w-4xl mx-auto w-full bg-white border-l-4 border-[#0A2E5C] border-y border-r border-slate-200/80 rounded-2xl p-6 md:p-10 shadow-premium relative overflow-hidden transition-all duration-300 text-left"
+                  className="max-w-4xl mx-auto w-full bg-white border-l-4 border-[#1a2b5c] border-y border-r border-slate-200/80 rounded-2xl p-6 md:p-10 shadow-premium relative overflow-hidden transition-all duration-300 text-left"
                   onMouseEnter={() => {
                     setIsAutoPlaying(false);
                     setUserInteracted(true);
@@ -658,12 +662,12 @@ export default function LandingPage({
                   }}
                 >
                   {/* Top Accent line */}
-                  <div className="absolute top-0 inset-x-0 h-[2.5px] bg-gradient-to-r from-[#0A2E5C] via-[#1E5AA8] to-[#D91E63]" />
+                  <div className="absolute top-0 inset-x-0 h-[2.5px] bg-gradient-to-r from-[#1a2b5c] via-[#233875] to-[#c9a227]" />
 
                   {/* Header Status & Navigation indicators */}
                   <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-2.5">
-                      <span className="bg-slate-50 text-[#0A2E5C] font-extrabold uppercase px-4 py-2 rounded-lg text-[10px] md:text-xs tracking-wider border border-slate-200/60 flex items-center gap-2">
+                      <span className="bg-slate-50 text-[#1a2b5c] font-extrabold uppercase px-4 py-2 rounded-lg text-[10px] md:text-xs tracking-wider border border-slate-200/60 flex items-center gap-2">
                         <span className={cn(
                           "w-2 h-2 rounded-full",
                           isAutoPlaying ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
@@ -682,7 +686,7 @@ export default function LandingPage({
                           className="bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl p-2 border border-slate-200 transition-all duration-200 text-xs shadow-sm"
                           title={isAutoPlaying ? "Auto-scroll Pause" : "Auto-scroll Play"}
                         >
-                          {isAutoPlaying ? <Pause className="w-3.5 h-3.5 text-[#0A2E5C]" /> : <Play className="w-3.5 h-3.5 text-[#D91E63]" />}
+                          {isAutoPlaying ? <Pause className="w-3.5 h-3.5 text-[#1a2b5c]" /> : <Play className="w-3.5 h-3.5 text-[#c9a227]" />}
                         </button>
                       )}
                     </div>
@@ -725,7 +729,7 @@ export default function LandingPage({
                           className={cn(
                             "h-2 rounded-full transition-all duration-300 relative",
                             currentAnnounceIndex === idx 
-                              ? "w-8 bg-[#0A2E5C]" 
+                              ? "w-8 bg-[#1a2b5c]" 
                               : "w-2 bg-slate-300 hover:bg-slate-400"
                           )}
                           title={`Go to update ${idx + 1}`}
@@ -759,18 +763,18 @@ export default function LandingPage({
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100 text-left">
                         <div className="flex items-center gap-3">
-                          <span className="p-3 rounded-xl bg-[#0A2E5C]/6 text-[#0A2E5C] flex items-center justify-center border border-[#0A2E5C]/10 shadow-sm">
-                            <RefreshCw className="w-5 h-5 text-[#0A2E5C] stroke-[2]" />
+                          <span className="p-3 rounded-xl bg-[#1a2b5c]/6 text-[#1a2b5c] flex items-center justify-center border border-[#1a2b5c]/10 shadow-sm">
+                            <RefreshCw className="w-5 h-5 text-[#1a2b5c] stroke-[2]" />
                           </span>
                           <div>
-                            <h3 className="text-lg md:text-xl font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
+                            <h3 className="text-lg md:text-xl font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                               {currentAnn.title}
                             </h3>
                             <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mt-1">Notification Center / അറിയിപ്പ് കോളം</p>
                           </div>
                         </div>
                         {currentAnn.caseDate && (
-                          <span className="self-start sm:self-center bg-[#D91E63] text-white px-4 py-1.5 rounded-lg font-bold text-xs tracking-wider uppercase font-mono shadow-sm">
+                          <span className="self-start sm:self-center bg-[#c9a227] text-white px-4 py-1.5 rounded-lg font-bold text-xs tracking-wider uppercase font-mono shadow-sm">
                             {currentAnn.caseDate}
                           </span>
                         )}
@@ -785,7 +789,7 @@ export default function LandingPage({
                       {/* Case Related Detailed Specifications */}
                       {(currentAnn.caseNo || currentAnn.caseName || currentAnn.court || currentAnn.advocate || currentAnn.judgeBench) && (
                         <div className="bg-white border border-slate-200/60 rounded-xl p-5 md:p-6 mb-6 space-y-3 shadow-premium relative overflow-hidden text-left">
-                          <div className="absolute top-0 right-0 bg-[#D91E63]/10 text-[#D91E63] font-black font-mono text-[9px] px-3.5 py-1.5 rounded-bl-xl uppercase tracking-wider">
+                          <div className="absolute top-0 right-0 bg-[#c9a227]/10 text-[#c9a227] font-black font-mono text-[9px] px-3.5 py-1.5 rounded-bl-xl uppercase tracking-wider">
                             Case Profile / കേസ് വിവരങ്ങൾ
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -837,9 +841,9 @@ export default function LandingPage({
                           setIsAutoPlaying(false);
                           setUserInteracted(true);
                         }}
-                        className="text-slate-500 hover:text-[#0A2E5C] hover:bg-slate-50 rounded-xl py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 transition-all text-left self-stretch sm:self-auto justify-center border border-transparent hover:border-slate-200"
+                        className="text-slate-500 hover:text-[#1a2b5c] hover:bg-slate-50 rounded-xl py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 transition-all text-left self-stretch sm:self-auto justify-center border border-transparent hover:border-slate-200"
                       >
-                        <ChevronLeft className="w-4 h-4 text-[#D91E63]" />
+                        <ChevronLeft className="w-4 h-4 text-[#c9a227]" />
                         മുൻപത്തെ എഴുത്ത് (PREV)
                       </Button>
 
@@ -855,7 +859,7 @@ export default function LandingPage({
                           }}
                           className="bg-slate-50 text-slate-650 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 flex items-center justify-center gap-2 flex-1 sm:flex-initial transition-colors"
                         >
-                          <RefreshCw className="w-3.5 h-3.5 text-[#0A2E5C]" />
+                          <RefreshCw className="w-3.5 h-3.5 text-[#1a2b5c]" />
                           ആദ്യം മുതൽ (RESET)
                         </Button>
 
@@ -867,7 +871,7 @@ export default function LandingPage({
                             setIsAutoPlaying(false);
                             setUserInteracted(true);
                           }}
-                          className="bg-[#D91E63] hover:bg-[#C2185B] text-white font-bold text-xs px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-premium flex-1 sm:flex-initial transition-all hover:-translate-y-0.5 duration-200"
+                          className="bg-[#c9a227] hover:bg-[#ab851c] text-white font-bold text-xs px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-premium flex-1 sm:flex-initial transition-all hover:-translate-y-0.5 duration-200"
                         >
                           {t('btn_next_update', "അടുത്ത അപ്ഡേഷൻ (NEXT)")}
                           <ChevronRight className="w-4 h-4 text-white" />
@@ -883,17 +887,17 @@ export default function LandingPage({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {/* Enrollment Card */}
               <div
-                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#D91E63]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
+                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#D91E63]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#D91E63] group-hover:scale-105 transition-transform shadow-sm border border-[#D91E63]/10">
+                  <div className="bg-[#c9a227]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/10">
                     <UserPlus className="w-8 h-8 stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold text-[#0A2E5C] tracking-tight uppercase font-heading">
+                    <h2 className="text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
                       {t('card_new_membership_title', 'New Membership')}
                     </h2>
-                    <span className="inline-flex mt-2.5 bg-[#D91E63]/8 text-[#D91E63] border border-[#D91E63]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
+                    <span className="inline-flex mt-2.5 bg-[#c9a227]/8 text-[#c9a227] border border-[#c9a227]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
                       {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
                     </span>
                     <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
@@ -903,7 +907,7 @@ export default function LandingPage({
                 </div>
                 <Button 
                   onClick={() => setStage('guidelines')}
-                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
+                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_new_membership_btn', 'Register Now')}
                   <ChevronRight className="w-4 h-4" />
@@ -912,17 +916,17 @@ export default function LandingPage({
 
               {/* Renewal Card */}
               <div
-                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#0A2E5C]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
+                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#0A2E5C]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#0A2E5C] group-hover:scale-105 transition-transform shadow-sm border border-[#0A2E5C]/10">
+                  <div className="bg-[#1a2b5c]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
                     <RefreshCw className="w-8 h-8 stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold text-[#0A2E5C] tracking-tight uppercase font-heading">
+                    <h2 className="text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
                       {t('card_renew_membership_title', 'Renew card')}
                     </h2>
-                    <span className="inline-flex mt-2.5 bg-[#0A2E5C]/8 text-[#0A2E5C] border border-[#0A2E5C]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
+                    <span className="inline-flex mt-2.5 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
                       {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
                     </span>
                     <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
@@ -932,7 +936,7 @@ export default function LandingPage({
                 </div>
                 <Button 
                   onClick={onRenew}
-                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
+                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_renew_membership_btn', 'Renew Card Now')}
                   <ChevronRight className="w-4 h-4" />
@@ -941,21 +945,21 @@ export default function LandingPage({
 
               {/* Information Registry Card */}
               <div
-                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#D91E63]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
+                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
               >
                 <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#0A2E5C]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#0A2E5C] group-hover:scale-105 transition-transform shadow-sm border border-[#0A2E5C]/10">
-                    <Info className="w-8 h-8 text-[#0A2E5C] stroke-[2]" />
+                  <div className="bg-[#1a2b5c]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
+                    <Info className="w-8 h-8 text-[#1a2b5c] stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-extrabold text-[#0A2E5C] tracking-tight leading-snug uppercase font-heading">
+                    <h2 className="text-lg font-extrabold text-[#1a2b5c] tracking-tight leading-snug uppercase font-heading">
                       {t('card_registry_title', 'Member Financial Information Registry')}
                     </h2>
                     <div className="flex flex-col gap-1 items-center mt-2">
-                      <span className="inline-flex bg-[#0A2E5C]/8 text-[#0A2E5C] border border-[#0A2E5C]/15 font-extrabold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
+                      <span className="inline-flex bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
                         {t('card_registry_badge', 'Verified Information Collection')}
                       </span>
-                      <span className="text-[10px] font-black text-[#D91E63] uppercase tracking-widest mt-1">
+                      <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-1">
                         {t('card_registry_sub_badge', 'Verified Member Information Collection Portal')}
                       </span>
                     </div>
@@ -970,7 +974,7 @@ export default function LandingPage({
                     setClaimResult(null);
                     setStage('claim_check');
                   }}
-                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#D91E63] text-white hover:bg-[#C2185B] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
+                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_registry_btn', 'Access Registry Portal')}
                   <ChevronRight className="w-4 h-4" />
@@ -979,11 +983,11 @@ export default function LandingPage({
             </div>
 
             {/* Micro Access Card - Upgraded to elegant white glass panel */}
-            <div className="flex flex-col items-center max-w-sm mx-auto bg-slate-50/50 border border-slate-200/80 p-8 rounded-2xl shadow-premium relative overflow-hidden group">
-              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mb-4">Official Logins</span>
+            <div className="flex flex-col items-center max-w-sm mx-auto bg-white/5 border border-white/10 p-8 rounded-2xl shadow-premium relative overflow-hidden group">
+              <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-widest mb-4">Official Logins</span>
               <Button 
                 onClick={onLoginClick}
-                className="w-full h-11 rounded-xl font-bold text-white bg-[#0A2E5C] hover:bg-[#1E5AA8] shadow-premium transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200"
+                className="w-full h-11 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200"
               >
                 Sign In to Portal
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -1005,49 +1009,49 @@ export default function LandingPage({
                   <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50/50 rounded-full pointer-events-none" />
                   
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#D91E63]/6 text-[#D91E63] px-3.5 py-1.5 rounded-full border border-[#D91E63]/10">
+                    <div className="inline-flex items-center gap-2 bg-[#c9a227]/6 text-[#c9a227] px-3.5 py-1.5 rounded-full border border-[#c9a227]/10">
                       <Building2 className="w-4 h-4 stroke-[2]" />
                       <span className="font-extrabold text-[10px] uppercase tracking-widest">About HCRS • ഞങ്ങളെക്കുറിച്ച്</span>
                     </div>
  
-                    <h2 className="text-2xl font-black text-[#0A2E5C] tracking-tight uppercase leading-none font-heading">
-                      About <span className="text-[#D91E63]">HCRS</span>
+                    <h2 className="text-2xl font-black text-[#1a2b5c] tracking-tight uppercase leading-none font-heading">
+                      About <span className="text-[#c9a227]">HCRS</span>
                     </h2>
  
                     <div className="space-y-5 text-sm text-slate-650 font-normal leading-relaxed">
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
-                          <Building2 className="w-5 h-5 text-[#D91E63]" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
+                          <Building2 className="w-5 h-5 text-[#c9a227]" />
                         </div>
                         <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
-                          <strong className="text-[#0A2E5C] font-extrabold">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a legally registered non-profit organization formed in 2025 in Thrissur, Kerala.
+                          <strong className="text-[#1a2b5c] font-extrabold">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a legally registered non-profit organization formed in 2025 in Thrissur, Kerala.
                         </p>
                       </div>
  
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
-                          <Users className="w-5 h-5 text-[#0A2E5C]" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
+                          <Users className="w-5 h-5 text-[#1a2b5c]" />
                         </div>
                         <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
-                          HCRS was established as a <strong className="text-[#0A2E5C] font-extrabold">revival committee</strong> for the members of Highrich Online Shoppe.
+                          HCRS was established as a <strong className="text-[#1a2b5c] font-extrabold">revival committee</strong> for the members of Highrich Online Shoppe.
                         </p>
                       </div>
  
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
                           <HeartHandshake className="w-5 h-5 text-emerald-600" />
                         </div>
                         <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
-                          Efforts are ongoing to support affected community members through welfare initiatives, awareness programs, community support activities, and <strong className="text-[#0A2E5C] font-extrabold">lawful assistance mechanisms</strong>.
+                          Efforts are ongoing to support affected community members through welfare initiatives, awareness programs, community support activities, and <strong className="text-[#1a2b5c] font-extrabold">lawful assistance mechanisms</strong>.
                         </p>
                       </div>
  
                       <div className="flex gap-4 items-start group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#0A2E5C] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
                           <Sparkles className="w-5 h-5 text-amber-600" />
                         </div>
                         <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
-                          HCRS remains committed to helping members <strong className="text-[#0A2E5C] font-extrabold">rebuild confidence, stability, and opportunities</strong> through collective action.
+                          HCRS remains committed to helping members <strong className="text-[#1a2b5c] font-extrabold">rebuild confidence, stability, and opportunities</strong> through collective action.
                         </p>
                       </div>
                     </div>
@@ -1060,7 +1064,7 @@ export default function LandingPage({
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Kerala Division</p>
-                      <p className="text-xs font-extrabold text-[#0A2E5C] uppercase tracking-wider mt-1.5">Registered Non-Profit</p>
+                      <p className="text-xs font-extrabold text-[#1a2b5c] uppercase tracking-wider mt-1.5">Registered Non-Profit</p>
                     </div>
                   </div>
                 </div>
@@ -1076,13 +1080,13 @@ export default function LandingPage({
               >
                 <div className="bg-white border border-slate-200/80 p-8 md:p-10 rounded-3xl shadow-premium h-full flex flex-col justify-between">
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/6 text-[#0A2E5C] px-3.5 py-1.5 rounded-full border border-[#0A2E5C]/10">
+                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/6 text-[#1a2b5c] px-3.5 py-1.5 rounded-full border border-[#1a2b5c]/10">
                       <Target className="w-4 h-4 stroke-[2]" />
                       <span className="font-extrabold text-[10px] uppercase tracking-widest">Our Society Mission • ലക്ഷ്യങ്ങൾ</span>
                     </div>
  
-                    <h2 className="text-2xl font-black text-[#0A2E5C] tracking-tight uppercase leading-none font-heading">
-                      Our <span className="text-[#0A2E5C]">Mission</span>
+                    <h2 className="text-2xl font-black text-[#1a2b5c] tracking-tight uppercase leading-none font-heading">
+                      Our <span className="text-[#1a2b5c]">Mission</span>
                     </h2>
  
                     <p className="text-sm font-medium text-slate-400 leading-relaxed">
@@ -1096,7 +1100,7 @@ export default function LandingPage({
                           title: "Community Welfare",
                           titleMl: "കമ്മ്യൂണിറ്റി ക്ഷേമം",
                           icon: Users,
-                          iconColor: "text-[#0A2E5C]",
+                          iconColor: "text-[#1a2b5c]",
                           bgColor: "bg-slate-50/50 border-slate-200/65"
                         },
                         {
@@ -1124,7 +1128,7 @@ export default function LandingPage({
                           title: "Financial Guidance",
                           titleMl: "സാമ്പത്തിക മാർഗ്ഗനിർദ്ദേശം",
                           icon: Briefcase,
-                          iconColor: "text-[#1E5AA8]",
+                          iconColor: "text-[#233875]",
                           bgColor: "bg-slate-50/50 border-slate-200/65"
                         }
                       ].map((item) => {
@@ -1132,13 +1136,13 @@ export default function LandingPage({
                         return (
                           <div 
                             key={item.title}
-                            className={`p-4 md:p-5 rounded-2xl border ${item.bgColor} flex flex-col justify-between transition-all duration-300 hover:border-[#1E5AA8]/30 hover:bg-white hover:shadow-premium cursor-default`}
+                            className={`p-4 md:p-5 rounded-2xl border ${item.bgColor} flex flex-col justify-between transition-all duration-300 hover:border-[#233875]/30 hover:bg-white hover:shadow-premium cursor-default`}
                           >
                             <div className={`w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100 shrink-0 mb-4`}>
                               <Icon className={`w-4 h-4 ${item.iconColor} stroke-[2]`} />
                             </div>
                             <div>
-                              <h4 className="font-extrabold text-[#0A2E5C] text-xs leading-snug uppercase tracking-tight font-heading">
+                              <h4 className="font-extrabold text-[#1a2b5c] text-xs leading-snug uppercase tracking-tight font-heading">
                                 {item.title}
                               </h4>
                               <p className="text-[10px] text-slate-400 font-extrabold tracking-widest uppercase mt-1">
@@ -1155,7 +1159,7 @@ export default function LandingPage({
                   <div className="mt-8 pt-6 border-t border-slate-100">
                     <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                       <div className="space-y-1.5 max-w-sm">
-                        <div className="inline-flex items-center gap-1.5 text-[#D91E63] font-extrabold uppercase text-[10px] tracking-widest leading-none">
+                        <div className="inline-flex items-center gap-1.5 text-[#c9a227] font-extrabold uppercase text-[10px] tracking-widest leading-none">
                           <BadgeAlert className="w-3.5 h-3.5 stroke-[2]" />
                           Special Attention segment
                         </div>
@@ -1178,7 +1182,7 @@ export default function LandingPage({
                               key={priority.lbl}
                               className="bg-white px-4 py-3 rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm shrink-0"
                             >
-                              <PriIcon className="w-4 h-4 text-[#D91E63] shrink-0" />
+                              <PriIcon className="w-4 h-4 text-[#c9a227] shrink-0" />
                               <div>
                                 <p className="font-extrabold text-[10px] text-slate-800 leading-none uppercase">{priority.lbl}</p>
                                 <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{priority.lblMl}</p>
@@ -1198,14 +1202,14 @@ export default function LandingPage({
             {/* OUR KEY ACTIVITIES SECTION */}
             <section className="space-y-10 max-w-6xl mx-auto pt-16">
               <div className="text-center space-y-3 font-sans">
-                <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/6 text-[#0A2E5C] px-3.5 py-1.5 rounded-full border border-[#0A2E5C]/10">
-                  <Activity className="w-4 h-4 text-[#0A2E5C] stroke-[2]" />
+                <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
+                  <Activity className="w-4 h-4 text-slate-100 stroke-[2]" />
                   <span className="font-extrabold text-[10px] uppercase tracking-widest">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-black text-[#0A2E5C] uppercase tracking-tight font-heading">
-                  Our Key <span className="text-[#D91E63]">Activities</span>
+                <h2 className="text-3xl md:text-3xl font-black text-white uppercase tracking-tight font-heading">
+                  Our Key <span className="text-[#c9a227]">Activities</span>
                 </h2>
-                <p className="text-slate-500 font-medium text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-medium text-xs md:text-sm max-w-xl mx-auto">
                   We are actively engaged in structured initiatives and programs to restore the community.
                 </p>
               </div>
@@ -1213,64 +1217,64 @@ export default function LandingPage({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Card 1 */}
                 <div 
-                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#0A2E5C]/25 hover:shadow-projected"
+                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#1a2b5c]/25 hover:shadow-projected"
                 >
                   <div className="space-y-5">
-                    <div className="w-12 h-12 rounded-xl bg-[#0A2E5C]/8 border border-[#0A2E5C]/15 text-[#0A2E5C] flex items-center justify-center shadow-sm">
+                    <div className="w-12 h-12 rounded-xl bg-[#1a2b5c]/8 border border-[#1a2b5c]/15 text-[#1a2b5c] flex items-center justify-center shadow-sm">
                       <IdCard className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <h3 className="text-lg font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
+                    <h3 className="text-lg font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                       Membership Campaigns
                     </h3>
                     <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
                       HCRS Membership Campaigns unite members and supporters for welfare, awareness, revival initiatives, and community participation.
                     </p>
                   </div>
-                  <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#0A2E5C]">
+                  <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#1a2b5c]">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Uniting Members</span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#0A2E5C]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#1a2b5c]" />
                   </div>
                 </div>
 
                 {/* Card 2 */}
                 <div 
-                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#D91E63]/25 hover:shadow-projected"
+                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#c9a227]/25 hover:shadow-projected"
                 >
                   <div className="space-y-5">
-                    <div className="w-12 h-12 rounded-xl bg-[#D91E63]/8 border border-[#D91E63]/15 text-[#D91E63] flex items-center justify-center shadow-sm">
+                    <div className="w-12 h-12 rounded-xl bg-[#c9a227]/8 border border-[#c9a227]/15 text-[#c9a227] flex items-center justify-center shadow-sm">
                       <HeartHandshake className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <h3 className="text-lg font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
+                    <h3 className="text-lg font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                       Welfare Activities
                     </h3>
                     <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
                       Supporting members through welfare programs, awareness campaigns, and compassionate assistance initiatives.
                     </p>
                   </div>
-                  <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#D91E63]">
+                  <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#c9a227]">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Active Relief</span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#D91E63]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#c9a227]" />
                   </div>
                 </div>
 
                 {/* Card 3 */}
                 <div 
-                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#1E5AA8]/25 hover:shadow-projected"
+                  className="bg-white border border-slate-200 rounded-3xl p-8 shadow-premium flex flex-col justify-between relative overflow-hidden group transition-all duration-300 text-left hover:-translate-y-1 hover:border-[#233875]/25 hover:shadow-projected"
                 >
                   <div className="space-y-5">
-                    <div className="w-12 h-12 rounded-xl bg-[#1E5AA8]/8 border border-[#1E5AA8]/15 text-[#1E5AA8] flex items-center justify-center shadow-sm">
+                    <div className="w-12 h-12 rounded-xl bg-[#233875]/8 border border-[#233875]/15 text-[#233875] flex items-center justify-center shadow-sm">
                       <Coins className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <h3 className="text-lg font-extrabold text-[#0A2E5C] uppercase tracking-tight font-heading">
+                    <h3 className="text-lg font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                       Financial Support
                     </h3>
                     <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
                       Providing support initiatives for education, medical needs, emergencies, and livelihood recovery efforts.
                     </p>
                   </div>
-                  <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#1E5AA8]">
+                  <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#233875]">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Essential Recovery</span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#1E5AA8]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#233875]" />
                   </div>
                 </div>
               </div>
@@ -1282,32 +1286,32 @@ export default function LandingPage({
                     category: 'Membership Campaigns',
                     title: 'Membership Campaigns Archive',
                     desc: 'Sneak peek into physical membership campaigns, active recruitment zones, and community interactions.',
-                    icon: <IdCard className="w-5 h-5 text-[#0A2E5C]" />,
-                    bgColor: 'bg-slate-50',
-                    btnColor: 'text-[#0A2E5C] hover:bg-slate-100 border-slate-200'
+                    icon: <IdCard className="w-5 h-5 text-[#1a2b5c]" />,
+                    bgColor: 'bg-white',
+                    btnColor: 'text-[#1a2b5c] hover:bg-slate-100 border-slate-200'
                   },
                   {
                     category: 'Welfare Activities',
                     title: 'Welfare Activities Photo Grid',
                     desc: 'Capturing moments of direct relief campaigns, compassionate delivery work, and home visits.',
-                    icon: <HeartHandshake className="w-5 h-5 text-[#D91E63]" />,
-                    bgColor: 'bg-slate-50',
-                    btnColor: 'text-[#D91E63] hover:bg-slate-100 border-slate-200'
+                    icon: <HeartHandshake className="w-5 h-5 text-[#c9a227]" />,
+                    bgColor: 'bg-white',
+                    btnColor: 'text-[#c9a227] hover:bg-slate-100 border-slate-200'
                   },
                   {
                     category: 'Financial Support',
                     title: 'Financial Support & Activity Gallery',
                     desc: 'Transparency and active record checking of educational support, emergency medical disbursements.',
-                    icon: <Coins className="w-5 h-5 text-[#1E5AA8]" />,
-                    bgColor: 'bg-slate-50',
-                    btnColor: 'text-[#1E5AA8] hover:bg-slate-100 border-slate-200'
+                    icon: <Coins className="w-5 h-5 text-[#233875]" />,
+                    bgColor: 'bg-white',
+                    btnColor: 'text-[#233875] hover:bg-slate-100 border-slate-200'
                   }
                 ].map((act) => {
                   const sectionImages = gallery.filter(img => img.category === act.category).slice(0, 6);
                   return (
                     <div 
                       key={act.category} 
-                      className={`p-6 md:p-8 rounded-[10px] border border-slate-200 bg-white shadow-sm text-left space-y-6 ${act.bgColor}`}
+                      className="p-6 md:p-8 rounded-3xl border border-slate-200/65 bg-white shadow-premium text-left space-y-6"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
@@ -1367,37 +1371,37 @@ export default function LandingPage({
             {/* OUR JOURNEY SECTION */}
             <section className="space-y-12 max-w-5xl mx-auto pt-20 pb-10">
               <div className="text-center space-y-2 font-sans">
-                <div className="inline-flex items-center gap-2 bg-[#D91E63]/5 text-[#D91E63] px-3.5 py-1.5 rounded-[4px] border border-[#D91E63]/10">
-                  <Compass className="w-4 h-4 text-[#D91E63]" />
+                <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 px-3.5 py-1.5 rounded-full border border-amber-500/20">
+                  <Compass className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-[10px] uppercase tracking-wider">The Timeline • ചരിത്രവഴി</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                  Our <span className="text-[#D91E63]">Journey</span>
+                <h2 className="text-3xl md:text-3xl font-semibold text-white uppercase tracking-tight">
+                  Our <span className="text-[#c9a227]">Journey</span>
                 </h2>
-                <p className="text-slate-500 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
                   A timeline tracking our establishment, unity, and dedicated ongoing community efforts.
                 </p>
               </div>
 
               {/* Timeline graphic wrapper */}
-              <div className="relative border-l-2 border-slate-200 ml-4 md:ml-32 space-y-12 text-left">
+              <div className="relative border-l-2 border-slate-700 ml-4 md:ml-32 space-y-12 text-left">
                 {/* Milestone 1 */}
                 <div className="relative pl-8 sm:pl-12 group">
                   {/* Flat Professional Node */}
-                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-[#D91E63] shadow-sm group-hover:scale-110 transition-transform" />
+                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-[#c9a227] shadow-sm group-hover:scale-110 transition-transform" />
                   
                   {/* Content Row */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start font-sans">
                     {/* Year/Signpost (Left alignment offset) */}
                     <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
-                      <span className="inline-block bg-[#D91E63]/10 text-[#D91E63] font-bold text-xs px-3.5 py-1.5 rounded-[4px] border border-[#D91E63]/25 shadow-sm uppercase tracking-wider">
+                      <span className="inline-block bg-amber-500/10 text-amber-400 font-bold text-xs px-3.5 py-1.5 rounded-full border border-amber-500/20 shadow-sm uppercase tracking-wider">
                         2025 • ESTD
                       </span>
                     </div>
                     {/* Card container */}
-                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-[#D91E63]/40 transition-all duration-200">
+                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-[#c9a227]/40 transition-all duration-200">
                       <h3 className="text-lg md:text-xl font-semibold text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#D91E63]" />
+                        <span className="w-2 h-2 rounded-full bg-[#c9a227]" />
                         Foundation In Thrissur
                       </h3>
                       <p className="text-slate-650 font-normal text-xs md:text-sm leading-relaxed">
@@ -1410,20 +1414,20 @@ export default function LandingPage({
                 {/* Milestone 2 */}
                 <div className="relative pl-8 sm:pl-12 group">
                   {/* Flat Professional Node */}
-                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-[#0A2E5C] shadow-sm group-hover:scale-110 transition-transform" />
+                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-[#1a2b5c] shadow-sm group-hover:scale-110 transition-transform" />
                   
                   {/* Content Row */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start font-sans">
                     {/* Year/Signpost */}
                     <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
-                      <span className="inline-block bg-[#0A2E5C]/10 text-[#0A2E5C] font-bold text-xs px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/25 shadow-sm uppercase tracking-wider">
+                      <span className="inline-block bg-blue-500/10 text-blue-300 font-bold text-xs px-3.5 py-1.5 rounded-full border border-blue-500/20 shadow-sm uppercase tracking-wider">
                         OUR FOCUS
                       </span>
                     </div>
                     {/* Card container */}
-                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-[#0A2E5C]/40 transition-all duration-200">
+                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-[#1a2b5c]/40 transition-all duration-200">
                       <h3 className="text-lg md:text-xl font-semibold text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#0A2E5C]" />
+                        <span className="w-2 h-2 rounded-full bg-[#1a2b5c]" />
                         Unity & Welfare Mobilization
                       </h3>
                       <p className="text-slate-650 font-normal text-xs md:text-sm leading-relaxed">
@@ -1442,7 +1446,7 @@ export default function LandingPage({
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start font-sans">
                     {/* Year/Signpost */}
                     <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
-                      <span className="inline-block bg-emerald-50 text-emerald-800 font-bold text-xs px-3.5 py-1.5 rounded-[4px] border border-emerald-200 shadow-sm uppercase tracking-wider">
+                      <span className="inline-block bg-emerald-500/10 text-emerald-400 font-bold text-xs px-3.5 py-1.5 rounded-full border border-emerald-500/20 shadow-sm uppercase tracking-wider">
                         ONGOING
                       </span>
                     </div>
@@ -1470,7 +1474,7 @@ export default function LandingPage({
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4 }}
-                  className="lg:col-span-5 relative bg-[#0A2E5C] rounded-[10px] p-8 md:p-10 shadow-sm flex flex-col justify-between overflow-hidden text-left"
+                  className="lg:col-span-5 relative bg-[#1a2b5c] rounded-[10px] p-8 md:p-10 shadow-sm flex flex-col justify-between overflow-hidden text-left"
                 >
                   <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -1509,13 +1513,13 @@ export default function LandingPage({
                   className="lg:col-span-7 bg-white border border-slate-200 p-8 md:p-10 rounded-[10px] shadow-sm flex flex-col justify-between text-left"
                 >
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/5 text-[#0A2E5C] px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/10">
-                      <Target className="w-4 h-4 text-[#0A2E5C]" />
+                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/5 text-[#1a2b5c] px-3.5 py-1.5 rounded-[4px] border border-[#1a2b5c]/10">
+                      <Target className="w-4 h-4 text-[#1a2b5c]" />
                       <span className="font-bold text-[10px] uppercase tracking-wider">Social Pillars • സുപ്രധാന ലക്ഷ്യങ്ങൾ</span>
                     </div>
 
                     <h2 className="text-2xl font-semibold text-slate-900 tracking-tight uppercase leading-none">
-                      Focus <span className="text-[#0A2E5C]">Areas</span>
+                      Focus <span className="text-[#1a2b5c]">Areas</span>
                     </h2>
 
                     <p className="text-slate-500 font-normal text-xs md:text-sm">
@@ -1530,9 +1534,9 @@ export default function LandingPage({
                           titleMl: "സാമൂഹിക ക്ഷേമം",
                           desc: "Supporting health, education, and livelihood initiatives.",
                           icon: Heart,
-                          tabColor: "bg-[#D91E63]",
-                          numColor: "text-[#D91E63]",
-                          iconColor: "text-[#D91E63]",
+                          tabColor: "bg-[#c9a227]",
+                          numColor: "text-[#c9a227]",
+                          iconColor: "text-[#c9a227]",
                         },
                         {
                           num: 2,
@@ -1540,9 +1544,9 @@ export default function LandingPage({
                           titleMl: "സ്ത്രീ-യുവജന ക്ഷേമം",
                           desc: "Encouraging participation, empowerment, and leadership.",
                           icon: Users,
-                          tabColor: "bg-[#0A2E5C]",
-                          numColor: "text-[#0A2E5C]",
-                          iconColor: "text-[#0A2E5C]",
+                          tabColor: "bg-[#1a2b5c]",
+                          numColor: "text-[#1a2b5c]",
+                          iconColor: "text-[#1a2b5c]",
                         },
                         {
                           num: 3,
@@ -1550,9 +1554,9 @@ export default function LandingPage({
                           titleMl: "കമ്മ्युनिटी പിന്തുണ",
                           desc: "Building stronger support networks and crisis response structures.",
                           icon: HeartHandshake,
-                          tabColor: "bg-[#1E5AA8]",
-                          numColor: "text-[#1E5AA8]",
-                          iconColor: "text-[#1E5AA8]",
+                          tabColor: "bg-[#233875]",
+                          numColor: "text-[#233875]",
+                          iconColor: "text-[#233875]",
                         },
                         {
                           num: 4,
@@ -1587,7 +1591,7 @@ export default function LandingPage({
                                 <h4 className="text-slate-900 font-bold text-xs md:text-sm uppercase tracking-wide leading-tight">
                                   {area.title}
                                 </h4>
-                                <span className="text-[10px] text-[#D91E63] font-bold uppercase tracking-wider hidden sm:inline">•</span>
+                                <span className="text-[10px] text-[#c9a227] font-bold uppercase tracking-wider hidden sm:inline">•</span>
                                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                                   {area.titleMl}
                                 </span>
@@ -1611,27 +1615,27 @@ export default function LandingPage({
             {/* OUR STATE & DISTRICT COMMITTEES SECTION */}
             <section className="space-y-8 max-w-6xl mx-auto pt-20">
               <div className="text-center space-y-2">
-                <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/5 text-[#0A2E5C] px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/10">
-                  <Network className="w-4 h-4 text-[#0A2E5C]" />
+                <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
+                  <Network className="w-4 h-4 text-slate-100" />
                   <span className="font-bold text-[10px] uppercase tracking-wider">Organizational leadership • കമ്മിറ്റികൾ</span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                  HCRS Committee <span className="text-[#0A2E5C]">Members</span>
+                <h2 className="text-2xl md:text-3xl font-semibold text-white uppercase tracking-tight">
+                  HCRS Committee <span className="text-[#c9a227]">Members</span>
                 </h2>
-                <p className="text-slate-500 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
                   സംസ്ഥാന, ജില്ലാ, മണ്ഡലം തലങ്ങളിലെ ഞങ്ങളുടെ നേതൃത്വ നിരയും ഭാരവാഹികളും താഴെ കാണാം.
                 </p>
               </div>
 
               {/* Committee Tabs */}
               <div className="flex flex-col items-center gap-6">
-                <div className="bg-slate-100/80 p-1 rounded-2xl flex items-center justify-between gap-1 w-full max-w-lg border border-slate-200">
+                <div className="bg-white/10 p-1.5 rounded-2xl flex items-center justify-between gap-1.5 w-full max-w-lg border border-white/15 backdrop-blur-md shadow-lg">
                   <button
                     onClick={() => setActiveCommTab('state')}
                     className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                       activeCommTab === 'state'
-                        ? 'bg-[#0A2E5C] text-white shadow-md font-sans'
-                        : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-[#c9a227] text-slate-950 font-black shadow-md font-sans'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                   >
                     State <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">സംസ്ഥാന സമിതി</span>
@@ -1640,8 +1644,8 @@ export default function LandingPage({
                     onClick={() => setActiveCommTab('district')}
                     className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                       activeCommTab === 'district'
-                        ? 'bg-[#0A2E5C] text-white shadow-md font-sans'
-                        : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-[#c9a227] text-slate-950 font-black shadow-md font-sans'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                   >
                     District <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">ജില്ലാ കമ്മിറ്റികൾ</span>
@@ -1650,8 +1654,8 @@ export default function LandingPage({
                     onClick={() => setActiveCommTab('mandalam')}
                     className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                       activeCommTab === 'mandalam'
-                        ? 'bg-[#0A2E5C] text-white shadow-md font-sans'
-                        : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-[#c9a227] text-slate-950 font-black shadow-md font-sans'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                   >
                     Mandalam <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">മണ്ഡലം കമ്മിറ്റികൾ</span>
@@ -1666,7 +1670,7 @@ export default function LandingPage({
                       <select
                         value={selectedCommDistrict}
                         onChange={(e) => setSelectedCommDistrict(e.target.value)}
-                        className="w-full h-11 px-4 pr-10 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-sm appearance-none outline-none focus:border-[#0A2E5C]/30 focus:ring-1 focus:ring-[#0A2E5C]/10 transition-all cursor-pointer"
+                        className="w-full h-11 px-4 pr-10 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-sm appearance-none outline-none focus:border-[#1a2b5c]/30 focus:ring-1 focus:ring-[#1a2b5c]/10 transition-all cursor-pointer"
                       >
                         {DISTRICTS.map(d => (
                           <option key={d.code} value={d.code}>
@@ -1765,7 +1769,7 @@ export default function LandingPage({
                                 }}
                               />
                               {posterMember.nameMl && (
-                                <p className="mt-4 text-sm font-black text-[#0A2E5C] uppercase tracking-wider malayalam-text text-center">
+                                <p className="mt-4 text-sm font-black text-[#1a2b5c] uppercase tracking-wider malayalam-text text-center">
                                   {posterMember.nameMl}
                                 </p>
                               )}
@@ -1809,7 +1813,7 @@ export default function LandingPage({
                         transition={{ duration: 0.25 }}
                         className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center gap-4 text-left group relative"
                       >
-                        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#0A2E5C]/10 bg-slate-50 shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
+                        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1a2b5c]/10 bg-slate-50 shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
                           <img
                             src={m.imageUrl || 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'}
                             alt={m.name}
@@ -1831,7 +1835,7 @@ export default function LandingPage({
                             </p>
                           )}
 
-                          <p className="text-[10px] text-[#D91E63] font-black uppercase tracking-wider pt-0.5 truncate">
+                          <p className="text-[10px] text-[#c9a227] font-black uppercase tracking-wider pt-0.5 truncate">
                             {m.designationMl || m.designation}
                           </p>
                         </div>
@@ -1956,8 +1960,8 @@ export default function LandingPage({
                         {/* 3. EXECUTIVE MEMBERS COMPACT ADJACENT CLUSTER */}
                         {categorized.executive.length > 0 && (
                           <div className="space-y-4 bg-slate-50/50 p-6 rounded-[22px] border border-slate-200/40 w-full">
-                            <div className="flex items-center gap-2 border-b border-pink-100 pb-3 mb-4 shrink-0">
-                              <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
+                            <div className="flex items-center gap-2 border-b border-amber-100 pb-3 mb-4 shrink-0">
+                              <div className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse"></div>
                               <h3 className="font-black text-[11px] text-slate-800 uppercase tracking-wider">
                                 എക്സിക്യൂട്ടീവ് അംഗങ്ങൾ
                                 <span className="block text-[8px] text-slate-400 font-mono tracking-widest uppercase mt-0.5 font-bold">Executive Members</span>
@@ -1973,10 +1977,10 @@ export default function LandingPage({
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ duration: 0.2 }}
-                                    className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full shadow-xs hover:shadow-sm hover:border-[#0A2E5C]/20 transition-all shrink-0"
+                                    className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full shadow-xs hover:shadow-sm hover:border-[#1a2b5c]/20 transition-all shrink-0"
                                   >
                                     {hasImage ? (
-                                      <div className="w-6 h-6 rounded-full overflow-hidden border border-[#0A2E5C]/10 bg-slate-50 shrink-0">
+                                      <div className="w-6 h-6 rounded-full overflow-hidden border border-[#1a2b5c]/10 bg-slate-50 shrink-0">
                                         <img
                                           src={m.imageUrl}
                                           alt={m.name}
@@ -2018,14 +2022,14 @@ export default function LandingPage({
             {/* HCRS MEMBERSHIP BENEFITS SECTION */}
             <section className="space-y-8 max-w-6xl mx-auto pt-20">
               <div className="text-center space-y-2">
-                <div className="inline-flex items-center gap-2 bg-[#0A2E5C]/5 text-[#0A2E5C] px-3.5 py-1.5 rounded-[4px] border border-[#0A2E5C]/10">
-                  <Award className="w-4 h-4 text-[#0A2E5C]" />
+                <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
+                  <Award className="w-4 h-4 text-slate-100" />
                   <span className="font-bold text-[10px] uppercase tracking-wider">Member Privileges • അംഗത്വ ആനുകൂല്യങ്ങൾ</span>
                 </div>
-                <h2 className="text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                  HCRS Membership <span className="text-[#0A2E5C]">Benefits</span>
+                <h2 className="text-3xl font-semibold text-white uppercase tracking-tight">
+                  HCRS Membership <span className="text-[#c9a227]">Benefits</span>
                 </h2>
-                <p className="text-slate-500 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
                   By joining our registered collective, you unlock vital community support systems, legal standing, and advocacy channels.
                 </p>
               </div>
@@ -2036,16 +2040,16 @@ export default function LandingPage({
                   whileHover={{ y: -4 }}
                   className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left font-sans"
                 >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#0A2E5C]/3 rounded-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#1a2b5c]/3 rounded-full pointer-events-none" />
                   <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-[6px] bg-[#0A2E5C]/5 border border-[#0A2E5C]/10 text-[#0A2E5C] flex items-center justify-center shadow-sm transition-transform">
+                    <div className="w-12 h-12 rounded-[6px] bg-[#1a2b5c]/5 border border-[#1a2b5c]/10 text-[#1a2b5c] flex items-center justify-center shadow-sm transition-transform">
                       <Briefcase className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
                         Reclaiming Livelihoods
                       </h3>
-                      <p className="text-[10px] text-[#0A2E5C] font-bold uppercase tracking-wider mt-1">
+                      <p className="text-[10px] text-[#1a2b5c] font-bold uppercase tracking-wider mt-1">
                         ജീവനമാർഗ്ഗ പുനരുദ്ധാരണം
                       </p>
                     </div>
@@ -2053,9 +2057,9 @@ export default function LandingPage({
                       Working collectively to support members through awareness, welfare initiatives, and community revival efforts.
                     </p>
                   </div>
-                  <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-[#0A2E5C]">
+                  <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-[#1a2b5c]">
                     <span className="text-[10px] font-bold uppercase tracking-wider">Life Recovery Block</span>
-                    <span className="w-2 h-2 rounded-full bg-[#0A2E5C]" />
+                    <span className="w-2 h-2 rounded-full bg-[#1a2b5c]" />
                   </div>
                 </motion.div>
 
@@ -2064,16 +2068,16 @@ export default function LandingPage({
                   whileHover={{ y: -4 }}
                   className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left font-sans"
                 >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#D91E63]/3 rounded-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#c9a227]/3 rounded-full pointer-events-none" />
                   <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-[6px] bg-[#D91E63]/5 border border-[#D91E63]/10 text-[#D91E63] flex items-center justify-center shadow-sm transition-transform">
+                    <div className="w-12 h-12 rounded-[6px] bg-[#c9a227]/5 border border-[#c9a227]/10 text-[#c9a227] flex items-center justify-center shadow-sm transition-transform">
                       <Scale className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
                         Stand For Justice
                       </h3>
-                      <p className="text-[10px] text-[#D91E63] font-bold uppercase tracking-wider mt-1">
+                      <p className="text-[10px] text-[#c9a227] font-bold uppercase tracking-wider mt-1">
                         നീതിക്കായുള്ള നിലകൊള്ളൽ
                       </p>
                     </div>
@@ -2081,9 +2085,9 @@ export default function LandingPage({
                       Members can participate in lawful representation efforts, petitions, and community advocacy initiatives.
                     </p>
                   </div>
-                  <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-[#D91E63]">
+                  <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-[#c9a227]">
                     <span className="text-[10px] font-bold uppercase tracking-wider">Advocacy Standing</span>
-                    <span className="w-2 h-2 rounded-full bg-[#D91E63]" />
+                    <span className="w-2 h-2 rounded-full bg-[#c9a227]" />
                   </div>
                 </motion.div>
 
@@ -2123,12 +2127,12 @@ export default function LandingPage({
             <section className="space-y-8 max-w-6xl mx-auto pt-16" id="gallery-preview">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-left">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 bg-[#D91E63]/5 text-[#D91E63] px-3.5 py-1.5 rounded-[4px] border border-[#D91E63]/10">
+                  <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 px-3.5 py-1.5 rounded-full border border-amber-500/20">
                     <LayoutGrid className="w-4 h-4" />
                     <span className="font-bold text-[10px] uppercase tracking-wider">Visual Records</span>
                   </div>
-                  <h2 className="text-3xl font-semibold text-slate-900 uppercase tracking-tight mt-1">
-                    Secretariat <span className="text-[#0A2E5C]">Moments</span>
+                  <h2 className="text-3xl font-semibold text-white uppercase tracking-tight mt-1">
+                    Secretariat <span className="text-[#c9a227]">Moments</span>
                   </h2>
                 </div>
                 
@@ -2137,7 +2141,7 @@ export default function LandingPage({
                   className="bg-white hover:bg-slate-50 text-slate-800 rounded-[10px] px-5 h-12 font-semibold uppercase text-xs tracking-wider border border-slate-200 transition-all shadow-sm"
                 >
                   Browse Full Gallery
-                  <ChevronRight className="w-4 h-4 ml-1 text-[#0A2E5C]" />
+                  <ChevronRight className="w-4 h-4 ml-1 text-[#1a2b5c]" />
                 </Button>
               </div>
 
@@ -2189,7 +2193,7 @@ export default function LandingPage({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                   <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 bg-[#0A2E5C]/5 rounded-[6px] flex items-center justify-center text-[#0A2E5C] shrink-0 border border-[#0A2E5C]/10">
+                    <div className="w-10 h-10 bg-[#1a2b5c]/5 rounded-[6px] flex items-center justify-center text-[#1a2b5c] shrink-0 border border-[#1a2b5c]/10">
                       <MapPin className="w-5 h-5" />
                     </div>
                     <div>
@@ -2199,7 +2203,7 @@ export default function LandingPage({
                   </div>
 
                   <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 bg-[#D91E63]/5 rounded-[6px] flex items-center justify-center text-[#D91E63] shrink-0 border border-[#D91E63]/10">
+                    <div className="w-10 h-10 bg-[#c9a227]/5 rounded-[6px] flex items-center justify-center text-[#c9a227] shrink-0 border border-[#c9a227]/10">
                       <Phone className="w-5 h-5" />
                     </div>
                     <div>
@@ -2209,7 +2213,7 @@ export default function LandingPage({
                   </div>
 
                   <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 bg-[#0A2E5C]/5 rounded-[6px] flex items-center justify-center text-[#0A2E5C] shrink-0 border border-[#0A2E5C]/10">
+                    <div className="w-10 h-10 bg-[#1a2b5c]/5 rounded-[6px] flex items-center justify-center text-[#1a2b5c] shrink-0 border border-[#1a2b5c]/10">
                       <Mail className="w-5 h-5" />
                     </div>
                     <div>
@@ -2219,12 +2223,12 @@ export default function LandingPage({
                   </div>
 
                   <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 bg-[#D91E63]/5 rounded-[6px] flex items-center justify-center text-[#D91E63] shrink-0 border border-[#D91E63]/10">
+                    <div className="w-10 h-10 bg-[#c9a227]/5 rounded-[6px] flex items-center justify-center text-[#c9a227] shrink-0 border border-[#c9a227]/10">
                       <Globe className="w-5 h-5" />
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Official Site</p>
-                      <a href={settings.website} target="_blank" rel="noreferrer" className="text-slate-700 text-xs font-normal hover:text-[#D91E63] transition-colors break-all leading-normal">{settings.website}</a>
+                      <a href={settings.website} target="_blank" rel="noreferrer" className="text-slate-700 text-xs font-normal hover:text-[#c9a227] transition-colors break-all leading-normal">{settings.website}</a>
                     </div>
                   </div>
                 </div>
@@ -2232,8 +2236,8 @@ export default function LandingPage({
               
               <div className="bg-slate-50 relative flex items-center justify-center p-8 overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 fn-sans">
                 <div className="relative bg-white p-8 rounded-[10px] shadow-sm border border-slate-200 text-center space-y-4 max-w-xs w-full">
-                  <div className="w-12 h-12 bg-[#0A2E5C] text-white rounded-[6px] mx-auto flex items-center justify-center shadow">
-                    <MapPin className="w-6 h-6 text-[#D91E63]" />
+                  <div className="w-12 h-12 bg-[#1a2b5c] text-white rounded-[6px] mx-auto flex items-center justify-center shadow">
+                    <MapPin className="w-6 h-6 text-[#c9a227]" />
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-slate-900 uppercase tracking-tight">Active Districts</h3>
@@ -2244,17 +2248,17 @@ export default function LandingPage({
             </section>
 
             {/* Simple Clean Modern Footer */}
-            <footer className="pt-12 border-t border-slate-200/50 max-w-5xl mx-auto pb-6">
-               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left text-xs text-slate-400">
+            <footer className="pt-12 border-t border-white/15 max-w-5xl mx-auto pb-6">
+               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left text-xs text-slate-300">
                   <div className="flex items-center gap-2">
                     <Logo size="sm" className="h-[24px] w-auto border border-slate-200/30 p-0.5 rounded bg-white" />
                     <p className="font-bold">© {new Date().getFullYear()} HCRS Society. Public Registry Channel.</p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 font-bold uppercase tracking-wider text-[9px]">
-                    <a href="#privacy" className="hover:text-[#D91E63] transition-colors">Privacy Policy</a>
-                    <a href="#terms" className="hover:text-[#D91E63] transition-colors">Terms & Conditions</a>
-                    <a href="#refund" className="hover:text-[#D91E63] transition-colors">Refund Policy</a>
-                    <a href="#contact" className="hover:text-[#D91E63] transition-colors">Contact Us</a>
+                    <a href="#privacy" className="hover:text-[#c9a227] transition-colors">Privacy Policy</a>
+                    <a href="#terms" className="hover:text-[#c9a227] transition-colors">Terms & Conditions</a>
+                    <a href="#refund" className="hover:text-[#c9a227] transition-colors">Refund Policy</a>
+                    <a href="#contact" className="hover:text-[#c9a227] transition-colors">Contact Us</a>
                   </div>
                </div>
             </footer>
@@ -2271,7 +2275,7 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
-                    <ShieldCheck className="w-5 h-5 text-[#D91E63]" />
+                    <ShieldCheck className="w-5 h-5 text-[#c9a227]" />
                     {t('guidelines_title', 'Registry Guidelines')}
                   </CardTitle>
                   <Button 
@@ -2293,7 +2297,7 @@ export default function LandingPage({
                     t('rule_5', 'All registration and member registry verification fees are completely non-refundable.')
                   ].map((text, idx) => (
                     <div key={idx} className="flex gap-4 items-start group">
-                      <div className="w-6 h-6 rounded-[4px] bg-[#0A2E5C] text-white flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 rounded-[4px] bg-[#1a2b5c] text-white flex items-center justify-center shrink-0">
                         <span className="font-semibold text-xs">{idx + 1}</span>
                       </div>
                       <p className="text-xs font-normal text-slate-650 leading-relaxed pt-0.5">{text}</p>
@@ -2309,7 +2313,7 @@ export default function LandingPage({
                     id="terms" 
                     checked={agreed} 
                     onCheckedChange={(checked) => setAgreed(checked as boolean)}
-                    className="data-[state=checked]:bg-[#0A2E5C] data-[state=checked]:border-[#0A2E5C] border border-slate-300 w-5 h-5 rounded-[4px] transition-transform"
+                    className="data-[state=checked]:bg-[#1a2b5c] data-[state=checked]:border-[#1a2b5c] border border-slate-300 w-5 h-5 rounded-[4px] transition-transform"
                   />
                   <Label 
                     htmlFor="terms" 
@@ -2321,7 +2325,7 @@ export default function LandingPage({
               </CardContent>
               <CardFooter className="pt-2 pb-8 px-8 md:px-10">
                 <Button 
-                  className="w-full h-12 font-semibold rounded-[10px] transition-all shadow-sm disabled:opacity-40 uppercase tracking-wider text-xs bg-[#0A2E5C] text-[#FFFFFF] hover:bg-[#1E5AA8] disabled:hover:opacity-40"
+                  className="w-full h-12 font-semibold rounded-[10px] transition-all shadow-sm disabled:opacity-40 uppercase tracking-wider text-xs bg-[#1a2b5c] text-[#FFFFFF] hover:bg-[#233875] disabled:hover:opacity-40"
                   disabled={!agreed}
                   onClick={onAccept}
                 >
@@ -2342,7 +2346,7 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-950 uppercase tracking-tight font-sans">
-                    <Info className="w-5 h-5 text-[#0A2E5C]" />
+                    <Info className="w-5 h-5 text-[#1a2b5c]" />
                     മെമ്പർ വിവര രജിസ്ട്രി
                   </CardTitle>
                   <Button 
@@ -2363,13 +2367,13 @@ export default function LandingPage({
                     {/* Secure and Trusted Registry Information Block */}
                     <div className="bg-slate-50 border border-slate-200 p-6 rounded-[10px] space-y-4 text-left font-sans">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-[6px] bg-[#0A2E5C]/5 border border-[#0A2E5C]/10 flex items-center justify-center text-[#0A2E5C] shrink-0">
+                        <div className="w-10 h-10 rounded-[6px] bg-[#1a2b5c]/5 border border-[#1a2b5c]/10 flex items-center justify-center text-[#1a2b5c] shrink-0">
                           <Info className="w-5 h-5" />
                         </div>
                         <div>
                           <h3 className="text-base font-semibold text-slate-900 leading-tight uppercase">Member Financial Information Registry</h3>
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 mt-1">
-                            <span className="inline-flex bg-[#0A2E5C]/5 text-[#0A2E5C] border border-[#0A2E5C]/10 font-bold text-[8px] tracking-wider uppercase px-2 py-0.5 rounded-[4px] shrink-0">
+                            <span className="inline-flex bg-[#1a2b5c]/5 text-[#1a2b5c] border border-[#1a2b5c]/10 font-bold text-[8px] tracking-wider uppercase px-2 py-0.5 rounded-[4px] shrink-0">
                               Verified Information Collection
                             </span>
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Verified Member Information Portal</span>
@@ -2382,19 +2386,19 @@ export default function LandingPage({
                           This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.
                         </p>
                         
-                        <div className="space-y-1.5 pl-3 border-l-2 border-[#0A2E5C]/30 pb-0.5 mt-2">
-                          <p className="text-[10px] font-bold text-[#0A2E5C] uppercase tracking-wider mb-1">The information collected will help identify:</p>
+                        <div className="space-y-1.5 pl-3 border-l-2 border-[#1a2b5c]/30 pb-0.5 mt-2">
+                          <p className="text-[10px] font-bold text-[#1a2b5c] uppercase tracking-wider mb-1">The information collected will help identify:</p>
                           <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
-                            <span className="text-[#D91E63] shrink-0">•</span> Members facing urgent financial difficulties
+                            <span className="text-[#c9a227] shrink-0">•</span> Members facing urgent financial difficulties
                           </p>
                           <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
-                            <span className="text-[#D91E63] shrink-0">•</span> Members requiring priority consideration for future support initiatives
+                            <span className="text-[#c9a227] shrink-0">•</span> Members requiring priority consideration for future support initiatives
                           </p>
                           <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
-                            <span className="text-[#D91E63] shrink-0">•</span> Members who wish to continue participating in future business opportunities
+                            <span className="text-[#c9a227] shrink-0">•</span> Members who wish to continue participating in future business opportunities
                           </p>
                           <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
-                            <span className="text-[#D91E63] shrink-0">•</span> Members who prefer settlement and closure of their financial involvement upon resolution
+                            <span className="text-[#c9a227] shrink-0">•</span> Members who prefer settlement and closure of their financial involvement upon resolution
                           </p>
                         </div>
                         
@@ -2406,15 +2410,15 @@ export default function LandingPage({
                           This registry is intended solely for information collection, member verification, and support planning purposes.
                         </p>
                         
-                        <p className="bg-[#0A2E5C]/3 border border-[#0A2E5C]/10 p-3.5 rounded-[6px] text-[10px] text-slate-600 font-semibold leading-normal">
+                        <p className="bg-[#1a2b5c]/3 border border-[#1a2b5c]/10 p-3.5 rounded-[6px] text-[10px] text-slate-600 font-semibold leading-normal">
                           <strong>Note:</strong> Submission of information does not constitute a legal claim, compensation claim, or guarantee of payment.
                         </p>
                       </div>
 
-                      <div className="bg-pink-50 border border-pink-100 p-4 rounded-[6px] mt-4">
+                      <div className="bg-[#c9a227]/5 border border-amber-100 p-4 rounded-[6px] mt-4">
                         <p className="text-xs font-semibold text-slate-850 leading-relaxed">
                           വിവര രജിസ്ട്രി ഫോം ആക്സസ് ചെയ്യുന്നതിനായി ദയവായി നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകി വേരിഫൈ ചെയ്യുക:
-                          <span className="text-[10px] text-[#D91E63] block mt-1.5 uppercase font-bold tracking-wider">Please enter your registered mobile number to check eligibility and proceed to the registry.</span>
+                          <span className="text-[10px] text-[#c9a227] block mt-1.5 uppercase font-bold tracking-wider">Please enter your registered mobile number to check eligibility and proceed to the registry.</span>
                         </p>
                       </div>
                     </div>
@@ -2429,7 +2433,7 @@ export default function LandingPage({
                           value={claimMobile}
                           onChange={(e) => setClaimMobile(e.target.value.replace(/\D/g, ''))}
                           placeholder="**********"
-                          className="pl-11 h-12 bg-white border border-slate-200 focus:border-[#D91E63] focus:ring-0 transition-all rounded-[6px] font-semibold font-mono text-lg text-slate-900"
+                          className="pl-11 h-12 bg-white border border-slate-200 focus:border-[#c9a227] focus:ring-0 transition-all rounded-[6px] font-semibold font-mono text-lg text-slate-900"
                         />
                       </div>
                     </div>
@@ -2513,7 +2517,7 @@ export default function LandingPage({
                         }
                       }}
                       disabled={checkingClaim}
-                      className="w-full h-12 font-semibold rounded-[10px] transition-all bg-[#0A2E5C] text-white hover:bg-[#1E5AA8] uppercase tracking-wider text-xs shadow-sm"
+                      className="w-full h-12 font-semibold rounded-[10px] transition-all bg-[#1a2b5c] text-white hover:bg-[#233875] uppercase tracking-wider text-xs shadow-sm"
                     >
                       {checkingClaim ? 'പരിശോധിക്കുന്നു (Checking...)' : 'മൊബൈൽ നമ്പർ വേരിഫൈ ചെയ്യുക (Verify Mobile)'}
                     </Button>
@@ -2521,7 +2525,7 @@ export default function LandingPage({
                 ) : claimResult === 'registered' ? (
                   <div className="space-y-6 text-left py-2 font-sans">
                     <div className="text-center">
-                      <div className="w-12 h-12 bg-pink-50 border border-pink-150 rounded-[6px] flex items-center justify-center mx-auto text-[#D91E63] mb-3">
+                      <div className="w-12 h-12 bg-[#c9a227]/5 border border-amber-200 rounded-[6px] flex items-center justify-center mx-auto text-[#c9a227] mb-3">
                         <ShieldCheck className="w-6 h-6" />
                       </div>
                       <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight leading-none">
@@ -2543,7 +2547,7 @@ export default function LandingPage({
                           setClaimMobile('');
                           setClaimPin('');
                         }}
-                        className="text-[10px] text-[#D91E63] font-bold uppercase tracking-wider border border-[#D91E63]/25 bg-[#D91E63]/3 hover:bg-[#D91E63]/10 rounded-[6px]"
+                        className="text-[10px] text-[#c9a227] font-bold uppercase tracking-wider border border-[#c9a227]/25 bg-[#c9a227]/3 hover:bg-[#c9a227]/10 rounded-[6px]"
                       >
                         Change Number
                       </Button>
@@ -2621,7 +2625,7 @@ export default function LandingPage({
                           value={claimPin}
                           onChange={(e) => setClaimPin(e.target.value)}
                           placeholder="••••"
-                          className="h-12 bg-white border border-slate-200 focus:border-[#D91E63] focus:ring-0 transition-all rounded-[6px] font-semibold text-center text-lg tracking-widest font-mono text-slate-900"
+                          className="h-12 bg-white border border-slate-200 focus:border-[#c9a227] focus:ring-0 transition-all rounded-[6px] font-semibold text-center text-lg tracking-widest font-mono text-slate-900"
                         />
                       </div>
                     )}
@@ -2656,7 +2660,7 @@ export default function LandingPage({
                             }
                           }}
                           disabled={loggingInClaim}
-                          className="w-full h-12 bg-[#0A2E5C] hover:bg-[#1E5AA8] text-white font-semibold uppercase text-xs tracking-wider rounded-[10px] shadow-sm flex items-center justify-center gap-2"
+                          className="w-full h-12 bg-[#1a2b5c] hover:bg-[#233875] text-white font-semibold uppercase text-xs tracking-wider rounded-[10px] shadow-sm flex items-center justify-center gap-2"
                         >
                           {loggingInClaim ? 'ലോഗിൻ ചെയ്യുന്നു (Logging inside...)' : 'ലോഗിൻ ചെയ്യുക (Secure Login)'}
                         </Button>
@@ -2677,7 +2681,7 @@ export default function LandingPage({
                   </div>
                 ) : (
                   <div className="space-y-6 text-center py-4 font-sans">
-                    <div className="w-12 h-12 bg-pink-100 rounded-[6px] flex items-center justify-center mx-auto border border-pink-200 text-[#D91E63] shadow-sm mb-3">
+                    <div className="w-12 h-12 bg-amber-100 rounded-[6px] flex items-center justify-center mx-auto border border-amber-200 text-[#c9a227] shadow-sm mb-3">
                       <UserPlus className="w-6 h-6 cursor-not-allowed" />
                     </div>
                     
@@ -2685,7 +2689,7 @@ export default function LandingPage({
                       <h3 className="text-xl font-semibold text-slate-900 uppercase tracking-tight leading-none">
                         രജിസ്റ്റർ ചെയ്യാത്ത മൊബൈൽ നമ്പർ!
                       </h3>
-                      <p className="text-[#D91E63] font-bold text-[10px] uppercase tracking-wider block pt-1">Unregistered Mobile Number</p>
+                      <p className="text-[#c9a227] font-bold text-[10px] uppercase tracking-wider block pt-1">Unregistered Mobile Number</p>
                     </div>
 
                     <p className="text-slate-600 font-normal text-xs leading-relaxed max-w-md mx-auto">
@@ -2707,7 +2711,7 @@ export default function LandingPage({
                       </Button>
                       <Button 
                         onClick={() => onRegisterWithMobile?.(claimMobile)}
-                        className="flex-1 h-12 bg-[#D91E63] hover:bg-[#c21453] text-white font-semibold uppercase text-[10px] tracking-wider rounded-[10px] shadow-sm"
+                        className="flex-1 h-12 bg-[#c9a227] hover:bg-[#967414] text-white font-semibold uppercase text-[10px] tracking-wider rounded-[10px] shadow-sm"
                       >
                          രജിസ്റ്റർ ചെയ്യുക ₹200 (Register Now)
                       </Button>
@@ -2729,7 +2733,7 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
-                    <Shield className="w-5 h-5 text-[#D91E63]" />
+                    <Shield className="w-5 h-5 text-[#c9a227]" />
                     Privacy Policy | സ്വകാര്യതാ നയം
                   </CardTitle>
                   <Button 
@@ -2797,7 +2801,7 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
-                    <Scale className="w-5 h-5 text-[#D91E63]" />
+                    <Scale className="w-5 h-5 text-[#c9a227]" />
                     Terms & Conditions | നിബന്ധനകളും വ്യവസ്ഥകളും
                   </CardTitle>
                   <Button 
@@ -2860,7 +2864,7 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
-                    <Coins className="w-5 h-5 text-[#D91E63]" />
+                    <Coins className="w-5 h-5 text-[#c9a227]" />
                     Refund & Cancellation | റീഫണ്ട് നയം
                   </CardTitle>
                   <Button 
@@ -2917,7 +2921,7 @@ export default function LandingPage({
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 text-slate-900 uppercase tracking-tight font-sans">
-                    <Phone className="w-5 h-5 text-[#D91E63]" />
+                    <Phone className="w-5 h-5 text-[#c9a227]" />
                     Contact Us | ഞങ്ങളെ ബന്ധപ്പെടുക
                   </CardTitle>
                   <Button 
@@ -2935,8 +2939,8 @@ export default function LandingPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                   <div className="space-y-4">
                     <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
-                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
-                        <MapPin className="w-4 h-4 text-[#D91E63]" />
+                      <div className="w-8 h-8 rounded-[6px] bg-[#1a2b5c]/5 text-[#1a2b5c] flex items-center justify-center shrink-0">
+                        <MapPin className="w-4 h-4 text-[#c9a227]" />
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Office Address / വിലാസം</h4>
@@ -2945,7 +2949,7 @@ export default function LandingPage({
                     </div>
 
                     <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
-                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-[6px] bg-[#1a2b5c]/5 text-[#1a2b5c] flex items-center justify-center shrink-0">
                         <Phone className="w-4 h-4" />
                       </div>
                       <div>
@@ -2957,8 +2961,8 @@ export default function LandingPage({
 
                   <div className="space-y-4">
                     <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
-                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
-                        <Mail className="w-4 h-4 text-[#D91E63]" />
+                      <div className="w-8 h-8 rounded-[6px] bg-[#1a2b5c]/5 text-[#1a2b5c] flex items-center justify-center shrink-0">
+                        <Mail className="w-4 h-4 text-[#c9a227]" />
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Email Address / ഇമെയിൽ</h4>
@@ -2967,7 +2971,7 @@ export default function LandingPage({
                     </div>
 
                     <div className="flex gap-4 items-start pb-4 border-b border-slate-50">
-                      <div className="w-8 h-8 rounded-[6px] bg-[#0A2E5C]/5 text-[#0A2E5C] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-[6px] bg-[#1a2b5c]/5 text-[#1a2b5c] flex items-center justify-center shrink-0">
                         <Globe className="w-4 h-4" />
                       </div>
                       <div>
@@ -2979,7 +2983,7 @@ export default function LandingPage({
                 </div>
 
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-[8px] mt-6 flex gap-3 items-start">
-                  <Info className="w-4 h-4 text-[#0A2E5C] shrink-0 mt-0.5" />
+                  <Info className="w-4 h-4 text-[#1a2b5c] shrink-0 mt-0.5" />
                   <div>
                     <h5 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Operational Hours / പ്രവൃത്തി സമയം</h5>
                     <p className="text-[11px] text-slate-650 mt-1 leading-relaxed">
