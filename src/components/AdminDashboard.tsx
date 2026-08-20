@@ -478,12 +478,19 @@ export default function AdminDashboard({
 
             <div class="signature-grid">
               <div>
-                <span>Member / Claimant Confirmation</span>
+                <span>HCRS Society Representative</span>
                 <div class="signature-line"></div>
+                <span style="font-size:6px;color:#94a3b8;margin-top:4px;display:block;">Highrich Community Revival Society</span>
               </div>
               <div>
-                <span>Verified by Company / Authorized Representative</span>
+                <span>Highrich Company Representative</span>
                 <div class="signature-line"></div>
+                <span style="font-size:6px;color:#94a3b8;margin-top:4px;display:block;">Authorized Signatory / Company</span>
+              </div>
+              <div>
+                <span>Customer / Claimant</span>
+                <div class="signature-line"></div>
+                <span style="font-size:6px;color:#94a3b8;margin-top:4px;display:block;">${escapeHtml(claim.userName)}</span>
               </div>
             </div>
           </div>
@@ -748,8 +755,8 @@ export default function AdminDashboard({
 
             .signature-grid {
               display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 35px;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 20px;
               margin-top: 30px;
             }
 
@@ -5452,6 +5459,11 @@ service cloud.firestore {
                                    setSelectedClaim(claim);
                                  }} title="വിശദവിവരങ്ങൾ കാണുക">
                                     <Eye className="w-4 h-4" />
+                                 </Button>
+                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
+                                   printComboClaims([claim]);
+                                 }} title="A4 പ്രിന്റ് ചെയ്യുക">
+                                    <Printer className="w-4 h-4" />
                                  </Button>
                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-amber-500" onClick={() => {
                                    setEditingClaim(claim);
