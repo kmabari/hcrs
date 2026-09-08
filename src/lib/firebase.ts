@@ -4,89 +4,131 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Support external deployment (Vercel, Netlify, etc.) using custom environment variables
-const getFirebaseConfig = () => {
-  const metaObj = import.meta as any;
-  const envConfig = {
-    apiKey: metaObj.env?.VITE_FIREBASE_API_KEY,
-    authDomain: metaObj.env?.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: metaObj.env?.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: metaObj.env?.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: metaObj.env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: metaObj.env?.VITE_FIREBASE_APP_ID,
-    firestoreDatabaseId: metaObj.env?.VITE_FIREBASE_DATABASE_ID || '(default)'
-  };
+// Support external deployment (Vercel, Netlify, custom domain, etc.) with robust fallback merging
+const cleanStr = (val?: string | null): string => {
+  if (!val) return '';
+  const s = String(val).trim().replace(/^["']+|["']+$/g, '').trim();
+  if (s === 'undefined' || s === 'null') return '';
+  return s;
+};
 
-  if (envConfig.apiKey && envConfig.projectId) {
-    console.log("Firebase initialized using Vercel/Netlify environment variables config.");
-    return envConfig;
+const getFirebaseConfig = () => {
+  // Statically referenced import.meta.env properties for Vite compiler inlining during production build
+  const envApiKey = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_API_KEY : undefined;
+  const envProjectId = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_PROJECT_ID : undefined;
+  const envAuthDomain = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : undefined;
+  const envStorageBucket = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : undefined;
+  const envMessagingSenderId = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID : undefined;
+  const envAppId = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_APP_ID : undefined;
+  const envDatabaseURL = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_DATABASE_URL : undefined;
+  const envMeasurementId = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_MEASUREMENT_ID : undefined;
+  const envDatabaseId = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_DATABASE_ID : undefined;
+
+  const apiKey = cleanStr(envApiKey) || cleanStr((firebaseConfig as any).apiKey);
+  const projectId = cleanStr(envProjectId) || cleanStr((firebaseConfig as any).projectId) || 'hcrs-membership';
+  
+  // Intelligent authDomain resolution:
+  // 1. env.VITE_FIREBASE_AUTH_DOMAIN
+  // 2. firebaseConfig.authDomain
+  // 3. Derived from projectId: `${projectId}.firebaseapp.com`
+  let authDomain = cleanStr(envAuthDomain) || cleanStr((firebaseConfig as any).authDomain);
+  // Strip http:// or https:// and any trailing slashes if accidentally provided in Vercel env settings
+  authDomain = authDomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+  if (!authDomain && projectId) {
+    authDomain = `${projectId}.firebaseapp.com`;
   }
 
-  return firebaseConfig;
+  let storageBucket = cleanStr(envStorageBucket) || cleanStr((firebaseConfig as any).storageBucket);
+  storageBucket = storageBucket.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+  if (!storageBucket && projectId) {
+    storageBucket = `${projectId}.firebasestorage.app`;
+  }
+
+  const messagingSenderId = cleanStr(envMessagingSenderId) || cleanStr((firebaseConfig as any).messagingSenderId);
+  const appId = cleanStr(envAppId) || cleanStr((firebaseConfig as any).appId);
+  const databaseURL = cleanStr(envDatabaseURL) || cleanStr((firebaseConfig as any).databaseURL);
+  const measurementId = cleanStr(envMeasurementId) || cleanStr((firebaseConfig as any).measurementId);
+  const firestoreDatabaseId = cleanStr(envDatabaseId) || cleanStr((firebaseConfig as any).firestoreDatabaseId) || '(default)';
+
+  const final = {
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket,
+    messagingSenderId,
+    appId,
+    databaseURL: databaseURL || undefined,
+    measurementId: measurementId || undefined,
+    firestoreDatabaseId: firestoreDatabaseId || '(default)'
+  };
+
+  if (typeof window !== 'undefined') {
+    const isCustomEnv = !!(envApiKey || envProjectId || envAuthDomain);
+    console.log(`[Firebase Auth Init] Loaded ${isCustomEnv ? 'Environment Variables' : 'Default JSON'} Config:`, {
+      projectId: final.projectId,
+      authDomain: final.authDomain,
+      hasApiKey: !!final.apiKey,
+      hasAppId: !!final.appId,
+      currentHostname: window.location.hostname,
+      currentOrigin: window.location.origin,
+      inIframe: window.self !== window.top
+    });
+  }
+
+  return final;
 };
 
 const finalConfig = getFirebaseConfig();
 
-const app = initializeApp(finalConfig);
-const secondaryApp = initializeApp(finalConfig, 'Secondary');
+export const app = initializeApp(finalConfig);
+export const secondaryApp = initializeApp(finalConfig, 'Secondary');
 
 // Gracefully determine which local cache configuration is safe to use.
-// In iframe/sandbox environments, IndexedDB and tab synchronizations 
-// can be blocked by browser security policies and cause connection hangs.
+// Using memoryLocalCache with experimentalAutoDetectLongPolling ensures reliable,
+// fast connectivity across Cloud Run containers, iframes, mobile browsers,
+// and custom domains without stale IndexedDB multi-tab lock contention or forced long-polling stalls.
 const getSafeFirestoreSettings = () => {
-  try {
-    if (typeof window === 'undefined' || !window.indexedDB) {
-      return { 
-        localCache: memoryLocalCache(),
-        experimentalAutoDetectLongPolling: true
-      };
-    }
-
-    const isDevHost = window.location.hostname.includes('ais-dev') || 
-                      window.location.hostname.includes('ais-pre') || 
-                      window.location.hostname.includes('localhost') || 
-                      window.location.hostname.includes('127.0.0.1') || 
-                      window.location.hostname.includes('google.com');
-                      
-    const inIframe = window.self !== window.top;
-    
-    if (inIframe || isDevHost) {
-      console.log("Memory cache enabled for preview/iframe environment to avoid IndexedDB crashes.");
-      return { 
-        localCache: memoryLocalCache(),
-        experimentalAutoDetectLongPolling: true
-      };
-    }
-
-    // Proactively verify we can access IndexedDB
-    // Often merely accessing window.indexedDB throws a SecurityError in sandboxed iframes.
-    const _ = window.indexedDB;
-
-    return {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      }),
-      experimentalAutoDetectLongPolling: true
-    };
-  } catch (e) {
-    console.warn("IndexedDB access is restricted or threw an error. Falling back to memory cache.", e);
-    return { 
-      localCache: memoryLocalCache(),
-      experimentalAutoDetectLongPolling: true
-    };
-  }
+  return { 
+    localCache: memoryLocalCache(),
+    experimentalAutoDetectLongPolling: true
+  };
 };
 
 const databaseId = finalConfig.firestoreDatabaseId && finalConfig.firestoreDatabaseId !== '(default)' 
   ? finalConfig.firestoreDatabaseId 
   : undefined;
 
-export const db = initializeFirestore(app, getSafeFirestoreSettings(), databaseId);
-export const secondaryDb = initializeFirestore(secondaryApp, getSafeFirestoreSettings(), databaseId);
+// Safely initialize Firestore with resilient fallback so that module export never throws in production
+let firestoreDb: any;
+try {
+  firestoreDb = initializeFirestore(app, getSafeFirestoreSettings(), databaseId);
+} catch (primaryErr) {
+  console.warn("[Firebase] initializeFirestore with primary settings failed, retrying with defaults:", primaryErr);
+  try {
+    firestoreDb = initializeFirestore(app, {
+      localCache: memoryLocalCache(),
+      experimentalAutoDetectLongPolling: true
+    }, databaseId);
+  } catch (secondaryErr) {
+    console.error("[Firebase] initializeFirestore secondary attempt failed:", secondaryErr);
+    firestoreDb = initializeFirestore(app, {}, databaseId);
+  }
+}
+
+let secDb: any;
+try {
+  secDb = initializeFirestore(secondaryApp, getSafeFirestoreSettings(), databaseId);
+} catch (e) {
+  secDb = firestoreDb;
+}
+
+export const db = firestoreDb;
+export const secondaryDb = secDb;
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export enum OperationType {
   CREATE = 'create',

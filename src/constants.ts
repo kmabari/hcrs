@@ -40,8 +40,10 @@ export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
 export const MEMBERSHIP_TYPES = ['Annual'];
 
-export const LOGO_URL = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
-export const FALLBACK_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/hcrs-portal.firebasestorage.app/o/assets%2Flogo.png?alt=media&token=8e953154-8c8c-4467-975a-69488339845d';
+export const ANIMATED_LOGO_URL = 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif';
+export const LOCAL_ANIMATED_LOGO_URL = '/hcrs-animated-logo.gif';
+export const LOGO_URL = 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif';
+export const FALLBACK_LOGO_URL = 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
 
 export const SHARED_URL = (typeof window !== 'undefined' && window.location && window.location.origin)
   ? window.location.origin

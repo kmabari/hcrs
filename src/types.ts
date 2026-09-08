@@ -55,7 +55,12 @@ export interface UserProfile {
   constituencyCode?: string;
   username?: string;
   highrichId?: string;
+  sponsorName?: string;
+  sponsorMobile?: string;
   isQuotaCounted?: boolean;
+  pinResetRequested?: boolean;
+  mustCompleteProfile?: boolean;
+  profileCompleted?: boolean;
 }
 
 export interface GalleryItem {
@@ -88,8 +93,12 @@ export interface PaymentReceipt {
   receiptType: 'Membership Fee' | 'Annual Renewal' | 'Life Membership';
   receiptLabel: string;
   amount: number;
-  status: 'Paid' | 'Pending';
+  status: 'Paid' | 'Pending' | 'Pending Verification';
   paymentDate: string;
   createdAt: any;
   year?: number;
+  transactionId?: string;
+  paymentId?: string;
+  paymentStatus?: string;
+  updatedAt?: any;
 }

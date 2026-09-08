@@ -6,6 +6,7 @@ export interface RazorpayPaymentOptions {
   mobile?: string;
   name?: string;
   email?: string;
+  amount?: number;
   registrationData?: any;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
 import { db } from '../lib/firebase';
@@ -15,6 +15,7 @@ import {
   Copy,
   Share2,
   QrCode,
+  Zap,
   UserPlus, 
   RefreshCw,  
   ArrowLeft, 
@@ -27,6 +28,7 @@ import {
   Globe, 
   LayoutGrid, 
   AlertTriangle,
+  AlertCircle,
   Megaphone,
   Image as ImageIcon,
   Users,
@@ -48,7 +50,12 @@ import {
   Network,
   UserCheck,
   Pause,
-  Play
+  Play,
+  LogIn,
+  EyeOff,
+  Lock,
+  Layers,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,30 +67,12 @@ import { cn } from '@/lib/utils';
 import Logo from '../Logo';
 import { useI18n } from '../lib/i18n';
 import LanguageSwitcher from './LanguageSwitcher';
+import { InfinityBorderCard } from './InfinityBorderCard';
+import { InfinityBorderButton } from './InfinityBorderButton';
+import { normalizeImageUrl, getProxiedImageUrl } from '../lib/imageUrlUtils';
 
 export function extractDirectImageUrl(url: string | undefined): string {
-  if (!url) return '';
-  let val = url.trim();
-  
-  // Extract from HTML src matching src="..."
-  const srcMatch = val.match(/src=["']([^"']+)["']/i);
-  if (srcMatch && srcMatch[1]) {
-    return srcMatch[1].trim();
-  }
-  
-  // Extract from BBCode img matching [img]...[/img]
-  const bbcMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
-  if (bbcMatch && bbcMatch[1]) {
-    return bbcMatch[1].trim();
-  }
-
-  // Extract from HTML href matching href="..."
-  const hrefMatch = val.match(/href=["']([^"']+)["']/i);
-  if (hrefMatch && hrefMatch[1] && hrefMatch[1].includes('i.ibb.co')) {
-    return hrefMatch[1].trim();
-  }
-  
-  return val;
+  return normalizeImageUrl(url);
 }
 
 interface LandingPageProps {
@@ -91,11 +80,13 @@ interface LandingPageProps {
   onAccept: () => void;
   onRenew: () => void;
   onLoginClick: () => void;
+  onGoogleLogin?: () => void;
   onGalleryClick: () => void;
   onRenewWithMobile?: (mobile: string) => void;
   onRegisterWithMobile?: (mobile: string) => void;
-  onLoginDirect?: (mobile: string, pin: string) => Promise<boolean>;
+  onLoginDirect?: (mobile: string, pin: string) => Promise<{ success: boolean; error?: string } | boolean>;
   onJanamailClick?: () => void;
+  onELedgerClick?: () => void;
 }
 
 export default function LandingPage({ 
@@ -103,11 +94,13 @@ export default function LandingPage({
   onAccept, 
   onRenew, 
   onLoginClick, 
+  onGoogleLogin,
   onGalleryClick, 
   onRenewWithMobile, 
   onRegisterWithMobile, 
   onLoginDirect,
-  onJanamailClick
+  onJanamailClick,
+  onELedgerClick
 }: LandingPageProps) {
   const [stage, setStage] = useState<'landing' | 'guidelines' | 'claim_check' | 'privacy' | 'terms' | 'refund' | 'contact'>('landing');
   const { t, lang } = useI18n();
@@ -235,11 +228,48 @@ export default function LandingPage({
   // States for claim lookup system
   const [claimMobile, setClaimMobile] = useState('');
   const [claimPin, setClaimPin] = useState('');
+  const [claimPinError, setClaimPinError] = useState<string | null>(null);
   const [checkingClaim, setCheckingClaim] = useState(false);
   const [loggingInClaim, setLoggingInClaim] = useState(false);
   const [claimResult, setClaimResult] = useState<'found' | 'not_found' | 'registered' | null>(null);
   const [claimUserStatus, setClaimUserStatus] = useState<'active' | 'pending' | 'renewal_pending' | 'expired'>('active');
   const [userHasSubmittedClaim, setUserHasSubmittedClaim] = useState(false);
+
+  // States for Quick Member Direct Sign-In on Home Page
+  const [quickLoginMobile, setQuickLoginMobile] = useState('');
+  const [quickLoginPin, setQuickLoginPin] = useState('');
+  const [showQuickPin, setShowQuickPin] = useState(false);
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
+  const [quickLoginError, setQuickLoginError] = useState<string | null>(null);
+
+  const handleQuickLoginSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanMobile = quickLoginMobile.trim().replace(/\D/g, '');
+    if (!cleanMobile || cleanMobile.length < 10) {
+      const errMsg = t('quick_login_err_mobile', 'Please enter a valid 10-digit mobile number.');
+      setQuickLoginError(errMsg);
+      toast.error(errMsg);
+      return;
+    }
+    const pin = quickLoginPin.trim() || '123456';
+    setQuickLoginError(null);
+    setIsQuickLoggingIn(true);
+    try {
+      if (onLoginDirect) {
+        const res = await onLoginDirect(cleanMobile, pin);
+        if (res && typeof res === 'object' && res.success === false) {
+          setQuickLoginError(res.error || t('quick_login_err_failed', 'Sign in failed. Please verify your credentials.'));
+        }
+      } else {
+        onLoginClick();
+      }
+    } catch (err: any) {
+      console.error("Quick login error:", err);
+      setQuickLoginError(err.message || t('quick_login_err_failed', 'Sign in failed. Please verify your credentials.'));
+    } finally {
+      setIsQuickLoggingIn(false);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -289,7 +319,8 @@ export default function LandingPage({
         setStage('landing');
       }
     };
-  handleHashChange();
+
+    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -306,19 +337,19 @@ export default function LandingPage({
 
       {/* Navigation Bar */}
       <nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-premium px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-premium px-1.5 xs:px-3 sm:px-6 md:px-8 py-1.5 sm:py-3 transition-all duration-300"
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-1 sm:gap-4">
           <div 
-            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0" 
+            className="flex items-center gap-1 sm:gap-3 cursor-pointer group shrink-0 min-w-0" 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="bg-white p-1 sm:p-1.5 rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300">
-              <Logo size="sm" className="h-9 sm:h-11 md:h-12 w-auto" />
+            <div className="bg-white p-0.5 sm:p-1.5 rounded-lg sm:rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300 shrink-0">
+              <Logo size="sm" className="h-7 sm:h-11 md:h-12 w-auto" />
             </div>
-            <div>
-              <h1 className="text-xs sm:text-sm font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading">HCRS Portal</h1>
-              <p className="text-[9px] sm:text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-1">Kerala Division</p>
+            <div className="min-w-0">
+              <h1 className="text-[10px] xs:text-xs sm:text-sm font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading whitespace-nowrap">HCRS Portal</h1>
+              <p className="hidden xs:block text-[7px] sm:text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-0.5 sm:mt-1 whitespace-nowrap">Kerala Division</p>
             </div>
           </div>
 
@@ -332,6 +363,15 @@ export default function LandingPage({
                 <span className="bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">NEW</span>
               </button>
             )}
+            <button 
+              onClick={onELedgerClick} 
+              className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 hover:text-emerald-900 transition-colors duration-200 flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 cursor-pointer shadow-xs"
+              title="Authorized State Committee eLedger Portal (Restricted Access)"
+            >
+              <Lock className="w-3 h-3 text-emerald-600" />
+              <span>eLedger</span>
+              <span className="bg-emerald-200 text-emerald-800 text-[9px] px-1.5 py-0.2 rounded-full font-black">AUTH</span>
+            </button>
             <button onClick={onGalleryClick} className="text-[11px] font-extrabold uppercase tracking-wider text-[#c9a227] hover:text-[#c9a227]/85 transition-colors duration-200 flex items-center gap-1.5">
               {t('nav_archives', 'Archives')}
               <span className="w-1.5 h-1.5 rounded-full bg-[#c9a227] animate-pulse" />
@@ -339,19 +379,36 @@ export default function LandingPage({
             <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#1a2b5c] transition-colors duration-200">
               {t('nav_contact', 'Contact')}
             </button>
+            <button 
+              onClick={onGoogleLogin || onLoginClick} 
+              className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 hover:text-[#1a2b5c] transition-colors duration-200 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/80 hover:bg-amber-100"
+              title="Admin Panel Google Login"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#c9a227]" />
+              <span>Admin Portal</span>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 md:gap-4 shrink-0">
+            <button 
+              onClick={onELedgerClick} 
+              className="hidden md:inline-flex lg:hidden text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 hover:text-emerald-950 items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-300 shadow-2xs cursor-pointer"
+              title="HCRS eLedger - State Committee Portal"
+            >
+              <Lock className="w-3 h-3 text-emerald-600" />
+              <span>eLedger</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            </button>
             <LanguageSwitcher />
             <Button 
               variant="outline" 
               onClick={onLoginClick}
-              className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-[#1a2b5c] border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-9 sm:h-10 px-3.5 sm:px-5 md:px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 shrink-0"
+              className="text-[8.5px] xs:text-[9px] sm:text-xs font-extrabold uppercase tracking-wider sm:tracking-widest text-[#1a2b5c] border sm:border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-7 sm:h-10 px-1.5 xs:px-2.5 sm:px-5 md:px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 shrink-0 whitespace-nowrap"
             >
               {t('nav_sign_in', 'Sign In')}
             </Button>
             <Button 
-              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-3.5 sm:px-5 md:px-6 h-9 sm:h-10 font-extrabold uppercase text-[10px] sm:text-xs tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300 shrink-0"
+              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-2 xs:px-3 sm:px-5 md:px-6 h-7 sm:h-10 font-extrabold uppercase text-[8.5px] xs:text-[9px] sm:text-xs tracking-wider sm:tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300 shrink-0 whitespace-nowrap"
               onClick={onRenew}
             >
               {t('nav_get_id_card', 'Get ID Card')}
@@ -361,7 +418,7 @@ export default function LandingPage({
       </nav>
 
       {/* Main Showcase / Hero Cover - Reference #2 White Card with Ambient Background Glow */}
-      <div className="w-full max-w-6xl mx-auto pt-24 sm:pt-28 pb-12 sm:pb-16 px-3 sm:px-4 md:px-6">
+      <div className="w-full max-w-6xl mx-auto pt-24 sm:pt-28 pb-6 sm:pb-8 px-3 sm:px-4 md:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -389,14 +446,63 @@ export default function LandingPage({
               </span>
             </motion.div>
  
-            {/* Increased Responsive Logo Container (+30% size on mobile) */}
+            {/* Glassmorphic Logo Card with Multi-Color Infinity Border Light Beam & Gentle Breathing Animation */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="p-4 sm:p-5 md:p-6 bg-white shadow-premium rounded-2xl sm:rounded-3xl border border-slate-100 mb-5 sm:mb-8 flex items-center justify-center mx-auto"
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                y: [0, -3.5, 0] 
+              }}
+              transition={{ 
+                opacity: { duration: 1, ease: [0.16, 1, 0.3, 1] },
+                scale: { duration: 1, ease: [0.16, 1, 0.3, 1] },
+                y: {
+                  duration: 10,
+                  repeat: Infinity,
+                  repeatType: "mirror",
+                  ease: "easeInOut",
+                  delay: 0.8
+                }
+              }}
+              className="relative group p-[2px] rounded-3xl sm:rounded-[38px] mb-5 sm:mb-8 flex items-center justify-center mx-auto overflow-hidden shadow-[0_12px_36px_-6px_rgba(26,43,92,0.12)]"
             >
-              <Logo className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 lg:w-44 lg:h-44 flex items-center justify-center mx-auto" size="md" />
+              {/* Crisp Continuous Multi-Color Spectrum Light Tracing around the Card Perimeter */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+                className="absolute -inset-[150%] pointer-events-none -z-10 bg-[conic-gradient(from_0deg,#ff007a_0deg,#7928ca_45deg,#0070f3_90deg,#00dfd8_135deg,#10b981_180deg,#c9a227_225deg,#f59e0b_270deg,#ff4b4b_315deg,#ff007a_360deg)] opacity-100"
+              />
+
+              {/* Inner Clean Crystal Glass Surface (Pure & Sharp) */}
+              <div className="relative w-full h-full p-4 sm:p-6 md:p-7 bg-white rounded-[22px] sm:rounded-[36px] flex items-center justify-center border border-white shadow-[inset_0_1px_3px_rgba(255,255,255,1)]">
+                {/* Slow Gentle Breathing Logo Animation */}
+                <motion.div
+                  initial={{ scale: 0.9 }}
+                  animate={{ 
+                    scale: [1, 1.02, 1],
+                  }}
+                  transition={{
+                    duration: 8,
+                    repeat: Infinity,
+                    repeatType: "mirror",
+                    ease: "easeInOut",
+                    delay: 0.8
+                  }}
+                  className="flex items-center justify-center"
+                >
+                  <Logo 
+                    className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 lg:w-56 lg:h-56 flex items-center justify-center mx-auto" 
+                    size="lg" 
+                    showGlow={false}
+                    showRotatingBorder={false}
+                  />
+                </motion.div>
+              </div>
             </motion.div>
 
             {/* Main Title & Subtitle optimized for clean mobile wrapping */}
@@ -492,7 +598,358 @@ export default function LandingPage({
             exit={{ opacity: 0, y: -10 }}
             className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-16 z-10 relative"
           >
-            {/* Featured Campaign Section (Moved to absolute top) */}
+            {/* Quick Actions Section - Immediately after HCRS Introduction/Core Pillars */}
+            <section className="space-y-8 max-w-6xl mx-auto pt-2" id="quick-actions">
+              {/* Quick Actions Header */}
+              <div className="text-center space-y-3 font-sans">
+                <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#c9a227]/25 shadow-xs max-w-full flex-wrap justify-center">
+                  <Zap className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">
+                    {lang === 'ml' ? 'പ്രധാന സേവനങ്ങൾ • Quick Actions' : (lang === 'hi' ? 'त्वरित सेवाएँ • Quick Actions' : 'Quick Actions • Member Services')}
+                  </span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
+                  HCRS <span className="text-[#c9a227]">{lang === 'ml' ? 'പ്രധാന സേവനങ്ങൾ' : (lang === 'hi' ? 'त्वरित सेवाएँ' : 'Quick Actions')}</span>
+                </h2>
+                <p className="text-slate-600 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                  {lang === 'ml' 
+                    ? 'മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ, കാർഡ് പുതുക്കൽ, സാമ്പത്തിക വിവര ശേഖരണം തുടങ്ങിയ പ്രധാന സേവനങ്ങൾ ഒറ്റ ക്ലിക്കിൽ.' 
+                    : (lang === 'hi'
+                      ? 'एक क्लिक में सदस्यता पंजीकरण, कार्ड नवीनीकरण और सदस्य जानकारी पोर्टल तक पहुँचें।'
+                      : 'Access key membership services, renewal facilities, and verified member information portals with a single click.')}
+                </p>
+              </div>
+
+              {/* Member Direct Sign-In Card - Glass Portal / Smart Card Aesthetic */}
+              <div className="max-w-4xl mx-auto">
+                <InfinityBorderCard
+                  roundedClassName="rounded-2xl sm:rounded-3xl"
+                  innerClassName="p-0 text-left bg-gradient-to-br from-[#0c1836] via-[#12234e] to-[#0a1530] text-white shadow-2xl relative overflow-hidden"
+                  speed={7}
+                  className="shadow-projected"
+                >
+                  {/* Glassmorphism ambient glow accents */}
+                  <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#c9a227]/20 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                  <div className="relative z-10 p-5 sm:p-7 md:p-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      {/* Left: Card Identity & Description */}
+                      <div className="space-y-3 lg:max-w-xs shrink-0">
+                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#c9a227]/20 to-[#c9a227]/10 text-[#f5d77f] px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-[#c9a227]/30 backdrop-blur-md shadow-xs">
+                          <UserCheck className="w-3.5 h-3.5 text-[#f5d77f] stroke-[2.5]" />
+                          <span>{t('quick_login_badge', 'Member Sign In Portal')}</span>
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight font-heading leading-snug">
+                          {t('quick_login_title', 'Member Direct Sign In')}
+                        </h3>
+                        <p className="text-slate-300 text-xs sm:text-sm font-normal leading-relaxed">
+                          {t('quick_login_desc', 'Enter your registered mobile number and PIN to access your membership profile.')}
+                        </p>
+                        <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400 font-mono tracking-wide pt-1">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Encrypted Member Portal • HCRS</span>
+                        </div>
+                      </div>
+
+                      {/* Right: Glassmorphism Quick Login Form */}
+                      <form onSubmit={handleQuickLoginSubmit} className="flex-1 w-full space-y-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Mobile Number Input */}
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                              <Phone className="w-3 h-3 text-[#c9a227]" />
+                              <span>{t('quick_login_mobile_label', 'Mobile Number')}</span>
+                            </label>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-amber-400/90 font-black text-xs">
+                                +91
+                              </div>
+                              <Input
+                                type="tel"
+                                inputMode="numeric"
+                                maxLength={10}
+                                value={quickLoginMobile}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                  setQuickLoginMobile(val);
+                                  if (quickLoginError) setQuickLoginError(null);
+                                }}
+                                placeholder={t('quick_login_mobile_placeholder', '10-digit mobile number')}
+                                className="pl-12 h-11 sm:h-12 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white/20 border-white/20 text-white placeholder:text-slate-400 text-sm font-bold focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/30 transition-all backdrop-blur-md"
+                                autoComplete="tel"
+                              />
+                            </div>
+                          </div>
+
+                          {/* PIN / Password Input */}
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                              <Lock className="w-3 h-3 text-[#c9a227]" />
+                              <span>{t('quick_login_pin_label', 'Password / PIN')}</span>
+                            </label>
+                            <div className="relative">
+                              <Input
+                                type={showQuickPin ? 'text' : 'password'}
+                                value={quickLoginPin}
+                                onChange={(e) => {
+                                  setQuickLoginPin(e.target.value);
+                                  if (quickLoginError) setQuickLoginError(null);
+                                }}
+                                placeholder={t('quick_login_pin_placeholder', 'Default: 123456')}
+                                className="pr-10 h-11 sm:h-12 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white/20 border-white/20 text-white placeholder:text-slate-400 text-sm font-bold focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/30 transition-all backdrop-blur-md"
+                                autoComplete="current-password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowQuickPin(!showQuickPin)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-300 hover:text-white cursor-pointer transition-colors"
+                                tabIndex={-1}
+                                aria-label="Toggle password visibility"
+                              >
+                                {showQuickPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-slate-300" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {quickLoginError && (
+                          <div className="text-xs font-bold text-red-200 bg-red-950/70 border border-red-500/50 rounded-xl p-3 flex items-center gap-2 animate-in fade-in backdrop-blur-md">
+                            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                            <span>{quickLoginError}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                          <div className="flex items-center gap-2 text-[11px] font-medium text-slate-300 order-2 sm:order-1 flex-wrap">
+                            <span className="bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                              {t('quick_login_default_pin', 'Default PIN')}: <strong className="text-[#f5d77f] font-bold">123456</strong>
+                            </span>
+                            <span>•</span>
+                            <button
+                              type="button"
+                              onClick={onLoginClick}
+                              className="text-[#f5d77f] hover:text-white hover:underline font-bold cursor-pointer transition-colors"
+                            >
+                              {t('quick_login_forgot_pin', 'Forgot Password?')}
+                            </button>
+                          </div>
+
+                          <Button
+                            type="submit"
+                            disabled={isQuickLoggingIn}
+                            className="w-full sm:w-auto h-11 sm:h-12 px-7 rounded-xl font-black text-xs uppercase tracking-widest bg-gradient-to-r from-[#c9a227] via-[#d4ad2b] to-[#c9a227] hover:brightness-110 text-[#0c1836] shadow-lg shadow-[#c9a227]/25 hover:shadow-[#c9a227]/40 transition-all flex items-center justify-center gap-2 order-1 sm:order-2 shrink-0 cursor-pointer border border-[#f5d77f]/40"
+                          >
+                            {isQuickLoggingIn ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                <span>{t('quick_login_submitting', 'Signing in...')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <LogIn className="w-4 h-4 stroke-[2.5]" />
+                                <span>{t('quick_login_submit_btn', 'Sign In')}</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </InfinityBorderCard>
+              </div>
+
+              {/* Dedicated HCRS eledger Portal Apple UI Glass Action Button */}
+              <div className="max-w-4xl mx-auto w-full px-2">
+                <motion.div
+                  whileHover={{ scale: 1.015, y: -2 }}
+                  whileTap={{ scale: 0.985 }}
+                  className="relative group cursor-pointer"
+                  onClick={onELedgerClick}
+                >
+                  {/* Subtle Apple-style ambient backglow */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-600/25 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500" />
+
+                  {/* Apple UI Glass Button Container */}
+                  <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_8px_32px_0_rgba(16,185,129,0.12)] p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 transition-all duration-300 group-hover:border-emerald-500/40 group-hover:shadow-[0_12px_40px_0_rgba(16,185,129,0.2)]">
+                    {/* Top glass highlight reflection */}
+                    <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-t-3xl" />
+
+                    <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-0.5 shadow-lg shadow-emerald-600/25 flex items-center justify-center shrink-0 text-white">
+                        <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center">
+                          <Lock className="w-6 h-6 stroke-[2.2] text-white" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-left min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Authorized Portal
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                            23 Seats
+                          </span>
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase font-heading">
+                          Go to eledger portal
+                        </h3>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium line-clamp-1">
+                          {lang === 'ml' 
+                            ? 'സ്റ്റേറ്റ് കമ്മിറ്റി അംഗങ്ങൾ, ട്രഷറർ, ഓഡിറ്റർ എന്നിവർക്കുള്ള പോർട്ടൽ' 
+                            : 'Dedicated portal for State Committee (Admin, Treasurer, Auditor & 20 Members)'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right Action Glass Pill */}
+                    <div className="w-full sm:w-auto shrink-0">
+                      <div className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-900/20 transition-all group-hover:scale-[1.02] active:scale-95">
+                        <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Go to eledger portal</span>
+                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Unified Key Services Glass Card (New Membership, Renewal, Settlement in 1 Glass Card) */}
+              <div className="max-w-6xl mx-auto">
+                <InfinityBorderCard
+                  roundedClassName="rounded-2xl sm:rounded-3xl"
+                  innerClassName="p-5 sm:p-7 md:p-8 text-left bg-gradient-to-br from-white/95 via-slate-50/90 to-white/95 backdrop-blur-xl shadow-xl relative overflow-hidden border border-slate-100"
+                  speed={8}
+                  className="shadow-projected"
+                >
+                  {/* Glassmorphism ambient glow accents */}
+                  <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#c9a227]/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#1a2b5c]/10 rounded-full blur-3xl pointer-events-none" />
+                  
+                  <div className="relative z-10 space-y-6">
+                    {/* Header inside the unified card */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80">
+                      <div className="space-y-1">
+                        <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/8 text-[#1a2b5c] px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-[#1a2b5c]/15">
+                          <Layers className="w-3.5 h-3.5 text-[#1a2b5c] stroke-[2.5]" />
+                          <span>{t('unified_services_badge', 'Key Membership & Financial Services')}</span>
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-black text-[#1a2b5c] uppercase tracking-tight font-heading">
+                          {t('unified_services_title', 'Membership, Renewal & Settlement Portals')}
+                        </h3>
+                      </div>
+                      <p className="text-slate-600 text-xs sm:text-sm font-normal max-w-md">
+                        {t('unified_services_desc', 'Select a service below for New Registration, Annual Card Renewal, or Settlement Data Submission.')}
+                      </p>
+                    </div>
+
+                    {/* 3 Core Services Inside One Unified Card */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {/* Service 1: New Membership */}
+                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#c9a227]/50 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="bg-[#c9a227]/15 w-12 h-12 rounded-xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-xs border border-[#c9a227]/30">
+                              <UserPlus className="w-6 h-6 stroke-[2.2]" />
+                            </div>
+                            <span className="inline-flex bg-[#c9a227]/15 text-[#917112] border border-[#c9a227]/30 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
+                              {t('card_new_membership_badge', 'New Membership • ₹200')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-base sm:text-lg font-black text-[#1a2b5c] tracking-tight uppercase font-heading leading-snug">
+                              {t('card_new_membership_title', 'New Membership')}
+                            </h4>
+                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
+                              {t('card_new_membership_desc', 'Register as an official active member to gain community credentials and benefits.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={() => setStage('guidelines')}
+                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-[#1a2b5c] hover:bg-[#233875] text-white transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer"
+                        >
+                          <span>{t('card_new_membership_btn', 'Register Now')}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Service 2: Card Renewal */}
+                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#1a2b5c]/40 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="bg-[#1a2b5c]/10 w-12 h-12 rounded-xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-xs border border-[#1a2b5c]/20">
+                              <RefreshCw className="w-6 h-6 stroke-[2.2]" />
+                            </div>
+                            <span className="inline-flex bg-[#1a2b5c]/10 text-[#1a2b5c] border border-[#1a2b5c]/20 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
+                              {t('card_renew_membership_badge', 'Membership Renewal • ₹100')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-base sm:text-lg font-black text-[#1a2b5c] tracking-tight uppercase font-heading leading-snug">
+                              {t('card_renew_membership_title', 'Renew card')}
+                            </h4>
+                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
+                              {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={onRenew}
+                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-[#1a2b5c] hover:bg-[#233875] text-white transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer"
+                        >
+                          <span>{t('card_renew_membership_btn', 'Renew Card Now')}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Service 3: Finance / Settlement Form */}
+                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#c9a227]/50 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="bg-[#c9a227]/15 w-12 h-12 rounded-xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-xs border border-[#c9a227]/30">
+                              <FileSpreadsheet className="w-6 h-6 stroke-[2.2]" />
+                            </div>
+                            <span className="inline-flex bg-[#c9a227]/15 text-[#917112] border border-[#c9a227]/30 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
+                              {t('card_registry_badge', 'Verified Information Collection')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-base sm:text-lg font-black text-[#1a2b5c] tracking-tight uppercase font-heading leading-snug">
+                              {t('card_registry_title', 'Settlement Form')}
+                            </h4>
+                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
+                              {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={() => {
+                            setClaimMobile('');
+                            setClaimResult(null);
+                            setStage('claim_check');
+                          }}
+                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-gradient-to-r from-[#c9a227] via-[#d4ad2b] to-[#c9a227] hover:brightness-105 text-[#0c1836] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer border border-[#f5d77f]/40"
+                        >
+                          <span>{t('card_registry_btn', 'Settlement Form')}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </InfinityBorderCard>
+              </div>
+            </section>
+
+            {/* Featured Campaign Section */}
             {janamailConfig?.active !== false && (
               <section className="space-y-8 max-w-6xl mx-auto pt-4" id="featured-campaign">
                 <div className="text-center space-y-3 font-sans">
@@ -508,98 +965,112 @@ export default function LandingPage({
                   </p>
                 </div>
 
-                {/* Compact Premium Campaign Card */}
-                <div 
+                {/* Full Display Premium Campaign Card with Glass Line Effect */}
+                <InfinityBorderCard 
                   onClick={onJanamailClick}
-                  className="max-w-2xl mx-auto bg-white border border-slate-200/80 rounded-[28px] p-6 shadow-premium hover:border-blue-300 hover:shadow-projected hover:scale-[1.01] transition-all duration-300 cursor-pointer group/card"
+                  roundedClassName="rounded-[32px] max-w-3xl mx-auto"
+                  innerClassName="p-5 sm:p-7 space-y-6 cursor-pointer"
+                  className="hover:-translate-y-1 transition-transform duration-300 group/card"
+                  speed={10}
                 >
-                  <div className="flex flex-col md:flex-row gap-6 items-center">
-                    {/* Small Banner / Compact cover */}
-                    <div className="w-full md:w-1/3 aspect-[4/3] overflow-hidden rounded-2xl bg-slate-900 shadow-inner shrink-0 relative">
-                      <img
-                        src={janamailConfig?.artworkUrl || "https://i.ibb.co/B5YWH43C/IMG-20260706-WA0108.jpg"}
-                        alt="Operation Janamail Campaign Banner"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
-                      />
-                      {(() => {
-                        const status = janamailConfig?.campaignStatus;
-                        if (status === "draft") {
-                          return (
-                            <div className="absolute top-3 left-3 bg-amber-500 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                              <span>DRAFT CAMPAIGN</span>
-                            </div>
-                          );
-                        } else if (status === "completed" || status === "disabled") {
-                          return (
-                            <div className="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                              <span>CAMPAIGN COMPLETED</span>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <div className="absolute top-3 left-3 bg-[#c9a227] text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                              <span>ACTIVE CAMPAIGN</span>
-                            </div>
-                          );
-                        }
-                      })()}
-                    </div>
+                  {/* Full Image Display Container */}
+                  <div className="w-full overflow-hidden rounded-2xl bg-slate-900/5 border border-slate-200 relative flex items-center justify-center p-2 sm:p-3">
+                    <img
+                      src={janamailConfig?.artworkUrl || "https://i.ibb.co/B5YWH43C/IMG-20260706-WA0108.jpg"}
+                      alt="Operation Janamail Campaign Banner"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-auto max-h-[580px] sm:max-h-[680px] object-contain rounded-xl shadow-xs transition-transform duration-500 group-hover/card:scale-[1.01]"
+                    />
+                    {(() => {
+                      const status = janamailConfig?.campaignStatus;
+                      if (status === "draft") {
+                        return (
+                          <div className="absolute top-4 left-4 bg-amber-500 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            <span>DRAFT CAMPAIGN</span>
+                          </div>
+                        );
+                      } else if (status === "completed" || status === "disabled") {
+                        return (
+                          <div className="absolute top-4 left-4 bg-red-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <span className="w-2 h-2 rounded-full bg-white" />
+                            <span>CAMPAIGN COMPLETED</span>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="absolute top-4 left-4 bg-[#c9a227] text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                            <span>ACTIVE CAMPAIGN</span>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
 
-                    {/* Campaign details */}
-                    <div className="flex-1 text-left space-y-3 font-sans">
-                      <h3 className="text-xl font-black text-[#1a2b5c] tracking-tight leading-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors duration-200">
-                        {janamailConfig?.campaignName || "Operation Janamail"}
-                      </h3>
-                      
-                      {/* Slogan & short description */}
-                      <p className="text-sm font-bold text-red-600 tracking-tight leading-snug">
-                        {janamailConfig?.campaignTagline || "ജനങ്ങൾ ഉണർന്നു... അധികാരികളേ ഉണരൂ"}
-                      </p>
-                      <p className="text-slate-500 font-medium text-xs leading-relaxed line-clamp-3">
-                        {janamailConfig?.campaignIntroduction || "ഭരണകൂടത്തിന്റെ കണ്ണുതുറപ്പിക്കാൻ ഒരു ജനകീയ ഇമെയിൽ പ്രസ്ഥാനം. പൊതുജനങ്ങളുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട അധികാരികളെ അറിയിക്കാനുള്ള പൊതുപങ്കാളിത്ത ഇമെയിൽ ക്യാമ്പയിൻ."}
-                      </p>
-
-                      <div className="pt-2">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onJanamailClick?.();
-                          }}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-6 py-5 rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 duration-200 flex items-center gap-2 group cursor-pointer"
-                        >
-                          <span className="text-sm">📧</span>
-                          <span>Participate Now / പങ്കാളിയാവുക</span>
-                          <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                        </Button>
+                  {/* Campaign Details Section */}
+                  <div className="space-y-4 text-left font-sans px-1 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-[#1a2b5c] tracking-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors leading-snug">
+                          {janamailConfig?.campaignName || "Operation Janamail"}
+                        </h3>
+                        <p className="text-sm sm:text-base font-black text-red-600 tracking-tight leading-snug mt-1">
+                          {janamailConfig?.campaignTagline || "ജനങ്ങൾ ഉണർന്നു... അധികാരികളേ ഉണരൂ"}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border border-blue-200 shadow-xs">
+                          <Mail className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Official Campaign</span>
+                        </span>
                       </div>
                     </div>
-                  </div>
-                </div>
+                    
+                    <p className="text-slate-700 font-medium text-xs sm:text-sm leading-relaxed">
+                      {janamailConfig?.campaignIntroduction || "ഭരണകൂടത്തിന്റെ കണ്ണുതുറപ്പിക്കാൻ ഒരു ജനകീയ ഇമെയിൽ പ്രസ്ഥാനം. പൊതുജനങ്ങളുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട അധികാരികളെ അറിയിക്കാനുള്ള പൊതുപങ്കാളിത്ത ഇമെയിൽ ക്യാമ്പയിൻ."}
+                    </p>
 
-                {/* Directly BELOW the campaign card, create a "Public Sharing" section */}
-                <div className="max-w-2xl mx-auto bg-white border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
+                    <div className="pt-2">
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onJanamailClick?.();
+                        }}
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm px-8 py-5.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 duration-200 flex items-center justify-center gap-2.5 group cursor-pointer"
+                      >
+                        <span className="text-base">📧</span>
+                        <span>Participate Now / ഇമെയിൽ അയയ്ക്കാം (പങ്കാളിയാവുക)</span>
+                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </div>
+                  </div>
+                </InfinityBorderCard>
+
+                {/* Directly BELOW the campaign card, Public Sharing section with high-contrast theme */}
+                <div className="max-w-3xl mx-auto bg-[#1a2b5c] border border-[#233875] rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
                   {/* QR Code Canvas */}
-                  <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex items-center justify-center shrink-0">
+                  <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex flex-col items-center justify-center shrink-0">
                     <canvas ref={qrCanvasRef} className="w-28 h-28 block" />
                   </div>
 
                   {/* Sharing details and actions */}
                   <div className="flex-1 text-left space-y-3 font-sans w-full">
-                    <h4 className="text-sm font-black text-[#1a2b5c] uppercase tracking-wider flex items-center gap-2">
-                      <QrCode className="w-4 h-4 text-blue-400 animate-pulse" />
+                    <div className="inline-flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/40 text-amber-300 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>QR &amp; SHARE</span>
+                    </div>
+
+                    <h4 className="text-base font-black text-white uppercase tracking-tight leading-snug">
                       ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
                     </h4>
                     
-                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
                       ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
                     </p>
 
                     {/* Public Campaign Link Box */}
-                    <div className="bg-slate-950/80 border border-white/20 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 select-all break-all shadow-inner">
+                    <div className="bg-slate-950/90 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 select-all break-all shadow-inner font-bold">
                       {campaignUrl}
                     </div>
 
@@ -607,7 +1078,7 @@ export default function LandingPage({
                       {/* Share Button */}
                       <Button
                         onClick={handleShare}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs h-10 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-colors"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>ഷെയർ ചെയ്യാം (Share)</span>
@@ -618,10 +1089,10 @@ export default function LandingPage({
                         onClick={handleCopyLink}
                         variant="outline"
                         className={cn(
-                          "flex-1 font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer border",
+                          "flex-1 font-black text-xs h-10 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer border transition-colors",
                           copiedLink
-                            ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
-                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                            ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700 hover:text-white"
+                            : "bg-white/10 border-white/25 text-white hover:bg-white/20 hover:text-white"
                         )}
                       >
                         {copiedLink ? (
@@ -882,117 +1353,6 @@ export default function LandingPage({
                 </div>
               );
             })()}
-
-            {/* Primary Action Bento Grid - Redesigned to exact Reference #2 specifications */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {/* Enrollment Card */}
-              <div
-                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
-              >
-                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                  <div className="bg-[#c9a227]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/10">
-                    <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
-                      {t('card_new_membership_title', 'New Membership')}
-                    </h2>
-                    <span className="inline-flex mt-2 sm:mt-2.5 bg-[#c9a227]/8 text-[#c9a227] border border-[#c9a227]/15 font-extrabold text-[10px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full">
-                      {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
-                    </span>
-                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                      {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => setStage('guidelines')}
-                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
-                >
-                  {t('card_new_membership_btn', 'Register Now')}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* Renewal Card */}
-              <div
-                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
-              >
-                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                  <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
-                    <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
-                      {t('card_renew_membership_title', 'Renew card')}
-                    </h2>
-                    <span className="inline-flex mt-2 sm:mt-2.5 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full">
-                      {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
-                    </span>
-                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                      {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={onRenew}
-                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
-                >
-                  {t('card_renew_membership_btn', 'Renew Card Now')}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* Information Registry Card */}
-              <div
-                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
-              >
-                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                  <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
-                    <Info className="w-7 h-7 sm:w-8 sm:h-8 text-[#1a2b5c] stroke-[2]" />
-                  </div>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-extrabold text-[#1a2b5c] tracking-tight leading-snug uppercase font-heading">
-                      {t('card_registry_title', 'Member Financial Information Registry')}
-                    </h2>
-                    <div className="flex flex-col gap-1 items-center mt-2">
-                      <span className="inline-flex bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
-                        {t('card_registry_badge', 'Verified Information Collection')}
-                      </span>
-                      <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-1">
-                        {t('card_registry_sub_badge', 'Verified Member Information Collection Portal')}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                      {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => {
-                    setClaimMobile('');
-                    setClaimResult(null);
-                    setStage('claim_check');
-                  }}
-                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
-                >
-                  {t('card_registry_btn', 'Access Registry Portal')}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Micro Access Card - Upgraded to elegant white glass panel */}
-            <div className="flex flex-col items-center max-w-sm mx-auto bg-white/5 border border-white/10 p-8 rounded-2xl shadow-premium relative overflow-hidden group">
-              <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-widest mb-4">Official Logins</span>
-              <Button 
-                onClick={onLoginClick}
-                className="w-full h-11 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200"
-              >
-                Sign In to Portal
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Button>
-            </div>
 
             {/* About HCRS & Our Mission Section - Redesigned to exact specifications */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20 text-left font-sans">
@@ -1343,10 +1703,17 @@ export default function LandingPage({
                               className="aspect-square bg-slate-100 border border-slate-200 rounded-[8px] overflow-hidden relative cursor-pointer group shadow-sm"
                             >
                               <img 
-                                src={img.url} 
+                                src={normalizeImageUrl(img.url)} 
                                 alt={img.title} 
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (!target.dataset.retried) {
+                                    target.dataset.retried = 'true';
+                                    target.src = getProxiedImageUrl(img.url);
+                                  }
+                                }}
                               />
                               <div className="absolute inset-0 bg-[#222222]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-350 flex items-end p-2.5 backdrop-blur-[1px]">
                                 <p className="text-[9px] font-bold text-white uppercase tracking-tight line-clamp-2 leading-tight">
@@ -2156,10 +2523,17 @@ export default function LandingPage({
                     >
                       <div className="w-full h-full rounded-[6px] overflow-hidden relative bg-slate-100">
                         <img 
-                          src={item.url} 
+                          src={normalizeImageUrl(item.url)} 
                           alt={item.title} 
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.dataset.retried) {
+                              target.dataset.retried = 'true';
+                              target.src = getProxiedImageUrl(item.url);
+                            }
+                          }}
                         />
                         <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
                           <div className="bg-white text-slate-900 px-4 py-2 rounded-[6px] shadow text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
@@ -2254,11 +2628,24 @@ export default function LandingPage({
                     <Logo size="sm" className="h-[24px] w-auto border border-slate-200/30 p-0.5 rounded bg-white" />
                     <p className="font-bold">© {new Date().getFullYear()} HCRS Society. Public Registry Channel.</p>
                   </div>
-                  <div className="flex flex-wrap justify-center gap-4 font-bold uppercase tracking-wider text-[9px]">
+                  <div className="flex flex-wrap items-center justify-center gap-4 font-bold uppercase tracking-wider text-[9px]">
                     <a href="#privacy" className="hover:text-[#c9a227] transition-colors">Privacy Policy</a>
                     <a href="#terms" className="hover:text-[#c9a227] transition-colors">Terms & Conditions</a>
                     <a href="#refund" className="hover:text-[#c9a227] transition-colors">Refund Policy</a>
                     <a href="#contact" className="hover:text-[#c9a227] transition-colors">Contact Us</a>
+                    <button 
+                      onClick={onELedgerClick}
+                      className="text-emerald-400 hover:text-emerald-300 font-extrabold flex items-center gap-1 bg-emerald-950/40 hover:bg-emerald-900/60 px-2 py-0.5 rounded border border-emerald-500/30 transition-all cursor-pointer"
+                    >
+                      <span>eLedger Public Portal</span>
+                    </button>
+                    <button 
+                      onClick={onGoogleLogin || onLoginClick}
+                      className="text-amber-400 hover:text-amber-300 font-extrabold flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded border border-white/20 transition-all cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3 h-3 text-amber-400" />
+                      <span>Admin Portal (Google Login)</span>
+                    </button>
                   </div>
                </div>
             </footer>
@@ -2555,38 +2942,54 @@ export default function LandingPage({
 
                     {/* Accurate Status Display */}
                     {claimUserStatus === 'pending' && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-[6px] p-4 space-y-1 text-slate-800 font-normal text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 text-amber-900 font-bold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 space-y-1.5 text-left">
+                        <div className="flex items-center gap-1.5 text-amber-950 font-black uppercase text-xs tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                           അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു (Pending Approval)
                         </div>
-                        <p className="text-slate-600 font-normal">
+                        <p className="text-slate-800 font-medium text-xs leading-relaxed">
                           നിങ്ങളുടെ പുതിയ മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ അഡ്മിൻ പാനലിൽ വെരിഫിക്കേഷനിലാണ്. അഡ്മിൻ അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കാൻ സാധിക്കുകയുള്ളൂ.
                         </p>
                       </div>
                     )}
 
                     {claimUserStatus === 'renewal_pending' && (
-                      <div className="bg-orange-50 border border-orange-255 rounded-[6px] p-4 space-y-1 text-slate-800 font-normal text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 text-orange-900 font-bold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shrink-0" />
+                      <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4 space-y-1.5 text-left">
+                        <div className="flex items-center gap-1.5 text-orange-950 font-black uppercase text-xs tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shrink-0" />
                           റിന്യൂവൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു (Renewal Pending)
                         </div>
-                        <p className="text-slate-600 font-normal">
+                        <p className="text-slate-800 font-medium text-xs leading-relaxed">
                           നിങ്ങൾ സബ്മിറ്റ് ചെയ്ത ₹100 റിന്യൂവൽ പേയ്മെന്റ് വെരിഫൈ ചെയ്യാൻ ബാക്കിയാണ്. അഡ്മിൻ ഇത് അപ്പ്രൂവ് ചെയ്തയുടൻ ക്ലെയിം പോർട്ടലിൽ പ്രവേശിക്കാൻ സാധിക്കും.
                         </p>
                       </div>
                     )}
 
                     {claimUserStatus === 'expired' && (
-                      <div className="bg-rose-50 border border-rose-200 rounded-[6px] p-4 space-y-1 text-slate-800 font-normal text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 text-rose-800 font-bold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-pulse" />
+                      <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4 space-y-2 text-left">
+                        <div className="flex items-center gap-1.5 text-rose-950 font-black uppercase text-xs tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse shrink-0" />
                           മെമ്പർഷിപ്പ് കാലാവധി കഴിഞ്ഞിരിക്കുന്നു (Membership Expired)
                         </div>
-                        <p className="text-slate-600 font-normal">
+                        <p className="text-slate-800 font-medium text-xs leading-relaxed">
                           നിങ്ങളുടെ മെമ്പർഷിപ്പ് കാലാവധി അവസാനിച്ചിരിക്കുന്നു. ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്താൻ ആദ്യം ലോഗിൻ ചെയ്ത് ₹100 അടച്ചു അംഗത്വം പുതുക്കേണ്ടതുണ്ട്.
                         </p>
+                        <div className="pt-2">
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              setStage('landing');
+                              if (onRenewWithMobile) {
+                                onRenewWithMobile(claimMobile);
+                              } else {
+                                onRenew();
+                              }
+                            }}
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xs uppercase shadow-md cursor-pointer"
+                          >
+                            അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                          </Button>
+                        </div>
                       </div>
                     )}
 
@@ -2623,10 +3026,21 @@ export default function LandingPage({
                           type="password"
                           maxLength={12}
                           value={claimPin}
-                          onChange={(e) => setClaimPin(e.target.value)}
+                          onChange={(e) => {
+                            setClaimPin(e.target.value);
+                            if (claimPinError) setClaimPinError(null);
+                          }}
                           placeholder="••••"
-                          className="h-12 bg-white border border-slate-200 focus:border-[#c9a227] focus:ring-0 transition-all rounded-[6px] font-semibold text-center text-lg tracking-widest font-mono text-slate-900"
+                          className={`h-12 bg-white border ${claimPinError ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20' : 'border-slate-200 focus:border-[#c9a227]'} focus:ring-0 transition-all rounded-[6px] font-semibold text-center text-lg tracking-widest font-mono text-slate-900`}
                         />
+                        {claimPinError && (
+                          <div className="p-3.5 bg-red-50 border-2 border-red-500 rounded-lg flex items-start gap-2.5 text-red-800 shadow-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-xs font-bold leading-relaxed">
+                              {claimPinError}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2635,25 +3049,30 @@ export default function LandingPage({
                         <Button 
                           onClick={async () => {
                             if (!claimPin || claimPin.length < 4) {
+                              setClaimPinError('സാധുവായ PIN നൽകുക / Please enter your secure PIN');
                               toast.error('സാധുവായ PIN നൽകുക / Please enter your secure PIN');
                               return;
                             }
+                            setClaimPinError(null);
                             setLoggingInClaim(true);
                             try {
                               if (typeof window !== 'undefined') {
                                 sessionStorage.setItem('hcrs_claim_redirect', 'true');
                               }
-                              const success = await onLoginDirect?.(claimMobile, claimPin);
-                              if (success === false) {
+                              const res: any = await onLoginDirect?.(claimMobile, claimPin);
+                              const isSuccess = res === true || (res && res.success === true);
+                              if (!isSuccess) {
                                 if (typeof window !== 'undefined') {
                                   sessionStorage.removeItem('hcrs_claim_redirect');
                                 }
-                                toast.error('PIN തെറ്റാണ്. ദയവായി വീണ്ടും ശ്രമിക്കുക. (Invalid security PIN. Please try again.)');
+                                const errText = (res && res.error) || 'തെറ്റായ പാസ്‌വേഡ്! താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക.';
+                                setClaimPinError(errText);
                               }
-                            } catch (err) {
+                            } catch (err: any) {
                               if (typeof window !== 'undefined') {
                                 sessionStorage.removeItem('hcrs_claim_redirect');
                               }
+                              setClaimPinError(err?.message || 'ലോഗിൻ പരാജയപ്പെട്ടു.');
                               console.error(err);
                             } finally {
                               setLoggingInClaim(false);
@@ -2672,6 +3091,7 @@ export default function LandingPage({
                           setClaimResult(null);
                           setClaimMobile('');
                           setClaimPin('');
+                          setClaimPinError(null);
                         }}
                         className="w-full h-12 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold uppercase text-[10px] rounded-[10px]"
                       >

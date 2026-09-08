@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { subscribeToGallery, GalleryItem } from '@/src/lib/cms';
 import { STATIC_GALLERY_IMAGES, DISTRICTS } from '../constants';
+import { normalizeImageUrl, getProxiedImageUrl } from '../lib/imageUrlUtils';
 import Logo from '../Logo';
 
 interface GalleryPageProps {
@@ -338,11 +339,18 @@ export default function GalleryPage({ onBack, onLoginClick }: GalleryPageProps) 
                             >
                               <div className="w-full h-full rounded-[18px] sm:rounded-[26px] overflow-hidden relative bg-slate-50">
                                 <img 
-                                  src={item.url} 
+                                  src={normalizeImageUrl(item.url)} 
                                   alt={item.title} 
                                   loading="lazy"
                                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-115"
                                   referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    if (!target.dataset.retried) {
+                                      target.dataset.retried = 'true';
+                                      target.src = getProxiedImageUrl(item.url);
+                                    }
+                                  }}
                                 />
                                 
                                 {/* Overlay display detailed dates */}
@@ -478,13 +486,20 @@ export default function GalleryPage({ onBack, onLoginClick }: GalleryPageProps) 
                    onDoubleClick={() => setIsZoomed(!isZoomed)}
                  >
                    <img 
-                    src={activeItem.url}
+                    src={normalizeImageUrl(activeItem.url)}
                     alt={activeItem.title}
                     className={cn(
                       "max-w-full max-h-full object-contain rounded-2xl shadow-[0_30px_90px_rgba(0,0,0,0.6)] transition-all duration-300 origin-center select-none",
                       isZoomed ? "scale-150 cursor-zoom-out" : "scale-100 cursor-zoom-in"
                     )}
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.retried) {
+                        target.dataset.retried = 'true';
+                        target.src = getProxiedImageUrl(activeItem.url);
+                      }
+                    }}
                    />
                  </motion.div>
 
@@ -525,7 +540,18 @@ export default function GalleryPage({ onBack, onLoginClick }: GalleryPageProps) 
                           selectedImageInfo.index === idx ? "border-brand-magenta scale-105 shadow-md shadow-brand-magenta/35" : "border-transparent opacity-45 hover:opacity-100"
                         )}
                        >
-                         <img src={item.url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                         <img 
+                           src={normalizeImageUrl(item.url)} 
+                           className="w-full h-full object-cover" 
+                           referrerPolicy="no-referrer"
+                           onError={(e) => {
+                             const target = e.currentTarget;
+                             if (!target.dataset.retried) {
+                               target.dataset.retried = 'true';
+                               target.src = getProxiedImageUrl(item.url);
+                             }
+                           }}
+                         />
                        </button>
                      ))}
                    </div>

@@ -24,7 +24,8 @@ import {
   X,
   Eye,
   Copy,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -78,6 +79,7 @@ import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import FastMemberEntry from './FastMemberEntry';
 import MembershipCard from './MembershipCard';
+import { normalizeDistrictCode, getDistrictName, isDistrictMatch } from '../lib/districtUtils';
 
 interface OperatorDashboardProps {
   user: UserProfile;
@@ -194,13 +196,20 @@ export default function OperatorDashboard({
     }
   }, [user.district]);
 
+  // Auto-sync members from database if table is empty on mount
+  useEffect(() => {
+    if (members.length === 0 && onRefreshMembers && !isSyncingMembers) {
+      onRefreshMembers();
+    }
+  }, [members.length, onRefreshMembers, isSyncingMembers]);
+
   const stats = useMemo(() => ({
     myEntries: members.filter(m => m.status !== 'deleted').length,
     active: members.filter(m => m.status === 'active').length
   }), [members]);
 
   const activeDistrict = user.district || formData.district;
-  const districtName = DISTRICTS.find(d => d.code === activeDistrict)?.name || activeDistrict;
+  const districtName = getDistrictName(activeDistrict);
 
   const filteredMembers = useMemo(() => {
     const filtered = members.filter(m => 
@@ -208,7 +217,7 @@ export default function OperatorDashboard({
         (m?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (m?.mobile || '').includes(searchTerm) ||
         (m?.membershipId || '').toLowerCase().includes(searchTerm.toLowerCase())
-      ) && (!user.district || m.district === user.district)
+      ) && (!user.district || isDistrictMatch(m.district, user.district))
     );
 
     // De-duplicate by mobile number to show only the live/newest one
@@ -269,7 +278,7 @@ export default function OperatorDashboard({
       m.status !== 'deleted' && 
       (m.mobile || '').replace(/\D/g, '').includes(searchDigits) && 
       user.district && 
-      m.district !== user.district
+      !isDistrictMatch(m.district, user.district)
     );
   }, [members, searchDigits, user.district]);
 
@@ -558,10 +567,41 @@ export default function OperatorDashboard({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredMembers.length === 0 ? (
+                      {isSyncingMembers && members.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-12">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Loader2 className="w-7 h-7 animate-spin text-brand-blue" />
+                              <p className="font-bold text-slate-700 text-xs">ഡാറ്റാബേസ് വിവരങ്ങൾ ശേഖരിക്കുന്നു...</p>
+                              <p className="text-slate-400 text-[10px]">Loading members list for {districtName}...</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : members.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-10">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <p className="text-sm font-black text-slate-700 uppercase">ഡാറ്റാബേസ് എൻട്രികൾ ലോഡ് ചെയ്തിട്ടില്ല</p>
+                              {onRefreshMembers && (
+                                <Button 
+                                  size="sm" 
+                                  onClick={onRefreshMembers}
+                                  className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-xs mt-1"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                  ഡാറ്റാബേസ് ലോഡ് ചെയ്യുക (Load Database)
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredMembers.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center py-10">
                             <p className="text-sm font-black text-slate-600 uppercase">No members found in {districtName}</p>
+                            {searchTerm && (
+                              <p className="text-xs text-slate-400 font-bold mt-1">Search term "{searchTerm}" did not match any members</p>
+                            )}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -1434,9 +1474,19 @@ export default function OperatorDashboard({
                 className="pl-12 h-12 bg-white border-slate-200 rounded-2xl font-bold focus:border-brand-blue/20"
               />
             </div>
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-4">
-              <RefreshCw className="w-3 h-3 animate-spin-slow" />
-              Live Sync
+            <div className="flex items-center gap-2">
+              {onRefreshMembers && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isSyncingMembers}
+                  onClick={onRefreshMembers}
+                  className="text-[10px] h-9 px-3 gap-1.5 font-bold border-slate-200 text-slate-600 hover:text-brand-magenta transition-colors bg-white hover:bg-slate-50 cursor-pointer rounded-xl"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", isSyncingMembers && "animate-spin")} />
+                  {isSyncingMembers ? 'Syncing...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync)'}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -1481,7 +1531,36 @@ export default function OperatorDashboard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMembers.length === 0 ? (
+                {isSyncingMembers && members.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
+                        <p className="font-bold text-slate-800 text-sm">ഡാറ്റാബേസ് വിവരങ്ങൾ ശേഖരിക്കുന്നു...</p>
+                        <p className="text-slate-400 text-xs">Loading members list for {districtName}...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : members.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <Users className="w-10 h-10 text-slate-300" />
+                        <p className="font-bold text-slate-800 text-sm">ഡാറ്റാബേസ് എൻട്രികൾ ലോഡ് ചെയ്തിട്ടില്ല</p>
+                        {onRefreshMembers && (
+                          <Button 
+                            size="sm" 
+                            onClick={onRefreshMembers}
+                            className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-xs"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            ഡാറ്റാബേസ് ലോഡ് ചെയ്യുക (Load Database)
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredMembers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-16">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-wider">No members found in {districtName}</p>

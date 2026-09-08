@@ -1,17 +1,33 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { motion } from 'motion/react';
-import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
+import { getWAMessage, sendWAMessage, getWARenewalMessage, sendWARenewalMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import BrandingManager from './BrandingManager';
 import LanguageManager from './LanguageManager';
 import AdminReceiptsModal from './AdminReceiptsModal';
 import GalleryManagement from './GalleryManagement';
+import DistrictQuotaManager from './DistrictQuotaManager';
 import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
 import BackupRestoreManager from './BackupRestoreManager';
 import CampaignTemplateManager from './CampaignTemplateManager';
 import AdminReportsTab from './AdminReportsTab';
+import PaymentOperationsManager from './PaymentOperationsManager';
+import { 
+  printCourtClaimReport, 
+  printCourtComboReport, 
+  printFullAdminClaimReport, 
+  printFullAdminComboReport,
+  printMemberComboReport,
+  downloadCourtClaimPdf,
+  downloadCourtComboPdf,
+  downloadFullAdminClaimPdf,
+  downloadFullAdminComboPdf,
+  getHardshipList,
+  getHardshipDetail,
+  getFuturePreferenceDetail
+} from '../lib/claimPrint';
 import { 
   Crown,
   Users, 
@@ -55,7 +71,10 @@ import {
   Copy,
   AlertTriangle,
   Layers,
-  Printer
+  Printer,
+  FileText,
+  Wallet,
+  Sliders
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -67,6 +86,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import MembershipCard from './MembershipCard';
 import FastMemberEntry from './FastMemberEntry';
 import LifeMembersPanel from './LifeMembersPanel';
+import DistrictWhatsAppManager from './DistrictWhatsAppManager';
 import Logo from '../Logo';
 import { 
   Table, 
@@ -80,7 +100,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
@@ -103,6 +123,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { normalizeDistrictCode, isDistrictMatch } from '../lib/districtUtils';
 
 interface AdminDashboardProps {
   user?: UserProfile | null;
@@ -112,6 +133,7 @@ interface AdminDashboardProps {
   onUpdate: (id: string, data: Partial<UserProfile>) => void;
   onDelete: (id: string) => void;
   onResetPin?: (id: string) => void;
+  onBulkResetAllPins?: () => void;
   onUpdatePhoto?: (file: File, uid: string) => void;
   onUpdateDistrictQuota?: (districtCode: string, total: number) => void;
   onSyncQuotas?: () => void;
@@ -207,6 +229,7 @@ export default function AdminDashboard({
   onUpdate, 
   onDelete, 
   onResetPin, 
+  onBulkResetAllPins,
   onUpdatePhoto,
   onUpdateDistrictQuota,
   onSyncQuotas,
@@ -218,7 +241,7 @@ export default function AdminDashboard({
   isSyncingMembers = false
 }: AdminDashboardProps) {
   const getDistrictCode = (nameOrCode: string) => {
-    if (!nameOrCode) return DISTRICTS[0].code;
+    if (!nameOrCode) return '';
     const normalized = nameOrCode.trim().toUpperCase();
     
     // 1. Exact code match
@@ -247,570 +270,23 @@ export default function AdminDashboard({
     return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
   };
 
-  const getComboGroups = (sourceClaims: any[]) => {
-    const groups: any[][] = [];
-
-    sourceClaims.forEach((claim) => {
-      const existingGroup = groups.find(group =>
-        group.some(existingClaim =>
-          compareMobiles(existingClaim.userMobile, claim.userMobile)
-        )
-      );
-
-      if (existingGroup) {
-        existingGroup.push(claim);
-      } else {
-        groups.push([claim]);
-      }
+  const getComboClaimsForClaim = (claim: any, allClaims: any[]): any[] => {
+    if (!claim) return [];
+    return allClaims.filter(c => {
+      if (c.id && claim.id && c.id === claim.id) return true;
+      const sameMob = compareMobiles(c.userMobile, claim.userMobile);
+      const sameMem = c.membershipId && claim.membershipId && c.membershipId !== 'N/A' && c.membershipId !== 'PENDING' && c.membershipId.toLowerCase() === claim.membershipId.toLowerCase();
+      const sameUid = c.uid && claim.uid && c.uid === claim.uid && !c.uid.startsWith('offline_claim_') && c.uid !== 'offline_admin';
+      return sameMob || sameMem || sameUid;
     });
-
-    return groups.filter(group => group.length > 1);
   };
 
-  const printComboClaims = (comboClaims: any[]) => {
-    if (!comboClaims || comboClaims.length === 0) return;
-
-    const money = (value: any) =>
-      `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-    const escapeHtml = (value: any) =>
-      String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
-    const relationLabel = (relation: any) => {
-      const labels: Record<string, string> = {
-        Self: 'സ്വന്തം (Self)',
-        Mother: 'അമ്മ (Mother)',
-        Father: 'അച്ഛൻ (Father)',
-        Son: 'മകൻ (Son)',
-        Daughter: 'മകൾ (Daughter)',
-        Wife: 'ഭാര്യ (Wife)',
-        Husband: 'ഭർത്താവ് (Husband)',
-      };
-      return labels[relation] || relation || '';
-    };
-
-    const hardshipLabel = (value: string) => {
-      const labels: Record<string, string> = {
-        bank: 'BANK SEIZURE',
-        crisis: 'FINANCIAL CRISIS',
-        medical: 'MEDICAL EMERGENCY',
-      };
-      return labels[value] || value || '';
-    };
-
-    const pages = comboClaims.map((claim, index) => {
-      const categoryDetails = claim.categoryDetails || {};
-      const categoryRows = Object.entries(categoryDetails)
-        .map(([catId, detail]: [string, any]) => `
-          <tr>
-            <td>${escapeHtml(getCategoryLabel(catId))}</td>
-            <td>${money(detail?.paid)}</td>
-            <td>${money(detail?.received)}</td>
-            <td class="pending">${money(detail?.pending)}</td>
-          </tr>
-        `)
-        .join('');
-
-      const hardship = Array.isArray(claim.hardshipStatus)
-        ? claim.hardshipStatus.map(h => hardshipLabel(h)).join(', ')
-        : 'NONE';
-
-      const futurePreference =
-        claim.futurePreference === 'settlement'
-          ? 'Prefer settlement and closure after receiving balance'
-          : claim.futurePreference === 'wait'
-            ? 'Willing to wait if company continues and grows'
-            : claim.futurePreference
-              ? 'Ready to continue with company based on future plans'
-              : 'N/A';
-
-      return `
-        <section class="page">
-
-          <div class="top-header">
-            <div>
-              <div class="brand">HCRS SUPPORT CLAIM</div>
-              <div class="document-title">MEMBER CLAIM DETAILS &amp; VERIFICATION</div>
-            </div>
-            <div class="page-meta">
-              COMBO CLAIM<br>
-              ${index + 1} / ${comboClaims.length}
-            </div>
-          </div>
-
-          <div class="section-title">1. MEMBER / CLAIMANT DETAILS</div>
-
-          <div class="details-grid">
-            <div class="field wide">
-              <label>Account Holder / Claimant</label>
-              <strong>${escapeHtml(claim.userName)}</strong>
-            </div>
-            <div class="field">
-              <label>Relation</label>
-              <strong>${escapeHtml(relationLabel(claim.relation))}</strong>
-            </div>
-
-            <div class="field">
-              <label>Member ID</label>
-              <strong>${escapeHtml(claim.membershipId || '')}</strong>
-            </div>
-            <div class="field">
-              <label>Serial / Claim No.</label>
-              <strong>#${escapeHtml(claim.tokenNo ?? claim.serialNo ?? '')}</strong>
-            </div>
-            <div class="field">
-              <label>Phone Number</label>
-              <strong>${escapeHtml(claim.userMobile || claim.mobile || '')}</strong>
-            </div>
-            <div class="field">
-              <label>HighRich ID</label>
-              <strong>${escapeHtml(claim.highrichId || '')}</strong>
-            </div>
-
-            <div class="field wide">
-              <label>Address</label>
-              <strong>${escapeHtml(claim.address || '')}</strong>
-            </div>
-
-            <div class="field">
-              <label>District</label>
-              <strong>${escapeHtml(
-                DISTRICTS.find(d => d.code === claim.district || '')?.name || claim.district || ''
-              )}</strong>
-            </div>
-            <div class="field">
-              <label>Constituency</label>
-              <strong>${escapeHtml(claim.constituency || '')}</strong>
-            </div>
-            <div class="field">
-              <label>Blood Group</label>
-              <strong>${escapeHtml(claim.bloodGroup || '')}</strong>
-            </div>
-            <div class="field">
-              <label>Email</label>
-              <strong>${escapeHtml(claim.email || '')}</strong>
-            </div>
-          </div>
-
-          <div class="section-title">2. CLAIM STATUS</div>
-
-          <div class="status-grid">
-            <div class="status-box">
-              <label>Priority Status</label>
-              <strong>${escapeHtml(claim.priorityStatus || 'GREEN')}</strong>
-            </div>
-            <div class="status-box">
-              <label>Emergency Verified</label>
-              <strong>${claim.isEmergency ? 'YES' : 'NO'}</strong>
-            </div>
-            <div class="status-box">
-              <label>Claim Submitted</label>
-              <strong>${escapeHtml(formatClaimDate(claim.createdAt))}</strong>
-            </div>
-          </div>
-
-          <div class="section-title">3. AMOUNT BREAKDOWN</div>
-
-          <div class="amount-grid">
-            <div>
-              <label>Total Paid</label>
-              <strong>${money(claim.totalPaid)}</strong>
-            </div>
-            <div>
-              <label>Total Received</label>
-              <strong>${money(claim.totalReceived)}</strong>
-            </div>
-            <div>
-              <label>Total Pending</label>
-              <strong>${money(claim.totalPending)}</strong>
-            </div>
-          </div>
-
-          ${categoryRows ? `
-            <div class="sub-title">Category-wise Claim Breakdown</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Paid</th>
-                  <th>Received</th>
-                  <th>Pending</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${categoryRows}
-              </tbody>
-            </table>
-          ` : ''}
-
-          ${claim.notes ? `
-            <div class="section-title">4. REMARKS / NOTES</div>
-            <div class="text-box">${escapeHtml(claim.notes)}</div>
-          ` : ''}
-
-          <div class="two-column">
-
-            <div>
-              <div class="section-title">5. FUTURE PREFERENCE</div>
-              <div class="text-box">${escapeHtml(futurePreference)}</div>
-            </div>
-
-            <div>
-              <div class="section-title">6. HARDSHIP DECLARATION</div>
-              <div class="text-box">${escapeHtml(hardship)}</div>
-            </div>
-
-          </div>
-
-          <div class="verification">
-            <div class="section-title">7. CLAIM VERIFICATION</div>
-            <p>
-              The above information represents the claim details available in
-              the company's records. The claim amount and related particulars
-              may be verified against the company's records before submission
-              to the concerned authorities.
-            </p>
-
-            <div class="signature-grid">
-              <div>
-                <span>HCRS Society Representative</span>
-                <div class="signature-line"></div>
-                <span style="font-size:6px;color:#94a3b8;margin-top:4px;display:block;">Highrich Community Revival Society</span>
-              </div>
-              <div>
-                <span>Highrich Company Representative</span>
-                <div class="signature-line"></div>
-                <span style="font-size:6px;color:#94a3b8;margin-top:4px;display:block;">Authorized Signatory / Company</span>
-              </div>
-              <div>
-                <span>Customer / Claimant</span>
-                <div class="signature-line"></div>
-                <span style="font-size:6px;color:#94a3b8;margin-top:4px;display:block;">${escapeHtml(claim.userName)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="footer">
-            HCRS SUPPORT CLAIM · Claim #${escapeHtml(claim.tokenNo ?? claim.serialNo ?? '')}
-            · ${escapeHtml(formatClaimDate(claim.createdAt))}
-          </div>
-
-        </section>
-      `;
-    }).join('');
-
-    const printWindow = window.open('', '_blank', 'width=1000,height=1200');
-
-    if (!printWindow) {
-      toast.error('Print window blocked. Please allow pop-ups.');
-      return;
-    }
-
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>HCRS Support Claims</title>
-
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 7mm;
-            }
-
-            * {
-              box-sizing: border-box;
-            }
-
-            html, body {
-              margin: 0;
-              padding: 0;
-              background: #fff;
-              color: #172033;
-              font-family: Arial, "Noto Sans", sans-serif;
-            }
-
-            body {
-              font-size: 10px;
-            }
-
-            .page {
-              width: 100%;
-              min-height: 283mm;
-              position: relative;
-              page-break-after: always;
-              break-after: page;
-              padding: 6mm 6mm 14mm;
-              border: 1.5px solid #172b5c;
-              border-radius: 1mm;
-              overflow: hidden;
-            }
-
-            .page:last-child {
-              page-break-after: auto;
-              break-after: auto;
-            }
-
-            .top-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              border-bottom: 2px solid #172b5c;
-              padding-bottom: 10px;
-              margin-bottom: 14px;
-            }
-
-            .brand {
-              font-size: 20px;
-              font-weight: 900;
-              color: #172b5c;
-            }
-
-            .document-title {
-              margin-top: 3px;
-              font-size: 9px;
-              font-weight: 800;
-              color: #64748b;
-              letter-spacing: .4px;
-            }
-
-            .page-meta {
-              text-align: right;
-              font-size: 8px;
-              line-height: 1.5;
-              font-weight: 900;
-              color: #64748b;
-            }
-
-            .section-title {
-              background: #172b5c;
-              color: white;
-              font-size: 10px;
-              font-weight: 900;
-              padding: 8px 9px;
-              margin-top: 13px;
-              margin-bottom: 9px;
-              letter-spacing: .4px;
-            }
-
-            .details-grid {
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 8px;
-            }
-
-            .field {
-              border: 1px solid #dbe3ed;
-              padding: 10px;
-              min-height: 48px;
-            }
-
-            .field.wide {
-              grid-column: span 2;
-            }
-
-            .field label,
-            .status-box label,
-            .amount-grid label {
-              display: block;
-              color: #64748b;
-              font-size: 7px;
-              font-weight: 900;
-              text-transform: uppercase;
-              margin-bottom: 3px;
-            }
-
-            .field strong {
-              display: block;
-              font-size: 9.5px;
-              line-height: 1.4;
-              word-break: break-word;
-            }
-
-            .status-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8px;
-            }
-
-            .status-box {
-              border: 1px solid #dbe3ed;
-              padding: 10px;
-              min-height: 48px;
-            }
-
-            .status-box strong {
-              font-size: 10px;
-              font-weight: 900;
-            }
-
-            .amount-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8px;
-            }
-
-            .amount-grid > div {
-              border: 1px solid #dbe3ed;
-              padding: 14px 10px;
-              min-height: 68px;
-              text-align: center;
-            }
-
-            .amount-grid > div:nth-child(1) {
-              background: #f1f5f9;
-            }
-
-            .amount-grid > div:nth-child(2) {
-              background: #f0fdf4;
-            }
-
-            .amount-grid > div:nth-child(3) {
-              background: #fdf2f8;
-            }
-
-            .amount-grid strong {
-              display: block;
-              font-size: 16px;
-              font-weight: 900;
-            }
-
-            .sub-title {
-              margin-top: 7px;
-              margin-bottom: 4px;
-              font-size: 8px;
-              font-weight: 900;
-              color: #334155;
-            }
-
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 8px;
-            }
-
-            th {
-              background: #f1f5f9;
-              color: #334155;
-              font-weight: 900;
-              text-transform: uppercase;
-            }
-
-            th, td {
-              border: 1px solid #dbe3ed;
-              padding: 8px 7px;
-              text-align: left;
-            }
-
-            td:nth-child(2),
-            td:nth-child(3),
-            td:nth-child(4),
-            th:nth-child(2),
-            th:nth-child(3),
-            th:nth-child(4) {
-              text-align: right;
-            }
-
-            td.pending {
-              font-weight: 900;
-            }
-
-            .two-column {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px;
-            }
-
-            .text-box {
-              border: 1px solid #dbe3ed;
-              background: #f8fafc;
-              padding: 11px;
-              min-height: 52px;
-              line-height: 1.6;
-              white-space: pre-wrap;
-            }
-
-            .verification {
-              margin-top: 12px;
-              border: 1px solid #cbd5e1;
-              padding: 10px;
-            }
-
-            .verification .section-title {
-              margin: -7px -7px 7px;
-            }
-
-            .verification p {
-              margin: 0;
-              font-size: 8px;
-              line-height: 1.5;
-              color: #475569;
-            }
-
-            .signature-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr 1fr;
-              gap: 20px;
-              margin-top: 30px;
-            }
-
-            .signature-grid span {
-              display: block;
-              font-size: 7px;
-              font-weight: 800;
-              color: #64748b;
-            }
-
-            .signature-line {
-              margin-top: 24px;
-              border-bottom: 1px solid #334155;
-            }
-
-            .footer {
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              border-top: 1px solid #dbe3ed;
-              padding-top: 5px;
-              text-align: center;
-              color: #94a3b8;
-              font-size: 7px;
-              font-weight: 700;
-            }
-
-            @media print {
-              body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-
-              .page {
-                min-height: 283mm;
-                border: 1.5px solid #172b5c;
-              }
-            }
-          </style>
-        </head>
-
-        <body>
-          ${pages}
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.focus();
-
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
+  const isComboClaim = (claim: any, allClaims: any[]): boolean => {
+    if (!claim) return false;
+    if (claim.isCombo === true) return true;
+    if (claim.relation && !['Self', 'self', 'സ്വന്തം', 'സ്വന്തം (Self)'].includes(claim.relation.trim())) return true;
+    const matching = getComboClaimsForClaim(claim, allClaims);
+    return matching.length > 1;
   };
 
   const formatClaimDate = (createdAt: any): string => {
@@ -925,7 +401,10 @@ export default function AdminDashboard({
     return clean.substring(0, 3);
   };
 
-  const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
+  const isSuperAdmin = useMemo(() => {
+    const email = (user?.email || '').toLowerCase().trim();
+    return MAIN_ADMINS.some(e => e.toLowerCase() === email) || user?.role === 'admin' || user?.isAdmin === true;
+  }, [user]);
   
   const countOf2026Members = useMemo(() => {
     return members.filter(m => {
@@ -1035,15 +514,17 @@ export default function AdminDashboard({
   };
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [districtFilter, setDistrictFilter] = useState(() => {
-    if (user?.district && !isSuperAdmin) {
-      return user.district;
-    }
-    return 'all';
-  });
+  const [districtFilter, setDistrictFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Auto-sync members from database if table is empty on mount
+  useEffect(() => {
+    if (members.length === 0 && onRefreshMembers && !isSyncingMembers) {
+      onRefreshMembers();
+    }
+  }, [members.length, onRefreshMembers, isSyncingMembers]);
 
   const searchDigits = useMemo(() => {
     return searchTerm.replace(/\D/g, '');
@@ -1055,7 +536,7 @@ export default function AdminDashboard({
     return members.find(m => 
       m.status !== 'deleted' && 
       (m.mobile || '').replace(/\D/g, '').includes(searchDigits) && 
-      m.district !== user.district
+      !isDistrictMatch(m.district, user.district)
     );
   }, [members, searchDigits, isSecondary, user?.district]);
 
@@ -1128,6 +609,8 @@ export default function AdminDashboard({
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
   const [editingClaim, setEditingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
+  const [claimsViewMode, setClaimsViewMode] = useState<'individual' | 'combo'>('individual');
+  const [comboSubView, setComboSubView] = useState<'groups' | 'all_persons'>('groups');
 
   // Claims Bulk Import States
   const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
@@ -1141,6 +624,8 @@ export default function AdminDashboard({
 
   // States for Editing Claim Dialog
   const [editClaimHighrichId, setEditClaimHighrichId] = useState('');
+  const [editClaimSponsorName, setEditClaimSponsorName] = useState('');
+  const [editClaimSponsorMobile, setEditClaimSponsorMobile] = useState('');
   const [editClaimNoBreakup, setEditClaimNoBreakup] = useState(false);
   const [editClaimTotalPaid, setEditClaimTotalPaid] = useState(0);
   const [editClaimTotalReceived, setEditClaimTotalReceived] = useState(0);
@@ -1154,10 +639,18 @@ export default function AdminDashboard({
   const [editClaimHardshipStatus, setEditClaimHardshipStatus] = useState<string[]>([]);
   const [savingClaim, setSavingClaim] = useState(false);
 
+  // Approval Loading States
+  const [approvingUid, setApprovingUid] = useState<string | null>(null);
+  const [isBulkApproving, setIsBulkApproving] = useState(false);
+  const [approvingRenewalUid, setApprovingRenewalUid] = useState<string | null>(null);
+  const [approvedRenewalUids, setApprovedRenewalUids] = useState<string[]>([]);
+
   // Populate claims states when editingClaim changes
   useEffect(() => {
     if (editingClaim) {
       setEditClaimHighrichId(editingClaim.highrichId || '');
+      setEditClaimSponsorName(editingClaim.sponsorName || '');
+      setEditClaimSponsorMobile(editingClaim.sponsorMobile || '');
       setEditClaimNoBreakup(!!editingClaim.noBreakup);
       setEditClaimTotalPaid(editingClaim.totalPaid || 0);
       setEditClaimTotalReceived(editingClaim.totalReceived || 0);
@@ -1415,6 +908,74 @@ export default function AdminDashboard({
     };
   }, [selectedClaim, members]);
 
+  const handleSyncClaimsCounter = async () => {
+    const tId = toast.loading('ക്ലെയിം സീരിയൽ കൗണ്ടർ പരിശോധിക്കുന്നു...');
+    try {
+      // 1. Check local Firestore snapshot
+      const claimsSnap = await getDocs(collection(db, 'claims'));
+      let maxSerial = 0;
+      let maxRed = 0;
+      let maxOrange = 0;
+      let maxGreen = 0;
+
+      claimsSnap.docs.forEach(d => {
+        const data = d.data();
+        const num = typeof data.serialNo === 'number' ? data.serialNo : parseInt(String(data.serialNo || data.tokenNo || '').replace(/\D/g, ''), 10);
+        if (!isNaN(num) && num > maxSerial) maxSerial = num;
+        const tok = String(data.tokenNo || data.serialNo || '');
+        if (tok.startsWith('R-')) {
+          const rNum = parseInt(tok.replace('R-', ''), 10);
+          if (!isNaN(rNum) && rNum > maxRed) maxRed = rNum;
+        } else if (tok.startsWith('O-')) {
+          const oNum = parseInt(tok.replace('O-', ''), 10);
+          if (!isNaN(oNum) && oNum > maxOrange) maxOrange = oNum;
+        } else if (tok.startsWith('G-')) {
+          const gNum = parseInt(tok.replace('G-', ''), 10);
+          if (!isNaN(gNum) && gNum > maxGreen) maxGreen = gNum;
+        }
+      });
+
+      const systemTotalsRef = doc(db, 'system', 'totals');
+      if (claimsSnap.empty) {
+        await setDoc(systemTotalsRef, {
+          claimsCounter: 0,
+          redClaimsCounter: 0,
+          orangeClaimsCounter: 0,
+          greenClaimsCounter: 0
+        }, { merge: true });
+        
+        // Also call server API endpoint to sync
+        fetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
+
+        toast.success('ക്ലെയിം കൗണ്ടർ വിജയകരമായി 0-ലേക്ക് റീസെറ്റ് ചെയ്തു! ഇനി വരുന്ന ക്ലെയിമുകൾ 1 മുതൽ ആരംഭിക്കും.', { id: tId });
+      } else {
+        await setDoc(systemTotalsRef, {
+          claimsCounter: Math.max(claimsSnap.size, maxSerial),
+          redClaimsCounter: maxRed,
+          orangeClaimsCounter: maxOrange,
+          greenClaimsCounter: maxGreen
+        }, { merge: true });
+
+        // Also call server API endpoint to sync
+        fetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
+
+        toast.success(`കൗണ്ടർ സിങ്ക് ചെയ്തു (ആകെ ക്ലെയിമുകൾ: ${claimsSnap.size}, അവസാന നമ്പർ: ${maxSerial}). അടുത്ത ക്ലെയിം ${maxSerial + 1} ആയിരിക്കും.`, { id: tId });
+      }
+    } catch (err: any) {
+      console.error("Error syncing claims counter:", err);
+      // Fallback via server API
+      try {
+        const sRes = await fetch('/api/admin/reset-claims-counter', { method: 'POST' });
+        const sData = await sRes.json();
+        if (sData?.success) {
+          toast.success(`കൗണ്ടർ വിജയകരമായി സിങ്ക് ചെയ്തു! (Next starting: ${sData.nextStartingNumber})`, { id: tId });
+          return;
+        }
+      } catch (sErr) {}
+      toast.error('കൗണ്ടർ സിങ്ക് ചെയ്യുന്നതിൽ പരാജയം: ' + err.message, { id: tId });
+    }
+  };
+
   const handleDeleteClick = (id: string) => {
     setDeletingMemberId(id);
   };
@@ -1453,6 +1014,8 @@ export default function AdminDashboard({
       district: normalizedDist, 
       assemblyConstituency: CONSTITUENCIES[normalizedDist]?.[0] || '', 
       bloodGroup: BLOOD_GROUPS[0], 
+      sponsorName: '',
+      sponsorMobile: '',
       pin: '123456',
       role: 'member' as 'member' | 'operator' | 'admin',
       quota: 100,
@@ -1485,21 +1048,51 @@ export default function AdminDashboard({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<{ id: string, email: string, pin: string, mobile: string } | null>(null);
 
-  const [claims, setClaims] = useState<any[]>([]);
-  const [claimsLoading, setClaimsLoading] = useState(false);
+  const [claims, setClaims] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('hcrs_cached_claims');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+  const [claimsLoading, setClaimsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('hcrs_cached_claims');
+      if (cached && JSON.parse(cached).length > 0) return false;
+    } catch (e) {}
+    return true;
+  });
   const [claimSearchTerm, setClaimSearchTerm] = useState('');
   const [claimDistrictFilter, setClaimDistrictFilter] = useState('all');
   const [claimPriorityFilter, setClaimPriorityFilter] = useState('all');
   const [claimCategoryFilter, setClaimCategoryFilter] = useState('all');
+  const [claimTypeFilter, setClaimTypeFilter] = useState<'all' | 'combo' | 'single'>('all');
 
-  const [supportTickets, setSupportTickets] = useState<any[]>([]);
-  const [supportTicketsLoading, setSupportTicketsLoading] = useState(false);
+  const [supportTickets, setSupportTickets] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('hcrs_cached_support_tickets');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+  const [supportTicketsLoading, setSupportTicketsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('hcrs_cached_support_tickets');
+      if (cached && JSON.parse(cached).length > 0) return false;
+    } catch (e) {}
+    return true;
+  });
   const [claimsError, setClaimsError] = useState<string | null>(null);
   const [supportTicketsError, setSupportTicketsError] = useState<string | null>(null);
 
    useEffect(() => {
     if (!user) return;
-    setSupportTicketsLoading(true);
     setSupportTicketsError(null);
     if (user.uid === 'offline_admin') {
       try {
@@ -1538,7 +1131,6 @@ export default function AdminDashboard({
       } catch (e) {
         console.warn("localStorage read tickets failed:", e);
       }
-      setSupportTickets([]);
       setSupportTicketsLoading(false);
     });
     return () => unsubscribe();
@@ -1569,58 +1161,92 @@ export default function AdminDashboard({
     }
   };
 
-  useEffect(() => {
-    if (!user) return;
-    setClaimsLoading(true);
-    setClaimsError(null);
-    if (user.uid === 'offline_admin') {
-      try {
-        const cached = localStorage.getItem('hcrs_cached_claims');
-        if (cached) {
-          setClaims(JSON.parse(cached));
-        } else {
-          setClaims([]);
+  const [isSyncingClaims, setIsSyncingClaims] = useState(false);
+
+  const refreshClaimsList = useCallback(async (isManual = false) => {
+    setIsSyncingClaims(true);
+    const toastId = isManual ? toast.loading('ഡാറ്റാബേസിൽ നിന്ന് ക്ലെയിമുകൾ സിങ്ക് ചെയ്യുന്നു...') : undefined;
+    try {
+      const res = await fetch(`/api/database/claims?fresh=true&t=${Date.now()}`);
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.success && Array.isArray(resData.data)) {
+          const sorted = [...resData.data].sort((a: any, b: any) => {
+            const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+            const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+            return timeB - timeA;
+          });
+          setClaims(sorted);
+          try {
+            localStorage.setItem('hcrs_cached_claims', JSON.stringify(sorted));
+          } catch (e) {}
+          setClaimsError(null);
+          setClaimsLoading(false);
+          if (isManual) {
+            toast.success(`ഡാറ്റാബേസിൽ നിന്ന് ${sorted.length} ക്ലെയിമുകൾ വിജയകരമായി സിങ്ക് ചെയ്തു.`, { id: toastId });
+          }
+          return sorted;
         }
-      } catch (e) {
-        setClaims([]);
       }
-      setClaimsLoading(false);
-      return;
-    }
-    
-    const q = query(collection(db, 'claims'));
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-      // Sort client-side so that old claims without 'createdAt' are still included and displayed
+      
+      const snap = await getDocs(collection(db, 'claims'));
+      const data = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
       data.sort((a: any, b: any) => {
         const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
         const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
         return timeB - timeA;
       });
+      setClaims(data);
       try {
         localStorage.setItem('hcrs_cached_claims', JSON.stringify(data));
-      } catch (e) {
-        console.warn("localStorage set claims failed:", e);
-      }
-      setClaims(data);
+      } catch (e) {}
+      setClaimsError(null);
       setClaimsLoading(false);
-    }, (err: any) => {
-      console.error("Claims fetch error:", err);
-      setClaimsError(err.code || err.message || "permission-denied");
-      try {
-        const cached = localStorage.getItem('hcrs_cached_claims');
-        if (cached) {
-          setClaims(JSON.parse(cached));
-          setClaimsLoading(false);
-          return;
+      if (isManual) {
+        toast.success(`ഡാറ്റാബേസിൽ നിന്ന് ${data.length} ക്ലെയിമുകൾ വിജയകരമായി സിങ്ക് ചെയ്തു.`, { id: toastId });
+      }
+      return data;
+    } catch (err: any) {
+      console.error("Claims sync error:", err);
+      if (isManual) {
+        toast.error('ക്ലെയിം സിങ്ക് പരാജയപ്പെട്ടു: ' + (err.message || 'Error'), { id: toastId });
+      }
+    } finally {
+      setIsSyncingClaims(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setClaimsError(null);
+    
+    // Always trigger immediate fetch from server database claims API
+    refreshClaimsList(false);
+
+    // Set up real-time listener when available
+    if (user.uid !== 'offline_admin') {
+      const q = query(collection(db, 'claims'));
+      const unsubscribe = onSnapshot(q, (snapshot: any) => {
+        const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        data.sort((a: any, b: any) => {
+          const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          return timeB - timeA;
+        });
+        try {
+          localStorage.setItem('hcrs_cached_claims', JSON.stringify(data));
+        } catch (e) {
+          console.warn("localStorage set claims failed:", e);
         }
-      } catch (e) {
-        console.warn("localStorage read claims failed:", e);
-      }
-      setClaimsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [user]);
+        setClaims(data);
+        setClaimsError(null);
+        setClaimsLoading(false);
+      }, (err: any) => {
+        console.warn("Claims real-time listener notice:", err);
+      });
+      return () => unsubscribe();
+    }
+  }, [user, refreshClaimsList]);
 
   const handleSaveClaim = async () => {
     if (!editingClaim) return;
@@ -1657,12 +1283,15 @@ export default function AdminDashboard({
       
       let priorityStatus = 'PENDING';
       if (isEmergency) priorityStatus = 'EMERGENCY RED';
+      else if (editClaimFuturePreference === 'urgent') priorityStatus = 'EMERGENCY RED';
       else if (editClaimFuturePreference === 'settlement') priorityStatus = 'RED';
       else if (editClaimFuturePreference === 'wait') priorityStatus = 'ORANGE';
       else if (editClaimFuturePreference === 'continue') priorityStatus = 'GREEN';
 
       const updateData = {
         highrichId: editClaimHighrichId,
+        sponsorName: editClaimSponsorName.trim(),
+        sponsorMobile: editClaimSponsorMobile.trim(),
         noBreakup: editClaimNoBreakup,
         totalPaid,
         totalReceived,
@@ -1745,32 +1374,105 @@ export default function AdminDashboard({
   };
 
   const handleApproveRenewal = async (member: UserProfile) => {
-    const loadingToast = toast.loading('Approving renewal...');
+    if (approvingRenewalUid === member.uid || member.renewalPending === false) return;
+    const cleanMob = member.mobile ? String(member.mobile).replace(/\D/g, '') : '';
+
+    setApprovingRenewalUid(member.uid);
+    const loadingToast = toast.loading(`റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു... (${member.name})`);
+    
+    const now = new Date();
+    const expiry = new Date();
+    expiry.setFullYear(now.getFullYear() + 1);
+    const expiryStr = expiry.toLocaleDateString('en-IN');
+
+    // Safe ISO string helper
+    const getSafeIsoTime = (val: any) => {
+      try {
+        if (!val) return new Date().toISOString();
+        if (val.toDate && typeof val.toDate === 'function') return val.toDate().toISOString();
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) return d.toISOString();
+      } catch (e) {}
+      return new Date().toISOString();
+    };
+
     try {
-      const now = new Date();
-      const expiry = new Date();
-      expiry.setFullYear(now.getFullYear() + 1);
+      try {
+        const srvRes = await fetch('/api/admin/approve-renewal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: member.uid, mobile: cleanMob })
+        });
+        if (srvRes.ok) {
+          console.log("[Renewal Approval API success for]:", member.uid);
+        }
+      } catch (srvErr) {
+        console.warn("[Renewal Approval API note]:", srvErr);
+      }
+
+      const safeRegDate = member.registrationDate || now;
+      const safePaymentTime = getSafeIsoTime(member.renewalDate || (member as any).renewalPaymentDate || now);
 
       await onUpdate(member.uid, {
         status: 'active',
         isApproved: true,
         renewalPending: false,
-        issueDate: serverTimestamp(), // Update issue date on renewal approval
-        registrationDate: member.registrationDate || serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
-        renewalDate: serverTimestamp(), // Store renewal date permanently
+        issueDate: now, // Update issue date on renewal approval
+        registrationDate: safeRegDate, // Preserve permanent original Joining Date, fallback if none
+        renewalDate: now, // Store renewal date permanently
         expiryDate: expiry,
-        paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
+        paymentTime: safePaymentTime
       });
-      
-      const message = `അഭിനന്ദനങ്ങൾ! താങ്കളുടെ HCRS മെമ്പർഷിപ്പ് റിന്യൂവൽ അപ്പ്രൂവ് ചെയ്തിരിക്കുന്നു. സർവീസ് കാലാവധി ഒരു വർഷത്തേക്ക് കൂടി പുതുക്കിയിട്ടുണ്ട്.`;
-      
-      setTimeout(() => {
-        window.open(`https://api.whatsapp.com/send?phone=91${member.mobile}&text=${encodeURIComponent(message)}`, '_blank');
-      }, 500);
 
-      toast.success('Renewal approved successfully', { id: loadingToast });
-    } catch (error) {
-      toast.error('Renewal approval failed', { id: loadingToast });
+      setApprovedRenewalUids(prev => {
+        const newUids = new Set(prev);
+        newUids.add(member.uid);
+        return Array.from(newUids);
+      });
+
+      // Synchronize viewingMember if open
+      if (viewingMember && viewingMember.uid === member.uid) {
+        setViewingMember(prev => prev ? ({
+          ...prev,
+          status: 'active',
+          isApproved: true,
+          renewalPending: false,
+          issueDate: now,
+          renewalDate: now,
+          expiryDate: expiry
+        }) : null);
+      }
+
+      // Automatically send WhatsApp renewal confirmation message
+      try {
+        if (orgSettings?.whatsappEnabled !== false && orgSettings?.whatsappRenewalEnabled !== false && orgSettings?.registrationMode !== 'bulk') {
+          setTimeout(() => {
+            try {
+              sendWARenewalMessage({
+                name: member.name,
+                mobile: member.mobile,
+                uid: member.uid,
+                membershipId: member.membershipId,
+                transactionId: (member as any).renewalTransactionId || (member as any).transactionId || '',
+                amount: 100,
+                expiryDate: expiryStr
+              });
+            } catch (innerWa) {
+              console.warn("sendWARenewalMessage call failed:", innerWa);
+            }
+          }, 350);
+        }
+      } catch (waErr) {
+        console.warn("WhatsApp renewal trigger error:", waErr);
+      }
+      
+      toast.success(`റിന്യൂവൽ വിജയകരമായി അപ്രൂവ് ചെയ്തു! (${member.name})`, { id: loadingToast });
+    } catch (error: any) {
+      console.error("Renewal approval catch:", error);
+      setApprovedRenewalUids(prev => prev.filter(id => id !== member.uid));
+      toast.error(error?.message ? `Renewal approval note: ${error.message}` : 'Renewal approval failed. Please try again.', { id: loadingToast });
+    } finally {
+      setApprovingRenewalUid(null);
     }
   };
 
@@ -1780,19 +1482,15 @@ export default function AdminDashboard({
     : STABLE_URL;
   const magicLinkBase = baseUrl;
 
-  const handleApproveWithWhatsApp = (member: UserProfile) => {
-    onApprove(member.uid);
-    // Use utility for consistent messaging
-    if (orgSettings?.registrationMode !== 'bulk') {
-      setTimeout(() => {
-        sendWAMessage({
-          name: member.name,
-          mobile: member.mobile,
-          uid: member.uid,
-          pin: member.pin,
-          membershipId: member.membershipId
-        });
-      }, 500);
+  const handleApproveWithWhatsApp = async (member: UserProfile) => {
+    if (approvingUid) return;
+    setApprovingUid(member.uid);
+    try {
+      await onApprove(member.uid);
+    } catch (error) {
+      console.error("Approval error:", error);
+    } finally {
+      setApprovingUid(null);
     }
   };
 
@@ -1849,6 +1547,8 @@ export default function AdminDashboard({
         district: manualFormData.district, 
         assemblyConstituency: (CONSTITUENCIES[manualFormData.district] || [])[0] || '', 
         bloodGroup: BLOOD_GROUPS[0], 
+        sponsorName: '',
+        sponsorMobile: '',
         pin: '123456',
         role: 'member',
         certAdminName: user?.name || '',
@@ -1872,7 +1572,16 @@ export default function AdminDashboard({
       toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
       return;
     }
-    const updatedMember = { ...editingMember, mobile: cleanMobile };
+    const cleanPin = (editingMember.pin || '123456').trim();
+    const isDefaultPin = cleanPin === '123456';
+    const updatedMember = { 
+      ...editingMember, 
+      mobile: cleanMobile,
+      pin: cleanPin,
+      mustChangePassword: isDefaultPin,
+      pinResetRequested: isDefaultPin,
+      mustCompleteProfile: false
+    };
     onUpdate(updatedMember.uid, updatedMember);
     setEditingMember(null);
   };
@@ -1889,23 +1598,27 @@ export default function AdminDashboard({
     let active = 0;
     let pending = 0;
     let renewals = 0;
+    const approvedSet = new Set(approvedRenewalUids);
     
     for (const m of actualMembers) {
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
       if (!matchesDistrict) continue;
 
-      if (m.status === 'pending' && !m.renewalPending) {
+      const isApprovedRenewal = approvedSet.has(m.uid);
+      const isRenewalPending = !!m.renewalPending && !isApprovedRenewal;
+
+      total++;
+      if (m.status === 'pending' && !isRenewalPending) {
         pending++;
-      } else if (m.status === 'active' || m.renewalPending) {
+      } else if (m.status === 'active' || isRenewalPending || isApprovedRenewal) {
         active++;
-        total++; // Verified active/renewal members only
       }
       
-      if (m.renewalPending) renewals++;
+      if (isRenewalPending) renewals++;
     }
 
     return { total, active, pending, renewals };
-  }, [actualMembers, districtFilter]);
+  }, [actualMembers, districtFilter, approvedRenewalUids]);
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -1917,6 +1630,7 @@ export default function AdminDashboard({
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
 
+      const normMDist = normalizeDistrictCode(m.district);
       const matchesSearch = !term || 
                            (m.name && m.name.toLowerCase().includes(term)) || 
                            (m.mobile && String(m.mobile).includes(term)) ||
@@ -1925,9 +1639,10 @@ export default function AdminDashboard({
                            (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
                            (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
                            (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
-                           (m.district && districtMap.get(m.district)?.includes(term));
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
-      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted' && m.status !== 'pending') : m.status === statusFilter;
+                           (normMDist && districtMap.get(normMDist)?.includes(term)) ||
+                           (m.district && m.district.toLowerCase().includes(term));
+      const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
+      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted') : m.status === statusFilter;
       
       let matchesSource = true;
       if (sourceFilter === 'online') {
@@ -1939,10 +1654,12 @@ export default function AdminDashboard({
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
         const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        const memId = String(m.membershipId || '').toUpperCase();
+        const isLife = typeStr.includes('LIFE') || memId.includes('-LIFE-') || memId.startsWith('HCRS-LIFE') || memId.includes('-LM-') || !!(m as any).isLifeMember;
         if (categoryFilter === 'LIFE_MEMBER') {
-          matchesCategory = typeStr.includes('LIFE');
+          matchesCategory = isLife;
         } else if (categoryFilter === 'ADHOC_MEMBER') {
-          matchesCategory = !typeStr.includes('LIFE');
+          matchesCategory = !isLife;
         }
       }
       
@@ -2010,16 +1727,18 @@ export default function AdminDashboard({
     const filtered = members.filter(m => {
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
       if (!matchesDistrict) return false;
 
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
         const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        const memId = String(m.membershipId || '').toUpperCase();
+        const isLife = typeStr.includes('LIFE') || memId.includes('-LIFE-') || memId.startsWith('HCRS-LIFE') || memId.includes('-LM-') || !!(m as any).isLifeMember;
         if (categoryFilter === 'LIFE_MEMBER') {
-          matchesCategory = typeStr.includes('LIFE');
+          matchesCategory = isLife;
         } else if (categoryFilter === 'ADHOC_MEMBER') {
-          matchesCategory = !typeStr.includes('LIFE');
+          matchesCategory = !isLife;
         }
       }
       return matchesCategory && hasValidity(m);
@@ -2063,10 +1782,12 @@ export default function AdminDashboard({
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
         const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        const memId = String(m.membershipId || '').toUpperCase();
+        const isLife = typeStr.includes('LIFE') || memId.includes('-LIFE-') || memId.startsWith('HCRS-LIFE') || memId.includes('-LM-') || !!(m as any).isLifeMember;
         if (categoryFilter === 'LIFE_MEMBER') {
-          matchesCategory = typeStr.includes('LIFE');
+          matchesCategory = isLife;
         } else if (categoryFilter === 'ADHOC_MEMBER') {
-          matchesCategory = !typeStr.includes('LIFE');
+          matchesCategory = !isLife;
         }
       }
       
@@ -2161,18 +1882,126 @@ export default function AdminDashboard({
                            (c.userName && c.userName.toLowerCase().includes(term)) || 
                            (c.userMobile && String(c.userMobile).includes(term)) ||
                            (c.membershipId && c.membershipId.toLowerCase().includes(term)) ||
-                           (c.highrichId && c.highrichId.toLowerCase().includes(term));
+                           (c.highrichId && c.highrichId.toLowerCase().includes(term)) ||
+                           (c.tokenNo && String(c.tokenNo).toLowerCase().includes(term)) ||
+                           (c.serialNo && String(c.serialNo).toLowerCase().includes(term));
       
-      const matchesDistrict = claimDistrictFilter === 'all' || getDistrictCode(c.userDistrict) === claimDistrictFilter;
+      const cDist = c.userDistrict || c.district || '';
+      const matchesDistrict = claimDistrictFilter === 'all' || getDistrictCode(cDist) === claimDistrictFilter;
       const matchesPriority = claimPriorityFilter === 'all' || c.priorityStatus === claimPriorityFilter;
       const matchesCategory = claimCategoryFilter === 'all' || 
                               (claimCategoryFilter === 'consignment' 
                                 ? (c.categories?.includes('consignment') || c.categories?.includes('ott') || c.categories?.includes('grocery'))
                                 : c.categories?.includes(claimCategoryFilter));
 
-      return matchesSearch && matchesDistrict && matchesPriority && matchesCategory;
+      let matchesType = true;
+      if (claimTypeFilter === 'combo') {
+        matchesType = isComboClaim(c, claims);
+      } else if (claimTypeFilter === 'single') {
+        matchesType = !isComboClaim(c, claims);
+      }
+
+      return matchesSearch && matchesDistrict && matchesPriority && matchesCategory && matchesType;
     });
-  }, [claims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter]);
+  }, [claims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter, claimTypeFilter]);
+
+  const comboGroups = useMemo(() => {
+    const groups: Array<{
+      key: string;
+      mobile: string;
+      primaryName: string;
+      memberObj?: UserProfile;
+      claims: any[];
+      totalPaid: number;
+      totalReceived: number;
+      totalPending: number;
+      isEmergency: boolean;
+      highestPriority: string;
+      district: string;
+      membershipId: string;
+    }> = [];
+
+    // Group filtered claims
+    for (const c of filteredClaims) {
+      // Find matching group by mobile, membershipId, or distinct valid uid
+      let grp = groups.find(g => {
+        const sameMob = compareMobiles(g.mobile, c.userMobile) || 
+                        (g.memberObj?.mobile && compareMobiles(g.memberObj.mobile, c.userMobile)) || 
+                        g.claims.some(existing => compareMobiles(existing.userMobile, c.userMobile));
+        const sameMem = g.membershipId && c.membershipId && g.membershipId !== 'N/A' && g.membershipId !== 'PENDING' && g.membershipId.toLowerCase() === c.membershipId.toLowerCase();
+        const sameUid = c.uid && !c.uid.startsWith('offline_claim_') && c.uid !== 'offline_admin' && 
+                        (g.claims.some(existing => existing.uid === c.uid) || g.memberObj?.uid === c.uid);
+        return sameMob || sameMem || sameUid;
+      });
+
+      if (!grp) {
+        const memberObj = members.find(m => 
+          (c.uid && m.uid === c.uid && !m.uid.startsWith('offline_claim_') && m.uid !== 'offline_admin') || 
+          compareMobiles(m.mobile, c.userMobile) || 
+          (c.membershipId && c.membershipId !== 'N/A' && m.membershipId && m.membershipId.toLowerCase() === c.membershipId.toLowerCase())
+        );
+        grp = {
+          key: c.userMobile || c.membershipId || c.uid || c.id || String(Math.random()),
+          mobile: c.userMobile || memberObj?.mobile || '',
+          primaryName: memberObj?.name || c.userName || 'N/A',
+          memberObj,
+          claims: [],
+          totalPaid: 0,
+          totalReceived: 0,
+          totalPending: 0,
+          isEmergency: false,
+          highestPriority: 'GREEN',
+          district: c.userDistrict || memberObj?.district || 'KSD',
+          membershipId: c.membershipId || memberObj?.membershipId || 'N/A'
+        };
+        groups.push(grp);
+      }
+
+      // If memberObj was not found before but we can match now
+      if (!grp.memberObj) {
+        grp.memberObj = members.find(m => 
+          (c.uid && m.uid === c.uid && !m.uid.startsWith('offline_claim_') && m.uid !== 'offline_admin') || 
+          compareMobiles(m.mobile, c.userMobile) || 
+          compareMobiles(m.mobile, grp!.mobile) ||
+          (grp!.membershipId && grp!.membershipId !== 'N/A' && m.membershipId && m.membershipId.toLowerCase() === grp!.membershipId.toLowerCase())
+        );
+        if (grp.memberObj && (!grp.primaryName || grp.primaryName === 'N/A')) {
+          grp.primaryName = grp.memberObj.name;
+        }
+      }
+
+      // Prevent duplicate claims in the same combo group
+      if (!grp.claims.some(existing => existing.id === c.id)) {
+        grp.claims.push(c);
+        grp.totalPaid += (c.totalPaid || 0);
+        grp.totalReceived += (c.totalReceived || 0);
+        grp.totalPending += (c.totalPending || 0);
+        if (c.isEmergency) grp.isEmergency = true;
+        if (c.priorityStatus === 'EMERGENCY RED') grp.highestPriority = 'EMERGENCY RED';
+        else if (c.priorityStatus === 'RED' && grp.highestPriority !== 'EMERGENCY RED') grp.highestPriority = 'RED';
+        else if (c.priorityStatus === 'ORANGE' && !['EMERGENCY RED', 'RED'].includes(grp.highestPriority)) grp.highestPriority = 'ORANGE';
+      }
+    }
+
+    // Include groups with more than 1 claim OR any group containing a claim with non-Self relation / isCombo
+    return groups
+      .filter(grp => grp.claims.length > 1 || grp.claims.some(c => isComboClaim(c, claims)))
+      .sort((a, b) => b.totalPending - a.totalPending);
+  }, [filteredClaims, members, claims]);
+
+  const allComboIndividualClaims = useMemo(() => {
+    const list: any[] = [];
+    const seen = new Set<string>();
+    for (const grp of comboGroups) {
+      for (const c of grp.claims) {
+        if (!seen.has(c.id)) {
+          seen.add(c.id);
+          list.push(c);
+        }
+      }
+    }
+    return list;
+  }, [comboGroups]);
 
   const claimStats = useMemo(() => {
     let totalPending = 0;
@@ -2199,6 +2028,7 @@ export default function AdminDashboard({
 
   const pendingRenewals = useMemo(() => {
     return members.filter(m => {
+      if (approvedRenewalUids.includes(m.uid)) return false;
       if (!(m as any).renewalPending) return false;
       
       const term = searchTerm.toLowerCase().trim();
@@ -2222,7 +2052,7 @@ export default function AdminDashboard({
       
       return matchesSearch && matchesDistrict && matchesSource;
     });
-  }, [members, searchTerm, districtFilter, sourceFilter]);
+  }, [members, searchTerm, districtFilter, sourceFilter, approvedRenewalUids]);
 
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(filteredMembers.map(m => ({
@@ -2244,7 +2074,7 @@ export default function AdminDashboard({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue/10">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue/10 w-full max-w-full overflow-x-hidden">
       {/* LEFT SIDEBAR (Desktop) - Stripe/Notion Minimalist Glassmorphism */}
       <aside className="hidden lg:flex flex-col w-72 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 h-screen sticky top-0 shrink-0 select-none z-30 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
         {/* Brand Header */}
@@ -2260,24 +2090,25 @@ export default function AdminDashboard({
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
-          <p className="px-3.5 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2">Management Console</p>
+          <p className="px-3.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Core Operations</p>
+          
           <button
             onClick={() => setActiveTab2('list')}
             className={cn(
               "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
               activeTab === 'list' 
                 ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
           >
             <div className="flex items-center gap-3">
-              <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'list' ? 'text-white' : 'text-slate-400')} />
+              <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'list' ? 'text-white' : 'text-brand-blue')} />
               <span>Member Directory</span>
             </div>
             {stats.active > 0 && (
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
               )}>
                 {stats.active}
               </span>
@@ -2290,95 +2121,308 @@ export default function AdminDashboard({
               "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
               activeTab === 'requests' 
                 ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
           >
             <div className="flex items-center gap-3">
-              <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' ? 'text-white' : 'text-slate-400')} />
+              <UserPlus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' ? 'text-white' : 'text-orange-500')} />
               <span>New Requests</span>
             </div>
             {stats.pending > 0 && (
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-brand-magenta/5 text-brand-magenta'
+                activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-orange-100 text-orange-700'
               )}>
                 {stats.pending}
               </span>
             )}
           </button>
 
+          {/* Pending Renewals */}
           <button
-            onClick={() => setActiveTab2('claims')}
+            onClick={() => setActiveTab2('requests')}
             className={cn(
               "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-              activeTab === 'claims' 
-                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+              activeTab === 'requests' && pendingRenewals.length > 0
+                ? "bg-amber-500 text-white shadow-md shadow-amber-500/15" 
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
           >
             <div className="flex items-center gap-3">
-              <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' ? 'text-white' : 'text-slate-400')} />
-              <span>Claims Support</span>
+              <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' && pendingRenewals.length > 0 ? 'text-white animate-spin-slow' : 'text-amber-500')} />
+              <span>Pending Renewals (റിന്യൂവൽ)</span>
+            </div>
+            {pendingRenewals.length > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-800'
+              )}>
+                {pendingRenewals.length}
+              </span>
+            )}
+          </button>
+
+          {/* Individual Claims */}
+          <button
+            onClick={() => {
+              setActiveTab2('claims');
+              setClaimsViewMode('individual');
+            }}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'claims' && claimsViewMode === 'individual'
+                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <FileText className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' && claimsViewMode === 'individual' ? 'text-white' : 'text-blue-600')} />
+              <span>Individual Claims (ഇൻഡിവിജ്വൽ)</span>
             </div>
             {claims.length > 0 && (
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'claims' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
+                activeTab === 'claims' && claimsViewMode === 'individual' ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-800'
               )}>
                 {claims.length}
               </span>
             )}
           </button>
 
-          {isSuperAdmin && (
-            <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
-              <p className="px-3.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Data Migration</p>
-              <button
-                onClick={() => setActiveTab2('bulk_import')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'bulk_import' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-400')} />
-                  <span>Import Old Members</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab2('committee_mgmt')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'committee_mgmt' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'committee_mgmt' ? 'text-white' : 'text-slate-400')} />
-                  <span>Committee Members</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab2('campaign_templates')}
-                className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-                  activeTab === 'campaign_templates' 
-                    ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
-                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Mail className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'campaign_templates' ? 'text-white' : 'text-slate-400')} />
-                  <span>📧 Operation Janamail</span>
-                </div>
-              </button>
+          {/* Common / Combo Claims */}
+          <button
+            onClick={() => {
+              setActiveTab2('claims');
+              setClaimsViewMode('combo');
+            }}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'claims' && claimsViewMode === 'combo'
+                ? "bg-brand-magenta text-white shadow-md shadow-brand-magenta/15" 
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' && claimsViewMode === 'combo' ? 'text-white' : 'text-brand-magenta')} />
+              <span>Common Claims (കോമൺ / കോംബോ)</span>
             </div>
-          )}
+            {comboGroups.length > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'claims' && claimsViewMode === 'combo' ? 'bg-white/25 text-white' : 'bg-pink-100 text-brand-magenta'
+              )}>
+                {comboGroups.length}
+              </span>
+            )}
+          </button>
+
+          {/* Life Members */}
+          <button
+            onClick={() => setActiveTab2('life_members')}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'life_members' 
+                ? "bg-amber-600 text-white shadow-md shadow-amber-600/10" 
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Crown className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'life_members' ? 'text-white' : 'text-amber-500')} />
+              <span>Life Members (ലൈഫ്)</span>
+            </div>
+          </button>
+
+          {/* Fast Entry */}
+          <button
+            onClick={() => setActiveTab2('fast_entry')}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'fast_entry' 
+                ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Plus className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'fast_entry' ? 'text-white' : 'text-emerald-600')} />
+              <span>Fast Member Entry</span>
+            </div>
+          </button>
+
+          <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
+            <p className="px-3.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Management & Finance</p>
+            
+            <button
+              onClick={() => setActiveTab2('payment_ops')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'payment_ops' 
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Wallet className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'payment_ops' ? 'text-white' : 'text-emerald-500')} />
+                <span className="font-extrabold">Payment Operations</span>
+              </div>
+              <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-100 text-emerald-800">
+                Ops
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('reports')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'reports' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'reports' ? 'text-white' : 'text-indigo-500')} />
+                <span>Reports & Analytics</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('committee_mgmt')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'committee_mgmt' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'committee_mgmt' ? 'text-white' : 'text-slate-500')} />
+                <span>Committee Members</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('campaign_templates')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'campaign_templates' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Mail className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'campaign_templates' ? 'text-white' : 'text-purple-500')} />
+                <span>📧 Operation Janamail</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('district_wa')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'district_wa' 
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'district_wa' ? 'text-white' : 'text-emerald-500')} />
+                <span>WhatsApp Groups</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('district_quota')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'district_quota' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Sliders className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'district_quota' ? 'text-white' : 'text-amber-500')} />
+                <span>District Quotas & URLs</span>
+              </div>
+            </button>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
+            <p className="px-3.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Data & System Tools</p>
+            
+            <button
+              onClick={() => setActiveTab2('bulk_import')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'bulk_import' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Database className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'bulk_import' ? 'text-white' : 'text-slate-500')} />
+                <span>Import Old Members</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('gallery')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'gallery' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Camera className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'gallery' ? 'text-white' : 'text-slate-500')} />
+                <span>Photo Gallery</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('backup_restore')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'backup_restore' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'backup_restore' ? 'text-white' : 'text-slate-500')} />
+                <span>Backup & Restore</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('branding')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'branding' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'branding' ? 'text-white' : 'text-slate-500')} />
+                <span>Branding Settings</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab2('language')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'language' 
+                  ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'language' ? 'text-white' : 'text-slate-500')} />
+                <span>Language Settings</span>
+              </div>
+            </button>
+          </div>
         </nav>
 
         {/* Sidebar Footer */}
@@ -2404,7 +2448,7 @@ export default function AdminDashboard({
         </div>
       </aside>
 
-      {/* MOBILE DRAWER SIDEBAR - Completely Android Mobile First! */}
+      {/* MOBILE DRAWER SIDEBAR */}
       {mobileSidebarOpen && (
         <div className="fixed inset-0 bg-slate-950/20 backdrop-blur-xs z-50 lg:hidden animate-in fade-in duration-200">
           <div className="w-72 bg-white h-screen flex flex-col shadow-2xl relative animate-in slide-in-from-left duration-300">
@@ -2426,70 +2470,215 @@ export default function AdminDashboard({
               <button 
                 onClick={() => { setActiveTab2('list'); setMobileSidebarOpen(false); }} 
                 className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'list' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'list' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
                 )}
               >
-                <Users className="w-4 h-4 text-slate-400" />
-                <span>Member directory</span>
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-brand-blue" />
+                  <span>Member Directory</span>
+                </div>
+                {stats.active > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-slate-100 text-slate-600">{stats.active}</span>}
               </button>
+              
               <button 
                 onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
                 className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'requests' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'requests' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
                 )}
               >
-                <UserPlus className="w-4 h-4 text-slate-400" />
-                <span>New Requests</span>
+                <div className="flex items-center gap-3">
+                  <UserPlus className="w-4 h-4 text-orange-500" />
+                  <span>New Requests</span>
+                </div>
+                {stats.pending > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-orange-100 text-orange-700">{stats.pending}</span>}
               </button>
+
               <button 
-                onClick={() => { setActiveTab2('claims'); setMobileSidebarOpen(false); }} 
+                onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
                 className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'claims' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'requests' && pendingRenewals.length > 0 ? 'bg-amber-100 text-amber-900 font-black' : 'text-slate-600 hover:bg-slate-50'
                 )}
               >
-                <MessageCircle className="w-4 h-4 text-slate-400" />
-                <span>Claims Support</span>
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="w-4 h-4 text-amber-500" />
+                  <span>Pending Renewals (റിന്യൂവൽ)</span>
+                </div>
+                {pendingRenewals.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-500 text-white">{pendingRenewals.length}</span>}
               </button>
 
-              {isSuperAdmin && (
-                <>
-                  <button 
-                    onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'bulk_import' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <Database className="w-4 h-4 text-slate-400" />
-                    <span>Import Old Members</span>
-                  </button>
+              <button 
+                onClick={() => { setActiveTab2('claims'); setClaimsViewMode('individual'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'claims' && claimsViewMode === 'individual' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>Individual Claims (ഇൻഡിവിജ്വൽ)</span>
+                </div>
+                {claims.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-100 text-blue-800">{claims.length}</span>}
+              </button>
 
-                  <button 
-                    onClick={() => { setActiveTab2('committee_mgmt'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'committee_mgmt' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <Users className="w-4 h-4 text-slate-400" />
-                    <span>Committee Members</span>
-                  </button>
+              <button 
+                onClick={() => { setActiveTab2('claims'); setClaimsViewMode('combo'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'claims' && claimsViewMode === 'combo' ? 'bg-brand-magenta/10 text-brand-magenta font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-brand-magenta" />
+                  <span>Common Claims (കോമൺ / കോംബോ)</span>
+                </div>
+                {comboGroups.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-pink-100 text-brand-magenta">{comboGroups.length}</span>}
+              </button>
 
-                  <button 
-                    onClick={() => { setActiveTab2('campaign_templates'); setMobileSidebarOpen(false); }} 
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                      activeTab === 'campaign_templates' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <Mail className="w-4 h-4 text-slate-400" />
-                    <span>📧 Operation Janamail</span>
-                  </button>
-                </>
-              )}
+              <button 
+                onClick={() => { setActiveTab2('life_members'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'life_members' ? 'bg-amber-100 text-amber-900 font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Crown className="w-4 h-4 text-amber-500" />
+                <span>Life Members (ലൈഫ്)</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('fast_entry'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'fast_entry' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Plus className="w-4 h-4 text-emerald-600" />
+                <span>Fast Member Entry</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('payment_ops'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'payment_ops' ? 'bg-emerald-600 text-white font-black' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                )}
+              >
+                <Wallet className="w-4 h-4 text-emerald-500" />
+                <span className="font-extrabold">💳 Payment Operations</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('reports'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'reports' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
+                <span>Reports & Analytics</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('committee_mgmt'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'committee_mgmt' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Users className="w-4 h-4 text-slate-500" />
+                <span>Committee Members</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('campaign_templates'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'campaign_templates' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Mail className="w-4 h-4 text-purple-500" />
+                <span>📧 Operation Janamail</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('district_wa'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'district_wa' ? 'bg-emerald-100 text-emerald-900 font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-500" />
+                <span>WhatsApp Groups</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('district_quota'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'district_quota' ? 'bg-amber-100 text-amber-900 font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Sliders className="w-4 h-4 text-amber-500" />
+                <span>District Quotas & URLs</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('gallery'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'gallery' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Camera className="w-4 h-4 text-slate-500" />
+                <span>Photo Gallery</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('branding'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'branding' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Settings className="w-4 h-4 text-slate-500" />
+                <span>Branding Settings</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('language'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'language' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Globe className="w-4 h-4 text-slate-500" />
+                <span>Language Settings</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('bulk_import'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'bulk_import' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Database className="w-4 h-4 text-slate-500" />
+                <span>Import Old Members</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('backup_restore'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'backup_restore' ? 'bg-brand-blue/10 text-brand-blue font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <ShieldCheck className="w-4 h-4 text-slate-500" />
+                <span>Backup & Restore</span>
+              </button>
             </nav>
             <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
                {onViewCard && (
@@ -2514,31 +2703,31 @@ export default function AdminDashboard({
       )}
 
       {/* RIGHT SIDE WORKSPACE */}
-      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto bg-slate-50">
+      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-slate-50 w-full max-w-full">
         {/* MOBILE HEADER */}
-        <header className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200/50 px-5 h-14 sticky top-0 z-40 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)} className="text-slate-700 h-9 w-9 rounded-full">
+        <header className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200/50 px-4 sm:px-5 h-14 sticky top-0 z-40 shadow-sm w-full min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)} className="text-slate-700 h-9 w-9 rounded-full shrink-0">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </Button>
-            <Logo size="sm" className="h-[20px] w-auto" />
-            <span className="font-black text-[9px] uppercase tracking-widest text-slate-400">Admin Console</span>
+            <Logo size="sm" className="h-[20px] w-auto shrink-0" />
+            <span className="font-black text-[9px] uppercase tracking-widest text-slate-400 truncate">Admin Console</span>
           </div>
         </header>
 
         {/* CENTRAL CONTAINER */}
-        <div className="p-4 md:p-8 space-y-6 max-w-[1500px] w-full mx-auto pb-24">
-          <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200/50 pb-8">
-          <div className="flex items-center gap-4.5">
+        <div className="p-3 sm:p-4 md:p-8 space-y-6 max-w-[1500px] w-full mx-auto pb-24 min-w-0 overflow-x-hidden">
+          <div className="max-w-7xl mx-auto space-y-6 w-full min-w-0">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200/50 pb-8 w-full min-w-0">
+          <div className="flex items-center gap-3.5 sm:gap-4.5 min-w-0 w-full md:w-auto">
              <div className="bg-white p-1.5 rounded-xl shadow-xs border border-slate-100 shrink-0">
                <Logo size="sm" className="h-8 w-auto" />
              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight leading-none">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight leading-none break-words">
                     {isSecondary ? 'District Executive' : 'Admin Console'}
                   </h1>
                   {user && (
@@ -2546,7 +2735,7 @@ export default function AdminDashboard({
                       variant="outline"
                       size="sm"
                       onClick={() => setViewingMember(user)}
-                      className="rounded-lg h-7 px-2.5 border-slate-200 text-[8px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xs"
+                      className="rounded-lg h-7 px-2.5 border-slate-200 text-[8px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xs shrink-0"
                     >
                       <Eye className="w-3 h-3 mr-1 text-brand-blue" />
                       View Card
@@ -2554,18 +2743,18 @@ export default function AdminDashboard({
                   )}
                 </div>
                 {isSecondary ? (
-                  <p className="text-brand-magenta mt-1.5 text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 leading-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-brand-magenta mt-1.5 text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 leading-none break-words">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
                     Operator: {manualFormData.certAdminName || user?.name || 'Administrator'}
                   </p>
                 ) : (
-                  <p className="text-slate-400 mt-1.5 text-[9px] font-bold tracking-widest uppercase leading-none">
+                  <p className="text-slate-400 mt-1.5 text-[9px] font-bold tracking-widest uppercase leading-none break-words">
                     Highrich Community Revival Society Kerala
                   </p>
                 )}
               </div>
           </div>
-          <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto min-w-0">
             <div className="hidden lg:flex flex-col items-end gap-0.5 px-4 border-r border-slate-250">
                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Public registration address</p>
                <p className="text-[9px] font-black text-brand-blue truncate max-w-[200px] font-mono select-all">
@@ -2578,22 +2767,22 @@ export default function AdminDashboard({
                     toast.success('Public Registration Address copied!');
                 }}
                 variant="outline" 
-                className="flex-1 md:flex-none h-10 border border-slate-200 bg-white shadow-xs font-black rounded-xl px-4 hover:bg-slate-50 text-[9px] uppercase tracking-wider"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border border-slate-200 bg-white shadow-xs font-black rounded-xl hover:bg-slate-50 text-[9px] uppercase tracking-wider text-center whitespace-normal break-words max-w-full"
             >
               Copy link
             </Button>
             {!isSecondary && (
-              <Button onClick={exportToExcel} variant="outline" className="flex-1 md:flex-none h-10 border border-slate-200 bg-white shadow-xs font-black rounded-xl px-4 hover:bg-slate-50 text-[9px] uppercase tracking-wider">
-                <Download className="w-4 h-4 mr-1 text-slate-500" />
+              <Button onClick={exportToExcel} variant="outline" className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border border-slate-200 bg-white shadow-xs font-black rounded-xl hover:bg-slate-50 text-[9px] uppercase tracking-wider text-center whitespace-normal break-words max-w-full">
+                <Download className="w-4 h-4 mr-1 text-slate-500 shrink-0 inline" />
                 Export
               </Button>
             )}
             {!isSecondary && (
               <Button 
                 onClick={() => setIsManualEntryOpen(true)}
-                className="flex-1 md:flex-none h-10 font-bold rounded-xl px-5 shadow-sm transition-all text-[9px] uppercase tracking-wider bg-brand-magenta text-white hover:bg-brand-magenta/95"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-5 font-bold rounded-xl shadow-sm transition-all text-[9px] uppercase tracking-wider bg-brand-magenta text-white hover:bg-brand-magenta/95 text-center whitespace-normal break-words max-w-full"
               >
-                <UserPlus className="w-4 h-4 mr-1" />
+                <UserPlus className="w-4 h-4 mr-1 shrink-0 inline" />
                 Add Member
               </Button>
             )}
@@ -2601,17 +2790,17 @@ export default function AdminDashboard({
               <Button 
                 onClick={() => setIsDomainKeyModalOpen(true)}
                 variant="outline"
-                className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 text-center whitespace-normal break-words max-w-full"
               >
-                <KeyRound className="w-4 h-4 text-brand-blue" />
-                Set Domain PIN (പാസ്‌വേഡ്)
+                <KeyRound className="w-4 h-4 text-brand-blue shrink-0 inline" />
+                <span>Set Domain PIN (പാസ്‌വേഡ്)</span>
               </Button>
             )}
             {!isSecondary && (
               <Button 
                 onClick={() => setActiveTab2('campaign_templates')}
                 variant="outline"
-                className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse text-center whitespace-normal break-words max-w-full"
               >
                 <span>📧 Operation Janamail</span>
               </Button>
@@ -2620,4178 +2809,1500 @@ export default function AdminDashboard({
               <Button 
                 onClick={onViewCard} 
                 variant="outline" 
-                className="flex-1 md:flex-none h-10 border border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta font-black rounded-xl px-4 hover:bg-brand-magenta/10 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta font-black rounded-xl hover:bg-brand-magenta/10 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse text-center whitespace-normal break-words max-w-full"
               >
-                <Smartphone className="w-4 h-4 text-brand-magenta" />
-                എന്റെ ഐഡി കാർഡ് (My Card)
+                <Smartphone className="w-4 h-4 text-brand-magenta shrink-0 inline" />
+                <span>എന്റെ ഐഡി കാർഡ് (My Card)</span>
               </Button>
             )}
-            <Button onClick={handleLogout} variant="outline" className="flex-1 md:flex-none h-10 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider">
-              <LogOut className="w-4 h-4 mr-1 text-red-400" />
+            {onRefreshMembers && (
+              <Button 
+                onClick={async () => {
+                  onRefreshMembers();
+                  await refreshClaimsList(false);
+                }} 
+                disabled={isSyncingMembers || isSyncingClaims}
+                variant="outline" 
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-emerald-500/40 bg-emerald-50/60 hover:bg-emerald-100/70 text-emerald-800 font-bold rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 text-center whitespace-normal break-words max-w-full"
+                title="ഡാറ്റാബേസിൽ നിന്ന് എല്ലാ അംഗങ്ങളുടെയും ക്ലെയിമുകളുടെയും വിവരങ്ങൾ പുതുക്കുക"
+              >
+                <RefreshCw className={cn("w-4 h-4 text-emerald-600 shrink-0 inline", (isSyncingMembers || isSyncingClaims) && "animate-spin")} />
+                <span>{(isSyncingMembers || isSyncingClaims) ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}</span>
+              </Button>
+            )}
+            <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl text-[9px] uppercase tracking-wider text-center whitespace-normal break-words max-w-full">
+              <LogOut className="w-4 h-4 mr-1 text-red-400 shrink-0 inline" />
               Logout
             </Button>
           </div>
         </header>
 
-        {isSecondary ? (
-          <div className="max-w-4xl mx-auto space-y-8 pb-20">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {user && (user.quota !== undefined) && (
-                <Card className={cn(
-                  "border-2 bg-white rounded-[32px] shadow-sm",
-                  (user.quotaUsed || 0) >= user.quota ? "border-red-500/20" : "border-brand-magenta/20"
-                )}>
-                  <CardContent className="p-8 flex items-center justify-between">
-                      <div>
-                          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Your Private Entry Quota</p>
-                          <h3 className={cn(
-                              "text-3xl font-black mt-2",
-                              (user.quotaUsed || 0) >= user.quota ? "text-red-500" : "text-brand-magenta"
-                          )}>
-                              Remains: {Math.max(0, user.quota - (user.quotaUsed || 0))} / {user.quota}
-                          </h3>
-                      </div>
-                      <div className={cn(
-                          "p-4 rounded-[20px]",
-                          (user.quotaUsed || 0) >= user.quota ? "bg-red-500/10" : "bg-brand-magenta/10"
-                      )}>
-                          <ShieldCheck className={cn(
-                              "w-8 h-8",
-                              (user.quotaUsed || 0) >= user.quota ? "text-red-500" : "text-brand-magenta"
-                          )} />
-                      </div>
-                  </CardContent>
-                </Card>
+        {/* TOP QUICK NAVIGATION TABS BAR - Always accessible on all screen sizes */}
+        <div className="w-full min-w-0 max-w-full overflow-x-auto py-2.5 px-1 scrollbar-thin border-b border-slate-200/70 bg-white/60 backdrop-blur-md rounded-2xl shadow-xs">
+          <div className="flex items-center gap-2 w-max min-w-full">
+            <button
+              onClick={() => setActiveTab2('list')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'list'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Member Directory</span>
+            {stats.active > 0 && (
+              <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700')}>
+                {stats.active}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('requests')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'requests'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <UserPlus className="w-3.5 h-3.5 text-orange-500" />
+            <span>New Requests</span>
+            {stats.pending > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-orange-100 text-orange-800 animate-pulse">
+                {stats.pending}
+              </span>
+            )}
+          </button>
+
+          {pendingRenewals.length > 0 && (
+            <button
+              onClick={() => setActiveTab2('requests')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                activeTab === 'requests'
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70"
               )}
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin-slow" />
+              <span>🔄 Pending Renewals (റിന്യൂവൽ)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-500 text-white">
+                {pendingRenewals.length}
+              </span>
+            </button>
+          )}
 
-              {/* District Quota Tool for Second Admin - Shows balance for currently selected district */}
-              <Card className="border-2 border-brand-blue/20 bg-white rounded-[32px] shadow-sm overflow-hidden">
-                <CardContent className="p-8 flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <MapPin className="w-3 h-3 text-brand-blue" />
-                      {DISTRICTS.find(d => d.code === manualFormData.district)?.name || manualFormData.district} District Balance
-                    </p>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                       <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total (ആകെ)</p>
-                          <p className="text-xl font-black text-slate-700">{districtQuotas[manualFormData.district] || 0}</p>
-                       </div>
-                       <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Used (ചേർത്തവ)</p>
-                          <p className="text-xl font-black text-emerald-600">{districtQuotasUsed[manualFormData.district] || 0}</p>
-                       </div>
-                    </div>
+          <button
+            onClick={() => {
+              setActiveTab2('claims');
+              setClaimsViewMode('individual');
+            }}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'claims' && claimsViewMode === 'individual'
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-blue-700 bg-blue-50/70 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/50"
+            )}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>📄 Individual Claims (ഇൻഡിവിജ്വൽ)</span>
+            {claims.length > 0 && (
+              <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", activeTab === 'claims' && claimsViewMode === 'individual' ? 'bg-white/25 text-white' : 'bg-blue-200 text-blue-900')}>
+                {claims.length}
+              </span>
+            )}
+          </button>
 
-                    <div className="mt-4 bg-brand-magenta/5 border border-brand-magenta/10 p-5 rounded-3xl">
-                       <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.2em] mb-2 opacity-60 text-center">Balance Available (ബാക്കി)</p>
-                       <div className="flex items-baseline justify-center gap-2">
-                         <h3 className="text-5xl font-black text-brand-magenta tracking-tighter">
-                           {Math.max(0, (districtQuotas[manualFormData.district] || 0) - (districtQuotasUsed[manualFormData.district] || 0))}
-                         </h3>
-                         <span className="text-xs font-black text-brand-magenta/40 uppercase tracking-widest italic">Left</span>
-                       </div>
-                    </div>
-                    {districtQuotas[manualFormData.district] === undefined && (
-                      <div className="mt-2 bg-red-50 border border-red-100 p-2 rounded-xl">
-                        <p className="text-[9px] font-black text-red-500 uppercase tracking-tight text-center">
-                          Warning: Quota not configured for this district.
-                        </p>
-                      </div>
-                    )}
-                    <div className="mt-4 flex items-center gap-2">
-                       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-brand-magenta transition-all"
-                            style={{ width: `${Math.min(100, ((districtQuotasUsed[manualFormData.district] || 0) / (districtQuotas[manualFormData.district] || 1)) * 100)}%` }}
-                           />
-                       </div>
-                       <span className="text-[10px] font-black text-slate-400">{Math.round(((districtQuotasUsed[manualFormData.district] || 0) / (districtQuotas[manualFormData.district] || 1)) * 100)}% Used</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <button
+            onClick={() => {
+              setActiveTab2('claims');
+              setClaimsViewMode('combo');
+            }}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'claims' && claimsViewMode === 'combo'
+                ? "bg-brand-magenta text-white shadow-sm"
+                : "text-pink-700 bg-pink-50/70 hover:bg-pink-100 hover:text-pink-900 border border-pink-200/50"
+            )}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>👥 Common Claims (കോമൺ / കോംബോ)</span>
+            {comboGroups.length > 0 && (
+              <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", activeTab === 'claims' && claimsViewMode === 'combo' ? 'bg-white/25 text-white' : 'bg-pink-200 text-pink-900')}>
+                {comboGroups.length}
+              </span>
+            )}
+          </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               <Card className="border-none shadow-sm rounded-3xl bg-white p-6">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Registration Summary</h4>
-                  <div className="space-y-4">
-                     {DISTRICTS.slice(0, 14).map(d => {
-                        const used = districtQuotasUsed[d.code] || 0;
-                        const total = districtQuotas[d.code] || 0;
-                        if (total === 0 && used === 0) return null;
-                        
-                        return (
-                          <div key={d.code} className="flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                                <MapPin className={cn("w-3 h-3", d.code === user?.district ? "text-brand-blue" : "text-slate-300")} />
-                                <span className={cn("text-xs font-bold", d.code === user?.district ? "text-brand-blue" : "text-slate-600")}>{d.name}</span>
-                             </div>
-                             <div className="flex items-center gap-1.5">
-                                <Badge variant="outline" className="text-[9px] h-5 border-slate-100 text-slate-500">{used}/{total}</Badge>
-                             </div>
-                          </div>
-                        );
-                     })}
-                  </div>
-               </Card>
+          <button
+            onClick={() => setActiveTab2('payment_ops')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'payment_ops'
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/50"
+            )}
+          >
+            <Wallet className="w-3.5 h-3.5" />
+            <span>💳 Payment Operations</span>
+          </button>
 
-               <div className="md:col-span-2">
-                  <Card className="border-none shadow-2xl rounded-[32px] overflow-hidden sticky top-8">
-              <CardHeader className="bg-brand-magenta text-white p-8">
-                <div className="flex items-center gap-4 mb-2">
-                  <UserPlus className="w-8 h-8" />
-                  <CardTitle className="text-2xl font-black uppercase tracking-tight">New Registration</CardTitle>
+          <button
+            onClick={() => setActiveTab2('life_members')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'life_members'
+                ? "bg-amber-600 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-500" />
+            <span>Life Members</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('reports')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'reports'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Reports</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('fast_entry')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'fast_entry'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Plus className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Fast Entry</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('bulk_import')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'bulk_import'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>Import</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('committee_mgmt')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'committee_mgmt'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Committee</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('campaign_templates')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'campaign_templates'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Mail className="w-3.5 h-3.5 text-purple-500" />
+            <span>Janamail</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('district_wa')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'district_wa'
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+            <span>WhatsApp</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('district_quota')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'district_quota'
+                ? "bg-amber-500 text-white shadow-sm font-black"
+                : "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/60"
+            )}
+          >
+            <Sliders className="w-3.5 h-3.5 text-amber-500" />
+            <span>District Quotas & URLs</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('gallery')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'gallery'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Camera className="w-3.5 h-3.5 text-slate-500" />
+            <span>Photo Gallery</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('branding')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'branding'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Settings className="w-3.5 h-3.5 text-slate-500" />
+            <span>Branding Settings</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('backup_restore')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'backup_restore'
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Backup</span>
+          </button>
+          </div>
+        </div>
+
+        {/* MAIN ADMIN WORKSPACE TABS */}
+        <div className="space-y-6">
+            {/* 1. MEMBER DIRECTORY TAB */}
+            {activeTab === 'list' && (
+              <div className="space-y-6">
+                {/* Metric Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatsCard title="Total Members" value={stats.total} icon={<Users />} color="brand-blue" />
+                  <StatsCard title="Active & Valid" value={stats.active} icon={<CheckCircle2 />} color="green" />
+                  <StatsCard title="Pending Requests" value={stats.pending} icon={<Clock />} color="orange" />
+                  <StatsCard title="Total Paid" value={stats.paid} icon={<IndianRupee />} color="brand-magenta" />
                 </div>
-                <CardDescription className="text-white/70 font-medium">
-                  പുതിയ മെമ്പറെ ചേർക്കുന്നതിനായി താഴെ പറയുന്ന വിവരങ്ങൾ പൂരിപ്പിക്കുക.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-8">
-                <form onSubmit={handleSecondarySubmit} className="space-y-6">
-                  <div className="bg-slate-50 border border-slate-200 p-6 rounded-3xl mb-8">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Second Admin Profile (സെക്കൻഡ് അഡ്മിൻ വിവരങ്ങൾ)</p>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                           <Label className="font-bold text-slate-700 text-[10px]">Your Name (പേര്)</Label>
-                           <Input 
-                             required 
-                             placeholder="Your Name" 
-                             className="bg-white border-slate-200 h-11 rounded-xl font-bold text-xs" 
-                             value={manualFormData.certAdminName}
-                             onChange={e => setManualFormData({...manualFormData, certAdminName: e.target.value})}
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <Label className="font-bold text-slate-700 text-[10px]">Your Email ID (മെയിൽ ഐഡി)</Label>
-                           <Input 
-                             required 
-                             placeholder="Your Email" 
-                             className="bg-white border-slate-200 h-11 rounded-xl font-bold text-xs" 
-                             value={manualFormData.certAdminEmail}
-                             onChange={e => setManualFormData({...manualFormData, certAdminEmail: e.target.value})}
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <Label className="font-bold text-slate-700 text-[10px]">Verification Password (പാസ്സ്‌വേർഡ്)</Label>
-                           <Input 
-                             required 
-                             type="password"
-                             placeholder="Admin Password" 
-                             className="bg-white border-slate-200 h-11 rounded-xl font-bold text-xs" 
-                             value={manualFormData.certAdminPassword}
-                             onChange={e => setManualFormData({...manualFormData, certAdminPassword: e.target.value})}
-                           />
-                        </div>
-                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="s-name" className="font-bold text-slate-700">Full Name (പൂർണ്ണരൂപം)</Label>
-                      <Input 
-                        id="s-name" 
-                        required 
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="Enter name" 
-                        value={manualFormData.name} 
-                        onChange={e => setManualFormData({...manualFormData, name: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="s-mobile" className="font-bold text-slate-700">Mobile Number (മൊബൈൽ)</Label>
-                      <Input 
-                        id="s-mobile" 
-                        required 
-                        maxLength={10}
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="**********" 
-                        value={manualFormData.mobile} 
-                        onChange={e => setManualFormData({...manualFormData, mobile: e.target.value.replace(/\D/g, '')})}
-                      />
-                    </div>
-                  </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="s-email" className="font-bold text-slate-700">Username / Email (യൂസർ ഐഡി / ഇമെയിൽ)</Label>
-                      <Input 
-                        id="s-email" 
-                        type="email"
-                        required 
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="example@mail.com" 
-                        value={manualFormData.email} 
-                        onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="s-member-pin" className="font-bold text-slate-700">Member Password (പാസ്സ്‌വേർഡ്)</Label>
-                      <Input 
-                        id="s-member-pin" 
+                {/* Filter and Search Bar */}
+                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs p-4 w-full min-w-0 max-w-full">
+                  <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between w-full min-w-0">
+                    <div className="relative w-full md:w-80">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Input
                         type="text"
-                        required 
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="Set member password" 
-                        value={manualFormData.pin} 
-                        onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
+                        placeholder="Search name, mobile, ID, assembly..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-10 rounded-xl text-xs font-bold w-full"
                       />
                     </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="s-address" className="font-bold text-slate-700">Full Address (മേൽവിലാസം)</Label>
-                    <Input 
-                      id="s-address" 
-                      required 
-                      className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                      placeholder="House Name, Street, etc." 
-                      value={manualFormData.address} 
-                      onChange={e => setManualFormData({...manualFormData, address: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="s-post" className="font-bold text-slate-700">Post Office (പോസ്റ്റ് ഓഫീസ്)</Label>
-                      <Input 
-                        id="s-post" 
-                        required 
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="Post Office" 
-                        value={manualFormData.postOffice} 
-                        onChange={e => setManualFormData({...manualFormData, postOffice: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="s-pin" className="font-bold text-slate-700">Pincode (പിൻകോഡ്)</Label>
-                      <Input 
-                        id="s-pin" 
-                        required 
-                        maxLength={6}
-                        className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20"
-                        placeholder="6-digit PIN" 
-                        value={manualFormData.pincode} 
-                        onChange={e => setManualFormData({...manualFormData, pincode: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                      <Label className="font-bold text-slate-700">District (ജില്ല)</Label>
-                      <Select 
-                        value={manualFormData.district} 
-                        onValueChange={v => setManualFormData({
-                          ...manualFormData, 
-                          district: v, 
-                          assemblyConstituency: CONSTITUENCIES[v]?.[0] || ''
-                        })}
-                      >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
-                          <SelectValue placeholder="Select District" />
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
+                      <Select value={districtFilter} onValueChange={setDistrictFilter}>
+                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[130px] bg-slate-50 flex-1 sm:flex-none">
+                          <SelectValue placeholder="All Districts" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="all">All Districts (എല്ലാ ജില്ലകളും)</SelectItem>
                           {DISTRICTS.map(d => (
                             <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-bold text-slate-700">Constituency (മണ്ഡലം)</Label>
-                      <Select 
-                        value={manualFormData.assemblyConstituency} 
-                        onValueChange={v => setManualFormData({...manualFormData, assemblyConstituency: v})}
-                      >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
-                          <SelectValue placeholder="Select Constituency" />
+
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[110px] bg-slate-50 flex-1 sm:flex-none">
+                          <SelectValue placeholder="All Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(CONSTITUENCIES[manualFormData.district] || []).map(ac => (
-                            <SelectItem key={ac} value={ac}>{ac}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-bold text-slate-700">Account Type (റോൾ)</Label>
-                      <Select 
-                        value={manualFormData.role} 
-                        onValueChange={(v: any) => setManualFormData({...manualFormData, role: v})}
-                      >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
-                          <SelectValue placeholder="Select Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="member">Standard Member</SelectItem>
-                          <SelectItem value="operator">Operator (Data Entry)</SelectItem>
-                          <SelectItem value="admin">Second Admin (സെക്കൻഡ് അഡ്മിൻ)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="font-bold text-slate-700">Blood Group</Label>
-                    <Select 
-                      value={manualFormData.bloodGroup} 
-                      onValueChange={v => setManualFormData({...manualFormData, bloodGroup: v})}
-                    >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-brand-blue/20">
-                          <SelectValue placeholder="Blood Group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BLOOD_GROUPS.map(bg => (
-                            <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button 
-                    type="submit" 
-                    disabled={(user?.quota !== undefined && (user?.quotaUsed || 0) >= user.quota) || isSubmitting}
-                    className="w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-brand-magenta/20 bg-brand-magenta text-white hover:bg-brand-magenta/90 disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className="w-5 h-5 animate-spin" />
-                        Processing...
-                      </div>
-                    ) : (
-                      (user?.quota !== undefined && (user?.quotaUsed || 0) >= user.quota) ? 'Quota Exhausted' : 'Submit Entry'
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-        ) : (
-          <>
-            <div className="space-y-6">
-              {/* Membership Statistics Section */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-                  Membership Statistics (അംഗത്വ വിവരങ്ങൾ)
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatsCard title="Total Members (ആകെ അംഗങ്ങൾ)" value={stats.total} icon={<Users className="w-8 h-8"/>} color="brand-blue" />
-                  <StatsCard title="Pending Review (പുതിയ അപേക്ഷകൾ)" value={stats.pending} icon={<Clock className="w-8 h-8"/>} color="orange" />
-                  <StatsCard title="Verified Members (വെരിഫൈഡ് അംഗങ്ങൾ)" value={stats.active} icon={<CheckCircle2 className="w-8 h-8"/>} color="green" />
-                  <StatsCard title="Renewals (റിന്യൂവൽ പെൻഡിങ്)" value={stats.renewals} icon={<Plus className="w-8 h-8"/>} color="brand-magenta" />
-                </div>
-              </div>
-
-              {/* Support Claims & Emergency Section */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-                  Support Claims & Alerts (സഹായ ധന അപേക്ഷകൾ)
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <StatsCard title="Red Claims (റെഡ് അലേർട്ട്)" value={(claimStats.priorityCounts['EMERGENCY RED'] || 0) + (claimStats.priorityCounts['RED'] || 0)} icon={<ShieldAlert className="w-8 h-8"/>} color="red" />
-                  <StatsCard title="Orange Claims (ഓറഞ്ച് അലേർട്ട്)" value={claimStats.priorityCounts['ORANGE'] || 0} icon={<ShieldAlert className="w-8 h-8"/>} color="orange" />
-                  <StatsCard title="Green Claims (ഗ്രീൻ അലേർട്ട്)" value={claimStats.priorityCounts['GREEN'] || 0} icon={<CheckCircle2 className="w-8 h-8"/>} color="green" />
-                </div>
-              </div>
-            </div>
-
-            {false && isSuperAdmin && countOf2026Members > 0 && (
-              <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-brand-magenta/20 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert className="w-5 h-5 text-brand-magenta animate-pulse" />
-                      <h4 className="font-black text-slate-800 text-sm uppercase tracking-wide">
-                        അംഗങ്ങളുടെ ജോയിനിംഗ് തീയതി ക്രമീകരണ അസിസ്റ്റന്റ് (Super Admin Mode)
-                      </h4>
-                    </div>
-                    <p className="text-slate-600 text-xs font-semibold leading-relaxed">
-                      ലിസ്റ്റിൽ രജിസ്റ്റർ ചെയ്തവരും മൈഗ്രേറ്റ് ചെയ്തതുമായ <span className="font-black text-brand-magenta text-sm underline">{countOf2026Members}</span> മെമ്പർമാരുടെ ജോയിനിംഗ് തീയതി ഇപ്പോഴും 2026 ലാണ് കിടക്കുന്നത്. ഇവരെ എത്രയും വേഗം 2025 ലേക്ക് മാറ്റുകയും കാർഡ് കാലാവധി കഴിഞ്ഞ് പുതുക്കേണ്ട സമയം കഴിഞ്ഞതായി (Renewal Required) രേഖപ്പെടുത്തുകയും വേണം. അംഗങ്ങൾക്ക് ലോഗിൻ ചെയ്യുമ്പോൾ റിന്യൂവൽ പേജ് വരാൻ ഇത് സഹായിക്കും.
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
-                      Align {countOf2026Members} members to joining year 2025. This makes their cards expired (due for ₹100 renewal) and prompts them to renew when they access their account.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleAlignAllDatesTo2025}
-                    disabled={isAligningDates}
-                    className="bg-brand-magenta hover:bg-brand-magenta/95 text-white font-black text-xs uppercase tracking-widest px-6 py-6 h-auto shrink-0 shadow-lg shadow-brand-magenta/15 hover:scale-[1.01] active:scale-[0.99] transition-all rounded-xl cursor-pointer"
-                  >
-                    {isAligningDates ? (
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        പെൻഡിങ് വിവരങ്ങൾ പുതുക്കുന്നു...
-                      </span>
-                    ) : (
-                      "എല്ലാവരെയും 2025 ആക്കുക (Align to 2025)"
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <Tabs value={activeTab} onValueChange={(val) => setActiveTab2(val)} className="space-y-6">
-              {/* Row 1: Nav Tabs */}
-              <div className="w-full">
-                <TabsList className="bg-slate-100/80 backdrop-blur-md border border-slate-200/40 p-1.5 !h-auto flex flex-wrap justify-start items-center rounded-2xl w-full gap-1">
-                  <TabsTrigger value="list" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Directory <Badge className="ml-1.5 bg-slate-100 text-slate-500 border-none text-[8px] px-1.5 py-0">{stats.active}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="requests" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Requests <Badge className="ml-1.5 bg-brand-blue/10 text-brand-blue border-none text-[8px] px-1.5 py-0">{stats.pending}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="deleted" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Deactivated <Badge className="ml-1.5 bg-red-550/10 text-red-500 border-none text-[8px] px-1.5 py-0">{members.filter(m => m.status === 'deleted').length}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="renewals" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Renewals <Badge className="ml-1.5 bg-orange-100 text-orange-600 border-none text-[8px] px-1.5 py-0">{stats.renewals}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="valid_active" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Active & Valid (വാലിഡിറ്റിയുള്ളവർ) <Badge className="ml-1.5 bg-green-100 text-green-600 border-none text-[8px] px-1.5 py-0">{validActiveCount}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="reports" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm font-black text-[10px] uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    📊 Payment & Reports
-                  </TabsTrigger>
-                  {!isSecondary && (
-                    <>
-                      <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                        <Settings className="w-3 h-3 text-slate-400" />
-                        Settings & Quotas (വാട്സപ്പ് സെറ്റിങ്സ്/കോട്ട)
-                      </TabsTrigger>
-                      <TabsTrigger value="districts" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                        <Lock className="w-3 h-3 text-slate-400" />
-                        District URLs
-                      </TabsTrigger>
-                    </>
-                  )}
-                  <TabsTrigger value="claims" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <MessageCircle className="w-3 h-3 text-brand-magenta" />
-                    Claims <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{claims.length}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="combo" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <Layers className="w-3 h-3 text-brand-magenta" />
-                    Combo <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{getComboGroups(claims).length}</Badge>
-                  </TabsTrigger>
-
-                  <TabsTrigger value="fast_entry" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <UserPlus className="w-3 h-3 text-brand-magenta" />
-                    Fast Entry
-                  </TabsTrigger>
-                  <TabsTrigger value="tickets" className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <Headphones className="w-3 h-3 text-emerald-500" />
-                    AI Support Inquiries <Badge className="ml-1.5 bg-emerald-500 text-white border-none text-[8px] px-1.5 py-0">{supportTickets.filter(t => t.status === 'pending').length}</Badge>
-                  </TabsTrigger>
-                  {isSuperAdmin && (
-                    <TabsTrigger value="life_members" className="data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Crown className="w-3 h-3 text-amber-500" />
-                      Life Members
-                    </TabsTrigger>
-                  )}
-                  {isSuperAdmin && (
-                    <TabsTrigger value="bulk_import" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Download className="w-3 h-3 text-slate-400" />
-                      Import Old Members
-                    </TabsTrigger>
-                  )}
-                  {!isSecondary && (
-                    <TabsTrigger value="branding" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Globe className="w-3 h-3 text-slate-400" />
-                      Branding & CMS
-                    </TabsTrigger>
-                  )}
-                  {!isSecondary && (
-                    <TabsTrigger value="language" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Globe className="w-3 h-3 text-brand-magenta" />
-                      Language Manager
-                    </TabsTrigger>
-                  )}
-                  {(isSuperAdmin || user?.role === 'admin') && (
-                    <TabsTrigger value="gallery_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <ImageIcon className="w-3 h-3 text-slate-400" />
-                      Gallery Management
-                    </TabsTrigger>
-                  )}
-                  {isSuperAdmin && (
-                    <TabsTrigger value="committee_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Users className="w-3 h-3 text-slate-400" />
-                      Committees
-                    </TabsTrigger>
-                  )}
-                  {isSuperAdmin && (
-                    <TabsTrigger value="backup_restore" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Database className="w-3 h-3 text-slate-400" />
-                      Database Restore (ബാക്കപ്പ്)
-                    </TabsTrigger>
-                  )}
-                  {!isSecondary && (
-                    <TabsTrigger value="campaign_templates" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Mail className="w-3 h-3 text-slate-400" />
-                      📧 Operation Janamail
-                    </TabsTrigger>
-                  )}
-                
-</TabsList>
-              </div>
-
-              {/* Row 2: Search & Filter controls */}
-              {['list', 'deleted', 'requests', 'renewals', 'valid_active', 'quotas', 'districts', 'claims'].includes(activeTab) && (
-                <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100/80 dark:border-slate-800/60 p-4 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                  {/* Search Bar */}
-                  <div className="flex-1 min-w-[280px]">
-                    <div className="relative w-full">
-                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
-                      <Input 
-                        placeholder="Search member by name, phone or ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
-                        className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-500"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Filters Row */}
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                    {onRefreshMembers && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isSyncingMembers}
-                        onClick={onRefreshMembers}
-                        className="h-11 px-4 gap-2 font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-blue bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all"
-                      >
-                        <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
-                        {isSyncingMembers ? 'Syncing...' : 'Refresh'}
-                      </Button>
-                    )}
-                    
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
-                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold disabled:opacity-75 focus:outline-none">
-                          <SelectValue placeholder="District" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60 overflow-y-auto">
-                          <SelectItem value="all">All districts</SelectItem>
-                          {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
                       </Select>
 
                       <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
-                          <SelectValue placeholder="Source" />
+                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[110px] bg-slate-50 flex-1 sm:flex-none">
+                          <SelectValue placeholder="All Sources" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Total Entry</SelectItem>
-                          <SelectItem value="online">Online Direct</SelectItem>
-                          <SelectItem value="manual">Operator/Admin</SelectItem>
+                          <SelectItem value="all">All Sources</SelectItem>
+                          <SelectItem value="online">Public Online</SelectItem>
+                          <SelectItem value="manual">Manual Entry</SelectItem>
                         </SelectContent>
                       </Select>
 
-                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
-                          <SelectValue placeholder="Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Category</SelectItem>
-                          <SelectItem value="LIFE_MEMBER">Life Members</SelectItem>
-                          <SelectItem value="ADHOC_MEMBER">Adhoc Members</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <TabsContent value="life_members">
-                <LifeMembersPanel 
-                  members={members} 
-                  adminUser={user} 
-                  onUpdatePhoto={onUpdatePhoto}
-                />
-              </TabsContent>
-
-              <TabsContent value="fast_entry">
-                <FastMemberEntry 
-                  adminUser={user} 
-                  districtQuotas={districtQuotas} 
-                  districtQuotasUsed={districtQuotasUsed} 
-                />
-              </TabsContent>
-
-              <TabsContent value="bulk_import">
-                {isSuperAdmin && (
-                  <BulkImportManager 
-                    members={members} 
-                    adminUser={user} 
-                    onRefresh={onRefreshMembers || (() => {})} 
-                  />
-                )}
-              </TabsContent>
-
-              <TabsContent value="gallery_mgmt">
-                <GalleryManagement user={user} />
-              </TabsContent>
-
-              <TabsContent value="committee_mgmt">
-                <CommitteeManagement user={user} />
-              </TabsContent>
-
-              <TabsContent value="campaign_templates">
-                <CampaignTemplateManager />
-              </TabsContent>
-
-              {isSuperAdmin && (
-                <TabsContent value="backup_restore">
-                  <BackupRestoreManager 
-                    adminUser={user} 
-                    onRefresh={onRefreshMembers || (() => {})} 
-                  />
-                </TabsContent>
-              )}
-
-              <TabsContent value="branding">
-                <BrandingManager />
-              </TabsContent>
-
-              <TabsContent value="language">
-                <LanguageManager />
-              </TabsContent>
-
-              <TabsContent value="renewals">
-             <Card className="border-none shadow-sm overflow-hidden p-6 bg-white min-h-[400px]">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="bg-brand-magenta/10 p-2 rounded-xl">
-                      <RefreshCw className="w-5 h-5 text-brand-magenta" />
-                   </div>
-                   <div>
-                      <h3 className="font-black text-slate-900 tracking-tight">Pending Renewals</h3>
-                      <p className="text-xs text-slate-500 font-bold">Review and approve annual membership renewals.</p>
-                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  {pendingRenewals.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-slate-300">
-                       <ShieldCheck className="w-16 h-16 mb-4 opacity-20" />
-                       <p className="font-black uppercase tracking-widest text-[10px]">
-                         {searchTerm || districtFilter !== 'all' ? 'No matching renewals' : 'No pending renewals'}
-                       </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {pendingRenewals.map((member) => (
-                        <div key={member.uid} className="bg-slate-50 border-2 border-slate-100 p-6 rounded-[28px] space-y-4 hover:border-brand-blue/20 transition-all group">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              <Avatar 
-                                className="h-12 w-12 rounded-2xl border-2 border-white shadow-sm cursor-pointer hover:scale-105 transition-transform"
-                                onClick={() => setViewingMember(member)}
-                              >
-                                <AvatarImage src={member.photoUrl} className="object-cover" />
-                                <AvatarFallback className="bg-brand-blue/20 text-brand-blue font-black">{(member.name || '?').charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <h4 className="font-black text-slate-900 leading-none truncate max-w-[140px] uppercase">{member.name}</h4>
-                                <p className="text-[10px] font-bold text-slate-400 mt-1">{member.membershipId}</p>
-                              </div>
-                            </div>
-                            <div className="bg-brand-magenta/10 p-2 rounded-xl text-brand-magenta">
-                               <Plus className="w-4 h-4" />
-                            </div>
-                          </div>
-
-                          <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                               <Receipt className="w-3.5 h-3.5 text-brand-magenta" />
-                               Renewal Payment Detail
-                             </p>
-                             <div className="flex justify-between items-end">
-                                <div>
-                                   <p className="text-[11px] font-black text-slate-700">Ref: {(member as any).renewalTransactionId || 'N/A'}</p>
-                                   <p className="text-[9px] font-bold text-slate-400">Submitted: {member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toLocaleDateString() : new Date(member.renewalDate).toLocaleDateString()) : 'Today'}</p>
-                                   {((member as any).renewalPaymentDate || (member as any).renewalPaymentTime) && (
-                                     <p className="text-[9px] font-extrabold text-[#0066FF] mt-0.5">
-                                       Transferred: {(member as any).renewalPaymentDate || ''} {(member as any).renewalPaymentTime || ''}
-                                     </p>
-                                   )}
-                                </div>
-                                <div className="text-right">
-                                   <p className="text-xl font-black text-brand-magenta leading-none">₹100</p>
-                                   <p className="text-[9px] font-black text-brand-magenta/40 uppercase tracking-tighter">Annual Fee</p>
-                                </div>
-                             </div>
-                          </div>
-
-                          <div className="flex gap-3 pt-2">
-                             <Button 
-                               onClick={() => handleApproveRenewal(member)}
-                               className="flex-1 bg-green-600 hover:bg-green-700 font-black rounded-xl h-11 text-[11px] uppercase tracking-wide"
-                             >
-                                Approve
-                             </Button>
-                             <Button 
-                               variant="outline"
-                               onClick={() => setViewingMember(member)}
-                               className="px-4 border-slate-200 font-black rounded-xl h-11 text-[11px] uppercase hover:bg-brand-blue/5 hover:text-brand-blue transition-all"
-                             >
-                                View
-                             </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-             </Card>
-          </TabsContent>
-          <TabsContent value="reports">
-            <AdminReportsTab 
-              members={members} 
-              onApprove={onApprove} 
-              onViewDetails={setViewingMember} 
-              DISTRICTS={DISTRICTS} 
-              userDistrict={user?.district} 
-              isSuperAdmin={isSuperAdmin} 
-            />
-          </TabsContent>
-          <TabsContent value="list">
-            {otherDistrictMatch && (
-              <div className="mb-6 p-5 bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-500/30 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-start md:items-center animate-in fade-in slide-in-from-top-2 duration-300 font-sans text-slate-800">
-                <div className="flex gap-3.5 items-start">
-                  <div className="bg-amber-100 dark:bg-amber-900/30 p-2.5 rounded-xl text-amber-600 dark:text-amber-400 flex-shrink-0">
-                    <AlertTriangle className="w-6 h-6 animate-pulse" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-black text-amber-900 dark:text-amber-200 text-sm leading-relaxed">
-                      ഈ കസ്റ്റമർ നിലവിൽ എന്റർ ചെയ്തിട്ടുണ്ട്, എന്നാൽ ഈ ജില്ലയിൽ അല്ല
-                    </p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300 font-black">
-                      നിലവിലെ ജില്ല (Current District): <span className="underline">{DISTRICTS.find(d => d.code === otherDistrictMatch.district)?.name || otherDistrictMatch.district}</span>
-                    </p>
-                    <p className="text-[10px] text-amber-500 dark:text-amber-400 font-bold uppercase mt-1">
-                      Security Note: District Admin has restricted view access for other districts.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => setViewingMember(otherDistrictMatch)}
-                  className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm shrink-0 transition-all active:scale-95"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>കാണുക (View Card)</span>
-                </Button>
-              </div>
-            )}
-            <Card className="border-none shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow className="border-slate-200">
-                    <TableHead className="w-[80px]">Photo</TableHead>
-                    <TableHead>Member Info</TableHead>
-                    <TableHead className="hidden lg:table-cell">District/Assly</TableHead>
-                    <TableHead className="hidden md:table-cell">Source</TableHead>
-                    <TableHead className="hidden md:table-cell">ID Details</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="bg-white">
-                  {paginatedMembers.map((member) => (
-                    <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                      <TableCell>
-                        <div className="relative group cursor-pointer" onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file && onUpdatePhoto) {
-                              onUpdatePhoto(file, member.uid);
-                            }
-                          };
-                          input.click();
-                        }}>
-                          <Avatar className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50 group-hover:opacity-70 transition-all">
-                            <AvatarImage src={member.photoUrl} alt={member.name} className="object-cover" />
-                            <AvatarFallback className="bg-brand-blue/20 text-brand-blue rounded-lg font-bold">
-                              {(member.name || '?').charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                            <Camera className="w-4 h-4 text-white drop-shadow-md" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div 
-                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors flex items-center gap-1.5 flex-wrap"
-                          onClick={() => setViewingMember(member)}
-                        >
-                          <span>{member.name}</span>
-                          {String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE') ? (
-                            <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
-                              ⭐ LIFE MEMBER
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                              ADHOC MEMBER
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-0.5 mt-1">
-                          <div className="text-xs text-slate-500 flex items-center gap-1">
-                            <Smartphone className="w-3 h-3" />
-                            {member.mobile}
-                          </div>
-                          <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
-                            <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
-                          </div>
-                          
-                          {/* Family claims indicator on Member row */}
-                          {(() => {
-                            const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
-                            if (mClaims.length === 0) return null;
-                            return (
-                              <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[8px] font-black uppercase text-brand-magenta tracking-widest flex items-center gap-1">
-                                    {mClaims.length > 1 ? (
-                                      <>👥 Combo <span className="text-[7px] text-[#FF1493] bg-[#FF1493]/10 px-1 py-0.2 rounded font-black font-mono">({mClaims.length})</span></>
-                                    ) : '📋 Claim'}
-                                  </span>
-                                  <span className="text-[9px] font-black text-brand-magenta font-mono">
-                                    ₹{mClaims.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}
-                                  </span>
-                                </div>
-                                <div className="flex flex-col gap-0.5 mt-1 border-t border-brand-magenta/10 pt-1">
-                                  {mClaims.slice(0, 3).map((cl, cidx) => (
-                                    <div key={cl.id || cidx} className="flex justify-between items-center text-[9px] font-bold text-slate-600">
-                                      <span className="truncate max-w-[130px] font-extrabold">{cl.userName}</span>
-                                      <span className="text-brand-magenta font-black">₹{cl.totalPending?.toLocaleString('en-IN')}</span>
-                                    </div>
-                                  ))}
-                                  {mClaims.length > 3 && (
-                                    <div className="text-[8px] font-bold text-slate-400 text-right mt-0.5">
-                                      +{mClaims.length - 3} more...
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="text-sm font-medium text-slate-700">
-                          {DISTRICTS.find(d => d.code === member.district)?.name || member.district}
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" />
-                          {member.assemblyConstituency}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {member.registeredBy ? (
-                          <div className="flex flex-col gap-1">
-                             <Badge variant="outline" className="w-fit text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/20 bg-brand-magenta/5">Manual</Badge>
-                             <div className="text-[10px] font-bold text-slate-400 truncate max-w-[100px]" title={member.registeredByName}>
-                               By: {member.registeredByName || '---'}
-                             </div>
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="w-fit text-[9px] font-black uppercase text-brand-blue border-brand-blue/20 bg-brand-blue/5">Online</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="text-xs font-mono font-bold text-brand-blue bg-brand-blue/10 px-2 py-1 rounded inline-block">
-                          {member.membershipId}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
-                          SN: {member.serialNo}
-                        </div>
-                        <div className="mt-2 space-y-1 text-[10px] border-t border-slate-100 pt-1.5 font-sans">
-                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Joining Date">
-                            <span className="font-extrabold text-slate-400">Join:</span> 
-                            {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString('en-IN') : (member.registrationDate ? new Date(member.registrationDate).toLocaleDateString('en-IN') : 'N/A')}
-                          </div>
-                          
-                          {member.renewalDate && (
-                            <div className="flex items-center gap-1 text-[#FF1493] font-bold" title="Last Renewed Date">
-                              <span className="font-extrabold text-pink-400">Renewal:</span> 
-                              {member.renewalDate?.toDate ? member.renewalDate.toDate().toLocaleDateString('en-IN') : new Date(member.renewalDate).toLocaleDateString('en-IN')}
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Expiry/Validity Date">
-                            <span className="font-extrabold text-slate-400">Expiry:</span> 
-                            {member.expiryDate?.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : (member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('en-IN') : 'N/A')}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                         <div className="space-y-2">
-                            {member.waStatus === 'Pending' && (
-                              <div className="mt-1">
-                                <Badge variant="outline" className="text-[8px] font-black uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/5 leading-none py-0.5 px-2">
-                                  WA: Pending
-                                </Badge>
-                              </div>
-                            )}
-                            {member.waStatus === 'Sent' && (
-                              <div className="mt-1">
-                                <Badge variant="outline" className="text-[8px] font-black uppercase text-green-600 border-green-200 bg-green-50 leading-none py-0.5 px-2">
-                                  WA: Sent
-                                </Badge>
-                              </div>
-                            )}
-                            {member.status === 'active' ? (
-                             <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2.5 py-0.5 rounded-full font-bold">Active</Badge>
-                           ) : member.status === 'pending' ? (
-                             <div className="flex flex-col gap-1">
-                               <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none px-2.5 py-0.5 rounded-full font-bold">Pending Approval</Badge>
-                             </div>
-                           ) : (
-                             <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-none px-2.5 py-0.5 rounded-full font-bold">Offline</Badge>
-                           )}
-
-                           {(member.registeredByName || member.certAdminName) && (
-                             <div className="p-2 bg-brand-blue/5 border border-brand-blue/10 rounded-xl w-fit">
-                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.1em] leading-none mb-1">Entry Identity (എന്റർ ചെയ്ത ആൾ):</p>
-                               <p className="text-[10px] font-black text-brand-blue uppercase leading-none truncate max-w-[120px]" title={member.certAdminName || member.registeredByName}>
-                                 {member.certAdminName || member.registeredByName}
-                               </p>
-                               <p className="text-[8px] font-bold text-slate-400 mt-1 truncate max-w-[120px]" title={member.certAdminEmail || 'No Email'}>
-                                 {member.certAdminEmail || 'No Email'}
-                               </p>
-                             </div>
-                           )}
-                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {member.status === 'pending' && (
-                             <Button 
-                              size="sm" 
-                              onClick={() => handleApproveWithWhatsApp(member)}
-                              className="bg-green-600 hover:bg-green-700 h-8 font-bold text-xs"
-                            >
-                               Approve
-                            </Button>
-                          )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                sendWAMessage({
-                                  name: member.name,
-                                  mobile: member.mobile,
-                                  uid: member.uid,
-                                  pin: member.pin,
-                                  membershipId: member.membershipId
-                                });
-                              }}
-                              className="h-8 w-8 text-green-600 hover:bg-green-50"
-                              title="Chat on WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setViewingMember(member)}
-                            className="h-8 w-8 text-brand-blue hover:bg-brand-blue/10"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingMember(member)}
-                            className="h-8 w-8 text-slate-600 hover:bg-slate-100"
-                            title="Edit"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteClick(member.uid)}
-                              className="h-8 w-8 text-red-500 hover:bg-red-50"
-                              title="Delete Member"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 p-0 hover:bg-slate-100")}>
-                              <MoreVertical className="h-4 w-4 text-slate-500" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 p-1 bg-white border border-slate-200 shadow-xl z-[100]">
-                              <DropdownMenuLabel className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 py-1.5">More Options</DropdownMenuLabel>
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  onUpdate(member.uid, { role: 'admin', isAdmin: true });
-                                  toast.success(`${member.name} made District Admin`);
-                                }}
-                                className="rounded-md font-medium text-brand-blue"
-                              >
-                                <ShieldCheck className="w-4 h-4 mr-2" />
-                                Make District Admin
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  onUpdate(member.uid, { role: 'operator', quota: 50 });
-                                  toast.success(`${member.name} made Operator with 50 entries limit`);
-                                }}
-                                className="rounded-md font-medium text-brand-blue"
-                              >
-                                <Settings className="w-4 h-4 mr-2" />
-                                Make Operator
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1" />
-                              <DropdownMenuItem 
-                                onClick={() => setSelectedReceiptsMember(member)}
-                                className="rounded-md font-semibold text-brand-magenta cursor-pointer"
-                              >
-                                <Receipt className="w-4 h-4 mr-2" />
-                                Manage Receipts
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1" />
-                              <DropdownMenuItem 
-                                onClick={() => onResetPin?.(member.uid)}
-                                className="rounded-md text-orange-600 font-medium"
-                              >
-                                Reset Password
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1" />
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteClick(member.uid)}
-                                className="text-red-500 rounded-md font-bold"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Member
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredMembers.length > itemsPerPage && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-slate-100 bg-white">
-                  <p className="text-xs font-bold text-slate-500">
-                    Showing {Math.min(filteredMembers.length, (currentPage - 1) * itemsPerPage + 1)}–{Math.min(filteredMembers.length, currentPage * itemsPerPage)} of {filteredMembers.length} results
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
-                    >
-                      PREV
-                    </Button>
-                    {Array.from({ length: Math.ceil(filteredMembers.length / itemsPerPage) }).map((_, idx) => {
-                      const pNum = idx + 1;
-                      if (pNum === 1 || pNum === Math.ceil(filteredMembers.length / itemsPerPage) || Math.abs(currentPage - pNum) <= 1) {
-                        return (
-                          <Button
-                            key={pNum}
-                            variant={currentPage === pNum ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCurrentPage(pNum)}
-                            className={cn(
-                              "rounded-xl h-9 w-9 p-0 text-xs font-black",
-                              currentPage === pNum ? "bg-brand-magenta text-white hover:bg-brand-magenta/90" : "border-slate-200"
-                            )}
-                          >
-                            {pNum}
-                          </Button>
-                        );
-                      }
-                      if (pNum === 2 || pNum === Math.ceil(filteredMembers.length / itemsPerPage) - 1) {
-                        return <span className="text-slate-400 text-xs px-1" key={`ellipsis-${pNum}`}>...</span>;
-                      }
-                      return null;
-                    })}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredMembers.length / itemsPerPage), prev + 1))}
-                      disabled={currentPage === Math.ceil(filteredMembers.length / itemsPerPage)}
-                      className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
-                    >
-                      NEXT
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {filteredMembers.length === 0 && (
-                <div className="py-20 text-center bg-white">
-                   <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="text-slate-400 w-8 h-8" />
-                   </div>
-                   <p className="text-slate-800 font-bold tracking-tight">No members found matching your search.</p>
-                   <p className="text-slate-600 text-sm mt-1">Waiting for new membership applications.</p>
-                </div>
-              )}
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="valid_active">
-            <Card className="border-none shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow className="border-slate-200">
-                    <TableHead className="w-[80px]">Photo</TableHead>
-                    <TableHead>Member Info</TableHead>
-                    <TableHead className="hidden lg:table-cell">District/Assly</TableHead>
-                    <TableHead className="hidden md:table-cell">Source</TableHead>
-                    <TableHead className="hidden md:table-cell">ID Details</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="bg-white">
-                  {paginatedValidActiveMembers.map((member) => (
-                    <TableRow key={member.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                      <TableCell>
-                        <div className="relative group cursor-pointer" onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file && onUpdatePhoto) {
-                              onUpdatePhoto(file, member.uid);
-                            }
-                          };
-                          input.click();
-                        }}>
-                          <Avatar className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50 group-hover:opacity-70 transition-all">
-                            <AvatarImage src={member.photoUrl} alt={member.name} className="object-cover" />
-                            <AvatarFallback className="bg-brand-blue/20 text-brand-blue rounded-lg font-bold">
-                              {(member.name || '?').charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                            <Camera className="w-4 h-4 text-white drop-shadow-md" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div 
-                          className="font-semibold text-slate-900 cursor-pointer hover:text-brand-blue decoration-dotted hover:underline transition-colors flex items-center gap-1.5 flex-wrap"
-                          onClick={() => setViewingMember(member)}
-                        >
-                          <span>{member.name}</span>
-                          {String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE') ? (
-                            <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
-                              ⭐ LIFE MEMBER
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                              ADHOC MEMBER
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-0.5 mt-1">
-                          <div className="text-xs text-slate-500 flex items-center gap-1">
-                            <Smartphone className="w-3 h-3" />
-                            {member.mobile}
-                          </div>
-                          <div className="text-[10px] text-brand-blue font-bold flex items-center gap-1 bg-brand-blue/10 px-1.5 py-0.5 rounded w-fit">
-                            <Lock className="w-2.5 h-2.5" /> Password: {member.pin || '123456'}
-                          </div>
-                          
-                          {/* Family claims indicator on Member row */}
-                          {(() => {
-                            const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
-                            if (mClaims.length === 0) return null;
-                            return (
-                              <div className="mt-2 space-y-1 bg-brand-magenta/[0.03] border border-brand-magenta/15 rounded-xl p-2 max-w-[240px]">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[8px] font-black uppercase text-brand-magenta tracking-widest flex items-center gap-1">
-                                    {mClaims.length > 1 ? (
-                                      <>👥 Combo <span className="text-[7px] text-[#FF1493] bg-[#FF1493]/10 px-1 py-0.2 rounded font-black font-mono">({mClaims.length})</span></>
-                                    ) : '📋 Claim'}
-                                  </span>
-                                  <span className="text-[9px] font-black text-brand-magenta font-mono">
-                                    ₹{mClaims.reduce((acc, c) => acc + (c.totalPending || 0), 0).toLocaleString('en-IN')}
-                                  </span>
-                                </div>
-                                <div className="flex flex-col gap-0.5 mt-1 border-t border-brand-magenta/10 pt-1">
-                                  {mClaims.slice(0, 3).map((cl, cidx) => (
-                                    <div key={cl.id || cidx} className="flex justify-between items-center text-[9px] font-bold text-slate-650">
-                                      <span className="truncate max-w-[130px] font-extrabold">{cl.userName}</span>
-                                      <span className="text-brand-magenta font-black">₹{cl.totalPending?.toLocaleString('en-IN')}</span>
-                                    </div>
-                                  ))}
-                                  {mClaims.length > 3 && (
-                                    <div className="text-[8px] font-bold text-slate-400 text-right mt-0.5">
-                                      +{mClaims.length - 3} more...
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="text-sm font-medium text-slate-700">
-                          {DISTRICTS.find(d => d.code === member.district)?.name || member.district}
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" />
-                          {member.assemblyConstituency}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {member.registeredBy ? (
-                          <div className="flex flex-col gap-1">
-                             <Badge variant="outline" className="w-fit text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/20 bg-brand-magenta/5">Manual</Badge>
-                             <div className="text-[10px] font-bold text-slate-400 truncate max-w-[100px]" title={member.registeredByName}>
-                               By: {member.registeredByName || '---'}
-                             </div>
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="w-fit text-[9px] font-black uppercase text-brand-blue border-brand-blue/20 bg-brand-blue/5">Online</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="text-xs font-mono font-bold text-brand-blue bg-brand-blue/10 px-2 py-1 rounded inline-block">
-                          {member.membershipId}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
-                          SN: {member.serialNo}
-                        </div>
-                        <div className="mt-2 space-y-1 text-[10px] border-t border-slate-100 pt-1.5 font-sans">
-                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Joining Date">
-                            <span className="font-extrabold text-slate-400">Join:</span> 
-                            {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString('en-IN') : (member.registrationDate ? new Date(member.registrationDate).toLocaleDateString('en-IN') : 'N/A')}
-                          </div>
-                          
-                          {member.renewalDate && (
-                            <div className="flex items-center gap-1 text-[#FF1493] font-bold" title="Last Renewed Date">
-                              <span className="font-extrabold text-pink-400">Renewal:</span> 
-                              {member.renewalDate?.toDate ? member.renewalDate.toDate().toLocaleDateString('en-IN') : new Date(member.renewalDate).toLocaleDateString('en-IN')}
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-1 text-slate-500 font-semibold" title="Expiry/Validity Date">
-                            <span className="font-extrabold text-slate-400">Expiry:</span> 
-                            {member.expiryDate?.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : (member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('en-IN') : 'N/A')}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                         <div className="space-y-2">
-                             <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2.5 py-0.5 rounded-full font-bold">Active & Valid</Badge>
-                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                sendWAMessage({
-                                  name: member.name,
-                                  mobile: member.mobile,
-                                  uid: member.uid,
-                                  pin: member.pin,
-                                  membershipId: member.membershipId
-                                });
-                              }}
-                              className="h-8 w-8 text-green-600 hover:bg-green-50"
-                              title="Chat on WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setViewingMember(member)}
-                            className="h-8 w-8 text-brand-blue hover:bg-brand-blue/10"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingMember(member)}
-                            className="h-8 w-8 text-slate-600 hover:bg-slate-100"
-                            title="Edit"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteClick(member.uid)}
-                              className="h-8 w-8 text-red-500 hover:bg-red-50"
-                              title="Delete Member"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredValidActiveMembers.length > itemsPerPage && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-t border-slate-100 bg-white">
-                  <p className="text-xs font-bold text-slate-500">
-                    Showing {Math.min(filteredValidActiveMembers.length, (validActivePage - 1) * itemsPerPage + 1)}–{Math.min(filteredValidActiveMembers.length, validActivePage * itemsPerPage)} of {filteredValidActiveMembers.length} results
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setValidActivePage(prev => Math.max(1, prev - 1))}
-                      disabled={validActivePage === 1}
-                      className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
-                    >
-                      PREV
-                    </Button>
-                    {Array.from({ length: Math.ceil(filteredValidActiveMembers.length / itemsPerPage) }).map((_, idx) => {
-                      const pNum = idx + 1;
-                      if (pNum === 1 || pNum === Math.ceil(filteredValidActiveMembers.length / itemsPerPage) || Math.abs(validActivePage - pNum) <= 1) {
-                        return (
-                          <Button
-                            key={`page-${pNum}`}
-                            onClick={() => setValidActivePage(pNum)}
-                            variant={validActivePage === pNum ? 'default' : 'outline'}
-                            size="sm"
-                            className={cn(
-                              "w-9 h-9 p-0 font-black rounded-xl text-xs",
-                              validActivePage === pNum ? "bg-brand-magenta text-white hover:bg-brand-magenta/90" : "border-slate-200"
-                            )}
-                          >
-                            {pNum}
-                          </Button>
-                        );
-                      }
-                      if (pNum === 2 || pNum === Math.ceil(filteredValidActiveMembers.length / itemsPerPage) - 1) {
-                        return <span className="text-slate-400 text-xs px-1" key={`ellipsis-${pNum}`}>...</span>;
-                      }
-                      return null;
-                    })}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setValidActivePage(prev => Math.min(Math.ceil(filteredValidActiveMembers.length / itemsPerPage), prev + 1))}
-                      disabled={validActivePage === Math.ceil(filteredValidActiveMembers.length / itemsPerPage)}
-                      className="rounded-xl h-9 px-3 text-xs font-black border-slate-200"
-                    >
-                      NEXT
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {filteredValidActiveMembers.length === 0 && (
-                <div className="py-20 text-center bg-white">
-                   <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="text-slate-300 w-8 h-8" />
-                   </div>
-                   <p className="text-slate-500 font-medium tracking-tight">No active & valid members found matching your search.</p>
-                   <p className="text-slate-400 text-sm mt-1">Make sure you have approved renewals.</p>
-                </div>
-              )}
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="requests">
-             <Card className="border-none shadow-sm overflow-hidden">
-                <div className="bg-white">
-                  {pendingRequests.length > 0 && (
-                    <div className="bg-slate-50 border-b border-slate-100 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="text-left">
-                        <h4 className="font-extrabold text-slate-800 text-sm">Pending Membership Approval (അപ്പ്രൂവൽ ചെയ്യാൻ ബാക്കിയുള്ളവർ)</h4>
-                        <p className="text-xs text-slate-500">{pendingRequests.length} members are currently waiting for approval.</p>
-                      </div>
-                      <Button 
-                        onClick={async () => {
-                          if (window.confirm(`Are you sure you want to approve all ${pendingRequests.length} pending members now? (തീർച്ചയായും ഈ ${pendingRequests.length} അംഗങ്ങളെയും അപ്പ്രൂവ് ചെയ്യണമെന്നുണ്ടോ?)`)) {
-                            const loadToast = toast.loading('Approving all pending members...');
-                            try {
-                              let count = 0;
-                              for (const m of pendingRequests) {
-                                const paddedSerial = String(m.serialNo || 1000).padStart(3, '0');
-                                const distCode = getDistrictCode(m.district || 'MLP').toUpperCase();
-                                const assemblyCode = getAssemblyCode(m.assemblyConstituency || '').toUpperCase();
-                                const isUpgraded = m.membershipId && m.membershipId.toUpperCase().startsWith('HCRS-');
-                                const finalId = isUpgraded 
-                                  ? m.membershipId 
-                                  : `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
-                                
-                                const expiry = new Date();
-                                expiry.setFullYear(expiry.getFullYear() + 1);
-
-                                await updateDoc(doc(db, 'users', m.uid), {
-                                  status: 'active',
-                                  isApproved: true,
-                                  membershipId: finalId,
-                                  issueDate: serverTimestamp(),
-                                  registrationDate: serverTimestamp(), // Join Date is given as the exact day of approval
-                                  expiryDate: expiry,
-                                  waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent',
-                                  stateCode: 'KL',
-                                  districtCode: distCode,
-                                  constituencyCode: assemblyCode
-                                });
-                                count++;
-                              }
-                              toast.success(`Successfully approved ${count} pending members!`, { id: loadToast });
-                            } catch (error) {
-                              console.error("Bulk approval error:", error);
-                              toast.error("Bulk approval failed.", { id: loadToast });
-                            }
-                          }
-                        }}
-                        className="bg-green-600 hover:bg-green-700 font-bold px-5 h-10 rounded-xl text-white text-xs uppercase tracking-wider shrink-0 flex items-center gap-2 shadow-sm transition-all"
-                      >
-                        <CheckCircle2 className="w-4 h-4" /> Approve All Pending / പെന്റിങ് എല്ലാം അപ്രൂവ് ചെയ്യുക
+                      <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs w-full sm:w-auto flex-1 sm:flex-none">
+                        <Download className="w-4 h-4 mr-1 text-slate-500" />
+                        Excel Export
                       </Button>
                     </div>
-                  )}
-                  {pendingRequests.length === 0 ? (
-                    <div className="py-20 text-center">
-                      <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="text-green-300 w-8 h-8" />
-                      </div>
-                      <p className="text-slate-500 font-medium tracking-tight">
-                        {searchTerm || districtFilter !== 'all' ? 'No matching requests' : 'All caught up!'}
-                      </p>
-                      <p className="text-slate-400 text-sm mt-1">
-                        {searchTerm || districtFilter !== 'all' ? 'Try adjusting your filters.' : 'No pending membership requests at the moment.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-slate-100">
-                      {pendingRequests.map((member) => (
-                        <div key={member.uid} className="p-6 hover:bg-slate-50/50 transition-colors flex flex-col md:flex-row justify-between gap-6">
-                          <div className="flex gap-4">
-                            <Avatar 
-                              className="h-16 w-16 rounded-2xl border-2 border-white shadow-sm bg-slate-50 cursor-pointer hover:scale-105 transition-transform"
-                              onClick={() => setViewingMember(member)}
-                            >
-                              <AvatarImage src={member.photoUrl} className="object-cover" />
-                              <AvatarFallback className="text-xl font-bold rounded-2xl bg-brand-blue/20 text-brand-blue">
-                                {(member.name || '?').charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="space-y-1">
-                              <h3 className="text-xl font-bold text-slate-900">{member.name}</h3>
-                              {member.mobile && (
-                                <p className="text-slate-700 flex items-center gap-1.5 font-extrabold text-sm bg-slate-100 hover:bg-slate-200/70 transition-colors w-fit px-3 py-1 rounded-lg">
-                                  <Smartphone className="w-4 h-4 text-brand-blue" />
-                                  <a href={`tel:${member.mobile}`} className="hover:underline">{member.mobile}</a>
-                                </p>
-                              )}
-                              <p className="text-slate-500 flex items-center gap-1 font-medium italic">
-                                <Mail className="w-3.5 h-3.5" /> {member.email}
-                              </p>
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-slate-200 font-bold">
-                                  {DISTRICTS.find(d => d.code === member.district)?.name || member.district} District
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col md:items-end justify-between gap-4">
-                            <div className="bg-brand-magenta/5 border border-brand-magenta/10 p-4 rounded-2xl min-w-[200px]">
-                              <div className="flex items-center gap-2 text-brand-magenta font-bold mb-2">
-                                <Receipt className="w-4 h-4" />
-                                Payment Details
-                              </div>
-                              <div className="space-y-1.5">
-                                <p className="text-sm text-brand-magenta font-bold flex justify-between">
-                                  <span className="opacity-60 font-medium text-slate-500">Txn ID:</span>
-                                  {member.transactionId || 'Not provided'}
-                                </p>
-                                {member.paymentDate && (
-                                  <p className="text-sm text-brand-magenta font-bold flex justify-between">
-                                    <span className="opacity-60 font-medium text-slate-500">Date:</span>
-                                    {member.paymentDate}
-                                  </p>
-                                )}
-                                <p className="text-sm text-brand-magenta font-bold flex justify-between">
-                                  <span className="opacity-60 font-medium text-slate-500">Time:</span>
-                                  {member.paymentTime || 'Not provided'}
-                                </p>
-                                <p className="text-xs text-slate-400 mt-2 font-medium">
-                                  Registered on: {member.registrationDate?.toDate ? member.registrationDate.toDate().toLocaleDateString() : new Date(member.registrationDate).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex gap-3">
-                              <Button 
-                                variant="outline" 
-                                size="lg"
-                                onClick={() => handleDeleteClick(member.uid)}
-                                className="flex-1 md:flex-none border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl h-12"
-                              >
-                                Reject
-                              </Button>
-                              <Button 
-                                size="lg"
-                                onClick={() => handleApproveWithWhatsApp(member)}
-                                className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 font-bold rounded-xl px-8 shadow-lg shadow-green-100 h-12"
-                              >
-                                Approve Now
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-             </Card>
-          </TabsContent>
-
-          <TabsContent value="deleted">
-             <Card className="border-none shadow-sm overflow-hidden p-6 bg-white min-h-[400px]">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="bg-red-50 p-2 rounded-xl">
-                      <Trash2 className="w-5 h-5 text-red-500" />
-                   </div>
-                   <div>
-                      <h3 className="font-black text-slate-900 tracking-tight text-red-600 uppercase">Deactivated Members</h3>
-                      <p className="text-xs text-slate-500 font-bold">These members are hidden from the active list but can be restored.</p>
-                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  {members.filter(m => m.status === 'deleted').length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-slate-300">
-                       <CheckCircle2 className="w-16 h-16 mb-4 opacity-20" />
-                       <p className="font-black uppercase tracking-widest text-[10px]">No deactivated members found.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {members.filter(m => m.status === 'deleted').map((member) => (
-                        <div key={member.uid} className="bg-red-50/30 border-2 border-red-50 p-6 rounded-[28px] space-y-4 group">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12 rounded-2xl border-2 border-white shadow-sm">
-                              <AvatarImage src={member.photoUrl} className="object-cover" />
-                              <AvatarFallback className="bg-red-100 text-red-400 font-black">{(member.name || '?').charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <h4 className="font-black text-slate-900 leading-none truncate max-w-[140px] uppercase">{member.name}</h4>
-                              <p className="text-[10px] font-bold text-slate-400 mt-1">{member.mobile}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="p-3 bg-white rounded-xl border border-red-100 text-[10px] font-bold text-slate-500">
-                             <div className="flex justify-between">
-                               <span>Deactivated On:</span>
-                               <span className="text-red-500">{(member as any).deletedAt ? ((member as any).deletedAt.toDate ? (member as any).deletedAt.toDate().toLocaleDateString() : new Date((member as any).deletedAt).toLocaleDateString()) : '---'}</span>
-                             </div>
-                             <div className="flex justify-between mt-1">
-                               <span>ID:</span>
-                               <span>{member.membershipId}</span>
-                             </div>
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                             <Button 
-                               onClick={() => {
-                                 onUpdate(member.uid, { status: 'active', isApproved: true });
-                                 toast.success(`${member.name} restored successfully.`);
-                               }}
-                               className="flex-1 bg-brand-blue hover:bg-brand-blue/90 font-black rounded-xl h-11 text-[10px] uppercase tracking-wide"
-                             >
-                                <RefreshCw className="w-3.5 h-3.5 mr-2" />
-                                Restore
-                             </Button>
-                             <Button 
-                                variant="outline"
-                                onClick={() => setViewingMember(member)}
-                                className="border-slate-200 font-bold rounded-xl h-11 text-[10px] uppercase px-3"
-                             >
-                                Details
-                             </Button>
-                             <Button 
-                                type="button"
-                                variant="ghost"
-                                onClick={() => handleDeleteClick(member.uid)}
-                                className="h-11 w-11 text-red-500 hover:bg-red-550 border border-red-50 hover:text-white hover:bg-red-650 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                                title="Delete Permanently / ശാശ്വതമായി ഒഴിവാക്കുക"
-                             >
-                                <Trash2 className="w-4 h-4" />
-                             </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-             </Card>
-          </TabsContent>
-          
-          <TabsContent value="quotas">
-            <div className="space-y-8 pb-20">
-              {!isSecondary && (
-                <>
-                  {/* WhatsApp Automation & Registration Mode Setting */}
-                  <Card className="border border-slate-200 bg-white/75 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.01)] overflow-hidden mb-6">
-                    <CardHeader className="p-6 pb-4">
-                       <div className="flex items-center gap-3">
-                          <div className="bg-brand-blue/10 p-2 rounded-xl text-brand-blue">
-                            <MessageCircle className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-base font-black text-slate-800 uppercase tracking-tight">Registration Mode</CardTitle>
-                            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-0.5">
-                              Toggle automatic WhatsApp credentials delivery to prevent admin number blocks during high-volume entries
-                            </CardDescription>
-                          </div>
-                       </div>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-6 pt-0 space-y-4">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div 
-                           onClick={async () => {
-                             try {
-                               await saveOrgSettings({ ...orgSettings, registrationMode: 'normal' });
-                               toast.success('System switched to Normal Auto Mode');
-                             } catch (err) {
-                               toast.error('Failed to update registration mode');
-                             }
-                           }}
-                           className={cn(
-                             "p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:bg-slate-50/50",
-                             orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode
-                               ? "border-brand-blue bg-brand-blue/[0.02] shadow-xs" 
-                               : "border-slate-200 bg-white"
-                           )}
-                         >
-                           <div className={cn(
-                             "h-4 w-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
-                             orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode
-                               ? "border-brand-blue text-brand-blue" 
-                               : "border-slate-350"
-                           )}>
-                             {(orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode) && (
-                               <div className="h-2 w-2 rounded-full bg-brand-blue" />
-                             )}
-                           </div>
-                           <div>
-                             <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Normal Auto Mode</p>
-                             <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5 block">
-                               Automatically triggers credentials message via WhatsApp upon entering new members or approving pending registrations.
-                             </span>
-                           </div>
-                         </div>
-
-                         <div 
-                           onClick={async () => {
-                             try {
-                               await saveOrgSettings({ ...orgSettings, registrationMode: 'bulk' });
-                               toast.success('System switched to Bulk Entry Mode (WhatsApp Auto-Send Paused)');
-                             } catch (err) {
-                               toast.error('Failed to update registration mode');
-                             }
-                           }}
-                           className={cn(
-                             "p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:bg-slate-50/50",
-                             orgSettings.registrationMode === 'bulk'
-                               ? "border-brand-magenta bg-brand-magenta/[0.02] shadow-xs" 
-                               : "border-slate-200 bg-white"
-                           )}
-                         >
-                           <div className={cn(
-                             "h-4 w-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
-                             orgSettings.registrationMode === 'bulk'
-                               ? "border-brand-magenta text-brand-magenta" 
-                               : "border-slate-350"
-                           )}>
-                             {orgSettings.registrationMode === 'bulk' && (
-                               <div className="h-2 w-2 rounded-full bg-brand-magenta" />
-                             )}
-                           </div>
-                           <div>
-                             <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Bulk Entry Mode</p>
-                             <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5 block">
-                               Disables ONLY automatic WhatsApp credentials sending. All user logins, membership IDs, and cards are created normally. WhatsApp status is saved as <strong className="text-brand-magenta">Pending</strong>.
-                             </span>
-                           </div>
-                         </div>
-                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Promotion Panel */}
-                  <Card className="border-2 border-brand-blue/20 bg-brand-blue/5 rounded-[32px] overflow-hidden mb-6">
-                    <CardHeader className="p-8">
-                       <div className="flex items-center gap-3">
-                          <div className="bg-brand-blue p-2 rounded-xl">
-                            <ShieldCheck className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-xl font-black text-brand-dark-purple uppercase">Promote Existing Member to Admin</CardTitle>
-                            <CardDescription className="text-slate-500 font-bold uppercase tracking-widest text-[9px] mt-1">
-                              Search by Mobile or ID to assign administrative roles without creating new profiles.
-                            </CardDescription>
-                          </div>
-                       </div>
-                    </CardHeader>
-                    <CardContent className="px-8 pb-8">
-                       <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input 
-                            placeholder="Find member to promote (Name, Mobile, ID)..." 
-                            className="pl-10 h-12 rounded-xl bg-white border-brand-blue/10"
-                            value={promoSearchTerm}
-                            onChange={(e) => setPromoSearchTerm(e.target.value)}
-                          />
-                       </div>
-                       
-                       {promotionCandidates.length > 0 && (
-                         <div className="mt-4 bg-white rounded-2xl border border-brand-blue/10 overflow-hidden divide-y">
-                            {promotionCandidates.map(candidate => (
-                              <div key={candidate.uid} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                 <div className="flex items-center gap-3">
-                                   <Avatar className="h-10 w-10 border border-slate-200">
-                                      <AvatarImage src={candidate.photoUrl} />
-                                      <AvatarFallback className="bg-slate-100 italic text-[10px]">{(candidate.name || '?').charAt(0)}</AvatarFallback>
-                                   </Avatar>
-                                   <div className="flex flex-col">
-                                      <span className="font-black text-xs uppercase text-slate-800">{candidate.name}</span>
-                                      <span className="text-[10px] font-bold text-slate-400">
-                                         {candidate.mobile} | {candidate.membershipId} | {DISTRICTS.find(d => d.code === candidate.district)?.name || candidate.district}
-                                      </span>
-                                   </div>
-                                 </div>
-                                 <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
-                                      className="h-8 rounded-lg bg-brand-magenta text-white font-black text-[9px] uppercase"
-                                      onClick={() => {
-                                        if (confirm(`Promote ${candidate.name} to Second Admin for ${DISTRICTS.find(d => d.code === candidate.district)?.name || 'their district'}?`)) {
-                                          onUpdate(candidate.uid, { role: 'admin', isAdmin: true, quota: 100 });
-                                          setPromoSearchTerm('');
-                                          setViewingMember({ ...candidate, role: 'admin', isAdmin: true });
-                                          toast.success(`${candidate.name} is now a Second Admin!`);
-                                        }
-                                      }}
-                                    >
-                                      Promote as Admin
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost"
-                                      className="h-8 rounded-lg text-brand-blue font-black text-[9px] uppercase hover:bg-brand-blue/10"
-                                      onClick={() => {
-                                        if (confirm(`Promote ${candidate.name} to District Operator?`)) {
-                                          onUpdate(candidate.uid, { role: 'operator', isAdmin: false, quota: 50 });
-                                          setPromoSearchTerm('');
-                                          toast.success(`${candidate.name} is now an Operator!`);
-                                        }
-                                      }}
-                                    >
-                                      Promotion as Operator
-                                    </Button>
-                                 </div>
-                              </div>
-                            ))}
-                         </div>
-                       )}
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-2 border-brand-magenta/20 bg-white rounded-[32px] overflow-hidden shadow-sm">
-                    <CardHeader className="bg-brand-magenta/5 border-b border-brand-magenta/10 p-8">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-brand-magenta p-2 rounded-xl">
-                          <ShieldCheck className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-2xl font-black text-brand-dark-purple tracking-tight uppercase">District Second Admins</CardTitle>
-                          <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 flex flex-col gap-1">
-                            <span>Manage dedicated administrators for each district and track their performance</span>
-                            <span className="text-brand-magenta/60 italic lowercase font-medium">* ഇതിനകം മെമ്പർ ആയിട്ടുള്ള ഒരാളെയാണ് സെക്കൻഡ് അഡ്മിൻ ആക്കേണ്ടതെങ്കിൽ 'Member List'-ൽ പോയി തിരഞ്ഞെടുത്താൽ മതിയാകും.</span>
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader className="bg-slate-50/50">
-                            <TableRow className="border-slate-200">
-                              <TableHead>District</TableHead>
-                              <TableHead>Assigned Second Admin</TableHead>
-                              <TableHead>Entries Processed</TableHead>
-                              <TableHead className="text-right">Admin Control</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {DISTRICTS.map((dist) => {
-                              const admin = members.find(m => m.role === 'admin' && m.district === dist.code && !MAIN_ADMINS.includes(m.email));
-                              
-                              return (
-                                  <TableRow key={dist.code} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                                    <TableCell>
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center">
-                                          <MapPin className="w-4 h-4 text-brand-blue" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                          <span className="font-black text-slate-800 uppercase text-xs">{dist.name}</span>
-                                          <span className="text-[9px] font-bold text-slate-400">District HQ</span>
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      {admin ? (
-                                        <div className="space-y-4">
-                                          <div className="flex flex-col p-3 bg-brand-magenta/5 border border-brand-magenta/10 rounded-2xl">
-                                            <div className="flex items-center gap-2 mb-2">
-                                              <ShieldCheck className="w-3 h-3 text-brand-magenta" />
-                                              <span className="text-[10px] font-black text-brand-magenta uppercase tracking-wider">
-                                                {getAdminLabel(admin.email)}
-                                              </span>
-                                            </div>
-                                            <span className="font-black text-brand-dark-purple text-xs uppercase">{admin.name}</span>
-                                            <span className="text-[10px] font-bold text-slate-400">{admin.email}</span>
-                                            <div className="flex items-center gap-1.5 mt-2">
-                                              <div className="px-2 py-0.5 bg-white border border-brand-magenta/20 rounded uppercase text-[8px] font-black text-brand-magenta">
-                                                ID: {admin.membershipId}
-                                              </div>
-                                              <div className="px-2 py-0.5 bg-white border border-slate-200 rounded uppercase text-[8px] font-black text-slate-500">
-                                                PW: {admin.pin || 'HCRS@123'}
-                                              </div>
-                                            </div>
-                                          </div>
-                                          
-                                          {/* Identity Breakdown */}
-                                          <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                              <Users className="w-3 h-3 text-brand-blue" />
-                                              <span className="text-[9px] font-black text-brand-blue uppercase tracking-wider">Active Identities</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                              {Array.from(new Set(members
-                                                .filter(m => m.district === dist.code && m.registeredBy === admin.uid)
-                                                .map(m => m.certAdminName || m.registeredByName)
-                                                .filter(Boolean)
-                                              )).slice(0, 3).map((name, i) => (
-                                                <div key={i} className="px-2 py-1 bg-slate-50 border border-slate-100 rounded-lg">
-                                                  <p className="text-[9px] font-black text-slate-600 uppercase leading-none">{name}</p>
-                                                </div>
-                                              ))}
-                                              {Array.from(new Set(members
-                                                .filter(m => m.district === dist.code && m.registeredBy === admin.uid)
-                                                .map(m => m.certAdminName || m.registeredByName)
-                                                .filter(Boolean)
-                                              )).length > 3 && (
-                                                <Badge variant="outline" className="text-[8px] h-5 border-slate-200 font-bold">
-                                                  +{Array.from(new Set(members
-                                                    .filter(m => m.district === dist.code && m.registeredBy === admin.uid)
-                                                    .map(m => m.certAdminName || m.registeredByName)
-                                                    .filter(Boolean)
-                                                  )).length - 3} more
-                                                </Badge>
-                                              )}
-                                              {Array.from(new Set(members
-                                                .filter(m => m.district === dist.code && m.registeredBy === admin.uid)
-                                                .map(m => m.certAdminName || m.registeredByName)
-                                                .filter(Boolean)
-                                              )).length === 0 && (
-                                                <span className="text-[9px] font-bold text-slate-300 italic">No entries yet</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-                                          <AlertCircle className="w-4 h-4 text-slate-300" />
-                                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No Admin Assigned</span>
-                                        </div>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="space-y-3">
-                                        <div className="flex flex-col gap-1.5">
-                                          <div className="flex justify-between items-end mb-1">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase">Usage Progress</span>
-                                            <span className="text-[11px] font-black text-emerald-600">
-                                              {Math.round(((admin?.quotaUsed || 0) / (admin?.quota || 1)) * 100)}%
-                                            </span>
-                                          </div>
-                                          <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <div 
-                                              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                              style={{ width: `${Math.min(100, ((admin?.quotaUsed || 0) / (admin?.quota || 1)) * 100)}%` }}
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                          <div className="px-2 py-1.5 bg-emerald-50 border border-emerald-100 rounded-xl">
-                                            <p className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1">Used</p>
-                                            <p className="text-sm font-black text-emerald-600 leading-none">{admin?.quotaUsed || 0}</p>
-                                          </div>
-                                          <div className="px-2 py-1.5 bg-brand-blue/5 border border-brand-blue/10 rounded-xl">
-                                            <p className="text-[8px] font-black text-brand-blue/40 uppercase leading-none mb-1">Limit</p>
-                                            <p className="text-sm font-black text-brand-blue leading-none">{admin?.quota || 0}</p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      <div className="flex justify-end gap-2">
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline"
-                                          className="h-8 text-[9px] font-black uppercase border-brand-blue/20 text-brand-blue hover:bg-brand-blue/5"
-                                          onClick={() => {
-                                            if (admin) {
-                                              setManualFormData({
-                                                ...manualFormData,
-                                                role: 'admin',
-                                                district: dist.code,
-                                                name: admin.name || '',
-                                                email: admin.email || '',
-                                                mobile: admin.mobile || '',
-                                                pin: admin.pin || '240678',
-                                                quota: admin.quota || 100
-                                              });
-                                            } else {
-                                              setManualFormData({
-                                                ...manualFormData,
-                                                role: 'admin',
-                                                district: dist.code,
-                                                name: '',
-                                                email: '',
-                                                mobile: '',
-                                                pin: '240678',
-                                                quota: 100
-                                              });
-                                            }
-                                            setIsManualEntryOpen(true);
-                                          }}
-                                        >
-                                          {admin ? 'Update' : 'Assign'}
-                                        </Button>
-                                        {admin && (
-                                        <Button 
-                                          size="sm" 
-                                          variant="ghost"
-                                          className="h-8 text-[9px] font-black uppercase text-red-400 hover:text-red-600"
-                                          onClick={() => {
-                                            if (confirm(`Are you sure you want to remove ${admin.name} as Second Admin for ${dist.name}?`)) {
-                                              onUpdate(admin.uid, { role: 'member', isAdmin: false });
-                                              toast.info(`Admin permissions removed from ${admin.name}`);
-                                            }
-                                          }}
-                                        >
-                                          Remove
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-2 border-brand-magenta/20 bg-white rounded-[32px] overflow-hidden shadow-sm">
-                    <CardHeader className="bg-brand-magenta/5 border-b border-brand-magenta/10 p-8 flex flex-row items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-brand-magenta p-2 rounded-xl">
-                          <MapPin className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-2xl font-black text-brand-dark-purple tracking-tight uppercase">District-Wise Shared Quotas</CardTitle>
-                          <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">
-                            Global entry limits for entire districts (Applies to all members/operators)
-                          </CardDescription>
-                        </div>
-                      </div>
-                      {isSuperAdmin && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={onSyncQuotas}
-                          className="bg-white border-brand-magenta/20 text-brand-magenta font-black text-[10px] uppercase tracking-widest hover:bg-brand-magenta hover:text-white transition-all shadow-sm h-10 px-6 rounded-xl"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 mr-2" />
-                          Sync Used Counts
-                        </Button>
-                      )}
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader className="bg-slate-50/50">
-                            <TableRow className="border-slate-200">
-                              <TableHead className="w-[180px]">District (ജില്ല)</TableHead>
-                              <TableHead>Quota Configuration & Real-Time Count (ക്വാട്ടയും തദ്സമയ വിവരങ്ങളും)</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {DISTRICTS.map((dist) => {
-                              const total = districtQuotas[dist.code] || 0;
-                              const used = districtQuotasUsed[dist.code] || 0;
-                              const percent = total > 0 ? Math.round((used / total) * 100) : 0;
-                              
-                              return (
-                                <TableRow key={dist.code} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                                  <TableCell className="align-middle">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center shrink-0">
-                                        <MapPin className="w-4 h-4 text-brand-blue" />
-                                      </div>
-                                      <span className="font-black text-slate-800 uppercase text-xs">{dist.name}</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="align-middle">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-2">
-                                      {/* Simplified Count Indicator */}
-                                      <div className="flex items-center gap-2 shrink-0 bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl">
-                                        <span className="text-[10px] font-black uppercase text-slate-500">ചെയ്തത് (Used):</span>
-                                        <span className="text-sm font-black text-emerald-600 font-mono">{used}</span>
-                                        <span className="text-slate-350 font-bold">/</span>
-                                        <span className="text-sm font-black text-slate-705 text-slate-700 font-mono">{total > 0 ? total : '∞'}</span>
-                                        {total > 0 && (
-                                          <span className="text-[9px] font-black text-brand-magenta uppercase bg-brand-magenta/5 border border-brand-magenta/10 px-2 py-0.5 rounded-md ml-1.5">
-                                            {total - used} ബാക്കി (Left)
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {/* Quota Limit Input and Button right inside area */}
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <div className="relative">
-                                          <Label className="sr-only">Edit Quota</Label>
-                                          <Input 
-                                            type="number" 
-                                            id={`dist-quota-input-${dist.code}`}
-                                            className="w-24 h-10 rounded-xl font-black text-center pr-8 border-slate-200 focus:border-brand-magenta/40 bg-slate-50/50"
-                                            placeholder="0"
-                                            defaultValue={total || ''}
-                                          />
-                                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">LIMIT</div>
-                                        </div>
-                                        <Button 
-                                          size="sm" 
-                                          className="h-10 px-4 bg-brand-magenta text-white hover:bg-brand-magenta/90 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/10 active:scale-95 transition-all"
-                                          onClick={() => {
-                                            const input = document.getElementById(`dist-quota-input-${dist.code}`) as HTMLInputElement;
-                                            const val = parseInt(input.value) || 0;
-                                            onUpdateDistrictQuota?.(dist.code, val);
-                                            toast.success(`${dist.name} limit updated to ${val || 'Unlimited'}`);
-                                          }}
-                                        >
-                                          മാറ്റുക (Set)
-                                        </Button>
-                                      </div>
-
-                                      {/* Progress display */}
-                                      {total > 0 && (
-                                        <div className="flex items-center gap-2 w-28 shrink-0">
-                                          <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden font-sans">
-                                            <div 
-                                              className={cn(
-                                                "h-full transition-all duration-1000",
-                                                percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-orange-500' : 'bg-brand-magenta'
-                                              )}
-                                              style={{ width: `${Math.min(100, percent)}%` }}
-                                            />
-                                          </div>
-                                          <span className={cn(
-                                            "text-[9px] font-black uppercase text-right w-10 font-mono",
-                                            percent >= 100 ? 'text-red-650 text-red-600' : 'text-slate-550'
-                                          )}>{percent}%</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-
-              <Card className="border-2 border-slate-200 bg-white rounded-[32px] overflow-hidden shadow-sm">
-                <CardHeader className="bg-slate-50 border-b border-slate-200 p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div>
-                    <CardTitle className="text-2xl font-black text-brand-blue flex items-center gap-3">
-                      <Lock className="w-8 h-8" />
-                      Individual Operator Quotas
-                    </CardTitle>
-                    <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 flex flex-col gap-1">
-                       <span>Personalized overrides/limits for specific admin accounts</span>
-                       <span className="text-brand-blue/60 italic font-medium lowercase">സബ്-അഡ്മിൻമാർക്കും ഓപ്പറേറ്റർമാർക്കും നൽകിയിട്ടുള്ള എൻട്രി ലിമിറ്റുകൾ ഇവിടെ കാണാം. (Daily/Total entry limits for each sub-admin/operator)</span>
-                    </CardDescription>
                   </div>
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                   <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input 
-                        placeholder="Search name, mobile or district..." 
-                        className="pl-10 h-11 w-full md:w-64 rounded-xl border-slate-200 bg-white shadow-sm focus:ring-2 focus:ring-brand-blue/20"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                   </div>
-                   <Button 
-                     className="bg-brand-blue h-11 px-8 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand-blue/20 active:scale-95 transition-all"
-                     onClick={() => setSearchTerm(searchTerm)}
-                   >
-                     SEARCH
-                   </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-slate-50/50">
-                      <TableRow className="border-slate-200">
-                        <TableHead>Operator Name</TableHead>
-                        <TableHead>District</TableHead>
-                        <TableHead>Quota Assigned</TableHead>
-                        <TableHead>Quota Used</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(() => {
-                        const quotaBaseList = searchTerm.trim() 
-                          ? members.filter(m => 
-                              (m.name && m.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
-                              (m.mobile && String(m.mobile).includes(searchTerm)) ||
-                              (m.district && DISTRICTS.find(d => d.code === m.district)?.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                            ).filter(m => districtFilter === 'all' || m.district === districtFilter)
-                          : members.filter(m => 
-                              // Only show people with administrative roles OR people explicitly given a positive quota
-                              m.role === 'operator' || 
-                              (m.role === 'admin' && !MAIN_ADMINS.includes(m.email)) || 
-                              (m.quota !== undefined && m.quota > 0)
-                            );
-                        
-                        // Ensure uniqueness by UID
-                        const uniqueQuotaList = Array.from(new Map(quotaBaseList.map(m => [m.uid, m])).values());
+                </Card>
 
-                        if (uniqueQuotaList.length === 0) {
-                          return (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-20 text-slate-600 font-bold">
-                                {searchTerm ? "No members found matching your search." : "No operators or district managers found. Use search to find a member."}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        }
-
-                        return uniqueQuotaList.map((op) => (
-                          <TableRow key={op.uid} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar 
-                                  className="h-10 w-10 border-2 border-white shadow-sm cursor-pointer hover:scale-105 transition-transform"
-                                  onClick={() => setViewingMember(op)}
-                                >
-                                  <AvatarImage src={op.photoUrl} />
-                                  <AvatarFallback className="bg-brand-blue/10 text-brand-blue font-black">{(op.name || '?').charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-black text-slate-800 leading-none">{op.name}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="outline" className={cn(
-                                      "text-[8px] h-4 font-bold border-brand-blue/20 text-brand-blue uppercase bg-brand-blue/5",
-                                      (op.role === 'admin' || op.isAdmin) && "border-brand-magenta/20 text-brand-magenta bg-brand-magenta/5"
-                                    )}>{op.role || (op.isAdmin ? 'admin' : 'member')}</Badge>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide truncate max-w-[120px]">{op.email}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="font-black text-[9px] uppercase tracking-wide border-slate-200">
-                                {DISTRICTS.find(d => d.code === op.district)?.name || op.district}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="relative">
-                                  <Input 
-                                    type="number" 
-                                    id={`quota-input-${op.uid}`}
-                                    className="w-24 h-10 rounded-xl font-black text-center focus:ring-2 focus:ring-brand-blue/20 pr-8"
-                                    placeholder="0"
-                                    defaultValue={op.quota ?? ''}
-                                  />
-                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300">QTY</div>
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  className="h-10 px-4 bg-brand-blue text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand-blue/10 active:scale-95 transition-all"
-                                  onClick={() => {
-                                    const input = document.getElementById(`quota-input-${op.uid}`) as HTMLInputElement;
-                                    const val = input.value === '' ? 0 : parseInt(input.value);
-                                    if (!isNaN(val)) {
-                                      // If it was just a member, we might want to ensure they become an operator or at least have the quota field
-                                      onUpdate(op.uid, { quota: val, role: op.role === 'member' ? 'operator' : op.role });
-                                      toast.success(`Limit of ${val} set for ${op.name}`);
-                                    }
-                                  }}
-                                >
-                                  SAVE
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                                  <span className="text-slate-400">Used: {op.quotaUsed || 0}</span>
-                                  <span className={(op.quota !== undefined && (op.quotaUsed || 0) >= op.quota) ? 'text-red-500' : 'text-brand-blue'}>
-                                    {op.quota ? Math.round(((op.quotaUsed || 0) / op.quota) * 100) : 0}%
-                                  </span>
-                                </div>
-                                <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                  <div 
-                                    className={cn(
-                                      "h-full transition-all duration-1000",
-                                      (op.quota !== undefined && (op.quotaUsed || 0) >= op.quota) ? 'bg-red-500' : 'bg-brand-blue'
-                                    )}
-                                    style={{ width: `${Math.min(100, op.quota ? ((op.quotaUsed || 0) / op.quota) * 100 : 0)}%` }}
-                                  />
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                className={cn(
-                                  "font-black text-[9px] uppercase tracking-widest",
-                                  (op.quota !== undefined && (op.quotaUsed || 0) >= op.quota) 
-                                    ? "bg-red-100 text-red-600" 
-                                    : "bg-green-100 text-green-600"
-                                )}
-                              >
-                                {(op.quota !== undefined && (op.quotaUsed || 0) >= op.quota) ? "Exhausted" : "Active"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                               <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="font-bold text-[10px] uppercase h-8 hover:bg-brand-blue hover:text-white border-brand-blue/20 text-brand-blue"
-                                onClick={() => setEditingMember(op)}
-                               >
-                                 Edit Full Access
-                               </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      })()}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="districts">
-            <Card className="border-slate-200 shadow-xl rounded-3xl overflow-hidden mt-6">
-               <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
-                  <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center">
-                        <Lock className="w-6 h-6 text-brand-blue" />
-                     </div>
-                     <div>
-                        <CardTitle className="text-2xl font-black text-slate-800">District Admin Control</CardTitle>
-                        <CardDescription className="font-bold text-slate-500 uppercase tracking-widest text-[10px] flex flex-col gap-1 mt-1">
-                          <span>Manage and share district-specific login credentials</span>
-                          <span className="text-red-500 italic">ശ്രദ്ധിക്കുക: ലിങ്ക് ഷെയർ ചെയ്യുമ്പോൾ ഈ പേജിന്റെ മുകളിൽ 'COPY PUBLIC LINK' എന്നത് ഉപയോഗിക്കുക അല്ലെങ്കിൽ ഈ ലിങ്കുകൾ മാത്രം ഷെയർ ചെയ്യുക. (Important: Only share these links using the Shared URL domain)</span>
-                        </CardDescription>
-                     </div>
-                  </div>
-               </CardHeader>
-               <CardContent className="p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {DISTRICTS.map((d) => {
-                        const email = `hcrs${d.name.toLowerCase()}@hcrs.society`;
-                        const pwd = "246810";
-                        // More robust URL detection
-                        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-                        
-                        // We prefer the current origin unless it's obviously a dev setup AND we have a stable fallback
-                        // However, on AI Studio, origin changes frequently, so using window.location.origin is usually SAFEST
-                        const effectiveBase = currentOrigin || SHARED_URL;
-
-                        // Remove trailing slash if exists to avoid double slash
-                        const cleanBase = effectiveBase.endsWith('/') ? effectiveBase.slice(0, -1) : effectiveBase;
-                        const directLoginUrl = `${cleanBase}/?distLogin=${d.name.toLowerCase()}`;
-                        
-                        const shareText = `*HCRS Kerala District Admin Login*%0A%0Aജില്ല: ${d.name}%0A%0Aതാഴെ കാണുന്ന ലിങ്കിൽ ക്ലിക്ക് ചെയ്താൽ നേരിട്ട് ലോഗിൻ ചെയ്യാം:%0A${directLoginUrl}%0A%0AUser ID: ${email}%0APassword: ${pwd}%0A%0A_ശ്രദ്ധിക്കുക: ലിങ്ക് ഓപ്പൺ ചെയ്ത ശേഷം 'BACK TO ENTRY' ബട്ടൺ ഉപയോഗിച്ച് ലിസ്റ്റ് കാണാവുന്നതാണ്._`;
-                        
-                        return (
-                           <div key={d.code} className="bg-white border-2 border-slate-100 rounded-[32px] p-6 hover:border-brand-blue/20 transition-all group">
-                              <div className="flex items-center justify-between mb-4">
-                                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">{d.name}</h3>
-                                 <Badge variant="outline" className="text-[10px] uppercase font-black px-2 py-0.5 rounded-lg border-brand-blue/20 text-brand-blue">Direct Link</Badge>
-                              </div>
-                              <div className="space-y-3 mb-6">
-                                 <div className="bg-slate-50 p-3 rounded-2xl relative overflow-hidden">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Login URL</p>
-                                    <p className="text-[10px] font-bold text-brand-blue truncate pr-8 select-all">{directLoginUrl}</p>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="absolute right-1 top-6 h-6 w-6 text-slate-300 hover:text-brand-blue"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(directLoginUrl);
-                                        toast.success(`${d.name} link copied!`);
-                                      }}
-                                    >
-                                      <Plus className="w-3 h-3 rotate-45" />
-                                    </Button>
-                                 </div>
-                                 <div className="bg-slate-50 p-3 rounded-2xl">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">District User ID & Password</p>
-                                    <p className="text-xs font-bold text-slate-700">{email}</p>
-                                    <p className="text-xs font-black text-brand-magenta mt-1 uppercase tracking-widest">PWD: {pwd}</p>
-                                 </div>
-                              </div>
-                              <Button 
-                                 className="w-full h-12 rounded-2xl font-black uppercase text-[10px] bg-brand-blue text-white shadow-lg shadow-brand-blue/10 hover:bg-brand-blue/90"
-                                 onClick={() => window.open(`https://api.whatsapp.com/send?text=${shareText}`, '_blank')}
-                              >
-                                 <MessageCircle className="w-4 h-4 mr-2" />
-                                 SHARE VIA WHATSAPP
-                              </Button>
-                           </div>
-                        );
-                     })}
-                  </div>
-               </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="combo">
-            <div className="space-y-4">
-              {(() => {
-                const comboGroups = getComboGroups(claims);
-
-                if (comboGroups.length === 0) {
-                  return (
-                    <Card className="border-none shadow-sm rounded-3xl bg-white">
-                      <div className="py-16 text-center">
-                        <p className="text-slate-400 font-black uppercase text-xs tracking-widest">
-                          No Combo Claims Found
-                        </p>
-                      </div>
-                    </Card>
-                  );
-                }
-
-                return (
-                  <>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase">
-                          Combo Claims
-                        </h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                          {comboGroups.length} Combo Groups
-                        </p>
-                      </div>
-
-                      <Button
-                        onClick={() => printComboClaims(comboGroups.flat())}
-                        className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase rounded-xl"
-                      >
-                        <Printer className="w-4 h-4 mr-2" />
-                        Print All Combos
-                      </Button>
-                    </div>
-
-                    <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
-                      <div className="divide-y divide-slate-100">
-                        {comboGroups.map((group, groupIndex) => {
-                          const first = group[0];
-
-                          return (
-                            <div
-                              key={`combo-${first.userMobile}-${groupIndex}`}
-                              className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <span className="font-black text-slate-800 text-sm">
-                                    {first.userName || 'N/A'}
-                                  </span>
-
-                                  <Badge className="bg-brand-magenta text-white border-none font-black text-[9px] uppercase">
-                                    👥 Combo · {group.length} Claims
-                                  </Badge>
-                                </div>
-
-                                <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                                  <span className="text-[10px] font-bold text-slate-500">
-                                    {first.userMobile || 'N/A'}
-                                  </span>
-
-                                  {first.membershipId && (
-                                    <span className="text-[9px] font-black text-brand-blue uppercase">
-                                      {first.membershipId}
-                                    </span>
-                                  )}
-
-                                  <span className="text-[9px] font-bold text-slate-400">
-                                    Claims: {group.map((claim, i) =>
-                                      `#${claim.tokenNo ?? claim.serialNo ?? ''}`
-                                    ).join(', ')}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => printComboClaims(group)}
-                                className="h-8 shrink-0 rounded-xl font-black text-[9px] uppercase text-brand-blue border-blue-200 hover:bg-blue-50"
-                              >
-                                <Printer className="w-3.5 h-3.5 mr-1" />
-                                Print Combo
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </Card>
-                  </>
-                );
-              })()}
-            </div>
-          </TabsContent>
-          <TabsContent value="claims">
-            <div className="space-y-6">
-               {/* Claims Analytics */}
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                 <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Pending Amount</p>
-                   <h3 className="text-3xl font-black text-slate-800">₹{claimStats.totalPending.toLocaleString('en-IN')}</h3>
-                   <div className="mt-4 flex items-center gap-2">
-                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                       <IndianRupee className="w-4 h-4" />
-                     </div>
-                     <p className="text-[9px] font-bold text-slate-400 uppercase">Total amount across all claims</p>
-                   </div>
-                 </Card>
-
-                 <Card className="border-2 border-red-100 bg-white rounded-3xl p-6 shadow-sm">
-                   <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Emergency Cases</p>
-                   <h3 className="text-3xl font-black text-red-600">{claimStats.emergencyCount}</h3>
-                   <div className="mt-4 flex items-center gap-2">
-                     <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                       <ShieldAlert className="w-4 h-4" />
-                     </div>
-                     <p className="text-[9px] font-black text-red-400 uppercase">Requires immediate attention</p>
-                   </div>
-                 </Card>
-
-                 <Card className="border-2 border-brand-blue/10 bg-white rounded-3xl p-6 shadow-sm md:col-span-2 overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Distribution</p>
-                       <Badge variant="outline" className="text-[9px] uppercase font-black">{claims.length} Claims</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                       {Object.entries(claimStats.projectCounts).map(([cat, count]) => (
-                         <div key={cat} className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100 flex items-center gap-2">
-                           <span className="text-[10px] font-black text-slate-600 uppercase">{cat}</span>
-                           <Badge className="bg-brand-blue text-white text-[9px] h-4 min-w-[20px] px-1 flex justify-center">{count as number}</Badge>
-                         </div>
-                       ))}
-                    </div>
-                 </Card>
-               </div>
-
-               {/* Filters Bar Specific for Claims */}
-               <Card className="border-none shadow-sm rounded-3xl bg-white p-4">
-                 <div className="flex flex-col md:flex-row gap-4 items-center">
-                    <div className="relative flex-1 w-full">
-                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                      <Input 
-                        placeholder="Search by Name, Mobile, Membership ID or HR ID..." 
-                        className="pl-10 h-11 bg-slate-50 border-none rounded-xl text-xs font-bold"
-                        value={claimSearchTerm}
-                        onChange={(e) => setClaimSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                      <Select value={claimDistrictFilter} onValueChange={setClaimDistrictFilter}>
-                        <SelectTrigger className="w-[120px] h-11 bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase">
-                          <SelectValue placeholder="District" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Districts</SelectItem>
-                          {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={claimCategoryFilter} onValueChange={setClaimCategoryFilter}>
-                        <SelectTrigger className="w-[120px] h-11 bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase">
-                          <SelectValue placeholder="Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All categories</SelectItem>
-                          <SelectItem value="digital">Digital Redeem Coupon (ഡിജിറ്റൽ റെഡീം കൂപ്പൺ)</SelectItem>
-                          <SelectItem value="ott">OTT Consignment Advance (OTT കോൺസൈമെന്റ് അഡ്വാൻസ്)</SelectItem>
-                          <SelectItem value="grocery">Grocery Consignment Advance (ഗ്രോസറി കോൺസൈമെന്റ് അഡ്വാൻസ്)</SelectItem>
-                          <SelectItem value="goodwill">Goodwill Consignment Advance (ഗുഡ്‌വിൽ കോൺസൈമെന്റ് അഡ്വാൻസ്)</SelectItem>
-                          <SelectItem value="other">Other Consignment Advance (മറ്റു കോൺസൈമെന്റ് അഡ്വാൻസ്)</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={claimPriorityFilter} onValueChange={setClaimPriorityFilter}>
-                        <SelectTrigger className="w-[120px] h-11 bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase">
-                          <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Priority</SelectItem>
-                          <SelectItem value="EMERGENCY RED">Emergency Red</SelectItem>
-                          <SelectItem value="RED">Red</SelectItem>
-                          <SelectItem value="ORANGE">Orange</SelectItem>
-                          <SelectItem value="GREEN">Green</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Button 
-                        onClick={() => {
-                          const ws = XLSX.utils.json_to_sheet(filteredClaims.map(c => ({
-                            'Token No': c.tokenNo ?? c.serialNo ?? 'N/A',
-                            'Name': c.userName,
-                            'Relation': c.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                                       c.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                       c.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                       c.relation === 'Son' ? 'മകൻ (Son)' :
-                                       c.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
-                                       c.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                                       c.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : (c.relationLabel || c.relation || 'Self'),
-                            'Mobile': c.userMobile,
-                            'District': c.userDistrict,
-                            'HR ID': c.highrichId,
-                            'Categories': formatClaimCategories(c.categories),
-                            'Total Paid': c.totalPaid,
-                            'Total Received': c.totalReceived,
-                            'Balance Pending': c.totalPending,
-                            'Preference': c.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' : 
-                                         c.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' : 
-                                         c.futurePreference === 'continue' ? 'Ready to continue based on future plans' : (c.futurePreference || 'N/A'),
-                            'Priority': c.priorityStatus,
-                            'Date': formatClaimDate(c.createdAt)
-                          })));
-                          const wb = XLSX.utils.book_new();
-                          XLSX.utils.book_append_sheet(wb, ws, "Support Claims");
-                          XLSX.writeFile(wb, `HCRS_Support_Claims_${new Date().toISOString().split('T')[0]}.xlsx`);
-                        }}
-                        className="h-11 px-6 rounded-xl bg-brand-magenta text-white font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/20"
-                      >
-                         <Download className="w-4 h-4 mr-2" /> Export Excel
-                      </Button>
-
-                      <Button 
-                        onClick={() => {
-                          setClaimsImportFile(null);
-                          setClaimsImportRows([]);
-                          setClaimsImportLogs([]);
-                          setIsClaimsImportOpen(true);
-                        }}
-                        className="h-11 px-6 rounded-xl bg-brand-blue text-white font-black text-[10px] uppercase shadow-lg shadow-brand-blue/20"
-                      >
-                         <Upload className="w-4 h-4 mr-2" /> Import Old Claims
-                      </Button>
-                    </div>
-                 </div>
-               </Card>
-
-               {claimsError && (
-                 <div className="mb-6 p-6 rounded-3xl bg-rose-50 border border-rose-100 shadow-sm space-y-4">
-                   <div className="flex items-start gap-4">
-                     <div className="p-3 bg-rose-100 rounded-2xl text-rose-600">
-                       <ShieldAlert className="w-6 h-6" />
-                     </div>
-                     <div className="space-y-1 flex-1">
-                       <h4 className="font-extrabold text-[#D00000] text-sm md:text-base">കണക്റ്റിവിറ്റി ലിമിറ്റ് കണ്ടെത്തി (Firebase Permission Denied)</h4>
-                       <p className="text-xs text-rose-700 leading-relaxed font-bold">
-                         ഫയർബേസ് സെക്യൂരിറ്റി റൂൾസ് (Firestore Security Rules) 'claims' കളക്ഷൻ്റെ അഡ്മിൻ റീഡ് പെർമിഷൻ തടയുന്നു. ഈ പ്രശ്നം പരിഹരിക്കുന്നതിനായി താഴെ നൽകിയിരിക്കുന്ന കോഡ് കോപ്പി ചെയ്ത് ഫയർബേസ് കൺസോളിൽ റൂൾസ് അപ്ഡേറ്റ് ചെയ്യുക.
-                       </p>
-                     </div>
-                   </div>
-                   <div className="space-y-2">
-                     <div className="flex justify-between items-center bg-slate-100 py-2 px-4 rounded-xl">
-                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">പകർത്തേണ്ട കോഡ് (New firestore.rules)</span>
-                       <Button 
-                         onClick={() => {
-                           navigator.clipboard.writeText(`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // claims match split (resolves compile-time get/list deadlock)
-    match /claims/{claimId} {
-      allow get: if request.auth != null;
-      allow list: if request.auth != null;
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-    // support_tickets match
-    match /support_tickets/{ticketId} {
-      allow read, write: if request.auth != null;
-    }
-    // Global rule
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}`);
-                           toast.success('സെക്യൂരിറ്റി റൂൾ കോഡ് കോപ്പി ചെയ്തു!');
-                         }}
-                         variant="ghost"
-                         className="h-8 px-3 rounded-lg text-rose-600 hover:bg-rose-100/50 text-[10px] font-black uppercase"
-                       >
-                         <Copy className="w-3.5 h-3.5 mr-1" /> കോപ്പി ചെയ്യുക
-                       </Button>
-                     </div>
-                     <pre className="p-4 rounded-2xl bg-[#1e1e1e] text-[#d4d4d4] text-[10px] sm:text-xs font-mono overflow-x-auto border border-zinc-800 leading-relaxed max-y-48 overflow-y-auto shadow-inner">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // claims match split (resolves compile-time get/list deadlock)
-    match /claims/{claimId} {
-      allow get: if request.auth != null;
-      allow list: if request.auth != null;
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-    // support_tickets match
-    match /support_tickets/{ticketId} {
-      allow read, write: if request.auth != null;
-    }
-    // Global rule
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}`}
-                     </pre>
-                   </div>
-                 </div>
-               )}
-
-               {/* Claims Table */}
-               <div className="flex justify-end mb-3">
-                 <Button
-                   onClick={() => {
-                     const comboGroups = getComboGroups(claims);
-                     if (comboGroups.length === 0) {
-                       toast.info('No Combo claims found.');
-                       return;
-                     }
-                     const allComboClaims = comboGroups.flat();
-                     printComboClaims(allComboClaims);
-                   }}
-                   className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase rounded-xl px-4"
-                 >
-                   <Printer className="w-4 h-4 mr-2" />
-                   Print All Combos
-                 </Button>
-               </div>
-
-               <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
-                  {claimsLoading ? (
-                    <div className="py-20 text-center space-y-4">
-                       <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-blue" />
-                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading support claims...</p>
-                    </div>
-                  ) : (
-                    <div className="w-full overflow-x-auto">
-                      <div className="min-w-[1100px]">
+                {/* Member Table */}
+                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                  <div className="overflow-x-auto w-full min-w-0 max-w-full">
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 w-[100px]">Serial No</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Member Info</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Combo</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Relation</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Date</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Actions</TableHead>
+                          <TableHead className="w-12 text-[10px] font-black uppercase text-slate-400">#</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400">Member Info</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400">District & Assembly</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400">Contact</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400">Status</TableHead>
+                          <TableHead className="text-right text-[10px] font-black uppercase text-slate-400">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredClaims.map(claim => (
-                          <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
-                            <TableCell className="px-6 py-4 font-black text-[#FF1493] text-sm font-mono">
-                              <span className="bg-[#FF1493]/5 border border-[#FF1493]/15 py-1 px-2.5 rounded-lg text-[#FF1493]">
-                                #{claim.tokenNo ?? claim.serialNo ?? ''}
-                              </span>
-                            </TableCell>
-                            <TableCell className="px-6 py-4">
-                              <div className="space-y-1">
-                                <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
-                                <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
-                                {(() => {
-                                  const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
-                                  if (comboCount > 1) {
-                                    return (
-                                      <div className="mt-1">
-                                        <Badge variant="outline" className="text-[8px] h-4.5 font-bold uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20 py-0.5">
-                                          👥 Combo (കോംബോ - {comboCount} Claims)
-                                        </Badge>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-                                <p className="text-[9px] font-black text-brand-blue uppercase">{claim.membershipId}</p>
+                        {isSyncingMembers && members.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-16 text-slate-500">
+                              <div className="flex flex-col items-center justify-center gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
+                                <p className="font-bold text-slate-800 text-sm">ഡാറ്റാബേസിൽ നിന്ന് അംഗങ്ങളുടെ വിവരങ്ങൾ ശേഖരിക്കുന്നു...</p>
+                                <p className="text-slate-400 text-xs">Loading database records (~8,000 members). Please wait...</p>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              {(() => {
-                                const comboClaims = claims.filter(c =>
-                                  compareMobiles(c.userMobile, claim.userMobile)
-                                );
-
-                                if (comboClaims.length <= 1) {
-                                  return <span className="text-[9px] text-slate-300 font-bold">—</span>;
-                                }
-
-                                return (
-                                  <div className="flex flex-col items-start gap-1.5">
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[8px] h-5 font-black uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20"
+                          </TableRow>
+                        ) : members.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-16 text-slate-500">
+                              <div className="flex flex-col items-center justify-center gap-3">
+                                <Users className="w-10 h-10 text-slate-300" />
+                                <p className="font-bold text-slate-800 text-sm">ഡാറ്റാബേസ് എൻട്രികൾ ലോഡ് ചെയ്തിട്ടില്ല</p>
+                                <p className="text-slate-400 text-xs">താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് ഡാറ്റാബേസ് വിവരങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുക.</p>
+                                {onRefreshMembers && (
+                                  <Button 
+                                    size="sm" 
+                                    onClick={onRefreshMembers}
+                                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-xs mt-1 max-w-full whitespace-normal break-words h-auto py-2 px-3 text-center"
+                                  >
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
+                                    <span>ഡാറ്റാബേസ് ലോഡ് ചെയ്യുക (Load Database)</span>
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : paginatedMembers.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-12 text-slate-500 font-medium text-xs">
+                              <p className="font-bold text-slate-700 text-sm mb-1">തിരഞ്ഞെടുത്ത ഫിൽട്ടറുകൾ പ്രകാരം അംഗങ്ങളെ കണ്ടെത്തിയില്ല</p>
+                              <p className="text-slate-400 text-xs mb-3">ആകെ {members.length} അംഗങ്ങൾ ഡാറ്റാബേസിലുണ്ട്. ഫിൽട്ടറുകൾ മാറ്റുകയോ റീസെറ്റ് ചെയ്യുകയോ ചെയ്യുക.</p>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => { setSearchTerm(''); setDistrictFilter('all'); setStatusFilter('all'); setCategoryFilter('all'); setSourceFilter('all'); }} 
+                                className="text-xs font-bold text-brand-blue border-brand-blue/30 rounded-xl max-w-full whitespace-normal break-words h-auto py-2 px-3 text-center"
+                              >
+                                ഫിൽട്ടറുകൾ റീസെറ്റ് ചെയ്യുക (Reset Filters)
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedMembers.map((m, idx) => (
+                            <TableRow key={m.uid} className="hover:bg-slate-50/50">
+                              <TableCell className="font-mono text-xs text-slate-400">
+                                {(currentPage - 1) * 10 + idx + 1}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-9 w-9 rounded-xl border border-slate-100">
+                                    <AvatarImage src={m.photoUrl} alt={m.name} />
+                                    <AvatarFallback className="text-[10px] font-black bg-brand-blue/10 text-brand-blue">
+                                      {m.name?.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                                      {m.name}
+                                      {m.membershipId && (
+                                        <Badge variant="outline" className="text-[8px] font-mono font-black py-0 h-4 bg-slate-50">
+                                          {m.membershipId}
+                                        </Badge>
+                                      )}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 font-medium">HR: {m.highrichId || 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <p className="text-xs font-bold text-slate-700">
+                                  {DISTRICTS.find(d => d.code === m.district)?.name || m.district}
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-medium">
+                                  {m.assemblyConstituency || 'N/A'}
+                                </p>
+                              </TableCell>
+                              <TableCell>
+                                <p className="font-mono text-xs font-bold text-slate-800">{m.mobile}</p>
+                                <p className="text-[10px] text-slate-400 truncate max-w-[140px]">{m.email}</p>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1 items-start">
+                                  <Badge 
+                                    className={cn(
+                                      "text-[9px] font-black uppercase px-2 py-0.5",
+                                      m.status === 'active' ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
+                                      m.status === 'pending' ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                                      "bg-red-500/10 text-red-600 border border-red-500/20"
+                                    )}
+                                  >
+                                    {m.status}
+                                  </Badge>
+                                  {m.isPaid && (
+                                    <span className="text-[8px] font-black text-emerald-600">✓ Paid</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingMember(m)}
+                                    className="h-8 px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider text-brand-blue border-brand-blue/20 hover:bg-brand-blue/5"
+                                    title="View ID Card"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 mr-1" />
+                                    Card
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger 
+                                      className="h-8 w-8 rounded-lg inline-flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+                                      title="More actions"
                                     >
-                                      👥 Combo · {comboClaims.length}
+                                      <MoreVertical className="w-4 h-4" />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
+                                      <DropdownMenuItem onClick={() => setEditingMember(m)} className="text-xs font-bold">
+                                        <Pencil className="w-3.5 h-3.5 mr-2 text-slate-500" /> Edit Details
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setSelectedReceiptsMember(m)} className="text-xs font-bold">
+                                        <Receipt className="w-3.5 h-3.5 mr-2 text-emerald-600" /> Payment Receipts
+                                      </DropdownMenuItem>
+                                      {onResetPin && (
+                                        <DropdownMenuItem onClick={() => onResetPin(m.uid)} className="text-xs font-bold">
+                                          <KeyRound className="w-3.5 h-3.5 mr-2 text-amber-600" /> Reset PIN (123456)
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem 
+                                        onClick={() => handleApproveWithWhatsApp(m)} 
+                                        className="text-xs font-bold text-emerald-600"
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5 mr-2" /> Send WhatsApp Card
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleDeleteClick(m.uid)} className="text-xs font-bold text-red-600">
+                                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Member
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {filteredMembers.length > 10 && (
+                    <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400">
+                        Showing {(currentPage - 1) * 10 + 1} - {Math.min(currentPage * 10, filteredMembers.length)} of {filteredMembers.length}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          className="h-8 rounded-lg text-xs font-bold"
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-xs font-mono font-black text-slate-700 px-2">
+                          Page {currentPage} of {Math.ceil(filteredMembers.length / 10)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage >= Math.ceil(filteredMembers.length / 10)}
+                          onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredMembers.length / 10), prev + 1))}
+                          className="h-8 rounded-lg text-xs font-bold"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </div>
+            )}
+
+            {/* 2. PENDING REQUESTS TAB */}
+            {activeTab === 'requests' && (
+              <div className="space-y-6">
+                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-800 uppercase">Pending Registrations</h3>
+                      <p className="text-xs text-slate-400 font-bold">പുതിയ അംഗത്വ അപേക്ഷകൾ പരിശോധിച്ച് അംഗീകരിക്കുക</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-black font-mono">
+                      {pendingRequests.length} Pending
+                    </Badge>
+                  </div>
+
+                  {pendingRequests.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 font-bold text-xs">
+                      പുതിയ അംഗത്വ അപേക്ഷകൾ നിലവിലില്ല (No pending registration requests)
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingRequests.map(m => (
+                        <div key={m.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 gap-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 rounded-xl">
+                              <AvatarImage src={m.photoUrl} alt={m.name} />
+                              <AvatarFallback className="bg-brand-blue/10 text-brand-blue font-bold text-xs">
+                                {m.name?.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-extrabold text-sm text-slate-800">{m.name}</p>
+                              <p className="text-xs font-mono text-slate-500 font-bold">{m.mobile} • {DISTRICTS.find(d => d.code === m.district)?.name || m.district}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <Button variant="outline" size="sm" onClick={() => setViewingMember(m)} className="rounded-xl text-xs font-bold">
+                              <Eye className="w-3.5 h-3.5 mr-1" /> View
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={() => onApprove(m.uid)} 
+                              className="rounded-xl text-xs font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              onClick={() => handleDeleteClick(m.uid)} 
+                              className="rounded-xl text-xs font-bold"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Pending Renewals */}
+                {pendingRenewals.length > 0 && (
+                  <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-800 uppercase">Pending Renewals</h3>
+                        <p className="text-xs text-slate-400 font-bold">അംഗത്വം പുതുക്കാനുള്ള അപേക്ഷകൾ</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs font-black font-mono">
+                        {pendingRenewals.length} Renewals
+                      </Badge>
+                    </div>
+                    <div className="space-y-3">
+                      {pendingRenewals.map(m => (
+                        <div key={m.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-50/40 rounded-2xl border border-amber-100 gap-3 w-full min-w-0">
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-sm text-slate-800 break-words">{m.name} ({m.membershipId})</p>
+                            <p className="text-xs text-slate-500 font-bold break-words">{m.mobile} • {m.district}</p>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            disabled={approvingRenewalUid === m.uid}
+                            onClick={() => handleApproveRenewal(m)} 
+                            className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 rounded-xl text-xs font-black uppercase bg-brand-blue hover:bg-brand-blue/90 text-white shadow-sm shrink-0 whitespace-normal break-words max-w-full text-center"
+                          >
+                            {approvingRenewalUid === m.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 shrink-0 inline" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />}
+                            <span>Approve Renewal</span>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* 3. CLAIMS & COMBO CLAIMS TAB */}
+            {activeTab === 'claims' && (
+              <div className="space-y-6">
+                {/* Claims View Switcher & Top Bar */}
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs w-full min-w-0 max-w-full">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-100 p-1 rounded-xl w-full md:w-auto min-w-0">
+                    <Button
+                      variant={claimsViewMode === 'individual' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setClaimsViewMode('individual')}
+                      className={cn(
+                        "rounded-lg text-xs font-black uppercase text-center whitespace-normal break-words max-w-full min-h-9 h-auto py-1.5 px-3 w-full sm:w-auto",
+                        claimsViewMode === 'individual' && "bg-brand-blue text-white shadow-xs"
+                      )}
+                    >
+                      <FileText className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
+                      <span>Individual Claims (ഇൻഡിവിജ്വൽ) ({claims.length})</span>
+                    </Button>
+                    <Button
+                      variant={claimsViewMode === 'combo' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setClaimsViewMode('combo')}
+                      className={cn(
+                        "rounded-lg text-xs font-black uppercase text-center whitespace-normal break-words max-w-full min-h-9 h-auto py-1.5 px-3 w-full sm:w-auto",
+                        claimsViewMode === 'combo' && "bg-brand-magenta text-white shadow-xs"
+                      )}
+                    >
+                      <Users className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
+                      <span>Common Claims (കോമൺ / കോംബോ) ({comboGroups.length} Groups)</span>
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refreshClaimsList(true)}
+                      disabled={isSyncingClaims}
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-emerald-600/30 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/70 text-center whitespace-normal break-words max-w-full"
+                      title="ഡാറ്റാബേസിൽ നിന്ന് ക്ലെയിം പെറ്റീഷനുകൾ നേരിട്ട് സിങ്ക് ചെയ്യുക"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0 inline", isSyncingClaims && "animate-spin")} />
+                      <span>{isSyncingClaims ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Sync Claims from DB'}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsClaimsImportOpen(true)}
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5 text-center whitespace-normal break-words max-w-full"
+                    >
+                      <Upload className="w-3.5 h-3.5 mr-1.5 text-brand-blue shrink-0 inline" />
+                      <span>Import Old Site Claims</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSyncClaimsCounter}
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-bold text-xs text-slate-600 text-center whitespace-normal break-words max-w-full"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1 shrink-0 inline" />
+                      <span>Sync Counters</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Stat Summaries */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatsCard title="Total Claims" value={claims.length} icon={<FileText />} color="brand-blue" />
+                  <StatsCard title="Total Pending" value={claimStats.totalPending} icon={<IndianRupee />} color="brand-magenta" />
+                  <StatsCard title="Emergency Cases" value={claimStats.emergencyCount} icon={<AlertCircle />} color="red" />
+                  <StatsCard title="Combo Groups" value={comboGroups.length} icon={<Users />} color="green" />
+                </div>
+
+                {/* INDIVIDUAL CLAIMS VIEW */}
+                {claimsViewMode === 'individual' && (
+                  <div className="space-y-4">
+                    {/* Search & Filters */}
+                    <Card className="p-4 border border-slate-200/60 bg-white rounded-2xl shadow-xs w-full min-w-0 max-w-full">
+                      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between w-full min-w-0">
+                        <div className="relative w-full md:w-80">
+                          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <Input
+                            type="text"
+                            placeholder="Search name, mobile, Highrich ID..."
+                            value={claimSearchTerm}
+                            onChange={(e) => setClaimSearchTerm(e.target.value)}
+                            className="pl-9 h-10 rounded-xl text-xs font-bold w-full"
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
+                          <Select value={claimDistrictFilter} onValueChange={setClaimDistrictFilter}>
+                            <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[130px] bg-slate-50 flex-1 sm:flex-none">
+                              <SelectValue placeholder="All Districts" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Districts</SelectItem>
+                              {DISTRICTS.map(d => (
+                                <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={claimCategoryFilter} onValueChange={setClaimCategoryFilter}>
+                            <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[130px] bg-slate-50 flex-1 sm:flex-none">
+                              <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Categories</SelectItem>
+                              <SelectItem value="digital">Digital Coupon</SelectItem>
+                              <SelectItem value="ott">OTT Advance</SelectItem>
+                              <SelectItem value="grocery">Grocery Advance</SelectItem>
+                              <SelectItem value="goodwill">Goodwill Advance</SelectItem>
+                              <SelectItem value="other">Other Advance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Claims Table */}
+                    <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                      <div className="overflow-x-auto w-full min-w-0 max-w-full">
+                        <Table>
+                          <TableHeader className="bg-slate-50">
+                            <TableRow>
+                              <TableHead className="w-12 text-[10px] font-black uppercase text-slate-400">#</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Claimant Details</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Highrich ID</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Paid / Received / Pending</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Status</TableHead>
+                              <TableHead className="text-right text-[10px] font-black uppercase text-slate-400">Reports & Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredClaims.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-12 text-slate-400 font-bold text-xs">
+                                  ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല (No claims found matching filters)
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredClaims.map((c, idx) => {
+                                const memberObj = members.find(m => m.uid === c.uid || compareMobiles(m.mobile, c.userMobile));
+                                return (
+                                  <TableRow key={c.id || idx} className="hover:bg-slate-50/50">
+                                    <TableCell className="font-mono text-xs text-slate-400">{idx + 1}</TableCell>
+                                    <TableCell>
+                                      <div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <p className="font-extrabold text-xs text-slate-800">{c.userName || 'N/A'}</p>
+                                          {c.relationLabel && c.relation !== 'Self' && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200/60">
+                                              {c.relationLabel}
+                                            </span>
+                                          )}
+                                          {(c.membershipId?.toUpperCase().includes('-LIFE-') || c.membershipId?.toUpperCase().includes('-LM-') || memberObj?.membership_type === 'LIFE_MEMBER' || (memberObj as any)?.isLifeMember) && (
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 bg-amber-500/10 text-amber-700 rounded border border-amber-500/30 flex items-center gap-0.5">
+                                              <Crown className="w-2.5 h-2.5 text-amber-500 fill-amber-400" /> Life Member
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[10px] font-mono text-slate-500 font-bold mt-0.5">
+                                          {c.tokenNo ? <span className="text-brand-magenta font-black mr-1">[{c.tokenNo}]</span> : null}
+                                          {c.membershipId ? <span className="text-slate-600 mr-1">{c.membershipId}</span> : null}
+                                          {c.userMobile} • {c.userDistrict || 'N/A'}
+                                        </p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                                        {c.highrichId || 'N/A'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-xs">
+                                        <span className="font-mono font-bold text-slate-600">₹{(c.totalPaid || 0).toLocaleString('en-IN')}</span>
+                                        <span className="text-slate-400 mx-1">/</span>
+                                        <span className="font-mono font-bold text-emerald-600">₹{(c.totalReceived || 0).toLocaleString('en-IN')}</span>
+                                        <span className="text-slate-400 mx-1">/</span>
+                                        <span className="font-mono font-black text-brand-magenta">₹{(c.totalPending || 0).toLocaleString('en-IN')}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {c.isEmergency ? (
+                                        <Badge variant="destructive" className="text-[8px] font-black uppercase">Emergency</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="text-[8px] font-bold">Standard</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                        {/* Court Print */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => printCourtClaimReport(c, memberObj)}
+                                          className="h-7 px-2 text-[8.5px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-lg"
+                                          title="Print Court / Legal Statement (1 Page A4)"
+                                        >
+                                          <Printer className="w-3 h-3 mr-1" /> Court Print
+                                        </Button>
+                                        {/* Court PDF Download */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => downloadCourtClaimPdf(c, memberObj)}
+                                          className="h-7 px-2 text-[8.5px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-lg"
+                                          title="Download Court / Legal Statement PDF"
+                                        >
+                                          <Download className="w-3 h-3 mr-1" /> Court PDF
+                                        </Button>
+                                        {/* Admin Print */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => printFullAdminClaimReport(c, memberObj)}
+                                          className="h-7 px-2 text-[8.5px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-lg"
+                                          title="Print Full Admin Record"
+                                        >
+                                          <FileSpreadsheet className="w-3 h-3 mr-1" /> Admin Print
+                                        </Button>
+                                        {/* Admin PDF Download */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => downloadFullAdminClaimPdf(c, memberObj)}
+                                          className="h-7 px-2 text-[8.5px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-lg"
+                                          title="Download Full Admin Record PDF"
+                                        >
+                                          <Download className="w-3 h-3 mr-1" /> Admin PDF
+                                        </Button>
+                                        {/* View Details */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setSelectedClaim(c)}
+                                          className="h-7 px-2 text-[8.5px] font-bold uppercase rounded-lg"
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                        </Button>
+                                        {/* Edit */}
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setEditingClaim(c)}
+                                          className="h-7 w-7 p-0 rounded-lg text-slate-500 hover:text-slate-800"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </Button>
+                                        {/* Delete */}
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setDeletingClaimId(c.id)}
+                                          className="h-7 w-7 p-0 rounded-lg text-red-400 hover:text-red-600"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+
+                {/* COMBO CLAIMS VIEW */}
+                {claimsViewMode === 'combo' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/60 w-full min-w-0 max-w-full">
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-slate-800 uppercase break-words">Consolidated Family / ID Groups</h4>
+                        <p className="text-[11px] text-slate-400 font-bold break-words">ഒന്നിൽ കൂടുതൽ ഐഡികൾ ഉള്ള അംഗങ്ങളുടെ സംയുക്ത റിപ്പോർട്ട്</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <Button
+                          variant={comboSubView === 'groups' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setComboSubView('groups')}
+                          className="flex-1 sm:flex-none rounded-xl text-xs font-bold whitespace-normal break-words max-w-full min-h-8 h-auto py-1 px-3 text-center"
+                        >
+                          Groups ({comboGroups.length})
+                        </Button>
+                        <Button
+                          variant={comboSubView === 'all_persons' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setComboSubView('all_persons')}
+                          className="flex-1 sm:flex-none rounded-xl text-xs font-bold whitespace-normal break-words max-w-full min-h-8 h-auto py-1 px-3 text-center"
+                        >
+                          All Person Records ({allComboIndividualClaims.length})
+                        </Button>
+                      </div>
+                    </div>
+
+                    {comboSubView === 'groups' ? (
+                      <div className="space-y-4">
+                        {comboGroups.length === 0 ? (
+                          <Card className="p-12 text-center text-slate-400 font-bold text-xs bg-white rounded-2xl">
+                            കോംബോ ക്ലെയിമുകൾ കണ്ടെത്തിയില്ല (No multi-ID combo groups detected)
+                          </Card>
+                        ) : (
+                          comboGroups.map((grp, gidx) => (
+                            <Card key={grp.primaryMobile || gidx} className="border border-slate-200/80 bg-white rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 w-full min-w-0 max-w-full">
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-3 w-full min-w-0">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm font-black text-slate-900 break-words">{grp.primaryName || 'Unknown Member'}</h4>
+                                    <Badge className="bg-brand-magenta/10 text-brand-magenta border-brand-magenta/20 text-[9px] font-black shrink-0">
+                                      {grp.claimsCount} Claims
                                     </Badge>
+                                  </div>
+                                  <p className="text-xs font-mono text-slate-500 font-bold mt-0.5 break-words">
+                                    Mobile: {grp.primaryMobile} • District: {grp.district || 'N/A'}
+                                  </p>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto min-w-0">
+                                  <div className="text-left sm:text-right font-mono">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Group Total Pending</p>
+                                    <p className="text-base font-black text-brand-magenta">₹{(grp.totalPending || 0).toLocaleString('en-IN')}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+                                    {/* Court Combo Print */}
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      onClick={() => printComboClaims(comboClaims)}
-                                      className="h-7 px-2 rounded-lg text-[8px] font-black uppercase text-brand-blue border-blue-200 hover:bg-blue-50"
+                                      onClick={() => printCourtComboReport(grp.claims, grp.memberObj)}
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
+                                      title="Print Court / Legal Statement (1 Page A4)"
                                     >
-                                      <Printer className="w-3 h-3 mr-1" />
-                                      Print
+                                      <Printer className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Court Combo Print
+                                    </Button>
+                                    {/* Court Combo PDF Download */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => downloadCourtComboPdf(grp.memberObj, grp.claims)}
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
+                                      title="Download Court / Legal Statement PDF"
+                                    >
+                                      <Download className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Court Combo PDF
+                                    </Button>
+                                    {/* Admin Combo Print */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => printFullAdminComboReport(grp.memberObj, grp.claims)}
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
+                                      title="Print Full Admin Record"
+                                    >
+                                      <FileSpreadsheet className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Admin Combo Print
+                                    </Button>
+                                    {/* Admin Combo PDF Download */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => downloadFullAdminComboPdf(grp.memberObj, grp.claims)}
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
+                                      title="Download Full Admin Record PDF"
+                                    >
+                                      <Download className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Admin Combo PDF
                                     </Button>
                                   </div>
-                                );
-                              })()}
-                            </TableCell>
-                            <TableCell>
-                              {claim.relation && (
-                                <Badge variant="outline" className="text-[9px] h-6 py-1 px-2.5 font-bold uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03] rounded-lg">
-                                  {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                                   claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                   claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                   claim.relation === 'Son' ? 'മകൻ (Son)' :
-                                   claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
-                                   claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                                   claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relation}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                               <div className="space-y-1">
-                                  <div className="flex items-center gap-1.5 font-black text-slate-700 text-sm">
-                                    <span className="text-[10px] opacity-40">₹</span> {claim.totalPending?.toLocaleString('en-IN')}
-                                    <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold border-slate-200">Pending</Badge>
-                                  </div>
-                                  <p className="text-[9px] font-bold text-slate-400">Paid: ₹{claim.totalPaid?.toLocaleString('en-IN')}</p>
-                                  {claim.highrichId && (
-                                    <p className="text-[9px] font-black text-brand-magenta uppercase bg-brand-magenta/5 px-2 py-0.5 rounded w-fit mt-1">HR ID: {claim.highrichId}</p>
-                                  )}
-                               </div>
-                            </TableCell>
-                            <TableCell>
-                               <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                  {claim.categories?.slice(0, 3).map((cat: string, idx: number) => (
-                                    <Badge key={`${cat}-${idx}`} variant="secondary" className="text-[8px] bg-slate-100 font-bold uppercase">{getCategoryLabel(cat)}</Badge>
-                                  ))}
-                                  {claim.categories?.length > 3 && <span className="text-[8px] font-black text-slate-300">+{claim.categories.length - 3}</span>}
-                               </div>
-                            </TableCell>
-                            <TableCell>
-                               <div className="flex flex-col gap-1.5">
-                                  <Badge className={cn(
-                                    "w-fit font-black text-[9px] px-3 py-1 text-white border-0",
-                                    claim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
-                                    claim.priorityStatus === 'RED' ? 'bg-red-500' :
-                                    claim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
-                                  )}>
-                                     {claim.priorityStatus}
-                                  </Badge>
-                                  {claim.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
-                               </div>
-                            </TableCell>
-                            <TableCell className="text-xs font-bold text-slate-500 whitespace-nowrap">
-                              {formatClaimDate(claim.createdAt)}
-                            </TableCell>
-                            <TableCell className="text-right px-6">
-                               <div className="flex items-center justify-end gap-1">
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
-                                   setSelectedClaim(claim);
-                                 }} title="വിശദവിവരങ്ങൾ കാണുക">
-                                    <Eye className="w-4 h-4" />
-                                 </Button>
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
-                                   printComboClaims([claim]);
-                                 }} title="A4 പ്രിന്റ് ചെയ്യുക">
-                                    <Printer className="w-4 h-4" />
-                                 </Button>
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-amber-500" onClick={() => {
-                                   setEditingClaim(claim);
-                                 }} title="എഡിറ്റ് ചെയ്യുക">
-                                    <Pencil className="w-4 h-4" />
-                                 </Button>
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-red-500" onClick={() => {
-                                   setDeletingClaimId(claim.id);
-                                 }} title="റിമൂവ് ചെയ്യുക">
-                                    <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                      </div>
-                    </div>
-                  )}
-                  {!claimsLoading && filteredClaims.length === 0 && (
-                    <div className="py-20 text-center bg-white">
-                       <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No matching support claims found</p>
-                    </div>
-                  )}
-               </Card>
-            </div>
-          </TabsContent>
-          <TabsContent value="tickets">
-            <div className="space-y-6">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Support Inquiries</p>
-                  <h3 className="text-3xl font-black text-slate-800">{supportTickets.length}</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-2">Logged automatically by AI chatbot</p>
-                </Card>
-                <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pending Admin Action</p>
-                  <h3 className="text-3xl font-black text-amber-500">{supportTickets.filter(t => t.status === 'pending').length}</h3>
-                  <p className="text-[9px] font-bold text-amber-400 uppercase mt-2">Requires manual correction or review</p>
-                </Card>
-                <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
-                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Resolved Cases</p>
-                  <h3 className="text-3xl font-black text-emerald-600">{supportTickets.filter(t => t.status === 'resolved').length}</h3>
-                  <p className="text-[9px] font-bold text-emerald-400 uppercase mt-2">Resolved and closed requests</p>
-                </Card>
-              </div>
-
-              {/* Tickets Table Card */}
-              <Card className="border-2 border-slate-100 bg-white rounded-3xl shadow-sm overflow-hidden animate-in fade-in duration-300">
-                <CardHeader className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-sm font-black text-slate-800 uppercase tracking-wider">AI വഴികാട്ടി സപ്പോർട്ട് അപേക്ഷകൾ</CardTitle>
-                    <CardDescription className="text-xs text-slate-400 font-semibold mt-1">
-                      പേര് തെറ്റുകൾ, ഫോട്ടോ മാറ്റങ്ങൾ, അല്ലെങ്കിൽ റസീപ്റ്റ് പ്രോബ്ലം കസ്റ്റമർ ചാറ്റിൽ നിന്ന് നേരിട്ട് റിപ്പോർട്ട് ചെയ്തവ.
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-
-                {supportTicketsError && (
-                  <div className="mx-6 mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm space-y-3">
-                    <div className="flex items-start gap-4">
-                      <div className="p-2.5 bg-amber-100 rounded-xl text-amber-600">
-                        <ShieldAlert className="w-5 h-5" />
-                      </div>
-                      <div className="space-y-1 flex-1">
-                        <h4 className="font-extrabold text-[#B7791F] text-xs md:text-sm">ഗേറ്റ്‌വേ പെർമിഷൻ ലിമിറ്റ് കണ്ടെത്തി (Firebase Permission Denied)</h4>
-                        <p className="text-[11px] text-amber-700 leading-relaxed font-bold">
-                          ഫയർബേസ് സെക്യൂരിറ്റി റൂൾസ് (Firestore Security Rules) 'support_tickets' കളക്ഷൻ്റെ അഡ്മിൻ റീഡ് പെർമിഷൻ തടയുന്നു. ഈ പ്രശ്നം പരിഹരിക്കുന്നതിനായി സപ്പോർട്ട് ക്ലെയിമുകളുടെ പേജിൽ നൽകിയിരിക്കുന്ന പുതിയ സെക്യൂരിറ്റി റൂൾസ് കോപ്പി ചെയ്ത് ഫയർബേസ് കൺസോളിൽ അപ്ഡേറ്റ് ചെയ്യുക.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {supportTicketsLoading ? (
-                  <div className="py-20 text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-slate-400">സപ്പോർട്ട് വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
-                  </div>
-                ) : supportTickets.length === 0 ? (
-                  <div className="py-20 text-center">
-                    <Headphones className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">ഇതുവരെ അപേക്ഷകൾ ഒന്നും വന്നിട്ടില്ല</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="bg-slate-50 border-b border-slate-100">
-                        <TableRow>
-                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Member / Name</TableHead>
-                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Mobile Number / WhatsApp</TableHead>
-                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Issue / വിഷയം</TableHead>
-                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">AI Chat Logs / Summary</TableHead>
-                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Submitted Date</TableHead>
-                          <TableHead className="text-[9px] font-extrabold uppercase text-slate-500 p-4">Status & Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {supportTickets.map((ticket) => (
-                          <TableRow key={ticket.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                            <TableCell className="p-4">
-                              <p className="font-extrabold text-xs text-slate-800 uppercase">{ticket.memberName}</p>
-                              <span className="text-[10px] font-bold text-slate-400 block mt-0.5">{ticket.memberId || 'N/A'}</span>
-                            </TableCell>
-                            <TableCell className="p-4 font-mono text-xs font-semibold text-slate-600">
-                              <a href={`tel:${ticket.phone}`} className="hover:underline">{ticket.phone}</a>
-                            </TableCell>
-                            <TableCell className="p-4">
-                              <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${
-                                ticket.issue === 'Spelling Correction' ? 'bg-amber-100 text-amber-800' :
-                                ticket.issue === 'Photo Re-upload' ? 'bg-indigo-100 text-indigo-800' :
-                                ticket.issue === 'Receipt Verification Error' ? 'bg-teal-100 text-teal-800' :
-                                'bg-slate-100 text-slate-800'
-                              }`}>
-                                {ticket.issue}
-                              </span>
-                            </TableCell>
-                            <TableCell className="p-4 max-w-xs">
-                              <p className="text-xs font-semibold text-slate-600 leading-normal line-clamp-3" title={ticket.aiSummary}>
-                                {ticket.aiSummary}
-                              </p>
-                            </TableCell>
-                            <TableCell className="p-4 text-xs font-semibold text-slate-500">
-                              {ticket.timestamp ? new Date(ticket.timestamp).toLocaleString() : 'N/A'}
-                            </TableCell>
-                            <TableCell className="p-4">
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant={ticket.status === 'resolved' ? 'outline' : 'default'}
-                                  size="sm"
-                                  onClick={() => handleResolveSupportTicket(ticket.id, ticket.status)}
-                                  className={`h-8 font-extrabold text-[10px] uppercase tracking-wider rounded-lg border-2 ${
-                                    ticket.status === 'resolved'
-                                      ? 'border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
-                                      : 'bg-amber-500 hover:bg-amber-600 text-white border-transparent'
-                                  }`}
-                                >
-                                  {ticket.status === 'resolved' ? 'RESOLVED ✅' : 'PENDING ⏳'}
-                                </Button>
-                                
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const encodedText = encodeURIComponent(`ഹലോ ${ticket.memberName}, താങ്കൾ സപ്പോർട്ട് ചാറ്റ് വഴി സമർപ്പിച്ച "${ticket.issue}" എന്ന സഹായ അപേക്ഷ ഇപ്പോൾ ഞങ്ങൾ പരിശോധിക്കുകയാണ്...`);
-                                    window.open(`https://wa.me/91${ticket.phone}?text=${encodedText}`, '_blank');
-                                  }}
-                                  className="h-8 border-slate-200 text-slate-600 hover:text-green-600 px-2.5 rounded-lg text-[10px]"
-                                >
-                                  WhatsApp
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteSupportTicket(ticket.id)}
-                                  className="h-8 text-slate-400 hover:text-red-500 hover:bg-slate-100/50 p-2 rounded-lg cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                </div>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+
+                              {/* Nested Claims Rows */}
+                              <div className="bg-slate-50 rounded-xl p-3 space-y-2 w-full min-w-0 max-w-full">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Individual Accounts in this Group:</p>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {grp.claims.map((clm: any, cidx: number) => (
+                                    <div key={clm.id || cidx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-2.5 rounded-lg border border-slate-100 text-xs gap-2 min-w-0">
+                                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                                        <span className="font-mono text-slate-400 shrink-0">#{cidx + 1}</span>
+                                        <span className="font-extrabold text-slate-800 break-words">{clm.userName}</span>
+                                        <span className="font-mono text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px] shrink-0">{clm.highrichId || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between sm:justify-end gap-3 font-mono font-bold">
+                                        <span className="text-slate-600">₹{(clm.totalPaid || 0).toLocaleString('en-IN')}</span>
+                                        <span className="text-brand-magenta">₹{(clm.totalPending || 0).toLocaleString('en-IN')}</span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <Button variant="ghost" size="sm" onClick={() => setSelectedClaim(clm)} className="h-6 w-6 p-0">
+                                            <Eye className="w-3 h-3 text-slate-500" />
+                                          </Button>
+                                          <Button variant="ghost" size="sm" onClick={() => setEditingClaim(clm)} className="h-6 w-6 p-0">
+                                            <Pencil className="w-3 h-3 text-slate-500" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      /* ALL PERSONS VIEW */
+                      <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                        <div className="overflow-x-auto w-full min-w-0 max-w-full">
+                          <Table>
+                            <TableHeader className="bg-slate-50">
+                              <TableRow>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Person Name</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Mobile</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Highrich ID</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Pending</TableHead>
+                                <TableHead className="text-right text-[10px] font-black uppercase text-slate-400">Action</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {allComboIndividualClaims.map((ac, idx) => (
+                                <TableRow key={ac.id || idx}>
+                                  <TableCell className="font-extrabold text-xs text-slate-800">{ac.userName}</TableCell>
+                                  <TableCell className="font-mono text-xs text-slate-600 font-bold">{ac.userMobile}</TableCell>
+                                  <TableCell className="font-mono text-xs text-slate-700">{ac.highrichId || 'N/A'}</TableCell>
+                                  <TableCell className="font-mono text-xs font-black text-brand-magenta">₹{(ac.totalPending || 0).toLocaleString('en-IN')}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button variant="outline" size="sm" onClick={() => setSelectedClaim(ac)} className="h-7 text-xs font-bold">
+                                      <Eye className="w-3 h-3 mr-1" /> View
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </Card>
+                    )}
                   </div>
                 )}
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </>
-    )}
+              </div>
+            )}
 
-        {/* View Member Dialog */}
+            {/* 4. OTHER SUB-MANAGERS & TABS */}
+            {activeTab === 'bulk_import' && (
+              <BulkImportManager members={members} adminUser={user} onRefresh={onRefreshMembers} />
+            )}
+
+            {activeTab === 'committee_mgmt' && (
+              <CommitteeManagement user={user} />
+            )}
+
+            {activeTab === 'campaign_templates' && (
+              <CampaignTemplateManager members={members} />
+            )}
+
+            {activeTab === 'payment_ops' && (
+              <PaymentOperationsManager user={user || null} />
+            )}
+
+            {activeTab === 'reports' && (
+              <AdminReportsTab 
+                members={members} 
+                onApprove={onApprove} 
+                onViewDetails={(m) => setViewingMember(m)} 
+                DISTRICTS={DISTRICTS} 
+                isSuperAdmin={isSuperAdmin} 
+              />
+            )}
+
+            {activeTab === 'life_members' && (
+              <LifeMembersPanel members={members} adminUser={user} />
+            )}
+
+            {activeTab === 'fast_entry' && (
+              <div className="space-y-6 pb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {user && user.quota !== undefined && (
+                    <Card className={cn(
+                      "border-2 bg-white rounded-3xl shadow-sm",
+                      (user.quotaUsed || 0) >= user.quota ? "border-red-500/20" : "border-brand-magenta/20"
+                    )}>
+                      <CardContent className="p-6 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Your Private Entry Quota</p>
+                          <h3 className={cn(
+                            "text-2xl font-black mt-1",
+                            (user.quotaUsed || 0) >= user.quota ? "text-red-500" : "text-brand-magenta"
+                          )}>
+                            Remains: {Math.max(0, user.quota - (user.quotaUsed || 0))} / {user.quota}
+                          </h3>
+                        </div>
+                        <div className={cn(
+                          "p-3 rounded-2xl",
+                          (user.quotaUsed || 0) >= user.quota ? "bg-red-500/10" : "bg-brand-magenta/10"
+                        )}>
+                          <ShieldCheck className={cn(
+                            "w-6 h-6",
+                            (user.quotaUsed || 0) >= user.quota ? "text-red-500" : "text-brand-magenta"
+                          )} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card className="border-2 border-brand-blue/20 bg-white rounded-3xl shadow-sm overflow-hidden">
+                    <CardContent className="p-6">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-brand-blue" />
+                        {DISTRICTS.find(d => d.code === manualFormData.district)?.name || manualFormData.district} District Balance
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl text-center">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total (ആകെ)</p>
+                          <p className="text-lg font-black text-slate-700">{districtQuotas[manualFormData.district] || 0}</p>
+                        </div>
+                        <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl text-center">
+                          <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Used (ചേർത്തവ)</p>
+                          <p className="text-lg font-black text-emerald-600">{districtQuotasUsed[manualFormData.district] || 0}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="border border-slate-200/60 shadow-xs rounded-2xl bg-white p-5">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">District Summary</h4>
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                      {DISTRICTS.slice(0, 14).map(d => {
+                        const used = districtQuotasUsed[d.code] || 0;
+                        const total = districtQuotas[d.code] || 0;
+                        if (total === 0 && used === 0) return null;
+                        return (
+                          <div key={d.code} className="flex items-center justify-between text-xs py-1 border-b border-slate-50">
+                            <span className="font-bold text-slate-700">{d.name}</span>
+                            <span className="font-black text-slate-900">{used} / {total}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+
+                  <div className="lg:col-span-2">
+                    <FastMemberEntry 
+                      adminUser={user || null} 
+                      districtQuotas={districtQuotas} 
+                      districtQuotasUsed={districtQuotasUsed} 
+                      onMemberAdded={onRefreshMembers} 
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'district_wa' && (
+              <DistrictWhatsAppManager />
+            )}
+
+            {activeTab === 'district_quota' && (
+              <DistrictQuotaManager
+                districtQuotas={districtQuotas}
+                districtQuotasUsed={districtQuotasUsed}
+                onUpdateDistrictQuota={onUpdateDistrictQuota}
+                onSyncQuotas={onSyncQuotas}
+                adminUser={user}
+              />
+            )}
+
+            {activeTab === 'gallery' && (
+              <GalleryManagement user={user} />
+            )}
+
+            {activeTab === 'backup_restore' && (
+              <BackupRestoreManager adminUser={user} onRefresh={onRefreshMembers} />
+            )}
+
+            {activeTab === 'branding' && (
+              <BrandingManager />
+            )}
+
+            {activeTab === 'language' && (
+              <LanguageManager />
+            )}
+          </div>
+
+        {/* ======================= DIALOGS ======================= */}
+
+        {/* Member ID Card View Dialog */}
         <Dialog open={!!viewingMember} onOpenChange={(open) => !open && setViewingMember(null)}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-6">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                <Users className="w-6 h-6 text-brand-blue" />
-                Member Details
+              <DialogTitle className="text-xl font-black text-brand-blue uppercase flex items-center justify-between">
+                <span>Member ID Card</span>
               </DialogTitle>
+              <DialogDescription className="text-xs font-bold text-slate-400">
+                HCRS Kerala Digital Identity
+              </DialogDescription>
             </DialogHeader>
             {viewingMember && (
-              <div className="space-y-6 py-4">
-                <div className="flex flex-col md:flex-row gap-6 items-start">
-                    <div className="w-full overflow-hidden flex justify-center bg-slate-50 border rounded-2xl p-4">
-                      <div className="scale-[0.8] origin-top mb-[-100px]">
-                          <MembershipCard 
-                            member={viewingMember} 
-                            showCelebration={false} 
-                            isAdmin={true}
-                            onUpdatePhoto={onUpdatePhoto ? (file) => onUpdatePhoto(file, viewingMember.uid) : undefined}
-                          />
-                      </div>
-                    </div>
-                  <div className="flex-1 space-y-2 w-full">
-                    <div className="flex flex-col gap-1.5 justify-start">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 group cursor-pointer" onClick={() => {
-                          navigator.clipboard.writeText(viewingMember.name);
-                          toast.success('പേര് കോപ്പി ചെയ്തു! (Name copied)');
-                        }}>
-                          <h3 className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">{viewingMember.name}</h3>
-                          <Copy className="w-4 h-4 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <Badge className={viewingMember.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
-                          {viewingMember.status.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {String(viewingMember.membership_type || viewingMember.membershipType || '').toUpperCase().includes('LIFE') ? (
-                          <span className="inline-flex items-center gap-1 bg-amber-550 border border-amber-200 text-amber-700 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
-                            ⭐ LIFE MEMBER
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            ADHOC MEMBER
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Copy Toolkit (കോപ്പി സൂത്രങ്ങൾ) */}
-                    <div className="flex items-center gap-2 flex-wrap pt-2 pb-1 border-b border-slate-100">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          navigator.clipboard.writeText(viewingMember.name);
-                          toast.success('പേര് കോപ്പി ചെയ്തു!');
-                        }}
-                        className="h-8 px-2.5 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[10px] md:text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200/50"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-slate-500" /> പേര് കോപ്പി ചെയ്യുക
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          const addrText = `${viewingMember.address || ''}${viewingMember.postOffice ? ', ' + viewingMember.postOffice + ' (P.O)' : ''}${viewingMember.pincode ? ', PIN: ' + viewingMember.pincode : ''}`;
-                          navigator.clipboard.writeText(addrText);
-                          toast.success('മേൽവിലാസം കോപ്പി ചെയ്തു!');
-                        }}
-                        className="h-8 px-2.5 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[10px] md:text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200/50"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-slate-500" /> വിലാസം കോപ്പി ചെയ്യുക
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          const labelText = `${viewingMember.name || ''}\n${viewingMember.address || ''}\n${viewingMember.postOffice ? viewingMember.postOffice + ' (P.O)' : ''}\nPIN: ${viewingMember.pincode || ''}\nPhone: ${viewingMember.mobile || ''}`;
-                          navigator.clipboard.writeText(labelText);
-                          toast.success('ലേബൽ വിവരങ്ങൾ കോപ്പി ചെയ്തു!');
-                        }}
-                        className="h-8 px-2.5 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[10px] md:text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5 border border-slate-200/50"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-slate-500" /> പേരും വിലാസവും
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-2">
-                       <DetailItem label="Mobile" value={viewingMember.mobile} icon={<Smartphone className="w-4 h-4" />} />
-                       <DetailItem label="Email" value={viewingMember.email} icon={<Mail className="w-4 h-4" />} />
-                       <DetailItem label="Blood Group" value={viewingMember.bloodGroup || 'N/A'} />
-                       <DetailItem label="Login Password" value={viewingMember.pin || '123456'} icon={<ShieldCheck className="w-4 h-4" />} />
-                    </div>
-                  </div>
+              <div className="space-y-4 py-2">
+                <MembershipCard member={viewingMember} />
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setViewingMember(null)} className="rounded-xl font-bold">
+                    Close
+                  </Button>
                 </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h4 className="font-bold text-sm text-slate-400 uppercase tracking-widest">Membership Info</h4>
-                    <div className="space-y-3">
-                      <DetailItem label="Member ID" value={viewingMember.membershipId} />
-                      <DetailItem label="Serial No" value={viewingMember.serialNo?.toString()} />
-                      <DetailItem label="Joining Date" value={viewingMember.registrationDate?.toDate ? viewingMember.registrationDate.toDate().toLocaleDateString('en-IN') : (viewingMember.registrationDate ? new Date(viewingMember.registrationDate).toLocaleDateString('en-IN') : 'N/A')} />
-                      
-                      {viewingMember.renewalDate && (
-                        <DetailItem 
-                          label="Renewal Date" 
-                          value={viewingMember.renewalDate?.toDate ? viewingMember.renewalDate.toDate().toLocaleDateString('en-IN') : new Date(viewingMember.renewalDate).toLocaleDateString('en-IN')} 
-                        />
-                      )}
-                      
-                      <DetailItem label="Expiry Date" value={viewingMember.expiryDate?.toDate ? viewingMember.expiryDate.toDate().toLocaleDateString('en-IN') : (viewingMember.expiryDate ? new Date(viewingMember.expiryDate).toLocaleDateString('en-IN') : 'N/A')} />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="font-bold text-sm text-slate-400 uppercase tracking-widest">Location Details</h4>
-                    <div className="space-y-3">
-                      <DetailItem label="District" value={DISTRICTS.find(d => d.code === viewingMember.district)?.name || viewingMember.district} />
-                      <DetailItem label="Assembly" value={`${viewingMember.assemblyConstituency} (${viewingMember.constituencyCode || getAssemblyCode(viewingMember.assemblyConstituency)})`} />
-                      <DetailItem label="State" value={viewingMember.state || 'Kerala'} />
-                      <DetailItem label="Address" value={viewingMember.address || 'N/A'} />
-                      <DetailItem label="Post Office" value={viewingMember.postOffice || 'N/A'} />
-                      <DetailItem label="Pincode" value={viewingMember.pincode || 'N/A'} />
-                      <DetailItem 
-                        label="Reg. Source" 
-                        value={viewingMember.registeredBy ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="font-bold text-slate-700">Manual Entry</span>
-                            <div className="text-[10px] bg-slate-50 border border-slate-100 p-2 rounded-xl mt-1">
-                              <p className="text-slate-400 uppercase tracking-tighter mb-1">Identity Provided:</p>
-                              <p className="text-brand-blue font-black leading-tight">{viewingMember.certAdminName || viewingMember.registeredByName || 'Admin'}</p>
-                              <p className="text-slate-400 font-medium">{viewingMember.certAdminEmail || 'No Email'}</p>
-                            </div>
-                          </div>
-                        ) : 'Direct Online Registration'} 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {viewingMember.status === 'pending' && viewingMember.transactionId && (
-                  <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
-                    <h4 className="font-bold text-sm text-orange-800 mb-2">Payment Proof</h4>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1 space-y-1 text-sm text-orange-700">
-                        <p><strong>Transaction ID:</strong> {viewingMember.transactionId}</p>
-                        {viewingMember.paymentDate && <p><strong>Payment Date:</strong> {viewingMember.paymentDate}</p>}
-                        <p><strong>Payment Time:</strong> {viewingMember.paymentTime || 'N/A'}</p>
-                      </div>
-                      {viewingMember.paymentProofUrl && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setSelectedProof(viewingMember.paymentProofUrl || '')}
-                          className="bg-white border-orange-200 text-orange-700 font-bold"
-                        >
-                          View Screenshot
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Related Support Claims Section */}
-                {(() => {
-                  const mClaims = claims.filter(c => c.uid === viewingMember.uid || compareMobiles(c.userMobile, viewingMember.mobile));
-                  if (mClaims.length === 0) return null;
-                  return (
-                    <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest flex items-center gap-2">
-                          <ShieldAlert className="w-4 h-4 text-brand-magenta" />
-                          Support Claims submitted ({mClaims.length} Claims) - ക്ലെയിം വിവരങ്ങൾ
-                        </h4>
-                        {mClaims.length > 1 && (
-                          <Badge className="bg-brand-magenta text-white text-[9px] font-black uppercase rounded-lg px-2.5 py-1 border-none">
-                            Combo (കോംബോ കൂട്ടായ്മ)
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-3.5">
-                        {mClaims.map((claim, idx) => (
-                          <div key={claim.id || idx} className="bg-white border border-slate-150 p-4 rounded-2xl shadow-xs space-y-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <p className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5 flex-wrap">
-                                  {claim.userName}
-                                  <Badge variant="outline" className="text-[8px] h-4.5 py-0 font-extrabold bg-brand-magenta/5 text-brand-magenta border-brand-magenta/20 uppercase rounded">
-                                    {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                                     claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                     claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                     claim.relation === 'Son' ? 'മകൻ (Son)' :
-                                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
-                                     claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                                     claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
-                                  </Badge>
-                                </p>
-                                {claim.highrichId && (
-                                  <span className="text-[10px] font-mono text-brand-blue bg-blue-50/50 font-black px-1.5 py-0.5 rounded mt-1 inline-block">HR ID: {claim.highrichId}</span>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <span className={cn(
-                                  "text-[9px] font-extrabold px-2 py-0.5 rounded-md text-white tracking-wider uppercase font-sans border-none inline-block",
-                                  claim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
-                                  claim.priorityStatus === 'RED' ? 'bg-red-500' :
-                                  claim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
-                                )}>
-                                  {claim.priorityStatus || 'GREEN'}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-[11px] font-bold">
-                              <div>
-                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-extrabold block">Paid (പണമടച്ചത്)</span>
-                                <span className="text-slate-700 font-black">₹{claim.totalPaid?.toLocaleString('en-IN')}</span>
-                              </div>
-                              <div>
-                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-extrabold block">Received (ലഭിച്ചത്)</span>
-                                <span className="text-green-600 font-black">₹{claim.totalReceived?.toLocaleString('en-IN')}</span>
-                              </div>
-                              <div>
-                                <span className="text-[8px] text-slate-400 uppercase tracking-widest font-extrabold block">Pending (ബാക്കി)</span>
-                                <span className="text-brand-magenta font-black">₹{claim.totalPending?.toLocaleString('en-IN')}</span>
-                              </div>
-                            </div>
-
-                            {claim.notes && (
-                              <div className="text-[10px] font-medium text-slate-500 bg-slate-50 p-2 rounded-xl mt-1.5 border border-slate-100">
-                                <span className="font-extrabold text-[8px] text-slate-400 uppercase block tracking-wider mb-0.5">Admin Note (കുറിപ്പ്)</span>
-                                {claim.notes}
-                              </div>
-                            )}
-
-                            {claim.categories && claim.categories.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1.5 pt-1.5 border-t border-dashed border-slate-100">
-                                {claim.categories.map((cat: string, cIdx: number) => (
-                                  <Badge key={`${cat}-${cIdx}`} variant="outline" className="text-[8px] bg-slate-50 font-semibold border-slate-150 text-slate-650 h-4.5">
-                                    {getCategoryLabel(cat)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <DialogFooter className="gap-3">
-                  <Button variant="outline" onClick={() => setViewingMember(null)} className="font-bold flex-1 md:flex-none">Close</Button>
-                  <Button variant="outline" onClick={() => { setViewingMember(null); setEditingMember(viewingMember); }} className="font-bold flex-1 md:flex-none">Edit Instead</Button>
-                  {viewingMember.status === 'pending' && (
-                    <Button onClick={() => { setViewingMember(null); handleApproveWithWhatsApp(viewingMember); }} className="bg-green-600 hover:bg-green-700 font-bold flex-1 md:flex-none">Approve Member</Button>
-                  )}
-                  <Button variant="destructive" onClick={() => { setViewingMember(null); handleDeleteClick(viewingMember.uid); }} className="font-bold flex-1 md:flex-none">Delete Member</Button>
-                </DialogFooter>
               </div>
             )}
           </DialogContent>
         </Dialog>
 
-        {/* Payment Verification Dialog */}
-        <Dialog open={!!selectedProof} onOpenChange={() => setSelectedProof(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Payment Verification</DialogTitle>
-              <DialogDescription>
-                Review the screenshot uploaded by the user.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-4 border rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center p-2">
-              <img src={selectedProof || ''} alt="Payment Proof" className="max-h-[60vh] object-contain shadow-lg" />
-            </div>
-            <DialogFooter className="mt-6">
-              <Button onClick={() => setSelectedProof(null)} variant="outline" className="w-full font-bold">Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={!!deletingMemberId} onOpenChange={(open) => !open && setDeletingMemberId(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-red-600 flex items-center gap-2">
-                <Trash2 className="w-5 h-5" />
-                Confirm Deletion
-              </DialogTitle>
-              <DialogDescription asChild>
-                <div className="space-y-4">
-                  <p>
-                  നിങ്ങൾ ഈ മെമ്പറെ ഒഴിവാക്കാൻ ആഗ്രഹിക്കുന്നുണ്ടോ? ഈ മാറ്റം തിരിച്ചു കൊണ്ടുവരാൻ കഴിയില്ല.
-                  (Are you sure you want to delete this member? This action cannot be undone.)
-                  </p>
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-[10px] font-bold text-amber-800 leading-relaxed uppercase">
-                    Important: To reuse the same email ID for a new registration, you must also delete this user from the "Authentication" section in Firebase Console.
-                  </div>
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="ghost" onClick={() => setDeletingMemberId(null)} className="font-bold">Cancel</Button>
-              <Button variant="destructive" onClick={confirmDelete} className="font-bold">Delete Member</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-          <DialogContent 
-            className="sm:max-w-md p-0 overflow-hidden rounded-[32px] border-none shadow-2xl"
-          >
-            <div className="bg-brand-blue p-8 text-white text-center">
-              <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-black uppercase tracking-tight">Registration Success!</h2>
-              <p className="text-white/70 text-xs font-bold uppercase mt-1">അംഗത്തെ വിജയകരമായി ചേർത്തു</p>
-            </div>
-            <div className="p-8 space-y-6">
-               <div className="space-y-4">
-                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Member Credentials</p>
-                     <div className="space-y-1">
-                        <div className="flex justify-between text-sm uppercase">
-                           <span className="font-bold text-slate-500">ID:</span>
-                           <span className="font-black text-brand-dark-purple">{successData?.email}</span>
-                        </div>
-                        <div className="flex justify-between text-sm uppercase">
-                           <span className="font-bold text-slate-500">PIN:</span>
-                           <span className="font-black text-brand-dark-purple">{successData?.pin}</span>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
-                     <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 text-center italic">Remaining District Quota</p>
-                     <div className="flex items-center justify-center gap-3">
-                        <MapPin className="w-4 h-4 text-emerald-600" />
-                        <span className="text-xl font-black text-emerald-700">
-                           {Math.max(0, (districtQuotas[manualFormData.district] || 0) - (districtQuotasUsed[manualFormData.district] || 0))} Available
-                        </span>
-                     </div>
-                  </div>
-
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Share Membership Link (@WhatsApp)</p>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                     <Button 
-                        variant="secondary"
-                        className="h-12 rounded-xl font-bold uppercase text-xs"
-                        onClick={() => {
-                          const protocol = window.location.protocol;
-                          const host = window.location.host;
-                          const path = window.location.pathname;
-                          const baseUrl = `${protocol}//${host}${path}`;
-                          const magicLink = baseUrl.includes('?') ? `${baseUrl}&memberId=${successData?.id}` : `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}?memberId=${successData?.id}`;
-                          navigator.clipboard.writeText(magicLink);
-                          toast.success('Link copied to clipboard!');
-                        }}
-                     >
-                        <Trash2 className="w-4 h-4 mr-2" /> {/* Using Trash2 as copy placeholder or a real icon if available */}
-                        Copy Link
-                     </Button>
-                     <Button 
-                        className="h-12 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl font-bold uppercase text-xs"
-                        onClick={() => {
-                           if (!successData) return;
-                           sendWAMessage({
-                             name: successData.name,
-                             mobile: successData.mobile,
-                             uid: successData.id,
-                             pin: successData.pin
-                           });
-                        }}
-                     >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Send WA
-                     </Button>
-                  </div>
-               </div>
-               
-               <Button 
-                  variant="outline" 
-                  className="w-full h-12 rounded-xl font-bold uppercase border-slate-200"
-                  onClick={() => setShowSuccessModal(false)}
-               >
-                  Close & Add Another
-               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isDomainKeyModalOpen} onOpenChange={setIsDomainKeyModalOpen}>
-          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-[32px] border-none shadow-2xl">
-            <DialogHeader className="p-8 bg-slate-50 border-b">
-              <DialogTitle className="flex items-center gap-2 font-black text-2xl tracking-tight text-slate-900 uppercase">
-                <KeyRound className="w-6 h-6 text-brand-blue" />
-                SET DOMAIN LOGIN PIN
-              </DialogTitle>
-              <DialogDescription asChild>
-                <div className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">
-                  Set a custom password/PIN to log in on www.hcrs.in directly with your email.
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="domain-pin" className="font-black text-slate-700 uppercase mb-2">Secure Code (PIN / Password)</Label>
-                <Input 
-                  id="domain-pin" 
-                  type="password"
-                  required 
-                  maxLength={12}
-                  className="h-12 rounded-xl focus:ring-brand-blue font-bold text-slate-800 text-base"
-                  placeholder="Min 4 characters (e.g. 123456)" 
-                  value={newDomainKey} 
-                  onChange={e => setNewDomainKey(e.target.value)}
-                />
-                <p className="text-[10px] font-bold text-slate-400 uppercase leading-normal">
-                  നിങ്ങളുടെ ഗൂഗിൾ അക്കൗണ്ട് ലോഗിൻ ചെയ്ത ശേഷം ഈ പിൻ നിർബന്ധമായും ക്രമീകരിക്കുക. ഇതിലൂടെ www.hcrs.in എന്ന വെബ്സൈറ്റിൽ നേരിട്ട് ലോഗിൻ ചെയ്യാൻ കഴിയും.
-                </p>
-              </div>
-
-              <div className="flex gap-4 pt-4 border-t">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setIsDomainKeyModalOpen(false)}
-                  className="flex-1 h-12 font-black rounded-xl uppercase tracking-wider text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="button"
-                  disabled={isUpdatingKey}
-                  onClick={handleUpdateDomainKey}
-                  className="flex-1 h-12 font-black rounded-xl uppercase tracking-wider text-xs bg-brand-blue text-white hover:bg-brand-blue/90"
-                >
-                  {isUpdatingKey ? 'Updating PIN...' : 'Save PIN (പാസ്‌വേഡ്)'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isManualEntryOpen} onOpenChange={setIsManualEntryOpen}>
-          <DialogContent 
-            className="sm:max-w-lg p-0 overflow-hidden rounded-[32px] border-none shadow-2xl"
-          >
-            <DialogHeader className="p-8 bg-slate-50 border-b">
-              <DialogTitle className="flex items-center gap-2 font-black text-2xl tracking-tight text-slate-900">
-                <UserPlus className="w-6 h-6 text-primary" />
-                DIRECT REGISTRATION
-              </DialogTitle>
-              <DialogDescription asChild>
-                <div className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">
-                  Add members who paid offline. They will be activated immediately.
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleManualSubmit} className="flex flex-col max-h-[80vh]">
-              <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="font-black text-slate-700 uppercase mb-2">Full Name</Label>
-                    <Input 
-                      id="name" 
-                      required 
-                      className="h-12 rounded-xl focus:ring-brand-blue"
-                      placeholder="Enter name" 
-                      value={manualFormData.name} 
-                      onChange={e => setManualFormData({...manualFormData, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="mobile" className="font-black text-slate-700 uppercase mb-2">Mobile Number</Label>
-                    <Input 
-                      id="mobile" 
-                      required 
-                      maxLength={10} 
-                      className="h-12 rounded-xl focus:ring-brand-blue"
-                      placeholder="**********" 
-                      value={manualFormData.mobile} 
-                      onChange={e => setManualFormData({...manualFormData, mobile: e.target.value.replace(/\D/g, '')})}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="font-black text-slate-700 uppercase mb-2">District</Label>
-                    <Select 
-                      value={manualFormData.district || DISTRICTS[0].code} 
-                      onValueChange={val => setManualFormData({...manualFormData, district: val, assemblyConstituency: CONSTITUENCIES[val]?.[0] || ''})}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl focus:ring-brand-blue font-bold">
-                        <SelectValue placeholder="District" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-black text-slate-700 uppercase mb-2">Assembly Constituency (മണ്ഡലം)</Label>
-                    <Select 
-                      value={manualFormData.assemblyConstituency || ""} 
-                      onValueChange={val => setManualFormData({...manualFormData, assemblyConstituency: val})}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl focus:ring-brand-blue font-bold">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {(CONSTITUENCIES[manualFormData.district] || []).map(ac => (
-                          <SelectItem key={ac} value={ac}>{ac}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="s-role" className="font-black text-slate-700 uppercase mb-2">Account Role</Label>
-                  <Select 
-                    value={manualFormData.role || 'member'} 
-                    onValueChange={val => setManualFormData({...manualFormData, role: val as any})}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl focus:ring-brand-blue font-bold">
-                      <SelectValue placeholder="Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="member">Member (അംഗം)</SelectItem>
-                      <SelectItem value="operator">Operator (ജില്ലാ അഡ്മിൻ)</SelectItem>
-                      <SelectItem value="admin">Second Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {manualFormData.role !== 'member' && (
-                  <>
-                    <div className="space-y-2 animate-in fade-in duration-300">
-                      <Label htmlFor="m-email" className="font-black text-slate-700 uppercase mb-2">Email ID</Label>
-                      <Input 
-                        id="m-email" 
-                        type="email"
-                        required 
-                        className="h-12 rounded-xl focus:ring-brand-blue"
-                        placeholder="example@mail.com" 
-                        value={manualFormData.email} 
-                        onChange={e => setManualFormData({...manualFormData, email: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="space-y-2 animate-in fade-in duration-300">
-                      <Label htmlFor="m-address" className="font-black text-slate-700 uppercase mb-2">Full Address</Label>
-                      <Input 
-                        id="m-address" 
-                        required 
-                        className="h-12 rounded-xl focus:ring-brand-blue"
-                        placeholder="House Name, Street, etc." 
-                        value={manualFormData.address} 
-                        onChange={e => setManualFormData({...manualFormData, address: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6 animate-in fade-in duration-300">
-                      <div className="space-y-2">
-                        <Label htmlFor="m-post" className="font-black text-slate-700 uppercase mb-2">Post Office</Label>
-                        <Input 
-                          id="m-post" 
-                          required 
-                          className="h-12 rounded-xl focus:ring-brand-blue"
-                          placeholder="Post Office" 
-                          value={manualFormData.postOffice} 
-                          onChange={e => setManualFormData({...manualFormData, postOffice: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="m-pincode" className="font-black text-slate-700 uppercase mb-2">Pincode</Label>
-                        <Input 
-                          id="m-pincode" 
-                          required 
-                          maxLength={6}
-                          className="h-12 rounded-xl focus:ring-brand-blue"
-                          placeholder="6-digit PIN" 
-                          value={manualFormData.pincode} 
-                          onChange={e => setManualFormData({...manualFormData, pincode: e.target.value})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6 animate-in fade-in duration-300">
-                      <div className="space-y-2">
-                        <Label htmlFor="m-pin" className="font-black text-slate-700 uppercase mb-2">Login Password</Label>
-                        <Input 
-                          id="m-pin" 
-                          className="h-12 rounded-xl focus:ring-brand-blue font-mono"
-                          value={manualFormData.pin} 
-                          onChange={e => setManualFormData({...manualFormData, pin: e.target.value})}
-                          maxLength={12}
-                        />
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Default is 123456</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="m-quota" className="font-black text-slate-700 uppercase mb-2">Entry Quota</Label>
-                        <Input 
-                          id="m-quota" 
-                          type="number"
-                          className="h-12 rounded-xl focus:ring-brand-blue"
-                          value={manualFormData.quota} 
-                          onChange={e => setManualFormData({...manualFormData, quota: parseInt(e.target.value) || 0})}
-                        />
-                        <p className="text-[10px] text-indigo-500 font-bold uppercase">Allowed entries</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="p-8 bg-slate-50 border-t flex gap-4">
-                <Button type="button" variant="ghost" onClick={() => setIsManualEntryOpen(false)} className="flex-1 h-14 font-black rounded-2xl uppercase tracking-widest text-xs">Cancel</Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1 h-14 font-black rounded-2xl bg-brand-blue hover:bg-brand-blue/90 text-white uppercase tracking-widest text-xs shadow-lg shadow-brand-blue/20">
-                  {isSubmitting ? 'Processing...' : 'ADD & ACTIVATE'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Member Dialog */}
+        {/* Member Edit Dialog */}
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6">
             <DialogHeader>
-              <DialogTitle className="font-bold">Edit Member Details</DialogTitle>
-              <DialogDescription className="font-medium">
-                Update details for {editingMember?.name}.
+              <DialogTitle className="text-xl font-black text-brand-blue uppercase flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-brand-magenta" /> Edit Member Details
+              </DialogTitle>
+              <DialogDescription className="text-xs font-bold text-slate-400">
+                അംഗത്തിന്റെ വിവരങ്ങൾ തിരുത്തുക
               </DialogDescription>
             </DialogHeader>
             {editingMember && (
-              <form onSubmit={handleEditSubmit} className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-name">Full Name</Label>
-                    <Input 
-                      id="edit-name" 
-                      value={editingMember.name || ""} 
-                      onChange={e => setEditingMember({...editingMember, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-mobile">Mobile Number</Label>
-                    <Input 
-                      id="edit-mobile" 
-                      value={editingMember.mobile || ""} 
-                      onChange={e => setEditingMember({...editingMember, mobile: e.target.value.replace(/\D/g, '')})}
-                      maxLength={10}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email ID</Label>
+              <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">Full Name (പേര്)</Label>
                   <Input 
-                    id="edit-email" 
-                    value={editingMember.email || ""} 
-                    onChange={e => setEditingMember({...editingMember, email: e.target.value})}
+                    name="name" 
+                    defaultValue={editingMember.name} 
+                    className="h-10 rounded-xl text-xs font-bold" 
+                    required 
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                    <Label>District</Label>
-                    <Select 
-                      value={editingMember.district || ""} 
-                      onValueChange={val => setEditingMember({...editingMember, district: val, assemblyConstituency: CONSTITUENCIES[val]?.[0] || ''})}
-                    >
-                      <SelectTrigger><SelectValue placeholder="District" /></SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold">Mobile Number</Label>
+                    <Input 
+                      name="mobile" 
+                      defaultValue={editingMember.mobile} 
+                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      required 
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Assembly Constituency</Label>
-                    <Select 
-                      value={editingMember.assemblyConstituency || ""} 
-                      onValueChange={val => setEditingMember({...editingMember, assemblyConstituency: val})}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {(CONSTITUENCIES[editingMember.district] || []).map(ac => (
-                          <SelectItem key={ac} value={ac}>{ac}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold">Highrich ID</Label>
+                    <Input 
+                      name="highrichId" 
+                      defaultValue={editingMember.highrichId} 
+                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                    />
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-address">Full Address</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold">District (ജില്ല)</Label>
+                    <select
+                      name="district"
+                      defaultValue={editingMember.district}
+                      className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
+                    >
+                      {DISTRICTS.map(d => (
+                        <option key={d.code} value={d.code}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold">Blood Group</Label>
+                    <select
+                      name="bloodGroup"
+                      defaultValue={editingMember.bloodGroup || ''}
+                      className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
+                    >
+                      <option value="">Select Blood Group</option>
+                      {BLOOD_GROUPS.map(bg => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">Assembly Constituency (നിയമസഭാ മണ്ഡലം)</Label>
                   <Input 
-                    id="edit-address" 
-                    value={editingMember.address || ''} 
-                    onChange={e => setEditingMember({...editingMember, address: e.target.value})}
-                    placeholder="House name, Street"
+                    name="assemblyConstituency" 
+                    defaultValue={editingMember.assemblyConstituency} 
+                    className="h-10 rounded-xl text-xs font-bold" 
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-post">Post Office</Label>
-                    <Input 
-                      id="edit-post" 
-                      value={editingMember.postOffice || ''} 
-                      onChange={e => setEditingMember({...editingMember, postOffice: e.target.value})}
-                      placeholder="Post Office"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-pincode">Pincode</Label>
-                    <Input 
-                      id="edit-pincode" 
-                      value={editingMember.pincode || ''} 
-                      onChange={e => setEditingMember({...editingMember, pincode: e.target.value})}
-                      placeholder="PIN"
-                      maxLength={6}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Blood Group</Label>
-                    <Select 
-                      value={editingMember.bloodGroup || ""} 
-                      onValueChange={val => setEditingMember({...editingMember, bloodGroup: val})}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {BLOOD_GROUPS.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-pin">Login Password</Label>
-                    <Input 
-                      id="edit-pin" 
-                      value={editingMember.pin || '123456'} 
-                      onChange={e => setEditingMember({...editingMember, pin: e.target.value})}
-                      maxLength={6}
-                    />
-                  </div>
-
-                  {isSuperAdmin && (
-                    <div className="space-y-2 p-3 bg-red-50/20 border border-brand-magenta/25 rounded-2xl">
-                      <Label htmlFor="edit-join-date" className="text-brand-magenta font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> Joining Date (ജോയിനിംഗ് തീയതി)
-                      </Label>
-                      <Input 
-                        id="edit-join-date" 
-                        type="date"
-                        value={(() => {
-                          const dateVal = editingMember.registrationDate;
-                          if (!dateVal) return '';
-                          const d = dateVal.toDate ? dateVal.toDate() : (dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal));
-                          if (isNaN(d.getTime())) return '';
-                          return d.toISOString().split('T')[0];
-                        })()} 
-                        onChange={e => {
-                          const selectedDateVal = e.target.value;
-                          if (selectedDateVal) {
-                            const newRegDate = new Date(selectedDateVal);
-                            const newExpiryDate = new Date(newRegDate);
-                            newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                            
-                            setEditingMember({
-                              ...editingMember,
-                              registrationDate: newRegDate,
-                              expiryDate: newExpiryDate,
-                              renewalPending: false
-                            });
-                          }
-                        }}
-                        className="bg-white border-brand-magenta/30 focus-visible:ring-brand-magenta"
-                      />
-                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
-                        * സൂപ്പർ അഡ്മിന് മാത്രം: ജോയിനിംഗ് തീയതി മാറ്റുമ്പോൾ തനിയെ ഒരു വർഷത്തെ കാലാവധി (Validity Period) കണക്കാക്കുകയും, കാർഡ് ആക്റ്റീവ് ആവുകയും ചെയ്യും.
-                      </p>
-                    </div>
-                  )}
-
-                  {isSuperAdmin && (
-                    <div className="space-y-2 p-3 bg-blue-50/10 border border-brand-blue/20 rounded-2xl">
-                      <Label htmlFor="edit-expiry-date" className="text-brand-blue font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> Expiry Date (കാലാവധി തീയതി)
-                      </Label>
-                      <Input 
-                        id="edit-expiry-date" 
-                        type="date"
-                        value={(() => {
-                          const dateVal = editingMember.expiryDate;
-                          if (!dateVal) return '';
-                          const d = dateVal.toDate ? dateVal.toDate() : (dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal));
-                          if (isNaN(d.getTime())) return '';
-                          return d.toISOString().split('T')[0];
-                        })()} 
-                        onChange={e => {
-                          const selectedDateVal = e.target.value;
-                          if (selectedDateVal) {
-                            const newExpiryDate = new Date(selectedDateVal);
-                            setEditingMember({
-                              ...editingMember,
-                              expiryDate: newExpiryDate,
-                              renewalPending: false
-                            });
-                          }
-                        }}
-                        className="bg-white border-brand-blue/30 focus-visible:ring-brand-blue"
-                      />
-                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-2">
-                        അംഗത്തിന്റെ আইഡി കാർഡിന്റെ കാലാവധി ഈ തീയതിയോടെ അവസാനിക്കും. താഴെ പറയുന്ന ബട്ടണുകൾ ഉപയോഗിച്ച് വേഗത്തിൽ ക്രമീകരിക്കാം:
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          className="text-[10px] text-green-600 border-green-200 hover:bg-green-50 font-bold flex-1"
-                          onClick={() => {
-                            const oneYearFromNow = new Date();
-                            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-                            setEditingMember({
-                              ...editingMember,
-                              expiryDate: oneYearFromNow,
-                              renewalPending: false
-                            });
-                          }}
-                        >
-                          +1 Year (വാലിഡിറ്റി നൽകുക)
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          className="text-[10px] text-red-600 border-red-200 hover:bg-red-50 font-bold flex-1"
-                          onClick={() => {
-                            const yesterday = new Date();
-                            yesterday.setDate(yesterday.getDate() - 1);
-                            setEditingMember({
-                              ...editingMember,
-                              expiryDate: yesterday,
-                              renewalPending: false
-                            });
-                          }}
-                        >
-                          Expire (വാലിഡിറ്റി കളയുക)
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <Select 
-                      value={editingMember.status || ""} 
-                      onValueChange={val => setEditingMember({...editingMember, status: val as 'active' | 'pending' | 'offline'})}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="offline">Offline</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>System Role</Label>
-                    <Select 
-                      value={editingMember.role || "member"} 
-                      onValueChange={val => setEditingMember({...editingMember, role: val as 'admin' | 'operator' | 'member'})}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">General Member</SelectItem>
-                        <SelectItem value="operator">District Operator</SelectItem>
-                        <SelectItem value="admin">District Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {(editingMember.role === 'operator' || editingMember.role === 'admin') && !isSecondary && (
-                  <div className="p-4 bg-brand-blue/5 rounded-2xl space-y-4 border border-brand-blue/10">
-                    <div className="flex items-center gap-2 text-brand-blue font-black text-xs uppercase tracking-widest">
-                      <Lock className="w-3.5 h-3.5" /> Quota Settings
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-quota">Registry Limit (Total)</Label>
-                        <Input 
-                          id="edit-quota" 
-                          type="number"
-                          placeholder="No limit"
-                          value={editingMember.quota ?? ''} 
-                          onChange={e => setEditingMember({...editingMember, quota: e.target.value === '' ? undefined : parseInt(e.target.value)})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-quota-used">Used Count (Manual Reset)</Label>
-                        <Input 
-                          id="edit-quota-used" 
-                          type="number"
-                          value={editingMember.quotaUsed || 0} 
-                          onChange={e => setEditingMember({...editingMember, quotaUsed: parseInt(e.target.value) || 0})}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <DialogFooter className="pt-4 flex gap-3">
-                  <Button type="button" variant="ghost" onClick={() => setEditingMember(null)} className="flex-1 font-bold">Cancel</Button>
-                  <Button type="submit" className="flex-1 font-black rounded-xl">Save Changes</Button>
+                <DialogFooter className="gap-2 pt-4 border-t">
+                  <Button type="button" variant="outline" onClick={() => setEditingMember(null)} className="rounded-xl font-bold">
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="rounded-xl font-black uppercase bg-brand-blue text-white">
+                    Save Changes
+                  </Button>
                 </DialogFooter>
               </form>
             )}
           </DialogContent>
         </Dialog>
 
-        {/* Claim Details Dialog */}
-        <Dialog open={!!selectedClaim} onOpenChange={(open) => !open && setSelectedClaim(null)}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Delete Member Confirmation Dialog */}
+        <Dialog open={!!deletingMemberId} onOpenChange={(open) => !open && setDeletingMemberId(null)}>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black flex items-center gap-2 uppercase tracking-tight text-brand-blue">
-                <ShieldAlert className={cn(
-                   "w-6 h-6",
-                   selectedClaim?.priorityStatus === 'EMERGENCY RED' ? 'text-red-600' : 'text-brand-blue'
-                )} />
-                Support Claim Details
+              <DialogTitle className="text-lg font-black text-red-600 uppercase flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" /> Confirm Member Deletion
               </DialogTitle>
+              <DialogDescription className="text-xs font-semibold text-slate-500 mt-2 leading-relaxed">
+                ഈ അംഗത്തെ പൂർണ്ണമായും ഒഴിവാക്കണോ? ഈ പ്രവർത്തനം റദ്ദാക്കാൻ കഴിയില്ല.
+              </DialogDescription>
             </DialogHeader>
+            <DialogFooter className="gap-2 mt-4 sm:justify-end">
+              <Button variant="outline" onClick={() => setDeletingMemberId(null)} className="rounded-xl font-bold">
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete} className="rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white">
+                Yes, Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Selected Claim Detail Dialog */}
+        <Dialog open={!!selectedClaim} onOpenChange={(open) => !open && setSelectedClaim(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6">
             {selectedClaim && (
-              <div className="space-y-8 py-6">
-                 {/* Member Profile Details Card */}
-                 <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
-                    <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest flex items-center gap-2">
-                       <Users className="w-4 h-4 text-brand-magenta" />
-                       Member Profile Details (മെമ്പർ വിവരങ്ങൾ)
-                    </h4>
-                    {claimUser && (
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-black">
-                          <div 
-                             onClick={() => {
-                                navigator.clipboard.writeText(claimUser.name);
-                                toast.success('പേര് കോപ്പി ചെയ്തു! (Name copied)');
-                             }}
-                             className="space-y-1 cursor-pointer group hover:bg-slate-100/50 p-2 rounded-2xl transition-all border border-transparent hover:border-slate-200"
-                          >
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                                <span>Account Holder / Claimant (മെമ്പർ / ക്ലെയിം വ്യക്തി)</span>
-                                <span className="text-slate-450 group-hover:text-blue-600 flex items-center gap-1 text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <Copy className="w-2.5 h-2.5" /> click to copy
-                                </span>
-                             </p>
-                             <p className="font-bold text-slate-850 text-sm flex items-center gap-1.5 flex-wrap bg-white p-2 rounded-xl border border-slate-100">
-                                {claimUser.name}
-                                {selectedClaim?.userName && selectedClaim.userName !== claimUser.name && (
-                                   <span className="text-slate-500 font-bold">({selectedClaim.userName})</span>
-                                )}
-                                {selectedClaim?.relation && (
-                                   <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03]">
-                                      {selectedClaim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                                       selectedClaim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                        selectedClaim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                        selectedClaim.relation === 'Son' ? 'മകൻ (Son)' :
-                                        selectedClaim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
-                                        selectedClaim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                                        selectedClaim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : selectedClaim.relation}
-                                   </Badge>
-                                )}
-                             </p>
-                          </div>
-                          <div className="space-y-1 p-2">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member ID (മെമ്പർ ഐഡി നമ്പർ)</p>
-                             <p className="font-bold text-brand-magenta text-sm font-mono bg-white p-2 rounded-xl border border-slate-100">{claimUser.membershipId || selectedClaim.membershipId || 'PENDING'}</p>
-                           </div>
-                           <div className="space-y-1 p-2">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Serial Number (സീരിയൽ നമ്പർ)</p>
-                              <div className="bg-white p-2 rounded-xl border border-slate-100">
-                                <p className="font-extrabold text-[#FF1493] text-sm font-mono bg-[#FF1493]/5 border border-[#FF1493]/15 px-2 py-0.5 rounded w-fit">#{selectedClaim.tokenNo ?? selectedClaim.serialNo ?? 'N/A'}</p>
-                              </div>
-                          </div>
-                          <div className="space-y-1 p-2">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</p>
-                             <p className="font-bold text-slate-800 bg-white p-2 rounded-xl border border-slate-100">{claimUser.mobile}</p>
-                          </div>
-                          <div 
-                             onClick={() => {
-                                navigator.clipboard.writeText(claimUser.address);
-                                toast.success('വിലാസം കോപ്പി ചെയ്തു! (Address copied)');
-                             }}
-                             className="space-y-1 sm:col-span-2 cursor-pointer group hover:bg-slate-100/50 p-2 rounded-2xl transition-all border border-transparent hover:border-slate-200"
-                          >
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                                <span>Address (മേൽവിലാസം)</span>
-                                <span className="text-slate-450 group-hover:text-blue-600 flex items-center gap-1 text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <Copy className="w-2.5 h-2.5" /> click to copy
-                                </span>
-                             </p>
-                             <p className="font-medium text-slate-700 leading-relaxed bg-white p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
-                                {claimUser.address}
-                             </p>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">District</p>
-                             <p className="font-bold text-slate-850">
-                                {DISTRICTS.find(d => d.code === claimUser.district)?.name || claimUser.district || 'N/A'}
-                             </p>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Constituency (നിയമസഭ മണ്ഡലം)</p>
-                             <p className="font-bold text-slate-700">{claimUser.constituency || 'N/A'}</p>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-auto">Blood Group</p>
-                             <span className="bg-red-50 text-red-600 border border-red-100 hover:bg-neutral-100 font-extrabold px-2 py-0.5 rounded text-[10px] w-fit block">{claimUser.bloodGroup || 'N/A'}</span>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email (ഇമെയിൽ)</p>
-                             <p className="font-medium text-slate-650 truncate">{claimUser.email || 'N/A'}</p>
-                          </div>
-                       </div>
-                    )}
-                 </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Priority Status</p>
-                       <Badge className={cn(
-                          "font-black text-[10px] px-3 py-1 text-white border-0",
-                          selectedClaim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
-                          selectedClaim.priorityStatus === 'RED' ? 'bg-red-500' :
-                          selectedClaim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
-                       )}>
-                          {selectedClaim.priorityStatus}
-                       </Badge>
-                       {selectedClaim.isEmergency && (
-                         <p className="text-[9px] font-black text-red-600 mt-2 flex items-center gap-1 uppercase tracking-tight">
-                            <ShieldAlert className="w-3 h-3" /> Emergency Verified
-                         </p>
-                       )}
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Highrich ID</p>
-                       <p className="text-sm font-black text-brand-blue uppercase">{selectedClaim.highrichId || 'NOT PROVIDED'}</p>
-                    </div>
-                 </div>
+              <div className="space-y-6">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-black text-brand-blue uppercase flex items-center justify-between">
+                    <span>Claim & Legal Summary</span>
+                    <Badge variant={selectedClaim.isEmergency ? "destructive" : "outline"} className="text-xs">
+                      {selectedClaim.isEmergency ? 'EMERGENCY / അത്യാഹിതം' : 'Normal / സാധാരണ'}
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription className="text-xs font-bold text-slate-400">
+                    Highrich ID: {selectedClaim.highrichId || 'N/A'} • Submitted: {formatClaimDate(selectedClaim.createdAt)}
+                  </DialogDescription>
+                </DialogHeader>
 
-                 <div className="space-y-4">
-                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                       <LayoutDashboard className="w-4 h-4 text-brand-magenta" />
-                       Amount Breakdown (ക്ലെയിം വിവരങ്ങൾ)
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                       <div className="bg-brand-blue/5 border border-brand-blue/10 p-4 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-brand-blue uppercase mb-1">Total Paid</p>
-                          <p className="text-xl font-black text-brand-blue tracking-tight">₹{selectedClaim.totalPaid?.toLocaleString('en-IN')}</p>
-                       </div>
-                       <div className="bg-green-50 border border-green-100 p-4 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-green-600 uppercase mb-1">Total Received</p>
-                          <p className="text-xl font-black text-green-600 tracking-tight">₹{selectedClaim.totalReceived?.toLocaleString('en-IN')}</p>
-                       </div>
-                       <div className="bg-brand-magenta/5 border border-brand-magenta/10 p-4 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-brand-magenta uppercase mb-1">Pending</p>
-                          <p className="text-xl font-black text-brand-magenta tracking-tight">₹{selectedClaim.totalPending?.toLocaleString('en-IN')}</p>
-                       </div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <DetailItem label="Member Name" value={selectedClaim.userName || 'N/A'} />
+                  <DetailItem label="Mobile Number" value={selectedClaim.userMobile || 'N/A'} />
+                  <DetailItem label="District" value={selectedClaim.userDistrict || 'N/A'} />
+                  <DetailItem label="Total Paid" value={`₹${(selectedClaim.totalPaid || 0).toLocaleString('en-IN')}`} />
+                  <DetailItem label="Total Received" value={`₹${(selectedClaim.totalReceived || 0).toLocaleString('en-IN')}`} />
+                  <DetailItem label="Balance Pending" value={`₹${(selectedClaim.totalPending || 0).toLocaleString('en-IN')}`} />
+                </div>
 
-                    {!selectedClaim.noBreakup && selectedClaim.categoryDetails && (
-                       <div className="bg-white border rounded-2xl overflow-hidden mt-4">
-                          <Table>
-                             <TableHeader className="bg-slate-50">
-                                <TableRow>
-                                   <TableHead className="text-[9px] font-black uppercase">Category</TableHead>
-                                   <TableHead className="text-[9px] font-black uppercase">Paid</TableHead>
-                                   <TableHead className="text-[9px] font-black uppercase">Received</TableHead>
-                                   <TableHead className="text-[9px] font-black uppercase text-right">Pending</TableHead>
-                                </TableRow>
-                             </TableHeader>
-                             <TableBody>
-                                {Object.entries(selectedClaim.categoryDetails).map(([catId, detail]: [string, any]) => (
-                                   <TableRow key={catId} className="text-xs">
-                                      <TableCell className="font-bold uppercase text-[10px]">{getCategoryLabel(catId)}</TableCell>
-                                      <TableCell className="font-medium">₹{detail.paid?.toLocaleString('en-IN')}</TableCell>
-                                      <TableCell className="font-medium text-green-600">₹{detail.received?.toLocaleString('en-IN')}</TableCell>
-                                      <TableCell className="text-right font-black text-brand-magenta">₹{detail.pending?.toLocaleString('en-IN')}</TableCell>
-                                   </TableRow>
-                                ))}
-                             </TableBody>
-                          </Table>
-                       </div>
-                    )}
-                 </div>
+                {selectedClaim.sponsorName && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <DetailItem label="Sponsor Name" value={selectedClaim.sponsorName} />
+                    <DetailItem label="Sponsor Mobile" value={selectedClaim.sponsorMobile || 'N/A'} />
+                  </div>
+                )}
 
-                  {selectedClaim.notes && (
-                     <div className="space-y-2 bg-yellow-50/40 border border-yellow-100 p-4 rounded-2xl mb-6">
-                        <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                           Remarks / Notes (അധിക വിവരങ്ങൾ / നോട്ട്)
-                        </h4>
-                        <p className="text-xs font-semibold text-slate-700 whitespace-pre-wrap leading-relaxed">
-                           {selectedClaim.notes}
-                        </p>
-                     </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Future Preference (ഭാവിയിലെ തീരുമാനം)</p>
+                  {selectedClaim.futurePreference ? (
+                    <>
+                      <p className="text-xs font-bold text-slate-700">{getFuturePreferenceDetail(selectedClaim.futurePreference).ml}</p>
+                      <p className="text-[10px] text-slate-500">{getFuturePreferenceDetail(selectedClaim.futurePreference).en}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs font-semibold text-slate-400 italic">Not provided by customer (കസ്റ്റമർ രേഖപ്പെടുത്തിയിട്ടില്ല)</p>
                   )}
+                </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Future Preference</h4>
-                       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 italic text-xs font-bold text-slate-700">
-                          "{selectedClaim.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' : 
-                            selectedClaim.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' : 
-                            'Ready to continue with company based on future plans'}"
-                       </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hardship Declarations (പ്രതിസന്ധികൾ)</p>
+                  {Array.isArray(selectedClaim.hardshipStatus) && selectedClaim.hardshipStatus.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {getHardshipList(selectedClaim.hardshipStatus).map((h, i) => (
+                        <span key={i} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${h.isEmergency ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-slate-200 text-slate-700'}`}>
+                          <span>{h.icon}</span>
+                          <span>{h.titleMl} ({h.titleEn})</span>
+                        </span>
+                      ))}
                     </div>
-                    <div className="space-y-3">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Hardship Declaration</h4>
-                       <div className="flex flex-wrap gap-2 text-xs">
-                          {selectedClaim.hardshipStatus?.map((h: string) => (
-                             <Badge key={h} className="bg-red-100 text-red-700 border-red-200 font-black text-[9px] px-3 py-1 rounded-lg">
-                                {h === 'bank' ? 'BANK SEIZURE' : h === 'crisis' ? 'FINANCIAL CRISIS' : h === 'medical' ? 'MEDICAL EMERGENCY' : 'NONE'}
-                             </Badge>
-                          ))}
-                       </div>
-                    </div>
-                 </div>
+                  ) : (
+                    <p className="text-xs font-semibold text-slate-400 italic">Not provided by customer (കസ്റ്റമർ രേഖപ്പെടുത്തിയിട്ടില്ല)</p>
+                  )}
+                </div>
 
-                 <div className="pt-6 border-t flex items-center justify-between">
-                    <div className="text-[10px] font-bold text-slate-400">
-                       SUBMITTED ON: {formatClaimDateTime(selectedClaim.createdAt)}
-                    </div>
-                    <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-8">Close</Button>
-                 </div>
+                {selectedClaim.notes && (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes / Remarks</p>
+                    <p className="text-xs font-bold text-slate-700">{selectedClaim.notes}</p>
+                  </div>
+                )}
+
+                <DialogFooter className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                        printCourtClaimReport(selectedClaim, memberObj);
+                      }}
+                      className="rounded-xl font-black uppercase text-xs px-2.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5 shadow-2xs"
+                      title="Print Court / Legal Statement (1 Page A4)"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Court Print</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                        downloadCourtClaimPdf(selectedClaim, memberObj);
+                      }}
+                      className="rounded-xl font-black uppercase text-xs px-2.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5 shadow-2xs"
+                      title="Download Court / Legal Statement PDF (1 Page A4)"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Court PDF</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                        printFullAdminClaimReport(selectedClaim, memberObj);
+                      }}
+                      className="rounded-xl font-black uppercase text-xs px-2.5 border-brand-magenta/30 text-brand-magenta hover:bg-brand-magenta/5 flex items-center gap-1.5 shadow-2xs"
+                      title="Print Full Admin Record (1 Page A4)"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <span>Admin Print</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                        downloadFullAdminClaimPdf(selectedClaim, memberObj);
+                      }}
+                      className="rounded-xl font-black uppercase text-xs px-2.5 border-brand-magenta/30 text-brand-magenta hover:bg-brand-magenta/5 flex items-center gap-1.5 shadow-2xs"
+                      title="Download Full Admin Record PDF (1 Page A4)"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Admin PDF</span>
+                    </Button>
+                  </div>
+                  <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-6">Close</Button>
+                </DialogFooter>
               </div>
             )}
           </DialogContent>
@@ -6849,15 +4360,38 @@ service cloud.firestore {
             {editingClaim && (
               <div className="space-y-6 py-4">
                 {/* Highrich Id */}
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">Highrich ID (ഹൈറിച്ച് ഐഡി)</Label>
-                  <Input 
-                    type="text" 
-                    value={editClaimHighrichId} 
-                    onChange={(e) => setEditClaimHighrichId(e.target.value)} 
-                    placeholder="E.g., HR12345"
-                    className="h-11 rounded-xl font-medium"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase">Highrich ID (ഹൈറിച്ച് ഐഡി)</Label>
+                    <Input 
+                      type="text" 
+                      value={editClaimHighrichId} 
+                      onChange={(e) => setEditClaimHighrichId(e.target.value)} 
+                      placeholder="E.g., HR12345"
+                      className="h-11 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase">സ്പോൺസർ / ലീഡർ പേര്</Label>
+                    <Input 
+                      type="text" 
+                      value={editClaimSponsorName} 
+                      onChange={(e) => setEditClaimSponsorName(e.target.value)} 
+                      placeholder="Sponsor Name"
+                      className="h-11 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase">സ്പോൺസർ മൊബൈൽ നമ്പർ</Label>
+                    <Input 
+                      type="tel" 
+                      value={editClaimSponsorMobile} 
+                      onChange={(e) => setEditClaimSponsorMobile(e.target.value)} 
+                      placeholder="Sponsor Mobile"
+                      maxLength={10}
+                      className="h-11 rounded-xl font-medium"
+                    />
+                  </div>
                 </div>
 
                 {/* No Breakup Option */}
@@ -6929,64 +4463,96 @@ service cloud.firestore {
                   </div>
                 )}
 
-                {/* Future Preference */}
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">Future Preference (തുടർവിഷയം മുൻഗണന)</Label>
-                  <Select value={editClaimFuturePreference} onValueChange={setEditClaimFuturePreference}>
-                     <SelectTrigger className="w-full h-11 border bg-white rounded-xl text-xs font-bold text-slate-700">
-                        <SelectValue placeholder="Select preference" />
-                     </SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="settlement" className="text-xs">Prefer settlement and closure after receiving balance</SelectItem>
-                        <SelectItem value="wait" className="text-xs">Willing to wait if company continues and grows</SelectItem>
-                        <SelectItem value="continue" className="text-xs">Ready to continue with company based on future plans</SelectItem>
-                     </SelectContent>
-                  </Select>
-                </div>
+                {/* AREA 3 — ADMIN INTERNAL FOLLOW-UP FORM */}
+                <div className="p-4 bg-amber-50/60 rounded-2xl border-2 border-amber-300 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b pb-2.5 border-amber-200 gap-2 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-800 text-white text-[10px] font-black uppercase tracking-wider">
+                        🛡️ <span>AREA 3: ADMIN INTERNAL FOLLOW-UP FORM</span>
+                      </div>
+                      <p className="text-[10px] font-bold text-amber-900">
+                        അഡ്മിൻ ഇന്റേണൽ ഫോളോ-അപ്പ് • Internal Admin Use Only • Excluded from Advocate Print/PDF
+                      </p>
+                    </div>
+                    <Badge className="bg-amber-200 text-amber-950 font-black text-[9px] uppercase">
+                      🔒 Admin Exclusive
+                    </Badge>
+                  </div>
 
-                {/* Remarks/Notes Input */}
-                <div className="space-y-1.5 font-sans">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">Remarks / Notes (അധിക വിവരങ്ങൾ / നോട്ട്)</Label>
-                  <textarea 
-                    value={editClaimNotes} 
-                    onChange={(e) => setEditClaimNotes(e.target.value)} 
-                    placeholder="Enter notes or explanation..."
-                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
-                  />
-                </div>
+                  {/* Future Preference */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-700 uppercase">ഭാവിയിലെ തീരുമാനങ്ങൾ (Future Preference)</Label>
+                    <Select value={editClaimFuturePreference} onValueChange={setEditClaimFuturePreference}>
+                       <SelectTrigger className="w-full min-h-[44px] h-auto py-2 border bg-white rounded-xl text-xs font-bold text-slate-700 text-left">
+                          <SelectValue placeholder="മുൻഗണന തിരഞ്ഞെടുക്കുക / Select preference" />
+                       </SelectTrigger>
+                       <SelectContent>
+                          <SelectItem value="settlement" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">ബാലൻസ് തുക ലഭിച്ചാൽ settlement ചെയ്ത് account closure ചെയ്യാൻ താൽപര്യപ്പെടുന്നു</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Settlement and closure after receiving pending balance)</span>
+                          </SelectItem>
+                          <SelectItem value="wait" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">ബാലൻസ് തുകയിൽ നിന്ന് ഒരു ഭാഗം / 1/4 amount ലഭിച്ചാൽ ബാക്കി തുകയ്ക്കായി കാത്തിരിക്കാം</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Willing to wait if part payment / 1/4th amount is received)</span>
+                          </SelectItem>
+                          <SelectItem value="continue" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">കമ്പനി പ്രവർത്തനം പുനരാരംഭിച്ചാൽ കമ്പനിക്കൊപ്പം തുടർന്നു പോകാൻ തയ്യാറാണ്</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Ready to continue with the company if business operations restart)</span>
+                          </SelectItem>
+                          <SelectItem value="urgent" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">നിലവിലെ സാഹചര്യത്തിൽ എത്രയും വേഗം payment ലഭിക്കണം</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Need urgent payment due to personal/financial situation)</span>
+                          </SelectItem>
+                       </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Hardship declaration */}
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-slate-500 uppercase">Hardship Declarations (അടിയന്തര പ്രതിസന്ധികൾ)</Label>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
-                      {[
-                        { id: 'bank', label: 'Bank seizure pressure' },
-                        { id: 'crisis', label: 'Financial crisis' },
-                        { id: 'medical', label: 'Medical emergency' },
-                        { id: 'none', label: 'No emergency' }
-                      ].map(h => (
-                        <div key={h.id} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                          <Checkbox 
-                            id={`admin-edit-claim-hardship-${h.id}`}
-                            checked={editClaimHardshipStatus.includes(h.id)} 
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                if (h.id === 'none') {
-                                  setEditClaimHardshipStatus(['none']);
+                  {/* Remarks/Notes Input */}
+                  <div className="space-y-1.5 font-sans">
+                    <Label className="text-[10px] font-black text-slate-700 uppercase">Remarks / Notes (അഡ്മിൻ നോട്ട് / നിരീക്ഷണങ്ങൾ)</Label>
+                    <textarea 
+                      value={editClaimNotes} 
+                      onChange={(e) => setEditClaimNotes(e.target.value)} 
+                      placeholder="Enter internal follow-up notes, investigator remarks, or explanation..."
+                      className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-amber-600 focus:ring-0 focus:outline-none min-h-20 bg-white"
+                    />
+                  </div>
+
+                  {/* Hardship declaration */}
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black text-slate-700 uppercase">ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Declarations)</Label>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
+                        {[
+                          { id: 'bank', ml: 'ബാങ്ക് ജപ്തി / loan recovery pressure നേരിടുന്നു', en: 'Bank recovery / seizure pressure' },
+                          { id: 'crisis', ml: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി നേരിടുന്നു', en: 'Serious financial crisis' },
+                          { id: 'medical', ml: 'ചികിത്സാ ആവശ്യങ്ങൾ / medical emergency ഉണ്ട്', en: 'Medical emergency / treatment need' },
+                          { id: 'none', ml: 'അടിയന്തിര പ്രാധാന്യമില്ല', en: 'No urgent emergency' }
+                        ].map(h => (
+                          <div key={h.id} className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-amber-200 hover:bg-amber-50/50 transition-colors">
+                            <Checkbox 
+                              id={`admin-edit-claim-hardship-${h.id}`}
+                              checked={editClaimHardshipStatus.includes(h.id)} 
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  if (h.id === 'none') {
+                                    setEditClaimHardshipStatus(['none']);
+                                  } else {
+                                    setEditClaimHardshipStatus(prev => [...prev.filter(x => x !== 'none'), h.id]);
+                                  }
                                 } else {
-                                  setEditClaimHardshipStatus(prev => [...prev.filter(x => x !== 'none'), h.id]);
+                                  setEditClaimHardshipStatus(prev => prev.filter(x => x !== h.id));
                                 }
-                              } else {
-                                setEditClaimHardshipStatus(prev => prev.filter(x => x !== h.id));
-                              }
-                            }} 
-                          />
-                          <Label htmlFor={`admin-edit-claim-hardship-${h.id}`} className="text-xs font-bold text-slate-650 truncate cursor-pointer select-none">
-                            {h.label}
-                          </Label>
-                        </div>
-                      ))}
-                   </div>
+                              }} 
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor={`admin-edit-claim-hardship-${h.id}`} className="text-xs font-bold text-slate-700 cursor-pointer select-none leading-snug">
+                              <span className="block">{h.ml}</span>
+                              <span className="text-[10px] font-medium text-slate-400">({h.en})</span>
+                            </Label>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
                 </div>
 
                 <DialogFooter className="gap-2 pt-4 border-t">
@@ -7191,15 +4757,15 @@ function StatsCard({ title, value, icon, color }: { title: string, value: number
   };
 
   return (
-    <Card className="border border-slate-200/40 bg-white/80 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.025)] transition-all duration-300">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
-            <h3 className="text-3xl font-black text-slate-800 leading-none tracking-tight font-mono">{value}</h3>
+    <Card className="border border-slate-200/40 bg-white/80 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.025)] transition-all duration-300 min-w-0 w-full max-w-full">
+      <CardContent className="p-3.5 sm:p-6">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="space-y-1.5 min-w-0 flex-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{title}</p>
+            <h3 className="text-xl sm:text-3xl font-black text-slate-800 leading-none tracking-tight font-mono truncate">{value}</h3>
           </div>
-          <div className={cn("p-3 rounded-xl border flex items-center justify-center shrink-0", bgColors[color])}>
-            {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
+          <div className={cn("p-2 sm:p-3 rounded-xl border flex items-center justify-center shrink-0", bgColors[color])}>
+            {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4 sm:w-6 sm:h-6' })}
           </div>
         </div>
       </CardContent>

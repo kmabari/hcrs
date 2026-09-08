@@ -409,9 +409,9 @@ export default function DbMigrationManager({ user }: DbMigrationManagerProps) {
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div className="space-y-1">
-            <h4 className="text-xs font-black text-red-750 uppercase tracking-wider">അതീവ ശ്രദ്ധിക്കുക! (Critical Security Notice)</h4>
+            <h4 className="text-xs font-black text-red-750 uppercase tracking-wider">അതീവ ശ്രദ്ധിക്കുക! (Critical Notice)</h4>
             <p className="text-[11px] text-slate-600 leading-relaxed font-bold">
-              തങ്കൾ ഇപ്പോഴുള്ള <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200">kmabarikiyafoods@gmail.com</span> പ്രൊജക്റ്റിൽ നിന്നും പുതിയ <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200">hcrskerala@gmail.com</span> Blaze പ്രൊജക്റ്റിലേക്ക് ഡാറ്റ സുരക്ഷിതമായി മാറ്റുന്നതിനുള്ള സഹായിയാണിത്. 
+              നിലവിലെ പ്രൊജക്റ്റിൽ നിന്നും പുതിയ പ്രൊഡക്ഷൻ പ്രൊജക്റ്റിലേക്ക് ഡാറ്റ സുരക്ഷിതമായി മാറ്റുന്നതിനുള്ള സഹായിയാണിത്. 
               താഴെയുള്ള നിർദ്ദേശങ്ങൾ അതേപടി പാലിക്കുക.
             </p>
           </div>

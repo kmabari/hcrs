@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Save, Info, Target, Eye, MapPin, Phone, Mail, Globe, LayoutGrid, RefreshCw, Trash2, Plus, CheckCircle2, X, AlertTriangle } from 'lucide-react';
-import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings, addAnnouncement, deleteAnnouncement, updateAnnouncement, subscribeToAnnouncements, Announcement } from '@/src/lib/cms';
+import { Save, Info, Target, Eye, MapPin, Phone, Mail, Globe, LayoutGrid, RefreshCw, Trash2, Plus, CheckCircle2, X, AlertTriangle, Sparkles, Image, Link, Play, Check } from 'lucide-react';
+import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings, addAnnouncement, deleteAnnouncement, updateAnnouncement, subscribeToAnnouncements, Announcement, normalizeImageUrl } from '@/src/lib/cms';
+import Logo from '@/src/Logo';
 
 export default function BrandingManager() {
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
@@ -149,15 +150,219 @@ export default function BrandingManager() {
                     className="h-12 rounded-xl border-slate-200"
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="font-bold text-slate-700">Official Logo URL</Label>
-                  <Input 
-                    value={settings.logoUrl || ''} 
-                    onChange={e => setSettings({...settings, logoUrl: e.target.value})}
-                    placeholder="https://firebasestorage.googleapis.com/..."
-                    className="h-12 rounded-xl border-slate-200"
-                  />
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">This will update the logo on the ID card and public website.</p>
+              </div>
+            </div>
+
+            <Separator className="opacity-50" />
+
+            {/* LOGO & ANIMATION MANAGEMENT SECTION */}
+            <div className="space-y-6 bg-gradient-to-br from-amber-500/5 via-blue-500/5 to-slate-50 p-6 md:p-8 rounded-3xl border-2 border-brand-blue/15 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-brand-blue/10">
+                <div>
+                  <h3 className="text-sm font-black text-brand-blue uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" /> ഔദ്യോഗിക ലോഗോ & ആനിമേഷൻ നിയന്ത്രണം (Logo & Animation Center)
+                  </h3>
+                  <p className="text-slate-500 font-bold text-[10px] uppercase tracking-wider mt-1">
+                    ഇവിടെ നൽകുന്ന ആനിമേഷൻ ലോഗോയും സ്റ്റാൻഡേർഡ് ലോഗോയും വെബ്‌സൈറ്റിലും ഐഡി കാർഡുകളിലും തത്സമയം അപ്ഡേറ്റ് ആകും.
+                  </p>
+                </div>
+                <span className="px-3 py-1 bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider rounded-full border border-amber-300 w-fit">
+                  Live Global Sync
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 1. ANIMATED LOGO CONTROLLER */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-extrabold text-brand-blue text-xs uppercase tracking-wider flex items-center gap-2">
+                        <Play className="w-3.5 h-3.5 text-blue-600" /> ആനിമേറ്റഡ് ലോഗോ URL (GIF / Live Animation)
+                      </Label>
+                      <span className="text-[9px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold border border-blue-200">
+                        Home & Pages
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <Input 
+                        value={settings.animatedLogoUrl || ''} 
+                        onChange={e => {
+                          const normalized = normalizeImageUrl(e.target.value);
+                          setSettings({...settings, animatedLogoUrl: normalized});
+                        }}
+                        placeholder="https://i.ibb.co/... or /hcrs-animated-logo.gif"
+                        className="h-12 rounded-xl border-slate-200 font-mono text-xs pr-10"
+                      />
+                      {settings.animatedLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setSettings({...settings, animatedLogoUrl: ''})}
+                          className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                          title="Clear"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      ImgBB ലിങ്ക് (<code className="text-blue-600">ibb.co/N2jHFKdP</code>), Google Drive, അല്ലെങ്കിൽ നേരിട്ടുള്ള GIF ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യാം.
+                    </p>
+
+                    {/* Quick Presets for Animated Logo */}
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Quick Presets (തിരഞ്ഞെടുക്കാവുന്നവ):</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSettings({
+                              ...settings, 
+                              animatedLogoUrl: 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif'
+                            });
+                            toast.success('ഔദ്യോഗിക റൊട്ടേറ്റിംഗ് GIF ലോഗോ തിരഞ്ഞെടുത്തു');
+                          }}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-blue hover:text-white transition-colors border border-slate-200 text-slate-700"
+                        >
+                          ✨ ഔദ്യോഗിക GIF (ImgBB)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSettings({
+                              ...settings, 
+                              animatedLogoUrl: '/hcrs-animated-logo.gif'
+                            });
+                            toast.success('ലോക്കൽ സെർവർ GIF ലോഗോ തിരഞ്ഞെടുത്തു');
+                          }}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-blue hover:text-white transition-colors border border-slate-200 text-slate-700"
+                        >
+                          ⚡ ലോക്കൽ GIF (/hcrs-animated-logo.gif)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Animated Logo Live Preview Box */}
+                  <div className="mt-3 p-4 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Live Animation Preview</span>
+                      <span className="text-[9px] text-slate-400 block max-w-[180px] truncate">
+                        {settings.animatedLogoUrl || '/hcrs-animated-logo.gif'}
+                      </span>
+                    </div>
+                    <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center p-1 border border-white/20 shadow-inner">
+                      <Logo 
+                        src={settings.animatedLogoUrl || '/hcrs-animated-logo.gif'} 
+                        size="sm" 
+                        animated={true}
+                        className="w-14 h-14"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. STATIC LOGO CONTROLLER (For ID Cards & Prints) */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-extrabold text-brand-blue text-xs uppercase tracking-wider flex items-center gap-2">
+                        <Image className="w-3.5 h-3.5 text-emerald-600" /> സ്റ്റാൻഡേർഡ് ലോഗോ URL (ID Card & Static)
+                      </Label>
+                      <span className="text-[9px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                        ID Cards & Prints
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <Input 
+                        value={settings.logoUrl || ''} 
+                        onChange={e => {
+                          const normalized = normalizeImageUrl(e.target.value);
+                          setSettings({...settings, logoUrl: normalized});
+                        }}
+                        placeholder="https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png"
+                        className="h-12 rounded-xl border-slate-200 font-mono text-xs pr-10"
+                      />
+                      {settings.logoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setSettings({...settings, logoUrl: ''})}
+                          className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                          title="Clear"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      മെമ്പർഷിപ്പ് ഐഡി കാർഡുകൾ, പ്രിന്റുകൾ, ഡോക്യുമെന്റുകൾ എന്നിവയിൽ ഈ സ്റ്റാൻഡേർഡ് ലോഗോ വരുന്നതാണ്.
+                    </p>
+
+                    {/* Quick Presets for Static Logo */}
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Quick Presets:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSettings({
+                              ...settings, 
+                              logoUrl: 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'
+                            });
+                            toast.success('ക്ലീൻ ട്രാൻസ്പരന്റ് ലോഗോ തിരഞ്ഞെടുത്തു');
+                          }}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-blue hover:text-white transition-colors border border-slate-200 text-slate-700"
+                        >
+                          🏷️ ക്ലീൻ ട്രാൻസ്പരന്റ് PNG
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSettings({
+                              ...settings, 
+                              logoUrl: 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif'
+                            });
+                            toast.success('സുവർണ്ണ ലോഗോ സെറ്റ് ചെയ്തു');
+                          }}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-blue hover:text-white transition-colors border border-slate-200 text-slate-700"
+                        >
+                          🟡 ഹൈ-റെസ് ഒറിജിനൽ ലോഗോ
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Static Logo Live Preview Box */}
+                  <div className="mt-3 p-4 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">ID Card / Print Preview</span>
+                      <span className="text-[9px] text-slate-500 block max-w-[180px] truncate">
+                        {settings.logoUrl || 'Default Crest'}
+                      </span>
+                    </div>
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center p-1 border border-slate-300 shadow-sm">
+                      <Logo 
+                        src={settings.logoUrl || 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png'} 
+                        size="sm" 
+                        animated={false}
+                        className="w-14 h-14"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Information & Direct URL Paste Guide */}
+              <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs text-blue-900 leading-relaxed">
+                  <p className="font-bold">
+                    💡 ലോഗോ ലിങ്ക് എങ്ങനെ മാറ്റാം? (How to update logo link):
+                  </p>
+                  <p className="text-blue-800 text-[11px]">
+                    നിങ്ങൾക്ക് ആവശ്യമുള്ള പുതിയ GIF അല്ലെങ്കിൽ ഇമേജ് ലിങ്ക് മുകളിലെ ബോക്സിൽ പേസ്റ്റ് ചെയ്ത ശേഷം മുകളിലെ <strong>"SAVE CHANGES"</strong> ബട്ടൺ അമർത്തുക. ImgBB ലിങ്കുകൾ സിസ്റ്റം സ്വയം കൃത്യമായ ഡയറക്ട് ഇമേജ് ഫോർമാറ്റിലേക്ക് പരിവർത്തനം ചെയ്യും.
+                  </p>
                 </div>
               </div>
             </div>

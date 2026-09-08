@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db, secondaryDb, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment, limit } from 'firebase/firestore';
 import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { UserProfile } from '@/src/types';
-import { CheckCircle2, UserPlus, Copy, RefreshCw, Phone, User, Landmark, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, UserPlus, Copy, RefreshCw, Phone, User, Landmark, ShieldCheck, Loader2 } from 'lucide-react';
 
 interface FastMemberEntryProps {
   adminUser: UserProfile | null;
@@ -23,9 +23,51 @@ const DEFAULT_PASSWORD = "123456";
 export default function FastMemberEntry({ adminUser, districtQuotas, districtQuotasUsed, onMemberAdded }: FastMemberEntryProps) {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [sponsorName, setSponsorName] = useState('');
+  const [sponsorMobile, setSponsorMobile] = useState('');
   const [state, setState] = useState('Kerala');
   const [district, setDistrict] = useState(adminUser?.district || '');
   const [mandalam, setMandalam] = useState('');
+
+  // Sponsor Auto-Lookup state
+  const [sponsorLookupStatus, setSponsorLookupStatus] = useState<{
+    loading: boolean;
+    verified: boolean;
+    name: string;
+    membershipId?: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    const cleanSponsor = sponsorMobile.replace(/\D/g, '').slice(-10);
+    if (cleanSponsor.length === 10) {
+      let isMounted = true;
+      setSponsorLookupStatus({ loading: true, verified: false, name: '' });
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('mobile', '==', cleanSponsor), limit(1));
+      getDocs(q).then((snap) => {
+        if (!isMounted) return;
+        if (!snap.empty) {
+          const sponsorDoc = snap.docs[0].data();
+          const sName = sponsorDoc.name || '';
+          const sId = sponsorDoc.membershipId || '';
+          setSponsorLookupStatus({ loading: false, verified: true, name: sName, membershipId: sId });
+          if (!sponsorName || sponsorName.trim() === '') {
+            setSponsorName(sName);
+          }
+        } else {
+          setSponsorLookupStatus({ loading: false, verified: false, name: '' });
+        }
+      }).catch((err) => {
+        console.warn('Sponsor lookup check error:', err);
+        if (isMounted) setSponsorLookupStatus(null);
+      });
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setSponsorLookupStatus(null);
+    }
+  }, [sponsorMobile]);
   
   React.useEffect(() => {
     if (adminUser?.district) {
@@ -58,6 +100,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   const handleReset = () => {
     setName('');
     setMobile('');
+    setSponsorName('');
+    setSponsorMobile('');
     setDistrict(adminUser?.district || '');
     setMandalam('');
     setCreatedMember(null);
@@ -276,6 +320,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           pincode: '',
           postOffice: '',
           bloodGroup: '',
+          sponsorName: sponsorName.trim(),
+          sponsorMobile: sponsorMobile.trim(),
           gender: '',
           dob: '',
           membershipId: finalMembershipId,
@@ -464,32 +510,32 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3 divide-y divide-slate-100 font-sans">
+        <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 space-y-3 divide-y divide-slate-200 font-sans">
           <div className="flex justify-between py-2.5 items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Member Name</span>
-            <span className="text-sm font-black text-slate-800">{createdMember.name}</span>
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Member Name</span>
+            <span className="text-sm font-black text-slate-950">{createdMember.name}</span>
           </div>
           <div className="flex justify-between py-2.5 items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Number</span>
-            <span className="text-sm font-mono font-black text-slate-800">{createdMember.mobile}</span>
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Mobile Number</span>
+            <span className="text-sm font-mono font-black text-slate-950">{createdMember.mobile}</span>
           </div>
           <div className="flex justify-between py-2.5 items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Membership ID</span>
-            <span className="text-xs font-mono font-black bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1 rounded-md leading-none">
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Membership ID</span>
+            <span className="text-xs font-mono font-black bg-emerald-100 border border-emerald-300 text-emerald-900 px-3 py-1 rounded-md leading-none">
               {createdMember.membershipId}
             </span>
           </div>
           <div className="flex justify-between py-2.5 items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">State & District</span>
-            <span className="text-sm font-black text-slate-800">
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider">State & District</span>
+            <span className="text-sm font-black text-slate-950">
               Kerala | {DISTRICTS.find(d => d.code === createdMember.district)?.name || createdMember.district}
             </span>
           </div>
           <div className="flex justify-between py-2.5 items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mandalam</span>
-            <span className="text-sm font-black text-slate-800">{createdMember.mandalam}</span>
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Mandalam</span>
+            <span className="text-sm font-black text-slate-950">{createdMember.mandalam}</span>
           </div>
-          <div className="flex justify-between py-2.5 items-center bg-brand-magenta/5 border border-brand-magenta/10 rounded-xl p-3 mt-4">
+          <div className="flex justify-between py-2.5 items-center bg-brand-magenta/10 border-2 border-brand-magenta/30 rounded-xl p-3.5 mt-4">
             <span className="text-xs font-black text-brand-magenta uppercase tracking-wider">Default Password</span>
             <span className="text-sm font-mono font-black text-brand-magenta">{createdMember.password}</span>
           </div>
@@ -498,14 +544,14 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <Button 
             onClick={handleCopy}
-            className="flex-1 h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/95 text-white font-bold uppercase text-xs tracking-wider flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/95 text-white font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-md shadow-brand-blue/20 cursor-pointer"
           >
             <Copy className="w-4 h-4" /> Copy Access Details
           </Button>
           <Button 
             onClick={handleReset}
             variant="outline"
-            className="flex-1 h-12 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 font-bold uppercase text-xs tracking-wider flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-850 font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" /> Add Next Member
           </Button>
@@ -515,7 +561,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200/60 shadow-xl max-w-xl mx-auto overflow-hidden animate-in fade-in duration-500">
+    <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xl max-w-xl mx-auto overflow-hidden animate-in fade-in duration-500">
       <div className="bg-gradient-to-r from-brand-blue to-indigo-950 px-6 py-4 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-white/10 p-2 rounded-xl">
@@ -523,20 +569,20 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           </div>
           <div>
             <h3 className="font-black text-base uppercase tracking-tight">Fast Member Entry</h3>
-            <p className="text-[10px] text-slate-350 font-bold uppercase">Rapid manual student/member registration</p>
+            <p className="text-[10px] text-blue-200 font-extrabold uppercase">Rapid manual student/member registration</p>
           </div>
         </div>
         <div className="bg-brand-magenta text-white px-2.5 py-1 rounded-full text-[8.5px] font-black tracking-widest uppercase">Admin Mode</div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 text-slate-800 font-sans">
-        <p className="text-xs text-slate-505 leading-relaxed bg-slate-50 border border-slate-100 p-3.5 rounded-2xl">
+      <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 text-slate-900 font-sans">
+        <p className="text-xs text-slate-800 font-bold leading-relaxed bg-slate-100/80 border-2 border-slate-200 p-3.5 rounded-2xl">
           Use this module to instantly create active, verified member profiles. A credentials account will be set up automatically inside Firebase Auth with a default PIN (123456) & formatted ID. Name and mobile number fields are permanent.
         </p>
 
         {/* Name Fields */}
         <div className="space-y-2">
-          <Label className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+          <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-brand-blue" />
             Member Name <span className="text-red-500">*</span>
           </Label>
@@ -544,7 +590,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             type="text"
             required
             placeholder="Enter full legal name"
-            className="h-12 rounded-xl border-slate-200 px-4 focus-visible:ring-brand-blue text-sm font-semibold"
+            className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold text-slate-950 placeholder:text-slate-500 shadow-xs"
             value={name}
             onChange={e => setName(e.target.value)}
           />
@@ -552,7 +598,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
         {/* Mobile Number */}
         <div className="space-y-2">
-          <Label className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+          <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
             <Phone className="w-3.5 h-3.5 text-brand-blue" />
             Mobile Number (Username) <span className="text-red-500">*</span>
           </Label>
@@ -561,23 +607,73 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             required
             maxLength={10}
             placeholder="**********"
-            className="h-12 rounded-xl border-slate-200 px-4 focus-visible:ring-brand-blue text-sm font-semibold font-mono"
+            className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold font-mono text-slate-950 placeholder:text-slate-500 shadow-xs"
             value={mobile}
             onChange={e => setMobile(e.target.value.replace(/\D/g, ''))}
           />
-          <p className="text-[9.5px] text-indigo-500 font-bold leading-none uppercase">Mobile number will be used to log in. Must be globally unique.</p>
+          <p className="text-[10px] text-blue-700 font-black leading-none uppercase">Mobile number will be used to log in. Must be globally unique.</p>
+        </div>
+
+        {/* Sponsor / Leader Details */}
+        <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-brand-magenta" />
+                Leader / Sponsor Name <span className="text-[10px] font-bold text-slate-500 normal-case">(Optional)</span>
+              </Label>
+              <Input 
+                type="text"
+                placeholder="Leader Name (Optional)"
+                className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold text-slate-950 bg-white placeholder:text-slate-400 shadow-xs"
+                value={sponsorName}
+                onChange={e => setSponsorName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-brand-magenta" />
+                Leader Mobile Number <span className="text-[10px] font-bold text-slate-500 normal-case">(Optional)</span>
+              </Label>
+              <div className="relative">
+                <Input 
+                  type="tel"
+                  maxLength={10}
+                  placeholder="10-digit number (Optional)"
+                  className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold font-mono text-slate-950 bg-white placeholder:text-slate-400 shadow-xs"
+                  value={sponsorMobile}
+                  onChange={e => setSponsorMobile(e.target.value.replace(/\D/g, ''))}
+                />
+                {sponsorLookupStatus?.loading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-brand-blue" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {sponsorLookupStatus?.verified && (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-bold text-emerald-950">
+                Verified Existing Member / Leader: <span className="text-emerald-800 underline font-black">{sponsorLookupStatus.name}</span> {sponsorLookupStatus.membershipId ? `(${sponsorLookupStatus.membershipId})` : ''}
+              </span>
+            </div>
+          )}
+          <p className="text-[10px] text-slate-500 font-medium">
+            * Existing registered members can be entered as Leader / Sponsor. Uniqueness is only enforced on the new member's primary mobile.
+          </p>
         </div>
 
         {/* Location selectors */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* State Selection */}
           <div className="space-y-2">
-            <Label className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Landmark className="w-3.5 h-3.5 text-brand-blue" />
               State <span className="text-red-500">*</span>
             </Label>
             <Select value={state} onValueChange={setState}>
-              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-extrabold bg-white">
+              <SelectTrigger className="h-12 rounded-xl border-2 border-slate-300 focus:ring-brand-blue text-xs font-black bg-white text-slate-950 shadow-xs">
                 <SelectValue placeholder="Select state" />
               </SelectTrigger>
               <SelectContent>
@@ -588,7 +684,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
           {/* District Selection */}
           <div className="space-y-2">
-            <Label className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Landmark className="w-3.5 h-3.5 text-brand-blue" />
               District <span className="text-red-500">*</span>
             </Label>
@@ -600,7 +696,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
               }}
               disabled={!!adminUser?.district}
             >
-              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-extrabold bg-white disabled:opacity-50">
+              <SelectTrigger className="h-12 rounded-xl border-2 border-slate-300 focus:ring-brand-blue text-xs font-black bg-white text-slate-950 disabled:opacity-50 shadow-xs">
                 <SelectValue placeholder="Select district" />
               </SelectTrigger>
               <SelectContent className="max-h-60">
@@ -613,7 +709,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
           {/* Mandalam Selection */}
           <div className="space-y-2">
-            <Label className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Landmark className="w-3.5 h-3.5 text-brand-magenta" />
               Mandalam <span className="text-red-500">*</span>
             </Label>
@@ -622,7 +718,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
               onValueChange={setMandalam}
               disabled={!district}
             >
-              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-extrabold bg-white disabled:opacity-50">
+              <SelectTrigger className="h-12 rounded-xl border-2 border-slate-300 focus:ring-brand-blue text-xs font-black bg-white text-slate-950 disabled:opacity-50 shadow-xs">
                 <SelectValue placeholder={district ? "Select mandalam" : "Choose district first"} />
               </SelectTrigger>
               <SelectContent className="max-h-60">
@@ -635,16 +731,16 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         </div>
 
         {/* Terms details */}
-        <div className="border-t border-slate-100 pt-6 flex sm:items-center gap-3">
-          <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 self-start sm:self-center" />
-          <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+        <div className="border-t-2 border-slate-200 pt-6 flex sm:items-center gap-3">
+          <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 self-start sm:self-center" />
+          <p className="text-xs text-slate-800 font-bold leading-relaxed">
             By submitting, this profile is marked as paid and verified immediately. Expiry date will set to 1 year from today.
           </p>
         </div>
 
         <Button 
           type="submit"
-          className="w-full h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-white font-black uppercase text-xs tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-md mt-2 disabled:opacity-60"
+          className="w-full h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-white font-black uppercase text-xs tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-md mt-2 disabled:opacity-60 cursor-pointer"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Creating Member Account...' : 'Instant Create Member Profile'}

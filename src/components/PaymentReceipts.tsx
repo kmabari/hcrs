@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UserProfile, PaymentReceipt } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Receipt, Printer, Download, Eye, X, ShieldCheck, FileDown, Image as ImageIcon } from 'lucide-react';
-import { LOGO_URL } from '../constants';
+import { FALLBACK_LOGO_URL } from '../constants';
 import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
@@ -38,53 +38,142 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
         return;
       }
       setLoading(true);
+
+      // Generate virtual registration receipt first
+      const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
+      const registrationReceipt: PaymentReceipt = {
+        id: `reg-${user.uid}`,
+        receiptNo: `HCRS-REG-${String(user.serialNo || 1000).padStart(4, '0')}`,
+        receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
+        receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
+        amount: isLifeMember ? 300 : 200,
+        status: 'Paid',
+        paymentDate: regDateStr,
+        createdAt: user.registrationDate
+      };
+
+      let dbReceipts: PaymentReceipt[] = [];
       try {
         console.log(`PaymentReceipts: Fetching receipts for user UID: ${user.uid}`);
         const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'receipts'));
-        const dbReceipts = querySnapshot.docs.map(doc => ({
+        dbReceipts = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as PaymentReceipt[];
         console.log(`PaymentReceipts: Successfully fetched ${dbReceipts.length} receipts from database.`);
+      } catch (error) {
+        console.warn('PaymentReceipts: Could not load extra subcollection receipts, falling back to profile record:', error);
+      }
 
-        // Generate virtual registration receipt
-        const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
-        
-        const registrationReceipt: PaymentReceipt = {
-          id: `reg-${user.uid}`,
-          receiptNo: `HCRS-REG-${String(user.serialNo || 1000).padStart(4, '0')}`,
-          receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
-          receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-          amount: isLifeMember ? 300 : 200,
-          status: 'Paid',
-          paymentDate: regDateStr,
-          createdAt: user.registrationDate
-        };
+      let combined: PaymentReceipt[] = [registrationReceipt];
 
-        let combined = [registrationReceipt];
+      // Life members never renew - only show one receipt
+      if (!isLifeMember && dbReceipts.length > 0) {
+        // Exclude duplicate registration receipts and flag them for subcollection cleanup
+        const nonRegReceipts: PaymentReceipt[] = [];
+        const regDocIdsToDelete: string[] = [];
 
-        // Life members never renew - only show one receipt
-        if (!isLifeMember) {
-          combined = [...combined, ...dbReceipts];
+        for (const r of dbReceipts) {
+          const isReg = r.id === `reg-${user.uid}` || 
+                        r.receiptNo === registrationReceipt.receiptNo || 
+                        r.receiptType === 'Membership Fee' || 
+                        r.receiptType === 'Life Membership' ||
+                        r.receiptLabel?.includes('Registration') ||
+                        (r.amount === 200 || r.amount === 300);
+          if (isReg) {
+            if (r.id && !r.id.startsWith('reg-')) {
+              regDocIdsToDelete.push(r.id);
+            }
+          } else {
+            nonRegReceipts.push(r);
+          }
         }
 
-        // Sort chronologically, newest first
-        combined.sort((a, b) => {
-          const dateA = new Date(a.paymentDate).getTime();
-          const dateB = new Date(b.paymentDate).getTime();
-          return dateB - dateA;
-        });
+        // Cleanup redundant registration receipts in subcollection if any
+        if (regDocIdsToDelete.length > 0) {
+          regDocIdsToDelete.forEach(docId => {
+            deleteDoc(doc(db, 'users', user.uid, 'receipts', docId)).catch(() => {});
+          });
+        }
 
-        setReceipts(combined);
-      } catch (error) {
-        console.error('Error fetching receipts:', error);
-      } finally {
-        setLoading(false);
+        // Deduplicate renewals strictly by year / renewal cycle and auto-clean extra duplicate documents
+        const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
+
+        for (const r of nonRegReceipts) {
+          const year = (r as any).year || (r.paymentDate ? new Date(r.paymentDate).getFullYear() : new Date().getFullYear());
+          const key = `renewal-year-${year}`;
+
+          const isUserApproved = user.isApproved && !user.renewalPending;
+          const cleanReceipt: PaymentReceipt = {
+            ...r,
+            status: isUserApproved && (r.status === 'Pending Verification' || !r.status) ? 'Paid' : (r.status || 'Paid'),
+            receiptLabel: 'Annual Renewal Receipt',
+            receiptType: 'Annual Renewal',
+            amount: r.amount || 100,
+            year: year
+          };
+
+          if (!renewalMap.has(key)) {
+            renewalMap.set(key, { primary: cleanReceipt, docIdsToDelete: [] });
+          } else {
+            const entry = renewalMap.get(key)!;
+            const existing = entry.primary;
+
+            // Determine which receipt document to retain as the primary:
+            // Prefer official HCRS-REN format over temporary RCP-REN format
+            const existingIsOfficial = existing.receiptNo?.startsWith('HCRS-REN-');
+            const cleanIsOfficial = cleanReceipt.receiptNo?.startsWith('HCRS-REN-');
+
+            if (cleanIsOfficial && !existingIsOfficial) {
+              if (existing.id && !existing.id.startsWith('reg-')) {
+                entry.docIdsToDelete.push(existing.id);
+              }
+              entry.primary = {
+                ...cleanReceipt,
+                transactionId: cleanReceipt.transactionId || (existing as any).transactionId || (existing as any).paymentId || '',
+                paymentId: cleanReceipt.paymentId || (existing as any).paymentId || ''
+              };
+            } else {
+              if (cleanReceipt.id && !cleanReceipt.id.startsWith('reg-')) {
+                entry.docIdsToDelete.push(cleanReceipt.id);
+              }
+              entry.primary = {
+                ...existing,
+                transactionId: existing.transactionId || (cleanReceipt as any).transactionId || (cleanReceipt as any).paymentId || '',
+                paymentId: existing.paymentId || (cleanReceipt as any).paymentId || '',
+                status: cleanReceipt.status === 'Paid' ? 'Paid' : existing.status
+              };
+            }
+          }
+        }
+
+        // Asynchronously clean up redundant duplicate renewal documents from Firestore
+        for (const [_, entry] of renewalMap) {
+          combined.push(entry.primary);
+          if (entry.docIdsToDelete.length > 0) {
+            entry.docIdsToDelete.forEach(docId => {
+              console.log(`PaymentReceipts: Auto-cleaning redundant duplicate receipt document: ${docId}`);
+              deleteDoc(doc(db, 'users', user.uid, 'receipts', docId)).catch(delErr => {
+                console.warn(`PaymentReceipts: Could not delete duplicate receipt ${docId}:`, delErr);
+              });
+            });
+          }
+        }
       }
+
+      // Sort chronologically, newest first
+      combined.sort((a, b) => {
+        const dateA = new Date(a.paymentDate || 0).getTime();
+        const dateB = new Date(b.paymentDate || 0).getTime();
+        return dateB - dateA;
+      });
+
+      setReceipts(combined);
+      setLoading(false);
     };
 
     fetchReceipts();
-  }, [user.uid, user.registrationDate, user.serialNo, isLifeMember]);
+  }, [user.uid, user.registrationDate, user.serialNo, user.isApproved, user.renewalPending, isLifeMember]);
 
   const convertNumberToWords = (num: number) => {
     const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
@@ -291,12 +380,22 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
               >
                 {/* Official Stamp Watermark background */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] select-none pointer-events-none">
-                  <img src={LOGO_URL} alt="HCRS Logo Watermark" className="w-72 h-72 object-contain" />
+                  <img src={FALLBACK_LOGO_URL} alt="HCRS Logo Watermark" className="w-72 h-72 object-contain" crossOrigin="anonymous" referrerPolicy="no-referrer" />
                 </div>
 
                 {/* Receipt Header */}
                 <div className="flex flex-col items-center text-center border-b border-slate-200 pb-4 mb-5">
-                  <img src={LOGO_URL} alt="HCRS Logo" className="w-16 h-16 object-contain mb-2" />
+                  <div className="w-16 h-16 rounded-full p-1 border border-slate-200 shadow-sm bg-gradient-to-b from-white via-slate-50 to-slate-100 flex items-center justify-center mb-2 overflow-hidden">
+                    <div className="bg-white rounded-full p-0.5 w-full h-full flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={FALLBACK_LOGO_URL} 
+                        alt="HCRS Logo" 
+                        className="w-12 h-12 object-contain" 
+                        crossOrigin="anonymous" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  </div>
                   <h2 className="text-md font-black text-slate-900 tracking-tight leading-none uppercase">
                     Highrich Community Revival Society
                   </h2>

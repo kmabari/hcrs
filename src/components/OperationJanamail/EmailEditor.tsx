@@ -826,6 +826,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setIsSubmitting(true);
     setApiError(null);
 
+    const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
+    const lockRecord = {
+      campaignId: currentCampaignId,
+      email: emailId,
+      timestamp: new Date().toISOString(),
+      status: "Completed",
+      fullName: name.trim(),
+      mobileNumber: phone.trim(),
+      selectedSubject: finalSubject
+    };
+    const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
+
     // 1. Record participation state in Google Sheets via Server API
     const loadingToast = toast.loading("പങ്കാളിത്തം രേഖപ്പെടുത്തുന്നു...");
     try {
@@ -851,18 +863,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           bypassDuplicateCheck: true // Testing mode: allow multiple registrations to create rows in Google Sheets
         })
       });
-
-      const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
-      const lockRecord = {
-        campaignId: currentCampaignId,
-        email: emailId,
-        timestamp: new Date().toISOString(),
-        status: "Completed",
-        fullName: name.trim(),
-        mobileNumber: phone.trim(),
-        selectedSubject: finalSubject
-      };
-      const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
       if (!response.ok) {
         let errorMsg = "";
@@ -926,6 +926,19 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       console.error("Error saving participant details to Google Sheets:", err);
       const errMsg = err.message || "വിവരങ്ങൾ ഷീറ്റിൽ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
       
+      // Save local and Firestore fallback so user data is never lost even if Google Sheets fails
+      try {
+        if (!isWhitelisted) {
+          localStorage.setItem(lockKey, JSON.stringify(lockRecord));
+          localStorage.setItem("janamail_participated", "true");
+          setHasParticipated(true);
+          const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+          await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
+        }
+      } catch (fallbackDbErr) {
+        console.warn("Fallback claims save notice:", fallbackDbErr);
+      }
+
       toast.error(`ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല: ${errMsg}`, { id: loadingToast, duration: 8000 });
       setApiError(errMsg);
       setIsSubmitting(false);
@@ -943,6 +956,33 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     } else {
       window.location.href = targetUrl;
+    }
+  };
+
+  const openGmailDirectly = () => {
+    const cleanTo = cleanEmailAddresses(recipients);
+    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
+    const { subject: finalSubject, body: finalBody } = getOptimalEmailParams(
+      subject,
+      body,
+      name,
+      phone,
+      district,
+      place,
+      category,
+      "gmail",
+      recipients,
+      cc
+    );
+    const toParam = cleanTo ? `to=${encodeURIComponent(cleanTo)}` : "";
+    const ccParam = cleanCc ? `&cc=${encodeURIComponent(cleanCc)}` : "";
+    const suParam = `&su=${encodeURIComponent(finalSubject)}`;
+    const fullBodyParam = `&body=${encodeURIComponent(finalBody)}`;
+    const directGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${toParam}${ccParam}${suParam}${fullBodyParam}`;
+
+    const win = window.open(directGmailUrl, '_blank');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = directGmailUrl;
     }
   };
 
@@ -980,90 +1020,114 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             നിങ്ങളുടെ വിവരങ്ങൾ (User Details)
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
-                മുഴുവൻ പേര് / Full Name *
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                മുഴുവൻ പേര് / Full Name <span className="text-red-500 font-bold">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-800"
-                placeholder="നിങ്ങളുടെ മുഴുവൻ പേര് നൽകുക"
+                className="janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
+                placeholder="ഉദാ: രാഹുൽ കെ. / e.g. Rahul K."
               />
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
-                മൊബൈൽ നമ്പർ / Mobile Number *
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                മൊബൈൽ നമ്പർ / Mobile Number <span className="text-red-500 font-bold">*</span>
               </label>
               <input
                 type="tel"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-800"
-                placeholder="നിങ്ങളുടെ മൊബൈൽ നമ്പർ"
+                className="janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
+                placeholder="ഉദാ: 9876543210 / 10-digit mobile"
               />
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
-                ജില്ല / District *
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                ജില്ല / District <span className="text-red-500 font-bold">*</span>
               </label>
-              <select
-                required
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-800"
-              >
-                <option value="" disabled>ജില്ല തിരഞ്ഞെടുക്കുക (Select District)</option>
-                {KERALA_DISTRICTS.map((d) => (
-                  <option key={d.code} value={d.ml}>
-                    {d.ml} ({d.en})
+              <div className="relative">
+                <select
+                  required
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
+                  className={`janamail-field w-full px-4 py-3 pr-10 text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
+                    !district ? "!text-slate-400 !font-normal" : "!text-slate-900 !font-medium"
+                  }`}
+                >
+                  <option value="" disabled className="text-slate-400 font-normal">
+                    -- ജില്ല തിരഞ്ഞെടുക്കുക / Select District --
                   </option>
-                ))}
-              </select>
+                  {KERALA_DISTRICTS.map((d) => (
+                    <option key={d.code} value={d.ml} className="text-slate-900 font-medium">
+                      {d.ml} ({d.en})
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
-                സ്ഥലം / പോസ്റ്റ് / Place / Post *
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                സ്ഥലം / പോസ്റ്റ് / Place / Post <span className="text-red-500 font-bold">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-800"
-                placeholder="സ്ഥലം അല്ലെങ്കിൽ പോസ്റ്റ് ഓഫീസ്"
+                className="janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
+                placeholder="ഉദാ: ആലുവ / e.g. Aluva Post"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
-                വിഭാഗം / Category *
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                വിഭാഗം / Category <span className="text-red-500 font-bold">*</span>
               </label>
-              <select
-                required
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-800"
-              >
-                <option value="" disabled>വിഭാഗം തിരഞ്ഞെടുക്കുക (Select Category)</option>
-                <option value="HCRS / Highrich Member">HCRS / Highrich Member (ഹൈറിച്ച് & HCRS വരിക്കാരൻ)</option>
-                <option value="Highrich Member">Highrich Member (ഹൈറിച്ച് വരിക്കാരൻ)</option>
-                <option value="General Public">General Public (പൊതുജനം)</option>
-              </select>
+              <div className="relative">
+                <select
+                  required
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={`janamail-field w-full px-4 py-3 pr-10 text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
+                    !category ? "!text-slate-400 !font-normal" : "!text-slate-900 !font-medium"
+                  }`}
+                >
+                  <option value="" disabled className="text-slate-400 font-normal">
+                    -- വിഭാഗം തിരഞ്ഞെടുക്കുക / Select Category --
+                  </option>
+                  <option value="HCRS / Highrich Member" className="text-slate-900 font-medium">
+                    HCRS / Highrich Member (ഹൈറിച്ച് & HCRS വരിക്കാരൻ)
+                  </option>
+                  <option value="Highrich Member" className="text-slate-900 font-medium">
+                    Highrich Member (ഹൈറിച്ച് വരിക്കാരൻ)
+                  </option>
+                  <option value="General Public" className="text-slate-900 font-medium">
+                    General Public (പൊതുജനം)
+                  </option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Recipient Information Display */}
           <div className="pt-4 border-t border-slate-100 space-y-4">
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Primary Recipient (TO)
               </label>
               <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs md:text-sm text-left">
@@ -1090,14 +1154,14 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     )}
                   </button>
                 </div>
-                <div className="font-mono text-slate-600 break-all bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-semibold">
+                <div className="font-mono text-slate-700 break-all bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-medium">
                   {recipients || (config && config.recipients) || "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com"}
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Copies (CC)
               </label>
               <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs md:text-sm text-left">
@@ -1124,7 +1188,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     )}
                   </button>
                 </div>
-                <div className="font-mono text-slate-600 break-all bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-semibold">
+                <div className="font-mono text-slate-700 break-all bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-medium">
                   {cc || (config && config.cc) || "No CC recipients configured"}
                 </div>
               </div>
@@ -1146,7 +1210,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
 
           {/* Writing Mode Selector Card Grid */}
           <div className="space-y-2">
-            <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider">
+            <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
               ഹർജി തയാറാക്കേണ്ട രീതി / Select Writing Mode *
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1232,7 +1296,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             {activeComposeMethod === "template" && (
               <div className="space-y-4">
                 <div className="space-y-1.5 text-left">
-                  <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider">
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Select Email Subject / വിഷയം തിരഞ്ഞെടുക്കുക *
                   </label>
                   <p className="text-sm font-bold text-slate-700 leading-relaxed">
@@ -1300,8 +1364,12 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             )}
 
             <div>
-              <label className="block text-xs md:text-sm font-black text-slate-500 uppercase tracking-wider mb-1.5">
-                {activeComposeMethod === "template" ? "വിഷയം / Subject Line Details" : "വിഷയം / Enter Custom Subject *"}
+              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                {activeComposeMethod === "template" ? (
+                  <>വിഷയം / Subject Line Details</>
+                ) : (
+                  <>വിഷയം / Enter Custom Subject <span className="text-red-500 font-bold">*</span></>
+                )}
               </label>
               <input
                 type="text"
@@ -1309,10 +1377,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-                className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm md:text-base focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold leading-normal text-slate-800 ${
-                  activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "cursor-not-allowed opacity-80" : ""
+                className={`janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all ${
+                  activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "!cursor-not-allowed opacity-80 !bg-slate-50/70" : ""
                 }`}
-                placeholder={activeComposeMethod === "template" ? "Email Subject" : "Enter your custom subject line..."}
+                placeholder={activeComposeMethod === "template" ? "Email Subject" : "ഉദാ: ഹർജി വിഷയം / Enter custom subject..."}
               />
             </div>
           </div>
@@ -1361,15 +1429,15 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             </div>
           </div>
 
-          <div className="relative min-h-[350px] flex flex-col bg-white rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all overflow-hidden">
+          <div className="janamail-textarea-container relative min-h-[350px] flex flex-col bg-white overflow-hidden">
             <textarea
               value={body}
               onChange={handleBodyChange}
               readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-              className={`w-full flex-1 bg-transparent p-5 text-base font-semibold text-slate-800 leading-relaxed focus:outline-none resize-none font-sans min-h-[350px] ${
-                activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "cursor-not-allowed select-all opacity-80" : ""
+              className={`w-full flex-1 bg-transparent p-5 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal leading-relaxed focus:outline-none resize-none font-sans min-h-[350px] ${
+                activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "cursor-not-allowed select-all opacity-80 bg-slate-50/50" : ""
               }`}
-              placeholder="ഇമെയിലിന്റെ ഉള്ളടക്കം ഇവിടെ കാണാം..."
+              placeholder="കത്തിന്റെ ഉള്ളടക്കം ഇവിടെ തയ്യാറാക്കാം / Type petition content here..."
             />
 
             {/* Live Personal Signature Block */}
@@ -1741,8 +1809,12 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                       );
                     }
 
+                    const isMissingConfig = apiError.includes("GOOGLE_SHEET_ID") || 
+                                            apiError.includes("GOOGLE_SERVICE_ACCOUNT_JSON") || 
+                                            apiError.includes("credentials not found");
+
                     return (
-                      <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-4.5 rounded-2xl text-left space-y-1.5 animate-in fade-in duration-200">
+                      <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
                         <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs uppercase tracking-wider">
                           <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
                           <span>രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു / REGISTRATION FAILED</span>
@@ -1750,6 +1822,20 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                         <p className="text-xs text-rose-700 font-extrabold leading-relaxed break-words font-mono">
                           {apiError}
                         </p>
+                        {isMissingConfig && (
+                          <div className="text-[11px] text-rose-900 bg-rose-100/60 p-3 rounded-xl border border-rose-200 leading-relaxed font-semibold space-y-1">
+                            <p className="font-extrabold">Vercel ക്രമീകരണം (Vercel Configuration):</p>
+                            <p>Vercel Dashboard ➔ Project ➔ Settings ➔ <b>Environment Variables</b>-ൽ <code className="bg-white/80 px-1 py-0.5 rounded text-rose-950 font-bold">GOOGLE_SHEET_ID</code> ഉം <code className="bg-white/80 px-1 py-0.5 rounded text-rose-950 font-bold">GOOGLE_SERVICE_ACCOUNT_JSON</code> ഉം ചേർക്കുക.</p>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={openGmailDirectly}
+                          className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer mt-2"
+                        >
+                          <Send className="w-4 h-4 text-emerald-400" />
+                          <span>എങ്കിലും Gmail-ലേക്ക് തുടരുക (Proceed to Gmail anyway)</span>
+                        </button>
                       </div>
                     );
                   })()}

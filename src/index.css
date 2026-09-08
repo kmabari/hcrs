@@ -174,6 +174,76 @@ input:focus, select:focus, textarea:focus {
   background-color: #FFFFFF;
 }
 
+/* Janamail Specific Form Controls - Medium-contrast border, soft lightweight placeholder, clean focus ring */
+.janamail-field {
+  border: 1.5px solid #94A3B8 !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.janamail-field:hover {
+  border-color: #64748B !important;
+}
+
+.janamail-field:focus {
+  outline: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18) !important;
+}
+
+.janamail-field::placeholder,
+.janamail-field::-webkit-input-placeholder,
+.janamail-field::-moz-placeholder {
+  color: #94A3B8 !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  opacity: 0.85 !important;
+}
+
+.janamail-textarea-container {
+  border: 1.5px solid #94A3B8 !important;
+  background-color: #FFFFFF !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.janamail-textarea-container:hover {
+  border-color: #64748B !important;
+}
+
+.janamail-textarea-container:focus-within {
+  outline: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18) !important;
+}
+
+.janamail-textarea-container textarea {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.janamail-textarea-container textarea:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.janamail-textarea-container textarea::placeholder,
+.janamail-textarea-container textarea::-webkit-input-placeholder,
+.janamail-textarea-container textarea::-moz-placeholder {
+  color: #94A3B8 !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  opacity: 0.85 !important;
+}
+
 /* Hover scales */
 button, .btn {
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -209,24 +279,9 @@ button, .btn {
   box-shadow: 0 8px 25px rgba(26, 43, 92, 0.25);
 }
 
-/* Active status badge pulsing */
+/* Active status badge */
 .pulse-badge {
-  animation: pulse-blue 2.5s infinite;
-}
-
-@keyframes pulse-blue {
-  0% {
-    box-shadow: 0 0 0 0 rgba(35, 56, 117, 0.4);
-    transform: scale(1);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(35, 56, 117, 0);
-    transform: scale(1.03);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(35, 56, 117, 0);
-    transform: scale(1);
-  }
+  box-shadow: 0 0 0 2px rgba(35, 56, 117, 0.15);
 }
 
 /* Menu Slide */
@@ -272,6 +327,36 @@ button, .btn {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Website Logo Floating/Pulse and Hover Animation */
+@keyframes logo-floating-pulse {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.02);
+  }
+}
+
+.website-logo {
+  transition: transform 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.website-logo:hover {
+  transform: scale(1.03);
+}
+
+.website-logo-animated {
+  animation: logo-floating-pulse 4s ease-in-out infinite;
+}
+
+.website-logo-animated:hover {
+  animation-play-state: paused;
+  transform: scale(1.03);
+}
+
 /* Specific Style 2 adjustments for clean government portals */
 nav.fixed {
   background-color: rgba(255, 255, 255, 0.95);
@@ -284,4 +369,70 @@ nav.fixed h1 {
 }
 nav.fixed p {
   color: #c9a227;
+}
+
+/* Utility to hide scrollbar while allowing smooth touch scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ========================================================================= */
+/* HCRS eLedger A4 Print & Report Engine CSS                                 */
+/* ========================================================================= */
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm 12mm 12mm;
+}
+
+@media print {
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation, fixed headers, buttons, footers, toolbars */
+  header, nav, footer, .no-print, [data-no-print="true"] {
+    display: none !important;
+  }
+
+  /* Ensure modal/printable container expands to full A4 page width */
+  .printable-report-container {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .a4-page-sheet {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    width: 100% !important;
+    min-height: auto !important;
+    page-break-inside: avoid;
+  }
+
+  .page-break-always {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  tr, .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
 }

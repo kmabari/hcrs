@@ -44,54 +44,142 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
       return;
     }
     setLoading(true);
+
+    // Generate virtual registration receipt
+    const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];
+    const registrationReceipt: PaymentReceipt = {
+      id: `reg-${member.uid}`,
+      receiptNo: `HCRS-REG-${String(member.serialNo || 1000).padStart(4, '0')}`,
+      receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
+      receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
+      amount: isLifeMember ? 300 : 200,
+      status: 'Paid',
+      paymentDate: regDateStr,
+      createdAt: member.registrationDate
+    };
+
+    let dbReceipts: PaymentReceipt[] = [];
     try {
       console.log(`AdminReceiptsModal: Fetching receipts for member UID: ${member.uid}`);
       const querySnapshot = await getDocs(collection(db, 'users', member.uid, 'receipts'));
-      const dbReceipts = querySnapshot.docs.map(doc => ({
+      dbReceipts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as PaymentReceipt[];
       console.log(`AdminReceiptsModal: Successfully fetched ${dbReceipts.length} receipts from database.`);
+    } catch (error) {
+      console.warn('AdminReceiptsModal: Notice while fetching subcollection receipts:', error);
+    }
 
-      // Generate virtual registration receipt
-      const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];
-      
-      const registrationReceipt: PaymentReceipt = {
-        id: `reg-${member.uid}`,
-        receiptNo: `HCRS-REG-${String(member.serialNo || 1000).padStart(4, '0')}`,
-        receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
-        receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-        amount: isLifeMember ? 300 : 200,
-        status: 'Paid',
-        paymentDate: regDateStr,
-        createdAt: member.registrationDate
-      };
+    let combined: PaymentReceipt[] = [registrationReceipt];
 
-      let combined = [registrationReceipt];
+    if (!isLifeMember && dbReceipts.length > 0) {
+      // Exclude duplicate registration receipts and flag them for subcollection cleanup
+      const nonRegReceipts: PaymentReceipt[] = [];
+      const regDocIdsToDelete: string[] = [];
 
-      if (!isLifeMember) {
-        combined = [...combined, ...dbReceipts];
+      for (const r of dbReceipts) {
+        const isReg = r.id === `reg-${member.uid}` || 
+                      r.receiptNo === registrationReceipt.receiptNo || 
+                      r.receiptType === 'Membership Fee' || 
+                      r.receiptType === 'Life Membership' ||
+                      r.receiptLabel?.includes('Registration') ||
+                      (r.amount === 200 || r.amount === 300);
+        if (isReg) {
+          if (r.id && !r.id.startsWith('reg-')) {
+            regDocIdsToDelete.push(r.id);
+          }
+        } else {
+          nonRegReceipts.push(r);
+        }
       }
 
-      // Sort chronologically, newest first
-      combined.sort((a, b) => {
-        const dateA = new Date(a.paymentDate).getTime();
-        const dateB = new Date(b.paymentDate).getTime();
-        return dateB - dateA;
-      });
+      // Cleanup redundant registration receipts in subcollection if any
+      if (regDocIdsToDelete.length > 0) {
+        regDocIdsToDelete.forEach(docId => {
+          deleteDoc(doc(db, 'users', member.uid, 'receipts', docId)).catch(() => {});
+        });
+      }
 
-      setReceipts(combined);
-    } catch (error) {
-      console.error('Error fetching receipts:', error);
-      toast.error('Failed to load receipts');
-    } finally {
-      setLoading(false);
+      // Deduplicate renewals strictly by year / renewal cycle and auto-clean extra duplicate documents
+      const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
+
+      for (const r of nonRegReceipts) {
+        const year = (r as any).year || (r.paymentDate ? new Date(r.paymentDate).getFullYear() : new Date().getFullYear());
+        const key = `renewal-year-${year}`;
+
+        const isMemberApproved = member.isApproved && !member.renewalPending;
+        const cleanReceipt: PaymentReceipt = {
+          ...r,
+          status: isMemberApproved && (r.status === 'Pending Verification' || !r.status) ? 'Paid' : (r.status || 'Paid'),
+          receiptLabel: r.receiptLabel || 'Annual Renewal Receipt',
+          receiptType: r.receiptType || 'Annual Renewal',
+          amount: r.amount || 100,
+          year: year
+        };
+
+        if (!renewalMap.has(key)) {
+          renewalMap.set(key, { primary: cleanReceipt, docIdsToDelete: [] });
+        } else {
+          const entry = renewalMap.get(key)!;
+          const existing = entry.primary;
+
+          // Determine which receipt document to retain as the primary:
+          // Prefer official HCRS-REN format over temporary RCP-REN format
+          const existingIsOfficial = existing.receiptNo?.startsWith('HCRS-REN-');
+          const cleanIsOfficial = cleanReceipt.receiptNo?.startsWith('HCRS-REN-');
+
+          if (cleanIsOfficial && !existingIsOfficial) {
+            if (existing.id && !existing.id.startsWith('reg-')) {
+              entry.docIdsToDelete.push(existing.id);
+            }
+            entry.primary = {
+              ...cleanReceipt,
+              transactionId: cleanReceipt.transactionId || (existing as any).transactionId || (existing as any).paymentId || '',
+              paymentId: cleanReceipt.paymentId || (existing as any).paymentId || ''
+            };
+          } else {
+            if (cleanReceipt.id && !cleanReceipt.id.startsWith('reg-')) {
+              entry.docIdsToDelete.push(cleanReceipt.id);
+            }
+            entry.primary = {
+              ...existing,
+              transactionId: existing.transactionId || (cleanReceipt as any).transactionId || (cleanReceipt as any).paymentId || '',
+              paymentId: existing.paymentId || (cleanReceipt as any).paymentId || '',
+              status: cleanReceipt.status === 'Paid' ? 'Paid' : existing.status
+            };
+          }
+        }
+      }
+
+      // Asynchronously clean up redundant duplicate renewal documents from Firestore
+      for (const [_, entry] of renewalMap) {
+        combined.push(entry.primary);
+        if (entry.docIdsToDelete.length > 0) {
+          entry.docIdsToDelete.forEach(docId => {
+            console.log(`AdminReceiptsModal: Auto-cleaning redundant duplicate receipt document: ${docId}`);
+            deleteDoc(doc(db, 'users', member.uid, 'receipts', docId)).catch(delErr => {
+              console.warn(`AdminReceiptsModal: Could not delete duplicate receipt ${docId}:`, delErr);
+            });
+          });
+        }
+      }
     }
+
+    // Sort chronologically, newest first
+    combined.sort((a, b) => {
+      const dateA = new Date(a.paymentDate || 0).getTime();
+      const dateB = new Date(b.paymentDate || 0).getTime();
+      return dateB - dateA;
+    });
+
+    setReceipts(combined);
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchReceipts();
-  }, [member.uid, member.registrationDate, member.serialNo, isLifeMember]);
+  }, [member.uid, member.registrationDate, member.serialNo, member.isApproved, member.renewalPending, isLifeMember]);
 
   // Handle preset values when type changes
   const handleTypeChange = (value: 'Membership Fee' | 'Annual Renewal' | 'Life Membership') => {

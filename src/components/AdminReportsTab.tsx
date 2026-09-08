@@ -14,12 +14,14 @@ import {
   UserCheck, 
   RefreshCw, 
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Printer,
+  Loader2
 } from 'lucide-react';
 
 interface AdminReportsTabProps {
   members: UserProfile[];
-  onApprove: (uid: string) => void;
+  onApprove: (uid: string) => void | Promise<any>;
   onViewDetails: (member: UserProfile) => void;
   DISTRICTS: { code: string; name: string }[];
   userDistrict?: string;
@@ -36,6 +38,7 @@ export default function AdminReportsTab({
 }: AdminReportsTabProps) {
   const [reportType, setReportType] = useState<'new_memberships' | 'renewals'>('new_memberships');
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('today');
+  const [approvingUid, setApprovingUid] = useState<string | null>(null);
   
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -222,6 +225,118 @@ export default function AdminReportsTab({
     document.body.removeChild(link);
   };
 
+  const printReport = () => {
+    const isNew = reportType === 'new_memberships';
+    const reportData = isNew ? filteredNewMembers : filteredRenewals;
+    const reportTitle = isNew ? 'New Memberships Registration Report' : 'Memberships Renewal Report';
+    const rate = isNew ? 200 : 100;
+    const totalAmount = reportData.length * rate;
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert('Please allow popups to print the report.');
+      return;
+    }
+
+    const tableRowsHtml = reportData.map((m, idx) => {
+      const regTime = isNew ? formatDateTime(getMemberRegDate(m)) : formatDateTime(getMemberRenewalDate(m));
+      const statusText = isNew 
+        ? (m.status === 'active' || m.isApproved ? 'APPROVED' : 'PENDING')
+        : (m.paymentStatus || 'RENEWED');
+      return `
+        <tr>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${idx + 1}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold;">${m.membershipId || 'N/A'}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${m.name || 'N/A'}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${m.mobile || 'N/A'}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${m.district || 'N/A'}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${regTime}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">₹${rate}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${statusText}</td>
+        </tr>
+      `;
+    }).join('');
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>HCRS - ${reportTitle}</title>
+          <style>
+            @page { size: A4 landscape; margin: 12mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; margin: 0; padding: 10px; font-size: 11px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+            .header h1 { margin: 0 0 4px 0; font-size: 16px; color: #0f172a; text-transform: uppercase; font-weight: 800; }
+            .header p { margin: 0; font-size: 10px; color: #64748b; }
+            .meta-box { display: flex; gap: 16px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11px; }
+            .meta-item { display: flex; flex-direction: column; }
+            .meta-label { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 700; }
+            .meta-val { font-weight: 800; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
+            th { background: #f1f5f9; color: #334155; font-weight: 800; text-transform: uppercase; font-size: 9px; padding: 6px 8px; border: 1px solid #cbd5e1; text-align: left; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .footer { margin-top: 15px; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+          </style>
+        </head>
+        <body onload="window.print();">
+          <div class="header">
+            <div>
+              <h1>Highrich Community Revival Society</h1>
+              <p>${reportTitle} • Official Administrative Audit</p>
+            </div>
+            <div style="text-align: right;">
+              <p>Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN')}</p>
+              <p style="font-weight: 700; color: #0f172a;">Filter: ${dateFilter.toUpperCase()} | District: ${selectedDistrict === 'all' ? 'ALL' : selectedDistrict}</p>
+            </div>
+          </div>
+
+          <div class="meta-box">
+            <div class="meta-item">
+              <span class="meta-label">Total Records</span>
+              <span class="meta-val">${reportData.length} Members</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Fee Rate</span>
+              <span class="meta-val">₹${rate} per member</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Total Amount</span>
+              <span class="meta-val" style="color: #059669;">₹${totalAmount.toLocaleString('en-IN')}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Report Category</span>
+              <span class="meta-val">${isNew ? 'New Registration (₹200)' : 'Membership Renewal (₹100)'}</span>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: center; width: 35px;">Sl</th>
+                <th style="width: 100px;">Membership ID</th>
+                <th>Member Name</th>
+                <th>Mobile</th>
+                <th>District</th>
+                <th style="text-align: center; width: 120px;">Date & Time</th>
+                <th style="text-align: right; width: 60px;">Amount</th>
+                <th style="text-align: center; width: 80px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRowsHtml || '<tr><td colspan="8" style="text-align:center; padding: 20px; color: #94a3b8;">No records found for the selected filter.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <span>Highrich Community Revival Society • Internal Audit Document</span>
+            <span>Page 1 of 1</span>
+          </div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI Summary Cards */}
@@ -312,13 +427,23 @@ export default function AdminReportsTab({
             </Button>
           </div>
 
-          <Button
-            onClick={exportToCSV}
-            className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV Report
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              onClick={printReport}
+              variant="outline"
+              className="h-10 px-4 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs uppercase tracking-wider rounded-xl shadow-xs flex items-center gap-2 cursor-pointer flex-1 sm:flex-none justify-center"
+            >
+              <Printer className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              Print Report (A4)
+            </Button>
+            <Button
+              onClick={exportToCSV}
+              className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm flex items-center gap-2 cursor-pointer flex-1 sm:flex-none justify-center"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Row 2: Date Filters & District Filter */}
@@ -412,28 +537,28 @@ export default function AdminReportsTab({
       </Card>
 
       {/* Main Table Content */}
-      <Card className="border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+      <Card className="border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
         {reportType === 'new_memberships' ? (
           <div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200 tracking-wider flex items-center gap-2">
+            <div className="p-4 bg-slate-100/90 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="text-xs sm:text-sm font-black uppercase text-slate-950 dark:text-slate-100 tracking-wider flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-brand-blue" />
                 New Memberships Report ({filteredNewMembers.length} records)
               </h3>
-              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-none text-[10px] font-bold">
+              <Badge className="bg-blue-100 text-blue-950 dark:bg-blue-950 dark:text-blue-200 border border-blue-300 dark:border-blue-800 text-[11px] font-black">
                 Fee: ₹200 / registration
               </Badge>
             </div>
 
             {filteredNewMembers.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 font-bold text-xs space-y-2">
-                <AlertCircle className="w-8 h-8 text-slate-400 mx-auto" />
+              <div className="p-12 text-center text-slate-700 dark:text-slate-300 font-extrabold text-sm space-y-2">
+                <AlertCircle className="w-8 h-8 text-slate-500 mx-auto" />
                 <p>No new memberships found for the selected date range and filters.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100/70 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
+                  <thead className="bg-slate-200/80 dark:bg-slate-900 text-slate-950 dark:text-slate-100 font-black uppercase text-[11px] tracking-wider border-b-2 border-slate-300 dark:border-slate-700">
                     <tr>
                       <th className="p-3">#</th>
                       <th className="p-3">Member ID</th>
@@ -447,39 +572,39 @@ export default function AdminReportsTab({
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850 font-bold text-slate-800 dark:text-slate-200">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-bold text-slate-950 dark:text-slate-100">
                     {filteredNewMembers.map((member, index) => {
                       const isApproved = member.status === 'active' || member.isApproved;
                       const isPaid = member.isPaid || member.paymentStatus === 'PAYMENT_VERIFIED' || member.paymentStatus === 'Active';
                       const regDate = getMemberRegDate(member);
 
                       return (
-                        <tr key={member.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                          <td className="p-3 text-slate-400">{index + 1}</td>
+                        <tr key={member.uid} className="hover:bg-slate-100/60 dark:hover:bg-slate-900/50 transition-colors">
+                          <td className="p-3 text-slate-700 dark:text-slate-300 font-black">{index + 1}</td>
                           <td className="p-3 font-mono font-black text-brand-blue">{member.membershipId || 'PENDING'}</td>
-                          <td className="p-3 font-black">{member.name}</td>
-                          <td className="p-3 font-mono">{member.mobile}</td>
-                          <td className="p-3">{member.district}</td>
-                          <td className="p-3">{member.assemblyConstituency || 'N/A'}</td>
+                          <td className="p-3 font-black text-slate-950 dark:text-white">{member.name}</td>
+                          <td className="p-3 font-mono font-extrabold">{member.mobile}</td>
+                          <td className="p-3 font-extrabold">{member.district}</td>
+                          <td className="p-3 font-extrabold">{member.assemblyConstituency || 'N/A'}</td>
                           <td className="p-3">
-                            <Badge className={`text-[10px] font-black border-none px-2 py-0.5 ${
-                              isPaid ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40'
+                            <Badge className={`text-[10.5px] font-black px-2 py-0.5 border ${
+                              isPaid ? 'bg-emerald-100 text-emerald-950 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800' : 'bg-amber-100 text-amber-950 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800'
                             }`}>
                               {isPaid ? 'PAYMENT_VERIFIED (₹200)' : 'Pending Payment'}
                             </Badge>
                           </td>
-                          <td className="p-3 text-slate-600 dark:text-slate-400 text-[11px]">
+                          <td className="p-3 text-slate-800 dark:text-slate-200 text-xs font-extrabold">
                             {formatDateTime(regDate)}
                           </td>
                           <td className="p-3">
                             {isApproved ? (
-                              <Badge className="bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300 border-none text-[10px] font-black flex items-center gap-1 w-fit">
-                                <CheckCircle2 className="w-3 h-3" />
+                              <Badge className="bg-green-100 text-green-950 dark:bg-green-950/60 dark:text-green-200 border border-green-300 dark:border-green-800 text-[10.5px] font-black flex items-center gap-1 w-fit">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
                                 APPROVED
                               </Badge>
                             ) : (
-                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-none text-[10px] font-black flex items-center gap-1 w-fit">
-                                <Clock className="w-3 h-3 animate-pulse" />
+                              <Badge className="bg-amber-100 text-amber-950 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-[10.5px] font-black flex items-center gap-1 w-fit">
+                                <Clock className="w-3.5 h-3.5 animate-pulse" />
                                 PENDING_APPROVAL
                               </Badge>
                             )}
@@ -488,17 +613,38 @@ export default function AdminReportsTab({
                             {!isApproved && (
                               <Button
                                 size="sm"
-                                onClick={() => onApprove(member.uid)}
-                                className="h-8 px-3 bg-brand-blue hover:bg-brand-blue/90 text-white text-[10px] font-black uppercase rounded-lg cursor-pointer"
+                                disabled={approvingUid === member.uid}
+                                onClick={async () => {
+                                  if (approvingUid) return;
+                                  setApprovingUid(member.uid);
+                                  try {
+                                    await onApprove(member.uid);
+                                  } catch (err) {
+                                    console.error("Approve error:", err);
+                                  } finally {
+                                    setApprovingUid(null);
+                                  }
+                                }}
+                                className="h-8 px-3 bg-brand-blue hover:bg-brand-blue/90 text-white text-[10px] font-black uppercase rounded-lg cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                               >
-                                Approve
+                                {approvingUid === member.uid ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Approving...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Approve</span>
+                                  </>
+                                )}
                               </Button>
                             )}
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => onViewDetails(member)}
-                              className="h-8 px-3 text-[10px] font-bold rounded-lg cursor-pointer"
+                              className="h-8 px-3 text-[10px] font-black border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-200 hover:bg-slate-100 rounded-lg cursor-pointer shadow-xs"
                             >
                               Details
                             </Button>
@@ -513,25 +659,25 @@ export default function AdminReportsTab({
           </div>
         ) : (
           <div>
-            <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="text-xs font-black uppercase text-amber-900 dark:text-amber-300 tracking-wider flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-amber-600" />
+            <div className="p-4 bg-amber-100/70 dark:bg-amber-950/30 border-b-2 border-slate-200 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="text-xs sm:text-sm font-black uppercase text-amber-950 dark:text-amber-200 tracking-wider flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-amber-700" />
                 Renewals Report ({filteredRenewals.length} records)
               </h3>
-              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-none text-[10px] font-bold">
+              <Badge className="bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-[11px] font-black">
                 Renewal Fee: ₹100 / member
               </Badge>
             </div>
 
             {filteredRenewals.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 font-bold text-xs space-y-2">
-                <AlertCircle className="w-8 h-8 text-slate-400 mx-auto" />
+              <div className="p-12 text-center text-slate-700 dark:text-slate-300 font-extrabold text-sm space-y-2">
+                <AlertCircle className="w-8 h-8 text-slate-500 mx-auto" />
                 <p>No renewals found for the selected date range and filters.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100/70 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
+                  <thead className="bg-slate-200/80 dark:bg-slate-900 text-slate-950 dark:text-slate-100 font-black uppercase text-[11px] tracking-wider border-b-2 border-slate-300 dark:border-slate-700">
                     <tr>
                       <th className="p-3">#</th>
                       <th className="p-3">Member ID</th>
@@ -546,30 +692,30 @@ export default function AdminReportsTab({
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850 font-bold text-slate-800 dark:text-slate-200">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-bold text-slate-950 dark:text-slate-100">
                     {filteredRenewals.map((member, index) => {
                       const renDate = getMemberRenewalDate(member);
 
                       return (
-                        <tr key={member.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                          <td className="p-3 text-slate-400">{index + 1}</td>
+                        <tr key={member.uid} className="hover:bg-slate-100/60 dark:hover:bg-slate-900/50 transition-colors">
+                          <td className="p-3 text-slate-700 dark:text-slate-300 font-black">{index + 1}</td>
                           <td className="p-3 font-mono font-black text-brand-blue">{member.membershipId}</td>
-                          <td className="p-3 font-black">{member.name}</td>
-                          <td className="p-3 font-mono">{member.mobile}</td>
-                          <td className="p-3">{member.district}</td>
-                          <td className="p-3 text-slate-600 dark:text-slate-400 text-[11px]">
+                          <td className="p-3 font-black text-slate-950 dark:text-white">{member.name}</td>
+                          <td className="p-3 font-mono font-extrabold">{member.mobile}</td>
+                          <td className="p-3 font-extrabold">{member.district}</td>
+                          <td className="p-3 text-slate-800 dark:text-slate-200 text-xs font-extrabold">
                             {formatDateTime(renDate)}
                           </td>
-                          <td className="p-3 font-black text-emerald-600">₹100</td>
-                          <td className="p-3 font-mono text-[11px] text-slate-500">
+                          <td className="p-3 font-black text-emerald-700 dark:text-emerald-400 text-sm">₹100</td>
+                          <td className="p-3 font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">
                             {member.renewalTransactionId || member.paymentId || 'N/A'}
                           </td>
                           <td className="p-3">
-                            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-none text-[10px] font-black">
+                            <Badge className="bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10.5px] font-black">
                               {member.paymentStatus || 'Renewed'}
                             </Badge>
                           </td>
-                          <td className="p-3 font-mono text-[11px]">
+                          <td className="p-3 font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">
                             {formatExpiryDate(member.expiryDate)}
                           </td>
                           <td className="p-3 text-right">
@@ -577,7 +723,7 @@ export default function AdminReportsTab({
                               size="sm"
                               variant="outline"
                               onClick={() => onViewDetails(member)}
-                              className="h-8 px-3 text-[10px] font-bold rounded-lg cursor-pointer"
+                              className="h-8 px-3 text-[10px] font-black border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-200 hover:bg-slate-100 rounded-lg cursor-pointer shadow-xs"
                             >
                               Details
                             </Button>
