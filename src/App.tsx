@@ -4230,9 +4230,9 @@ export default function App() {
                           {/* Financial Summary & Preview Toggle Bar */}
                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                             <div className="flex flex-wrap items-center gap-2">
-                              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900/40 text-left">
-                                <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase">ആകെ ബാലൻസ്:</span>
-                                <span className="text-xs font-black font-mono text-[#003366] dark:text-blue-400">
+                              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900/40 text-left shrink-0">
+                                <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase whitespace-nowrap">ആകെ ബാലൻസ്:</span>
+                                <span className="text-xs font-black font-mono text-[#003366] dark:text-blue-400 whitespace-nowrap">
                                   ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
                                 </span>
                               </div>
@@ -4858,34 +4858,34 @@ export default function App() {
 
                       {/* KPI Metric Summary Blocks */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-amber-300">
-                            ആകെ മിച്ച ക്ലെയിം തുക (Pending Claim)
+                        <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col justify-between min-w-0 sm:gap-2">
+                          <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-normal sm:tracking-wide text-amber-300 leading-snug break-words">
+                            ആകെ മിച്ച ക്ലെയിം തുക <span className="text-[9px] sm:text-[10px] font-bold text-amber-200/80 block sm:inline sm:ml-1">(Pending Claim)</span>
                           </p>
-                          <p className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight mt-1">
+                          <p className="text-2xl sm:text-xl md:text-2xl lg:text-3xl font-black text-amber-300 tracking-tight font-mono my-1 sm:my-0 break-words">
                             ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
                           </p>
-                          <span className="text-[9px] text-slate-300 font-bold mt-1">Net Balance Pending for Settlement</span>
+                          <span className="text-[9px] text-slate-300 font-bold block leading-tight">Net Balance Pending for Settlement</span>
                         </div>
 
-                        <div className="bg-white/5 rounded-2xl p-3.5 sm:p-4 border border-white/5 flex flex-col justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-300">
-                            ആകെ നൽകിയ തുക (Total Deposited)
+                        <div className="bg-white/5 rounded-2xl p-3.5 sm:p-4 border border-white/5 flex flex-col justify-between min-w-0 sm:gap-2">
+                          <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-normal sm:tracking-wide text-slate-300 leading-snug break-words">
+                            ആകെ നൽകിയ തുക <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 block sm:inline sm:ml-1">(Total Deposited)</span>
                           </p>
-                          <p className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
+                          <p className="text-xl sm:text-lg md:text-xl lg:text-2xl font-black text-white tracking-tight font-mono my-1 sm:my-0 break-words">
                             ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPaid) || 0), 0).toLocaleString('en-IN')}
                           </p>
-                          <span className="text-[9px] text-slate-400 font-bold mt-1">All Verified Deposits / Advance</span>
+                          <span className="text-[9px] text-slate-400 font-bold block leading-tight">All Verified Deposits / Advance</span>
                         </div>
 
-                        <div className="bg-white/5 rounded-2xl p-3.5 sm:p-4 border border-white/5 flex flex-col justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-300">
-                            ആകെ ലഭിച്ച തുക (Total Received)
+                        <div className="bg-white/5 rounded-2xl p-3.5 sm:p-4 border border-white/5 flex flex-col justify-between min-w-0 sm:gap-2">
+                          <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-normal sm:tracking-wide text-slate-300 leading-snug break-words">
+                            ആകെ ലഭിച്ച തുക <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 block sm:inline sm:ml-1">(Total Received)</span>
                           </p>
-                          <p className="text-xl sm:text-2xl font-black text-emerald-300 tracking-tight mt-1">
+                          <p className="text-xl sm:text-lg md:text-xl lg:text-2xl font-black text-emerald-300 tracking-tight font-mono my-1 sm:my-0 break-words">
                             ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalReceived) || 0), 0).toLocaleString('en-IN')}
                           </p>
-                          <span className="text-[9px] text-slate-400 font-bold mt-1">Total Refunds / Payouts Claimed</span>
+                          <span className="text-[9px] text-slate-400 font-bold block leading-tight">Total Refunds / Payouts Claimed</span>
                         </div>
                       </div>
 
@@ -4926,7 +4926,7 @@ export default function App() {
 
                               return (
                                 <div key={claim.id || idx} className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                  <div className="flex items-center gap-3 min-w-0">
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
                                     <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
                                       {idx + 1}
                                     </div>
@@ -4954,16 +4954,16 @@ export default function App() {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto pt-2 sm:pt-0 border-t border-white/10 sm:border-t-0">
-                                    <div className="text-left sm:text-right">
-                                      <span className="text-[8px] sm:text-[9px] text-slate-300 font-bold block uppercase">നൽകിയത് / ലഭിച്ചത്</span>
-                                      <span className="text-xs font-mono font-bold text-slate-200">
+                                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 w-full sm:w-auto sm:shrink-0 pt-2 sm:pt-0 border-t border-white/10 sm:border-t-0">
+                                    <div className="text-left sm:text-right sm:shrink-0">
+                                      <span className="text-[8px] sm:text-[9px] text-slate-300 font-bold block uppercase sm:whitespace-nowrap">നൽകിയത് / ലഭിച്ചത്</span>
+                                      <span className="text-xs font-mono font-bold text-slate-200 block sm:whitespace-nowrap">
                                         ₹{paid.toLocaleString('en-IN')} / ₹{rec.toLocaleString('en-IN')}
                                       </span>
                                     </div>
-                                    <div className="text-right">
-                                      <span className="text-[8px] sm:text-[9px] text-amber-300 font-black block uppercase">മിച്ച ക്ലെയിം</span>
-                                      <span className="text-sm sm:text-base font-mono font-black text-amber-300">
+                                    <div className="text-right sm:shrink-0">
+                                      <span className="text-[8px] sm:text-[9px] text-amber-300 font-black block uppercase sm:whitespace-nowrap">മിച്ച ക്ലെയിം</span>
+                                      <span className="text-sm sm:text-base font-mono font-black text-amber-300 block sm:whitespace-nowrap">
                                         ₹{pend.toLocaleString('en-IN')}
                                       </span>
                                     </div>
