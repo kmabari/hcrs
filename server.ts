@@ -8,8 +8,18 @@ import { google } from "googleapis";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import admin from "firebase-admin";
-import { db as clientDb } from "./src/lib/firebase";
-import { collection, getDocs, getDoc, doc, updateDoc, query, where, limit } from "firebase/firestore";
+import { initializeApp as initClientApp, getApps as getClientApps } from "firebase/app";
+import { collection, getDocs, getDoc, doc, updateDoc, query, where, limit, getFirestore } from "firebase/firestore";
+
+const clientApp = getClientApps().length
+  ? getClientApps()[0]
+  : initClientApp({
+      apiKey: process.env.FIREBASE_API_KEY,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+      appId: process.env.FIREBASE_APP_ID
+    });
+const clientDb = getFirestore(clientApp);
 
 // In-memory cache for fast members retrieval
 let membersMemoryCache: { data: any[]; timestamp: number } | null = null;

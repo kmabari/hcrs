@@ -2113,10 +2113,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         errs['consentLegal'] = 'സാക്ഷ്യപത്രം ടിക്ക് ചെയ്ത് സ്ഥിരീകരിക്കുക';
         missing.push({ id: 'field-consentLegal', key: 'consentLegal', label: '3. സാക്ഷ്യപത്രം സ്ഥിരീകരണം (Declaration Confirmation)' });
       }
-      if (!customerPlace.trim()) {
-        errs['customerPlace'] = 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം രേഖപ്പെടുത്തുക';
-        missing.push({ id: 'field-customerPlace', key: 'customerPlace', label: '3. സ്ഥലം (Declaration Place)' });
-      }
     }
 
     // 2. Mandatory validation for Spouse Claim (Name, Mobile, PAN, Declaration)
@@ -2140,10 +2136,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       if (!spouseConsentLegal) {
         errs['spouseConsentLegal'] = 'ഭാര്യ / ഭർത്താവിന്റെ സാക്ഷ്യപത്രം ടിക്ക് ചെയ്ത് സ്ഥിരീകരിക്കുക';
         missing.push({ id: 'field-spouseConsentLegal', key: 'spouseConsentLegal', label: '2. സാക്ഷ്യപത്രം സ്ഥിരീകരണം (Spouse Declaration)' });
-      }
-      if (!spousePlace.trim() && !customerPlace.trim()) {
-        errs['spousePlace'] = 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം രേഖപ്പെടുത്തുക';
-        missing.push({ id: 'field-spousePlace', key: 'spousePlace', label: '2. സ്ഥലം (Spouse Declaration Place)' });
       }
     }
 
@@ -2169,10 +2161,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         errs['parentConsentLegal'] = 'മാതാവ് / പിതാവിന്റെ സാക്ഷ്യപത്രം ടിക്ക് ചെയ്ത് സ്ഥിരീകരിക്കുക';
         missing.push({ id: 'field-parentConsentLegal', key: 'parentConsentLegal', label: '3. സാക്ഷ്യപത്രം സ്ഥിരീകരണം (Parent Declaration)' });
       }
-      if (!parentPlace.trim() && !customerPlace.trim()) {
-        errs['parentPlace'] = 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം രേഖപ്പെടുത്തുക';
-        missing.push({ id: 'field-parentPlace', key: 'parentPlace', label: '3. സ്ഥലം (Parent Declaration Place)' });
-      }
     }
 
     // 4. Mandatory validation for Child Claim (Name, Mobile, PAN, Declaration)
@@ -2196,10 +2184,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       if (!childConsentLegal) {
         errs['childConsentLegal'] = 'മകൻ / മകളുടെ സാക്ഷ്യപത്രം ടിക്ക് ചെയ്ത് സ്ഥിരീകരിക്കുക';
         missing.push({ id: 'field-childConsentLegal', key: 'childConsentLegal', label: '4. സാക്ഷ്യപത്രം സ്ഥിരീകരണം (Child Declaration)' });
-      }
-      if (!childPlace.trim() && !customerPlace.trim()) {
-        errs['childPlace'] = 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം രേഖപ്പെടുത്തുക';
-        missing.push({ id: 'field-childPlace', key: 'childPlace', label: '4. സ്ഥലം (Child Declaration Place)' });
       }
     }
 
@@ -2958,13 +2942,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     en: 'Ready to continue with the company if business operations restart',
                     shortMl: 'കമ്പനിക്കൊപ്പം തുടർന്നു പോകാൻ തയ്യാറാണ്',
                     shortEn: 'Ready to continue if operations restart'
-                  },
-                  {
-                    id: 'urgent',
-                    ml: 'നിലവിലെ സാഹചര്യത്തിൽ എത്രയും വേഗം payment ലഭിക്കണം',
-                    en: 'Need urgent payment due to personal/financial situation',
-                    shortMl: 'എത്രയും വേഗം പേയ്മെന്റ് വേണം',
-                    shortEn: 'Need urgent payment'
                   }
                 ].map(opt => {
                   const isSelected = curPref === opt.id;
@@ -3117,28 +3094,19 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               )}
             </div>
 
-            {/* Declaration Text Box */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm leading-relaxed font-semibold text-justify">
-              {formLang === 'english' ? (
-                '“I acknowledge that data pertaining to the advance paid by me to HIGHRICH ONLINE SHOPPE PVT. LTD are not readily available with the company as on date due to the pending litigation. In order to ascertain the true facts and figures, I am furnishing the data available with me. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records maintained by me. The Advance paid, cumulative returns received, and the final net balance which is claimed herein are subject to verification and final reconciliation with the official corporate books of accounts and bank reconciliation exercise of HIGHRICH ONLINE SHOPPE PVT. LTD. In the event of ongoing legal proceedings, due to the ongoing litigation, this statement and verification claim is submitted to facilitate disbursement of funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my free will and consent. I understand that the action arising out of the verification form is subject to verification and pending litigation in various Forums & Courts of Law.”'
-              ) : (
-                '“നിലവിലുള്ള നിയമനടപടികൾ കാരണം, HIGHRICH ONLINE SHOPPE PVT. LTD.-ൽ ഞാൻ നൽകിയ Advance തുകയുമായി ബന്ധപ്പെട്ട വിവരങ്ങൾ നിലവിൽ കമ്പനിയിൽ നിന്ന് എളുപ്പത്തിൽ ലഭ്യമല്ലെന്ന് ഞാൻ അംഗീകരിക്കുന്നു. യഥാർത്ഥ വസ്തുതകളും കണക്കുകളും തിട്ടപ്പെടുത്തുന്നതിനായി, എന്റെ പക്കൽ ലഭ്യമായ വിവരങ്ങളാണ് ഞാൻ ഇവിടെ സമർപ്പിക്കുന്നത്.\n\nഈ statement-ൽ രേഖപ്പെടുത്തിയിട്ടുള്ള സാമ്പത്തിക കണക്കുകളും വിവരങ്ങളും എന്റെ അറിവിലും രേഖകളിലും ഉള്ളതനുസരിച്ച് സത്യവും കൃത്യവും ശരിയുമാണെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു.”'
-              )}
-            </div>
-
-            {/* Verification Checkbox */}
+            {/* Declaration Text Box with Round Checkbox on Left */}
             <div 
               id={`field-${consentKey}`}
               onClick={() => {
                 setCurConsent(!curConsent);
                 clearFieldError(consentKey);
               }}
-              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 ${
+              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
                 curConsent 
-                  ? 'border-emerald-500 bg-emerald-50/50 shadow-xs' 
+                  ? 'border-emerald-500 bg-emerald-50/40 shadow-xs' 
                   : validationErrors[consentKey]
                     ? 'border-rose-500 bg-rose-50/40 ring-1 ring-rose-400'
-                    : 'border-rose-400 bg-rose-50/20 shadow-xs hover:border-rose-500'
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300'
               }`}
             >
               <Checkbox 
@@ -3147,43 +3115,26 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                   setCurConsent(!!val);
                   clearFieldError(consentKey);
                 }} 
-                className={`w-5 h-5 pointer-events-none rounded-md ${
+                className={`w-5 h-5 shrink-0 mt-0.5 pointer-events-none rounded-full ${
                   curConsent 
                     ? 'border-emerald-600 bg-emerald-600 text-white' 
-                    : 'border-rose-400 bg-white'
+                    : 'border-slate-400 bg-white'
                 }`} 
               />
-              <Label className={`text-xs sm:text-sm font-extrabold cursor-pointer flex-1 leading-normal ${
-                curConsent ? 'text-emerald-900' : 'text-rose-950 font-black'
-              }`}>
-                {t('I confirm, certify, and declare that the above statements and figures are true and correct *', 'മുകളിൽ നൽകിയിട്ടുള്ള എല്ലാ വിവരങ്ങളും കണക്കുകളും പൂർണ്ണമായും സത്യമാണെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു *')}
-              </Label>
+              <div className="flex-1 text-slate-800 text-xs sm:text-sm leading-relaxed font-semibold text-justify whitespace-pre-line select-none">
+                {formLang === 'english' ? (
+                  '“I acknowledge that data pertaining to the advance paid by me to HIGHRICH ONLINE SHOPPE PVT. LTD are not readily available with the company as on date due to the pending litigation. In order to ascertain the true facts and figures, I am furnishing the data available with me. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records maintained by me. The Advance paid, cumulative returns received, and the final net balance which is claimed herein are subject to verification and final reconciliation with the official corporate books of accounts and bank reconciliation exercise of HIGHRICH ONLINE SHOPPE PVT. LTD. In the event of ongoing legal proceedings, due to the ongoing litigation, this statement and verification claim is submitted to facilitate disbursement of funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my free will and consent. I understand that the action arising out of the verification form is subject to verification and pending litigation in various Forums & Courts of Law.”'
+                ) : (
+                  '“നിലവിലുള്ള നിയമനടപടികൾ കാരണം, HIGHRICH ONLINE SHOPPE PVT. LTD.-ൽ ഞാൻ നൽകിയ Advance തുകയുമായി ബന്ധപ്പെട്ട വിവരങ്ങൾ നിലവിൽ കമ്പനിയിൽ നിന്ന് എളുപ്പത്തിൽ ലഭ്യമല്ലെന്ന് ഞാൻ അംഗീകരിക്കുന്നു. യഥാർത്ഥ വസ്തുതകളും കണക്കുകളും തിട്ടപ്പെടുത്തുന്നതിനായി, എന്റെ പക്കൽ ലഭ്യമായ വിവരങ്ങളാണ് ഞാൻ ഇവിടെ സമർപ്പിക്കുന്നത്.\n\nഈ statement-ൽ രേഖപ്പെടുത്തിയിട്ടുള്ള സാമ്പത്തിക കണക്കുകളും വിവരങ്ങളും എന്റെ അറിവിലും രേഖകളിലും ഉള്ളതനുസരിച്ച് സത്യവും കൃത്യവും ശരിയുമാണെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു.”'
+                )}
+              </div>
             </div>
             {validationErrors[consentKey] && (
               <p className="text-xs font-bold text-rose-600 px-1">{validationErrors[consentKey]}</p>
             )}
 
-            {/* Place of Declaration */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <FormFieldBox 
-                id={`field-${placeKey}`}
-                label={tLabel('Place of Declaration *', 'സ്ഥലം *')}
-                icon="📍"
-                theme="amber"
-                required
-                error={validationErrors[placeKey]}
-              >
-                <Input 
-                  value={curPlace} 
-                  onChange={(e) => {
-                    setCurPlace(e.target.value);
-                    clearFieldError(placeKey);
-                  }} 
-                  placeholder={customerPlace || tPlaceholder('Enter Place (e.g. Thrissur)', 'സ്ഥലം നൽകുക (ഉദാ: തൃശ്ശൂർ)')}
-                  className={`h-11 border-2 ${validationErrors[placeKey] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
-                />
-              </FormFieldBox>
-
+            {/* Statement Date */}
+            <div className="pt-2">
               <FormFieldBox 
                 label={tLabel('Statement Date', 'തീയതി')}
                 icon="📅"
@@ -4065,7 +4016,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 label={tLabel('Assembly Constituency *', 'നിയമസഭാ മണ്ഡലം *')}
                 icon="🏛️"
                 theme="indigo"
-                required
                 error={validationErrors['customerConstituency']}
               >
                 <Input 
