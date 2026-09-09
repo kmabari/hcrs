@@ -8,7 +8,7 @@ import { google } from "googleapis";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import admin from "firebase-admin";
-import { db as clientDb } from "./src/lib/firebase";
+import { db as clientDb } from "./src/lib/firebase.ts";
 import { collection, getDocs, getDoc, doc, updateDoc, query, where, limit } from "firebase/firestore";
 
 // In-memory cache for fast members retrieval
