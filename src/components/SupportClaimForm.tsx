@@ -245,43 +245,43 @@ const FormFieldBox = ({
   return (
     <div 
       id={id}
-      className={`group space-y-2.5 bg-slate-50/90 hover:bg-white border-2 w-full min-w-0 max-w-full ${
+      className={`group space-y-2 sm:space-y-2.5 bg-slate-50/70 sm:bg-slate-50/90 hover:bg-white border sm:border-2 w-full min-w-0 max-w-full ${
         error 
           ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-400/50 shadow-rose-200' 
-          : 'border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10'
-      } transition-all rounded-2xl p-4 sm:p-4.5 shadow-xs flex flex-col justify-between ${className}`}
+          : 'border-slate-200 sm:border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-2 sm:focus-within:ring-4 focus-within:ring-brand-blue/10'
+      } transition-all rounded-xl sm:rounded-2xl p-2.5 sm:p-4.5 shadow-2xs sm:shadow-xs flex flex-col justify-between ${className}`}
     >
-      <div className="space-y-1.5 w-full min-w-0">
-        <div className="flex items-center justify-between gap-2 flex-wrap w-full min-w-0">
+      <div className="space-y-1 sm:space-y-1.5 w-full min-w-0">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-wrap w-full min-w-0">
           {/* Colored Button/Pill Label */}
-          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black tracking-wide shadow-2xs max-w-full min-w-0 ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
-            {icon && <span className="text-sm shrink-0">{icon}</span>}
+          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-black tracking-wide shadow-2xs max-w-full min-w-0 ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
+            {icon && <span className="text-xs sm:text-sm shrink-0">{icon}</span>}
             <span className="leading-tight break-words">{label}</span>
           </div>
           {required && (
-            <span className={`text-[10px] font-black ${error ? 'text-white bg-rose-600 animate-pulse' : 'text-rose-700 bg-rose-100 border border-rose-200'} px-2.5 py-0.5 rounded-md shrink-0 uppercase tracking-wider`}>
+            <span className={`text-[9px] sm:text-[10px] font-black ${error ? 'text-white bg-rose-600 animate-pulse' : 'text-rose-700 bg-rose-100 border border-rose-200'} px-1.5 sm:px-2.5 py-0.5 rounded-md shrink-0 uppercase tracking-wider`}>
               {formLang === 'english' ? 'Required *' : 'നിർബന്ധം *'}
             </span>
           )}
           {optional && (
-            <span className="text-[10px] font-black text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+            <span className="text-[9px] sm:text-[10px] font-black text-slate-500 bg-slate-200/80 px-1.5 sm:px-2 py-0.5 rounded-md shrink-0">
               {formLang === 'english' ? 'Optional' : 'ഓപ്ഷണൽ'}
             </span>
           )}
           {badge && !required && !optional && (
-            <span className="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2.5 py-0.5 rounded-md shrink-0">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 bg-slate-200/80 px-1.5 sm:px-2.5 py-0.5 rounded-md shrink-0">
               {badge}
             </span>
           )}
         </div>
         {hint && (
-          <p className="text-[11px] text-slate-500 font-semibold px-0.5 leading-tight break-words">{hint}</p>
+          <p className="text-[9.5px] sm:text-[11px] text-slate-500 font-semibold px-0.5 leading-tight break-words">{hint}</p>
         )}
       </div>
-      <div className="pt-1 w-full min-w-0">{children}</div>
+      <div className="pt-0.5 sm:pt-1 w-full min-w-0">{children}</div>
       {error && (
-        <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-3 py-2 rounded-xl animate-in fade-in duration-200 mt-1.5 w-full min-w-0 break-words">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 animate-pulse" />
+        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl animate-in fade-in duration-200 mt-1.5 w-full min-w-0 break-words">
+          <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-rose-600 animate-pulse" />
           <span className="min-w-0 break-words">{error}</span>
         </div>
       )}
@@ -726,7 +726,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   // 1. Claimant State - Self
   const [selfSelected, setSelfSelected] = useState(true);
   const [selfName, setSelfName] = useState(user?.name || '');
-  const [selfHighrichId, setSelfHighrichId] = useState('');
+  const [selfHighrichId, setSelfHighrichId] = useState((user as any)?.highrichId || (user as any)?.customerId || (user as any)?.highrich_id || (user as any)?.memberId || '');
   const [selfSponsorName, setSelfSponsorName] = useState(user?.sponsorName || '');
   const [selfSponsorMobile, setSelfSponsorMobile] = useState(user?.sponsorMobile || '');
   const [selfCategories, setSelfCategories] = useState<string[]>([]);
@@ -870,14 +870,16 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   const [customerMobile, setCustomerMobile] = useState(user?.mobile || '');
   const [customerAddress, setCustomerAddress] = useState(sanitizeMemberAddress((user as any)?.houseName || (user as any)?.house || user?.address || (user as any)?.residentialAddress || (user as any)?.userAddress || ''));
   const [customerDistrict, setCustomerDistrict] = useState(user?.district || (user as any)?.userDistrict || '');
-  const [customerConstituency, setCustomerConstituency] = useState(user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '');
+  const [customerConstituency, setCustomerConstituency] = useState(user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || (user as any)?.ward || '');
   const [customerPostOffice, setCustomerPostOffice] = useState(user?.postOffice || (user as any)?.po || '');
   const [customerPincode, setCustomerPincode] = useState(user?.pincode || (user as any)?.pin || (user as any)?.postalCode || '');
   const [customerPan, setCustomerPan] = useState(user?.panNumber || (user as any)?.pan || '');
-  const [customerPlace, setCustomerPlace] = useState((user as any)?.place || (user as any)?.location || '');
-  const [spousePlace, setSpousePlace] = useState('');
-  const [parentPlace, setParentPlace] = useState('');
-  const [childPlace, setChildPlace] = useState('');
+  // Auto-filled Declaration Place (Post Office -> District -> Fallback)
+  const initialAutoPlace = (user?.postOffice || (user as any)?.po || user?.district || (user as any)?.userDistrict || (user as any)?.place || (user as any)?.location || '').trim();
+  const [customerPlace, setCustomerPlace] = useState(initialAutoPlace);
+  const [spousePlace, setSpousePlace] = useState(initialAutoPlace);
+  const [parentPlace, setParentPlace] = useState(initialAutoPlace);
+  const [childPlace, setChildPlace] = useState(initialAutoPlace);
 
   // Auto-sync Main Member's Address changes into Family Members (Spouse, Parent, Child)
   const handleCustomerAddressChange = (val: string) => {
@@ -895,6 +897,16 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     setSpouseDistrict(prev => (!prev || prev === prevVal ? val : prev));
     setParentDistrict(prev => (!prev || prev === prevVal ? val : prev));
     setChildDistrict(prev => (!prev || prev === prevVal ? val : prev));
+    // If no post office available, keep declaration place synced with district
+    if (!customerPostOffice && !user?.postOffice && !(user as any)?.po) {
+      const distPlace = val.trim();
+      if (distPlace) {
+        setCustomerPlace(distPlace);
+        setSpousePlace(distPlace);
+        setParentPlace(distPlace);
+        setChildPlace(distPlace);
+      }
+    }
   };
 
   const handleCustomerConstituencyChange = (val: string) => {
@@ -911,6 +923,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     setSpousePostOffice(prev => (!prev || prev === prevVal ? val : prev));
     setParentPostOffice(prev => (!prev || prev === prevVal ? val : prev));
     setChildPostOffice(prev => (!prev || prev === prevVal ? val : prev));
+    // Auto-fill declaration place from Post Office (fallback to District)
+    const newPlace = (val || customerDistrict || user?.district || (user as any)?.userDistrict || '').trim();
+    if (newPlace) {
+      setCustomerPlace(newPlace);
+      setSpousePlace(newPlace);
+      setParentPlace(newPlace);
+      setChildPlace(newPlace);
+    }
   };
 
   const handleCustomerPincodeChange = (val: string) => {
@@ -998,7 +1018,10 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   // Sync with user prop if values change
   useEffect(() => {
     if (user) {
-      if (user.name && !customerName) setCustomerName(user.name);
+      if (user.name) {
+        if (!customerName) setCustomerName(user.name);
+        if (!selfName) setSelfName(user.name);
+      }
       if (user.mobile && !customerMobile) setCustomerMobile(user.mobile);
       
       const uAddr = sanitizeMemberAddress((user as any).houseName || (user as any).house || user.address || (user as any).residentialAddress || (user as any).userAddress || '');
@@ -1037,6 +1060,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         if (!childPostOffice) setChildPostOffice(uPO);
       }
       
+      const uAutoPlace = (uPO || uDist || (user as any).place || (user as any).location || '').trim();
+      if (uAutoPlace) {
+        if (!customerPlace) setCustomerPlace(uAutoPlace);
+        if (!spousePlace) setSpousePlace(uAutoPlace);
+        if (!parentPlace) setParentPlace(uAutoPlace);
+        if (!childPlace) setChildPlace(uAutoPlace);
+      }
+      
       const uPin = user.pincode || (user as any).pin || (user as any).postalCode || '';
       if (uPin) {
         if (!customerPincode) setCustomerPincode(uPin);
@@ -1059,8 +1090,9 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         if (!parentSponsorMobile) setParentSponsorMobile(cln);
         if (!childSponsorMobile) setChildSponsorMobile(cln);
       }
-      if (user.highrichId && !selfHighrichId) {
-        setSelfHighrichId(user.highrichId);
+      const uHighrich = user.highrichId || (user as any).customerId || (user as any).highrich_id || (user as any).memberId;
+      if (uHighrich && !selfHighrichId) {
+        setSelfHighrichId(uHighrich);
       }
       if (user.paymentDate && !paymentDate) setPaymentDate(user.paymentDate);
       if (((user as any).transactionId || (user as any).transactionRef) && !transactionRef) {
@@ -2240,6 +2272,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       const effectiveMainPincode = customerPincode || user.pincode || (user as any)?.pin || (user as any)?.postalCode || '';
       const effectiveMainPan = customerPan || (user as any)?.panNumber || (user as any)?.pan || '';
 
+      // Auto-derived declaration place: Post Office -> fallback to District -> fallback to empty or safe fallback
+      const effectiveSelfPlace = (customerPlace || effectiveMainPostOffice || effectiveMainDistrict || (user as any)?.place || (user as any)?.location || '').trim();
+      const effectiveSpousePlace = (spousePlace || spousePostOffice || effectiveSelfPlace).trim();
+      const effectiveParentPlace = (parentPlace || parentPostOffice || effectiveSelfPlace).trim();
+      const effectiveChildPlace = (childPlace || childPostOffice || effectiveSelfPlace).trim();
+
       const commonData = {
         uid: user.uid,
         membershipId: user.membershipId || 'PENDING',
@@ -2286,7 +2324,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           await updateDoc(doc(db, 'users', user.uid), {
             name: customerName || user.name || '',
             mobile: customerMobile || user.mobile || '',
-            place: customerPlace || (user as any)?.place || '',
+            place: effectiveSelfPlace || (user as any)?.place || '',
             address: effectiveMainAddress,
             residentialAddress: effectiveMainAddress,
             userAddress: effectiveMainAddress,
@@ -2464,8 +2502,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           isEmergency: effectiveSelfEmerg,
           priorityStatus: effectiveSelfPrio.label,
           consentLegal: !!consentLegal,
-          place: customerPlace.trim(),
-          customerPlace: customerPlace.trim(),
+          place: effectiveSelfPlace,
+          customerPlace: effectiveSelfPlace,
           joiningDate: customerJoiningDate || selfJoiningDate || '',
           updatedAt: new Date().toISOString()
         };
@@ -2552,8 +2590,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           isEmergency: effectiveSpouseEmerg,
           priorityStatus: effectiveSpousePrio.label,
           consentLegal: !!spouseConsentLegal,
-          place: (spousePlace || customerPlace).trim(),
-          customerPlace: (spousePlace || customerPlace).trim(),
+          place: effectiveSpousePlace,
+          customerPlace: effectiveSpousePlace,
           joiningDate: spouseJoiningDate || customerJoiningDate || '',
           updatedAt: new Date().toISOString()
         };
@@ -2640,8 +2678,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           isEmergency: effectiveParentEmerg,
           priorityStatus: effectiveParentPrio.label,
           consentLegal: !!parentConsentLegal,
-          place: (parentPlace || customerPlace).trim(),
-          customerPlace: (parentPlace || customerPlace).trim(),
+          place: effectiveParentPlace,
+          customerPlace: effectiveParentPlace,
           joiningDate: parentJoiningDate || customerJoiningDate || '',
           updatedAt: new Date().toISOString()
         };
@@ -2728,8 +2766,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           isEmergency: effectiveChildEmerg,
           priorityStatus: effectiveChildPrio.label,
           consentLegal: !!childConsentLegal,
-          place: (childPlace || customerPlace).trim(),
-          customerPlace: (childPlace || customerPlace).trim(),
+          place: effectiveChildPlace,
+          customerPlace: effectiveChildPlace,
           joiningDate: childJoiningDate || customerJoiningDate || '',
           updatedAt: new Date().toISOString()
         };
@@ -2828,7 +2866,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     let setCurHardships = setHardshipStatus;
     let curConsent = consentLegal;
     let setCurConsent = setConsentLegal;
-    let curPlace = customerPlace;
+    const autoSelfPlace = (customerPlace || customerPostOffice || user?.postOffice || (user as any)?.po || customerDistrict || user?.district || (user as any)?.userDistrict || (user as any)?.place || (user as any)?.location || '').trim();
+    let curPlace = customerPlace || autoSelfPlace;
     let setCurPlace = setCustomerPlace;
     let consentKey = 'consentLegal';
     let placeKey = 'customerPlace';
@@ -2842,7 +2881,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       setCurHardships = setSpouseHardshipStatus;
       curConsent = spouseConsentLegal;
       setCurConsent = setSpouseConsentLegal;
-      curPlace = spousePlace;
+      curPlace = (spousePlace || spousePostOffice || curPlace || autoSelfPlace).trim();
       setCurPlace = setSpousePlace;
       consentKey = 'spouseConsentLegal';
       placeKey = 'spousePlace';
@@ -2855,7 +2894,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       setCurHardships = setParentHardshipStatus;
       curConsent = parentConsentLegal;
       setCurConsent = setParentConsentLegal;
-      curPlace = parentPlace;
+      curPlace = (parentPlace || parentPostOffice || curPlace || autoSelfPlace).trim();
       setCurPlace = setParentPlace;
       consentKey = 'parentConsentLegal';
       placeKey = 'parentPlace';
@@ -2868,36 +2907,36 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       setCurHardships = setChildHardshipStatus;
       curConsent = childConsentLegal;
       setCurConsent = setChildConsentLegal;
-      curPlace = childPlace;
+      curPlace = (childPlace || childPostOffice || curPlace || autoSelfPlace).trim();
       setCurPlace = setChildPlace;
       consentKey = 'childConsentLegal';
       placeKey = 'childPlace';
     }
 
     return (
-      <div className="space-y-4 pt-4 border-t-2 border-amber-300/80">
+      <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-amber-300 sm:border-t-2">
         {/* ADMIN FOLLOW-UP ONLY SECTION (അഡ്മിൻ ഫോളോ-അപ്പ് വിവരങ്ങൾ) */}
-        <Card className="border-2 border-amber-300 bg-amber-50/20 rounded-3xl shadow-xs overflow-hidden">
-          <CardContent className="p-5 md:p-6 space-y-5">
-            <div className="flex flex-wrap items-center justify-between border-b pb-3.5 border-amber-200 gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#003366] text-white text-xs font-black uppercase tracking-wider shadow-xs">
+        <Card className="border border-amber-200/80 sm:border-2 sm:border-amber-300 bg-amber-50/20 rounded-xl sm:rounded-3xl shadow-2xs sm:shadow-xs overflow-hidden">
+          <CardContent className="p-3 sm:p-5 md:p-6 space-y-3 sm:space-y-5">
+            <div className="flex flex-wrap items-center justify-between border-b pb-2 sm:pb-3.5 border-amber-200 gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-md sm:rounded-xl bg-[#003366] text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xs">
                   🛡️ <span>{t('For Admin Follow-up Only', 'അഡ്മിൻ ഫോളോ-അപ്പ് വിവരങ്ങൾ')}</span>
                 </div>
                 {formIdSuffix !== 'self' && (
-                  <Badge className="bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-black px-2.5 py-1 rounded-lg">
+                  <Badge className="bg-amber-100 text-amber-950 border border-amber-300 text-[9.5px] sm:text-[11px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg">
                     {personTitle}: {personName}
                   </Badge>
                 )}
               </div>
-              <Badge className="bg-amber-100 text-amber-950 border border-amber-300 font-black text-[10px] uppercase">
+              <Badge className="bg-amber-100 text-amber-950 border border-amber-300 font-black text-[8.5px] sm:text-[10px] uppercase">
                 🔒 {t('Excluded from Official Advocate Print', 'ഔദ്യോഗിക കോർട്ട് പ്രിന്റിൽ വരില്ല')}
               </Badge>
             </div>
 
             {/* Explanatory disclaimer */}
-            <div className="p-3.5 rounded-2xl bg-amber-100/60 border border-amber-200/80 text-amber-950 text-xs font-bold leading-relaxed flex items-start gap-2.5">
-              <span className="text-base shrink-0">ℹ️</span>
+            <div className="p-2 sm:p-3.5 rounded-lg sm:rounded-2xl bg-amber-100/60 border border-amber-200/80 text-amber-950 text-[10.5px] sm:text-xs font-bold leading-relaxed flex items-start gap-1.5 sm:gap-2.5">
+              <span className="text-sm sm:text-base shrink-0">ℹ️</span>
               <p>
                 {t(
                   'Notice: The answers to these questions are strictly for internal administrative follow-up and priority assessment. These answers will NOT appear in the official advocate-final court statement / print form.',
@@ -2907,12 +2946,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             </div>
 
             {/* Question A: Future Planning / Future Preference */}
-            <div className="space-y-2.5">
+            <div className="space-y-1.5 sm:space-y-2.5">
               <div className="space-y-0.5">
-                <Label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <Label className="text-[10.5px] sm:text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
                   <span>📌 {t('A. Future Planning / Preference', 'A. ഭാവിയിലെ തീരുമാനങ്ങൾ / മുൻഗണന')}</span>
                 </Label>
-                <p className="text-[11px] font-semibold text-slate-600">
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-600">
                   {t(
                     'Select your preference regarding settlement or company continuation:',
                     'സെറ്റിൽമെന്റ് അല്ലെങ്കിൽ കമ്പനി തുടർപ്രവർത്തനവുമായി ബന്ധപ്പെട്ട് താങ്കളുടെ മുൻഗണന തിരഞ്ഞെടുക്കുക:'
@@ -2920,7 +2959,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 gap-1.5 sm:gap-2.5">
                 {[
                   {
                     id: 'settlement',
@@ -2949,22 +2988,22 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     <div
                       key={opt.id}
                       onClick={() => setCurPref(isSelected ? '' : opt.id)}
-                      className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
+                      className={`p-2 sm:p-3.5 rounded-lg sm:rounded-2xl border sm:border-2 transition-all cursor-pointer flex items-start gap-2 sm:gap-3 ${
                         isSelected
                           ? 'border-amber-600 bg-amber-50/80 shadow-xs ring-1 ring-amber-500'
                           : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/30'
                       }`}
                     >
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                      <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                         isSelected ? 'border-amber-700 bg-amber-600 text-white' : 'border-slate-300 bg-white'
                       }`}>
-                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                        {isSelected && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white" />}
                       </div>
                       <div className="space-y-0.5 text-left select-none flex-1">
-                        <div className="text-xs font-black text-slate-900">
+                        <div className="text-[11px] sm:text-xs font-black text-slate-900 leading-tight">
                           {formLang === 'english' ? opt.shortEn : opt.shortMl}
                         </div>
-                        <div className="text-[11px] font-semibold text-slate-600 leading-snug">
+                        <div className="text-[9.5px] sm:text-[11px] font-semibold text-slate-600 leading-snug">
                           {formLang === 'english' ? opt.en : opt.ml}
                         </div>
                       </div>
@@ -2975,12 +3014,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             </div>
 
             {/* Question B: Current Situation / Hardship */}
-            <div className="space-y-2.5 pt-2 border-t border-amber-200">
+            <div className="space-y-1.5 sm:space-y-2.5 pt-2 border-t border-amber-200">
               <div className="space-y-0.5">
-                <Label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <Label className="text-[10.5px] sm:text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
                   <span>🚨 {t('B. Current Situation / Hardship', 'B. ഇപ്പോഴത്തെ അവസ്ഥ / പ്രതിസന്ധികൾ')}</span>
                 </Label>
-                <p className="text-[11px] font-semibold text-slate-600">
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-600">
                   {t(
                     'Select any critical emergency/hardship conditions you are facing (multiple can be selected):',
                     'താങ്കൾ നേരിടുന്ന അടിയന്തിര ബുദ്ധിമുട്ടുകൾ എന്തെങ്കിലും ഉണ്ടെങ്കിൽ തിരഞ്ഞെടുക്കുക (ബാധകമായവ തിരഞ്ഞെടുക്കാം):'
@@ -2988,7 +3027,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2.5">
                 {[
                   {
                     id: 'bank',
@@ -3034,7 +3073,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                           }
                         }
                       }}
-                      className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-2.5 ${
+                      className={`p-2 sm:p-3 rounded-lg sm:rounded-2xl border sm:border-2 transition-all cursor-pointer flex items-start gap-2 sm:gap-2.5 ${
                         isChecked
                           ? h.id === 'none'
                             ? 'border-emerald-500 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-400'
@@ -3046,14 +3085,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                         id={`hardship-${formIdSuffix}-${h.id}`}
                         checked={isChecked}
                         onCheckedChange={() => {}}
-                        className="mt-0.5 pointer-events-none"
+                        className="mt-0.5 pointer-events-none w-4 h-4 sm:w-4.5 sm:h-4.5"
                       />
                       <div className="space-y-0.5 select-none flex-1">
-                        <div className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                        <div className="text-[11px] sm:text-xs font-black text-slate-900 flex items-center gap-1.5 leading-tight">
                           <span>{h.icon}</span>
                           <span>{formLang === 'english' ? h.en : h.ml}</span>
                         </div>
-                        <div className="text-[10px] font-semibold text-slate-500">
+                        <div className="text-[9px] sm:text-[10px] font-semibold text-slate-500 leading-tight">
                           {formLang === 'english' ? h.ml : h.en}
                         </div>
                       </div>
@@ -3066,47 +3105,76 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         </Card>
 
         {/* 5. CUSTOMER DECLARATION & CONFIRMATION (കസ്റ്റമർ സാക്ഷ്യപത്രവും സ്ഥിരീകരണവും) */}
-        <Card className={`border-2 rounded-3xl shadow-md overflow-hidden bg-white transition-all duration-300 ${
-          !curConsent || !curPlace.trim()
+        <Card className={`border sm:border-2 rounded-xl sm:rounded-3xl shadow-xs overflow-hidden bg-white transition-all duration-300 ${
+          !curConsent
             ? 'border-amber-400 bg-amber-50/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]' 
             : 'border-emerald-300 bg-white'
         }`}>
-          <CardContent className="p-5 md:p-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3 border-amber-100 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-700 to-[#003366] text-white text-xs font-black uppercase tracking-wider shadow-sm">
+          <CardContent className="p-3 sm:p-5 md:p-6 space-y-2.5 sm:space-y-4">
+            <div className="flex items-center justify-between border-b pb-2 sm:pb-3 border-amber-100 flex-wrap gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3.5 py-0.5 sm:py-1.5 rounded-md sm:rounded-xl bg-gradient-to-r from-amber-700 to-[#003366] text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xs">
                   📜 <span>{t('5. Customer Declaration & Confirmation', '5. കസ്റ്റമർ സാക്ഷ്യപത്രവും സ്ഥിരീകരണവും')}</span>
                 </div>
                 {formIdSuffix !== 'self' && (
-                  <Badge className="bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-black px-2.5 py-1 rounded-lg">
+                  <Badge className="bg-amber-100 text-amber-950 border border-amber-300 text-[9.5px] sm:text-[11px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg">
                     {personTitle}: {personName}
                   </Badge>
                 )}
               </div>
               {!curConsent ? (
-                <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-lg animate-bounce">
+                <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[8.5px] sm:text-[9px] uppercase px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg animate-bounce">
                   ⚠️ {t('Confirmation Required *', 'സ്ഥിരീകരണം നിർബന്ധം *')}
                 </Badge>
               ) : (
-                <Badge className="bg-emerald-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-lg flex items-center gap-1">
+                <Badge className="bg-emerald-600 text-white font-black text-[8.5px] sm:text-[9px] uppercase px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> {t('Conditions Confirmed & Verified', 'സ്ഥിരീകരിച്ചു')}
                 </Badge>
               )}
             </div>
 
-            {/* Declaration Text Box with Round Checkbox on Left */}
+            {/* Declaration Text Box */}
+            <div className="p-2.5 sm:p-4 rounded-lg sm:rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 text-[10.5px] sm:text-xs md:text-sm leading-relaxed font-semibold text-justify space-y-2 sm:space-y-3">
+              {formLang === 'english' ? (
+                <>
+                  <p>
+                    “In the context of the ongoing legal proceedings, as the complete official records regarding the Advance Payment made by me to HIGHRICH ONLINE SHOPPE PVT. LTD. are not readily available at present, I am submitting this information based on the documents, details, and knowledge available to me.
+                  </p>
+                  <p>
+                    I confirm that the Advance Paid, Cumulative Returns Received, and Final Net Balance stated by me are true and correct to the best of my knowledge and available records. However, these amounts and particulars are subject to verification and final reconciliation with the official books of accounts and bank records of HIGHRICH ONLINE SHOPPE PVT. LTD., and necessary legal approvals.
+                  </p>
+                  <p>
+                    This verification form is submitted in the context of ongoing legal proceedings to facilitate legally permissible steps regarding the funds deposited before the Hon’ble Court / Competent Authority. I understand and affirm that this form is submitted voluntarily with my free will and consent, and that further actions are subject to pending cases, verification, reconciliation, and orders of the concerned Hon’ble Court / Competent Authority.”
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    “നിലവിലുള്ള നിയമനടപടികളുടെ പശ്ചാത്തലത്തിൽ HIGHRICH ONLINE SHOPPE PVT. LTD.-ൽ ഞാൻ നടത്തിയ Advance Payment സംബന്ധിച്ച പൂർണ്ണമായ ഔദ്യോഗിക വിവരങ്ങൾ നിലവിൽ ലഭ്യമല്ലാത്തതിനാൽ, എനിക്ക് ലഭ്യമായ രേഖകളും വിവരങ്ങളും എന്റെ അറിവും അടിസ്ഥാനമാക്കിയാണ് ഈ വിവരങ്ങൾ സമർപ്പിക്കുന്നത്.
+                  </p>
+                  <p>
+                    ഞാൻ രേഖപ്പെടുത്തിയ Advance Paid, Cumulative Returns Received, Final Net Balance എന്നിവ എന്റെ അറിവിലും കൈവശമുള്ള രേഖകളിലും ശരിയാണെന്ന് സ്ഥിരീകരിക്കുന്നു. എന്നാൽ ഈ തുകകളും വിവരങ്ങളും HIGHRICH ONLINE SHOPPE PVT. LTD.-ന്റെ ഔദ്യോഗിക അക്കൗണ്ട് പുസ്തകങ്ങൾ, ബാങ്ക് രേഖകൾ എന്നിവയുമായി പരിശോധനയ്ക്കും അന്തിമ reconciliation-നും, ആവശ്യമായ നിയമപരമായ അനുമതികൾക്കും വിധേയമായിരിക്കും.
+                  </p>
+                  <p>
+                    നിലവിലുള്ള നിയമനടപടികളുടെ സാഹചര്യത്തിൽ, Hon'ble Court / Competent Authority മുമ്പാകെ നിക്ഷേപിച്ചിരിക്കുന്ന തുകകളുമായി ബന്ധപ്പെട്ട നിയമപരമായി അനുവദനീയമായ നടപടികൾ സുഗമമാക്കുന്നതിനായാണ് ഈ verification form സമർപ്പിക്കുന്നത്. ഈ form ഞാൻ സ്വമേധയാ, എന്റെ സമ്മതപ്രകാരം സമർപ്പിക്കുന്നതാണെന്നും, ഇതിനെ തുടർന്നുള്ള നടപടികൾ നിലവിലുള്ള കേസുകൾ, പരിശോധന, reconciliation, ബന്ധപ്പെട്ട കോടതി / Competent Authority ഉത്തരവുകൾ എന്നിവയ്ക്ക് വിധേയമാണെന്നും ഞാൻ മനസ്സിലാക്കുന്നു.”
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Verification Checkbox - Final Certification & Confirmation Only */}
             <div 
               id={`field-${consentKey}`}
               onClick={() => {
                 setCurConsent(!curConsent);
                 clearFieldError(consentKey);
               }}
-              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+              className={`p-2.5 sm:p-4 rounded-lg sm:rounded-2xl border sm:border-2 transition-all cursor-pointer flex items-start sm:items-center gap-2 sm:gap-3.5 select-none ${
                 curConsent 
-                  ? 'border-emerald-500 bg-emerald-50/40 shadow-xs' 
+                  ? 'border-emerald-500 bg-emerald-50/50 shadow-xs' 
                   : validationErrors[consentKey]
                     ? 'border-rose-500 bg-rose-50/40 ring-1 ring-rose-400'
-                    : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                    : 'border-rose-400 bg-rose-50/20 shadow-xs hover:border-rose-500'
               }`}
             >
               <Checkbox 
@@ -3115,37 +3183,71 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                   setCurConsent(!!val);
                   clearFieldError(consentKey);
                 }} 
-                className={`w-5 h-5 shrink-0 mt-0.5 pointer-events-none rounded-full ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 mt-0.5 sm:mt-0 shrink-0 pointer-events-none rounded-md ${
                   curConsent 
                     ? 'border-emerald-600 bg-emerald-600 text-white' 
-                    : 'border-slate-400 bg-white'
+                    : 'border-rose-400 bg-white'
                 }`} 
               />
-              <div className="flex-1 text-slate-800 text-xs sm:text-sm leading-relaxed font-semibold text-justify whitespace-pre-line select-none">
-                {formLang === 'english' ? (
-                  '“I acknowledge that data pertaining to the advance paid by me to HIGHRICH ONLINE SHOPPE PVT. LTD are not readily available with the company as on date due to the pending litigation. In order to ascertain the true facts and figures, I am furnishing the data available with me. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records maintained by me. The Advance paid, cumulative returns received, and the final net balance which is claimed herein are subject to verification and final reconciliation with the official corporate books of accounts and bank reconciliation exercise of HIGHRICH ONLINE SHOPPE PVT. LTD. In the event of ongoing legal proceedings, due to the ongoing litigation, this statement and verification claim is submitted to facilitate disbursement of funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my free will and consent. I understand that the action arising out of the verification form is subject to verification and pending litigation in various Forums & Courts of Law.”'
-                ) : (
-                  '“നിലവിലുള്ള നിയമനടപടികൾ കാരണം, HIGHRICH ONLINE SHOPPE PVT. LTD.-ൽ ഞാൻ നൽകിയ Advance തുകയുമായി ബന്ധപ്പെട്ട വിവരങ്ങൾ നിലവിൽ കമ്പനിയിൽ നിന്ന് എളുപ്പത്തിൽ ലഭ്യമല്ലെന്ന് ഞാൻ അംഗീകരിക്കുന്നു. യഥാർത്ഥ വസ്തുതകളും കണക്കുകളും തിട്ടപ്പെടുത്തുന്നതിനായി, എന്റെ പക്കൽ ലഭ്യമായ വിവരങ്ങളാണ് ഞാൻ ഇവിടെ സമർപ്പിക്കുന്നത്.\n\nഈ statement-ൽ രേഖപ്പെടുത്തിയിട്ടുള്ള സാമ്പത്തിക കണക്കുകളും വിവരങ്ങളും എന്റെ അറിവിലും രേഖകളിലും ഉള്ളതനുസരിച്ച് സത്യവും കൃത്യവും ശരിയുമാണെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു.”'
+              <Label className={`text-[10.5px] sm:text-xs md:text-sm font-extrabold cursor-pointer flex-1 leading-snug sm:leading-relaxed ${
+                curConsent ? 'text-emerald-950' : 'text-rose-950 font-black'
+              }`}>
+                {t(
+                  'I confirm that the information and figures provided above are true and correct to the best of my knowledge and available records *',
+                  'മുകളിൽ നൽകിയ വിവരങ്ങളും കണക്കുകളും എന്റെ അറിവിലും കൈവശമുള്ള രേഖകളിലും ശരിയും സത്യവുമാണെന്ന് ഞാൻ സ്ഥിരീകരിക്കുന്നു *'
                 )}
-              </div>
+              </Label>
             </div>
+
             {validationErrors[consentKey] && (
               <p className="text-xs font-bold text-rose-600 px-1">{validationErrors[consentKey]}</p>
             )}
 
-            {/* Statement Date */}
-            <div className="pt-2">
-              <FormFieldBox 
-                label={tLabel('Statement Date', 'തീയതി')}
-                icon="📅"
-                theme="slate"
-              >
-                <Input 
-                  value={new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })} 
-                  disabled
-                  className="h-11 border border-slate-300 rounded-xl font-bold bg-slate-100 text-xs sm:text-sm text-slate-800 shadow-2xs cursor-not-allowed"
-                />
-              </FormFieldBox>
+            {/* Auto-filled Place & Date Information Cards (Read-only) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-1 sm:pt-2">
+              {/* Place of Declaration (Auto-filled from Profile: Post Office -> District -> Fallback) */}
+              <div className="p-2 sm:p-3.5 rounded-lg sm:rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 sm:gap-3 shadow-2xs">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-xs sm:text-sm shrink-0 font-bold border border-amber-200">
+                    📍
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      {t('Place of Declaration', 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം')}
+                    </div>
+                    <div className="text-[11.5px] sm:text-sm font-black text-slate-900 break-words leading-tight mt-0.5">
+                      {curPlace || t('(Profile Location)', '(പ്രൊഫൈൽ സ്ഥലം)')}
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <Badge className="bg-slate-200/80 text-slate-700 text-[8px] sm:text-[9px] font-bold border-0 px-1.5 sm:px-2 py-0.5 whitespace-nowrap">
+                    {t('Auto-filled', 'ഓട്ടോമാറ്റിക്')}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Statement Date (Auto-filled with Current Date) */}
+              <div className="p-2 sm:p-3.5 rounded-lg sm:rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 sm:gap-3 shadow-2xs">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-blue-100 text-[#003366] flex items-center justify-center text-xs sm:text-sm shrink-0 font-bold border border-blue-200">
+                    📅
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      {t('Statement Date', 'തീയതി')}
+                    </div>
+                    <div className="text-[11.5px] sm:text-sm font-black text-slate-900 font-mono leading-tight mt-0.5">
+                      {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <Badge className="bg-blue-50 text-[#003366] text-[8px] sm:text-[9px] font-bold border border-blue-200 px-1.5 sm:px-2 py-0.5 whitespace-nowrap">
+                    {t('Current Date', 'ഇന്നത്തെ തീയതി')}
+                  </Badge>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -3666,19 +3768,19 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2.5 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8 max-w-5xl mx-auto w-full min-w-0">
+      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-8 max-w-5xl mx-auto w-full min-w-0">
         
         {/* Form Language Selector Bar */}
-        <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-sm shrink-0">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border border-slate-200 sm:border-2 shadow-2xs sm:shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-xs sm:text-sm shrink-0">
               🌐
             </div>
             <div className="min-w-0">
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight truncate">
+              <h4 className="text-[11.5px] sm:text-xs font-black text-slate-800 uppercase tracking-tight truncate">
                 {formLang === 'english' ? 'Form Display Language' : formLang === 'malayalam' ? 'ഫോം ഭാഷ' : 'ഫോം ഭാഷ (Form Language)'}
               </h4>
-              <p className="text-[10px] font-bold text-slate-500 truncate">
+              <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-500 truncate">
                 {formLang === 'english'
                   ? 'Print section always outputs pure English only'
                   : formLang === 'malayalam'
@@ -3688,11 +3790,11 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 w-full sm:w-auto">
+          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg sm:rounded-xl border border-slate-200/80 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setFormLang('english')}
-              className={`px-2 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+              className={`px-2 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer text-center ${
                 formLang === 'english'
                   ? 'bg-brand-blue text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -3703,7 +3805,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             <button
               type="button"
               onClick={() => setFormLang('malayalam')}
-              className={`px-2 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+              className={`px-2 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer text-center ${
                 formLang === 'malayalam'
                   ? 'bg-brand-blue text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -3714,7 +3816,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             <button
               type="button"
               onClick={() => setFormLang('bilingual')}
-              className={`px-2 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+              className={`px-2 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer text-center ${
                 formLang === 'bilingual'
                   ? 'bg-brand-blue text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -3730,8 +3832,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* SUBMITTED CARD OR FULL FORM: 1. APPLICANT CLAIM FORM (SELF / PRIMARY) */}
         {hasSelf && !editingSelf && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+          <div className="border border-emerald-400/80 sm:border-2 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-xl sm:rounded-3xl shadow-xs sm:shadow-lg p-3 sm:p-6 space-y-2.5 sm:space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-emerald-200/80 pb-3 sm:pb-3.5 w-full min-w-0">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 1
@@ -3805,12 +3907,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* GOLD WRAPPER: 1. APPLICANT CLAIM FORM (SELF / PRIMARY) */}
         {(!hasSelf || editingSelf) && (
-        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+        <div className="border border-amber-300 sm:border-2 sm:border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl ring-0 sm:ring-2 sm:ring-amber-400/20 overflow-hidden p-2.5 sm:p-6 space-y-3 sm:space-y-6">
           {editingSelf && (
-            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-amber-700" />
-                <span className="text-xs font-black uppercase tracking-wide">
+            <div className="bg-amber-100 border border-amber-400 sm:border-2 rounded-lg sm:rounded-2xl p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 text-amber-950">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wide leading-tight">
                   {t('Editing Form 1 (Self) Information', 'ഫോം 1 (സ്വന്തം വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
                 </span>
               </div>
@@ -3819,334 +3921,306 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 size="sm"
                 variant="outline"
                 onClick={() => setEditingSelf(false)}
-                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50 shrink-0"
               >
                 {t('Cancel Edit', 'റദ്ദാക്കുക')}
               </Button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
+          <div className="flex flex-wrap items-center justify-between pb-2.5 sm:pb-4 border-b border-amber-300 sm:border-b-2 sm:border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-2.5 sm:p-5 rounded-lg sm:rounded-2xl gap-2 sm:gap-3 w-full min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-md ring-1 sm:ring-2 ring-amber-300 shrink-0">
                 👑 1
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
-                  {t('1. APPLICANT CLAIM FORM (PRIMARY / SELF)', '1. അപേക്ഷകന്റെ സ്വന്തം ക്ലെയിം ഫോം')}
+                <h3 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-1.5 sm:gap-2 break-words">
+                  {t('1. Self Claim (Self Claimant)', '1. സ്വന്തം ക്ലെയിം (Self Claimant)')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
-                  {t('Primary Claimant Profile & Settlement Form', 'പ്രധാന അപേക്ഷകന്റെ വ്യക്തിഗത & സെറ്റിൽമെന്റ് ഫോം')}
+                <p className="text-[9px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
+                  {t('Primary Member Claim & Profile Details', 'പ്രധാന വ്യക്തിയുടെ ക്ലെയിം & വ്യക്തിഗത വിവരങ്ങൾ')}
                 </p>
               </div>
             </div>
-            <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs shrink-0">
-              {t('Form 1 (Self)', 'ഫോം 1 (സ്വന്തം)')}
-            </Badge>
-          </div>
-
-        {/* 1. Customer & Declarant Information Input Card */}
-        <Card className="border-2 border-slate-300 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
-          <CardContent className="p-5 md:p-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3.5 border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#003366] to-slate-800 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-slate-100">
-                  👤
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                    {t('1. Customer & Declarant Information (Mandatory)', '1. കസ്റ്റമർ & ഡിക്ലറന്റ് വിവരങ്ങൾ (നിർബന്ധം)')}
-                  </h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">
-                    {t('Customer Personal & Address Details', 'കസ്റ്റമറുടെ വ്യക്തിഗത & മേൽവിലാസ വിവരങ്ങൾ')}
-                  </p>
-                </div>
-              </div>
-              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
-                {t('Auto-fills A4 Print Form', 'A4 പ്രിന്റ് ഫോമിലേക്ക് ചേർക്കുന്നു')}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] sm:text-[10px] font-black rounded-md sm:rounded-xl px-2 sm:px-3 py-0.5 sm:py-1 shadow-2xs sm:shadow-xs">
+                {t('Form 1 (Self)', 'ഫോം 1 (സ്വന്തം)')}
               </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Applicant Name Column */}
-              <FormFieldBox 
-                id="field-customerName"
-                label={tLabel('Customer Name / Declarant Name *', 'കസ്റ്റമറുടെ പേര് *')}
-                icon="👤"
-                theme="blue"
-                required
-                error={validationErrors['customerName']}
-              >
-                <Input 
-                  value={customerName} 
-                  onChange={(e) => {
-                    setCustomerName(e.target.value);
-                    setSelfName(e.target.value);
-                    clearFieldError('customerName');
-                  }} 
-                  placeholder={tPlaceholder('Full Name as per records', 'രേഖകളിലുള്ള മുഴുവൻ പേര്')}
-                  className={`h-10 border ${validationErrors['customerName'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* Registered Mobile Number Column */}
-              <FormFieldBox 
-                id="field-customerMobile"
-                label={tLabel('Registered Mobile Number *', 'രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ *')}
-                icon="📱"
-                theme="blue"
-                required
-                error={validationErrors['customerMobile']}
-              >
-                <Input 
-                  value={customerMobile} 
-                  onChange={(e) => {
-                    setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
-                    clearFieldError('customerMobile');
-                  }} 
-                  placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                  type="tel"
-                  maxLength={10}
-                  className={`h-10 border ${validationErrors['customerMobile'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* Customer ID Column */}
-              <FormFieldBox 
-                id="field-selfHighrichId"
-                label={tLabel('Customer ID (Highrich ID)', 'കസ്റ്റമർ ഐഡി / ഹൈറിച്ച് ഐഡി (ഓപ്ഷണൽ)')}
-                icon="🆔"
-                theme="purple"
-                optional
-              >
-                <Input 
-                  value={selfHighrichId} 
-                  onChange={(e) => {
-                    setSelfHighrichId(e.target.value);
-                  }} 
-                  placeholder={tPlaceholder('Enter Customer ID (Optional)', 'കസ്റ്റമർ ഐഡി നൽകുക')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* PAN Card Column */}
-              <FormFieldBox 
-                id="field-customerPan"
-                label={tLabel('PAN Card Number *', 'പാൻ കാർഡ് നമ്പർ *')}
-                icon="💳"
-                theme="purple"
-                required
-                error={validationErrors['customerPan']}
-              >
-                <Input 
-                  value={customerPan} 
-                  onChange={(e) => {
-                    setCustomerPan(e.target.value.toUpperCase());
-                    clearFieldError('customerPan');
-                  }} 
-                  placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ നമ്പർ നൽകുക (ഉദാ: ABCDE1234F)')}
-                  maxLength={10}
-                  className={`h-10 border ${validationErrors['customerPan'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* Joining Date Column */}
-              <FormFieldBox 
-                id="field-customerJoiningDate"
-                label={tLabel('Joining Date', 'കമ്പനിയിൽ ചേർന്ന തീയതി (Joining Date)')}
-                icon="📅"
-                theme="blue"
-                optional
-              >
-                <Input 
-                  type="date"
-                  value={customerJoiningDate} 
-                  onChange={(e) => {
-                    setCustomerJoiningDate(e.target.value);
-                    setSelfJoiningDate(e.target.value);
-                  }} 
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* Full Address Column */}
-              <FormFieldBox 
-                id="field-customerAddress"
-                label={tLabel('Full Residential Address *', 'മേൽവിലാസം *')}
-                icon="🏠"
-                theme="indigo"
-                required
-                error={validationErrors['customerAddress']}
-                className="md:col-span-2"
-              >
-                <Input 
-                  value={customerAddress} 
-                  onChange={(e) => {
-                    handleCustomerAddressChange(e.target.value);
-                    clearFieldError('customerAddress');
-                  }} 
-                  placeholder={tPlaceholder('House Name, Street, Locality', 'വീട്ടുപേര്, സ്ഥലം, ലൊക്കാലിറ്റി')}
-                  className={`h-10 border ${validationErrors['customerAddress'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* District Column */}
-              <FormFieldBox 
-                id="field-customerDistrict"
-                label={tLabel('District *', 'ജില്ല *')}
-                icon="📍"
-                theme="indigo"
-                required
-                error={validationErrors['customerDistrict']}
-              >
-                <Input 
-                  value={customerDistrict} 
-                  onChange={(e) => {
-                    handleCustomerDistrictChange(e.target.value);
-                    clearFieldError('customerDistrict');
-                  }} 
-                  placeholder={tPlaceholder('District', 'ജില്ല')}
-                  className={`h-10 border ${validationErrors['customerDistrict'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* Assembly Constituency Column */}
-              <FormFieldBox 
-                id="field-customerConstituency"
-                label={tLabel('Assembly Constituency *', 'നിയമസഭാ മണ്ഡലം *')}
-                icon="🏛️"
-                theme="indigo"
-                error={validationErrors['customerConstituency']}
-              >
-                <Input 
-                  value={customerConstituency} 
-                  onChange={(e) => {
-                    handleCustomerConstituencyChange(e.target.value);
-                    clearFieldError('customerConstituency');
-                  }} 
-                  placeholder={tPlaceholder('Assembly Constituency', 'നിയമസഭാ മണ്ഡലം')}
-                  className={`h-10 border ${validationErrors['customerConstituency'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* Post Office Column */}
-              <FormFieldBox 
-                id="field-customerPostOffice"
-                label={tLabel('Post Office *', 'പോസ്റ്റ് ഓഫീസ് *')}
-                icon="📬"
-                theme="slate"
-                required
-                error={validationErrors['customerPostOffice']}
-              >
-                <Input 
-                  value={customerPostOffice} 
-                  onChange={(e) => {
-                    handleCustomerPostOfficeChange(e.target.value);
-                    clearFieldError('customerPostOffice');
-                  }} 
-                  placeholder={tPlaceholder('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
-                  className={`h-10 border ${validationErrors['customerPostOffice'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs`}
-                />
-              </FormFieldBox>
-
-              {/* PIN Code Column */}
-              <FormFieldBox 
-                id="field-customerPincode"
-                label={tLabel('PIN Code *', 'പിൻകോഡ് *')}
-                icon="📮"
-                theme="slate"
-                required
-                error={validationErrors['customerPincode']}
-              >
-                <Input 
-                  value={customerPincode} 
-                  onChange={(e) => {
-                    handleCustomerPincodeChange(e.target.value);
-                    clearFieldError('customerPincode');
-                  }} 
-                  placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
-                  maxLength={6}
-                  className={`h-10 border ${validationErrors['customerPincode'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
-                />
-              </FormFieldBox>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SLOT 1: SELF CLAIM (ആ വ്യക്തി) */}
-        {(!hasSelf || editingSelf) && (
-        <Card className="border border-slate-200/90 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
-          <CardContent className="p-5 md:p-6 space-y-5">
-            <div className="flex items-center justify-between border-b pb-3.5 border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-blue to-indigo-700 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-blue-50">1</div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                    {t('1. Self Claim (Self Claimant)', '1. സ്വന്തം ക്ലെയിം')}
-                  </h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">
-                    {t('Primary member details', 'പ്രധാന വ്യക്തിയുടെ വിവരങ്ങൾ')}
-                  </p>
-                </div>
-              </div>
               <Checkbox 
                 checked={selfSelected} 
                 onCheckedChange={(val) => setSelfSelected(!!val)} 
-                className="w-5 h-5 border-slate-300 rounded-md data-[state=checked]:bg-brand-blue cursor-pointer" 
+                className="w-4.5 h-4.5 sm:w-5 sm:h-5 border-amber-500 rounded-md data-[state=checked]:bg-brand-blue cursor-pointer" 
               />
             </div>
+          </div>
 
-            {selfSelected && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+        {selfSelected && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6">
+            {/* Member Profile & Claimant Details (Auto-populated from Profile) */}
+            <Card className="border border-slate-200/90 sm:border-2 sm:border-slate-300 rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
+              <CardContent className="p-3.5 sm:p-5 md:p-6 space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between border-b pb-3.5 border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#003366] to-slate-800 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-slate-100">
+                      👤
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                        {t('Claimant Profile Details (Auto-populated)', 'അപേക്ഷകന്റെ വ്യക്തിഗത & മേൽവിലാസ വിവരങ്ങൾ')}
+                      </h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">
+                        {t('Verified Member Information', 'പ്രൊഫൈലിൽ നിന്നുള്ള വിവരങ്ങൾ')}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
+                    {t('Auto-filled from Profile', 'പ്രൊഫൈലിൽ നിന്ന് ചേർത്തത്')}
+                  </Badge>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Claimant Name Column */}
                   <FormFieldBox 
-                    label={tLabel('Claimant Name *', 'പേര് *')}
+                    id="field-customerName"
+                    label={tLabel('Claimant Name *', 'അപേക്ഷകന്റെ പേര് *')}
                     icon="👤"
                     theme="blue"
                     required
+                    error={validationErrors['customerName']}
                   >
                     <Input 
-                      value={selfName} 
-                      onChange={(e) => setSelfName(e.target.value)} 
-                      placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
-                      className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs"
+                      value={customerName || selfName} 
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        setSelfName(e.target.value);
+                        clearFieldError('customerName');
+                      }} 
+                      placeholder={tPlaceholder('Full Name as per records', 'രേഖകളിലുള്ള മുഴുവൻ പേര്')}
+                      className={`h-10 border ${validationErrors['customerName'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                    />
+                  </FormFieldBox>
+
+                  {/* Registered Mobile Number Column */}
+                  <FormFieldBox 
+                    id="field-customerMobile"
+                    label={tLabel('Registered Mobile Number *', 'രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ *')}
+                    icon="📱"
+                    theme="blue"
+                    required
+                    error={validationErrors['customerMobile']}
+                  >
+                    <Input 
+                      value={customerMobile} 
+                      onChange={(e) => {
+                        setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                        clearFieldError('customerMobile');
+                      }} 
+                      placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                      type="tel"
+                      maxLength={10}
+                      className={`h-10 border ${validationErrors['customerMobile'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
                     />
                   </FormFieldBox>
 
                   {/* Customer ID Column */}
                   <FormFieldBox 
-                    label={tLabel('Customer ID (Optional)', 'കസ്റ്റമർ ഐഡി (ഓപ്ഷണൽ)')}
+                    id="field-selfHighrichId"
+                    label={tLabel('Customer ID (Highrich ID)', 'കസ്റ്റമർ ഐഡി / ഹൈറിച്ച് ഐഡി (ഓപ്ഷണൽ)')}
                     icon="🆔"
                     theme="purple"
                     optional
                   >
                     <Input 
                       value={selfHighrichId} 
-                      onChange={(e) => setSelfHighrichId(e.target.value)} 
-                      placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
+                      onChange={(e) => {
+                        setSelfHighrichId(e.target.value);
+                      }} 
+                      placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി നൽകുക')}
                       className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
                     />
                   </FormFieldBox>
+
+                  {/* PAN Card Column */}
+                  <FormFieldBox 
+                    id="field-customerPan"
+                    label={tLabel('PAN Card Number *', 'പാൻ കാർഡ് നമ്പർ *')}
+                    icon="💳"
+                    theme="purple"
+                    required
+                    error={validationErrors['customerPan']}
+                  >
+                    <Input 
+                      value={customerPan} 
+                      onChange={(e) => {
+                        setCustomerPan(e.target.value.toUpperCase());
+                        clearFieldError('customerPan');
+                      }} 
+                      placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ നമ്പർ നൽകുക (ഉദാ: ABCDE1234F)')}
+                      maxLength={10}
+                      className={`h-10 border ${validationErrors['customerPan'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs`}
+                    />
+                  </FormFieldBox>
+
+                  {/* Joining Date Column */}
+                  <FormFieldBox 
+                    id="field-customerJoiningDate"
+                    label={tLabel('Joining Date', 'കമ്പനിയിൽ ചേർന്ന തീയതി (Joining Date)')}
+                    icon="📅"
+                    theme="blue"
+                    optional
+                  >
+                    <Input 
+                      type="date"
+                      value={customerJoiningDate} 
+                      onChange={(e) => {
+                        setCustomerJoiningDate(e.target.value);
+                        setSelfJoiningDate(e.target.value);
+                      }} 
+                      className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs"
+                    />
+                  </FormFieldBox>
+
+                  {/* District Column */}
+                  <FormFieldBox 
+                    id="field-customerDistrict"
+                    label={tLabel('District *', 'ജില്ല *')}
+                    icon="📍"
+                    theme="indigo"
+                    required
+                    error={validationErrors['customerDistrict']}
+                  >
+                    <Input 
+                      value={customerDistrict} 
+                      onChange={(e) => {
+                        handleCustomerDistrictChange(e.target.value);
+                        clearFieldError('customerDistrict');
+                      }} 
+                      placeholder={tPlaceholder('District', 'ജില്ല')}
+                      className={`h-10 border ${validationErrors['customerDistrict'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                    />
+                  </FormFieldBox>
+
+                  {/* Assembly Constituency Column */}
+                  <FormFieldBox 
+                    id="field-customerConstituency"
+                    label={tLabel('Assembly Constituency / Mandalam *', 'നിയമസഭാ മണ്ഡലം *')}
+                    icon="🏛️"
+                    theme="indigo"
+                    required
+                    error={validationErrors['customerConstituency']}
+                  >
+                    <Input 
+                      value={customerConstituency} 
+                      onChange={(e) => {
+                        handleCustomerConstituencyChange(e.target.value);
+                        clearFieldError('customerConstituency');
+                      }} 
+                      placeholder={tPlaceholder('Assembly Constituency / Mandalam', 'നിയമസഭാ മണ്ഡലം')}
+                      className={`h-10 border ${validationErrors['customerConstituency'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                    />
+                  </FormFieldBox>
+
+                  {/* Post Office Column */}
+                  <FormFieldBox 
+                    id="field-customerPostOffice"
+                    label={tLabel('Post Office *', 'പോസ്റ്റ് ഓഫീസ് *')}
+                    icon="📬"
+                    theme="slate"
+                    required
+                    error={validationErrors['customerPostOffice']}
+                  >
+                    <Input 
+                      value={customerPostOffice} 
+                      onChange={(e) => {
+                        handleCustomerPostOfficeChange(e.target.value);
+                        clearFieldError('customerPostOffice');
+                      }} 
+                      placeholder={tPlaceholder('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
+                      className={`h-10 border ${validationErrors['customerPostOffice'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                    />
+                  </FormFieldBox>
+
+                  {/* PIN Code Column */}
+                  <FormFieldBox 
+                    id="field-customerPincode"
+                    label={tLabel('PIN Code *', 'പിൻകോഡ് *')}
+                    icon="📮"
+                    theme="slate"
+                    required
+                    error={validationErrors['customerPincode']}
+                  >
+                    <Input 
+                      value={customerPincode} 
+                      onChange={(e) => {
+                        handleCustomerPincodeChange(e.target.value);
+                        clearFieldError('customerPincode');
+                      }} 
+                      placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
+                      maxLength={6}
+                      className={`h-10 border ${validationErrors['customerPincode'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
+                    />
+                  </FormFieldBox>
+
+                  {/* Full Address Column */}
+                  <FormFieldBox 
+                    id="field-customerAddress"
+                    label={tLabel('House Name / Residential Address *', 'വീട്ടുപേര് / മേൽവിലാസം *')}
+                    icon="🏠"
+                    theme="indigo"
+                    required
+                    error={validationErrors['customerAddress']}
+                    className="md:col-span-2"
+                  >
+                    <Input 
+                      value={customerAddress} 
+                      onChange={(e) => {
+                        handleCustomerAddressChange(e.target.value);
+                        clearFieldError('customerAddress');
+                      }} 
+                      placeholder={tPlaceholder('House Name, Street, Locality', 'വീട്ടുപേര്, സ്ഥലം, ലൊക്കാലിറ്റി')}
+                      className={`h-10 border ${validationErrors['customerAddress'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                    />
+                  </FormFieldBox>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Financial Claim Amount & Category Details */}
+            <Card className="border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
+              <CardContent className="p-3.5 sm:p-5 md:p-6 space-y-3.5 sm:space-y-5">
+                <div className="flex items-center justify-between border-b pb-2.5 sm:pb-3.5 border-slate-100">
+                  <div className="flex items-center gap-2 sm:gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-amber-100 shrink-0">
+                      💰
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-xs font-black text-slate-800 uppercase tracking-wide">
+                        {t('Claim Amount & Investment Details', 'ക്ലെയിം തുക & നിക്ഷേപ വിവരങ്ങൾ')}
+                      </h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">
+                        {t('Category breakup or single total advance', 'കാറ്റഗറി തിരിച്ചുള്ളതോ മൊത്തത്തിലുള്ളതോ ആയ തുക')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Sub-breakup Selector */}
-                <div className="bg-slate-50/90 p-3.5 rounded-2xl border-2 border-slate-300/80 flex items-center gap-3 shadow-xs">
+                <div className="bg-slate-50/70 sm:bg-slate-50/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 sm:border-2 sm:border-slate-300/80 flex items-center gap-2.5 sm:gap-3 shadow-2xs sm:shadow-xs">
                    <Checkbox 
                      id="self-no-breakup"
                      checked={selfNoBreakup}
                      onCheckedChange={(val) => setSelfNoBreakup(!!val)}
-                     className="w-4 h-4 rounded-md cursor-pointer"
+                     className="w-4 h-4 rounded-md cursor-pointer shrink-0"
                    />
-                   <Label htmlFor="self-no-breakup" className="text-[11px] font-bold text-slate-700 leading-tight cursor-pointer">
+                   <Label htmlFor="self-no-breakup" className="text-[10.5px] sm:text-[11px] font-bold text-slate-700 leading-tight cursor-pointer">
                      {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
                    </Label>
                 </div>
 
                 {/* Breakup Details OR Total manual entries */}
                 {selfNoBreakup ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-4 border-2 border-slate-300 rounded-3xl shadow-xs">
+                  <div className="space-y-2.5 sm:space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 bg-slate-50/40 sm:bg-slate-50/80 p-2.5 sm:p-4 border border-slate-200 sm:border-2 sm:border-slate-300 rounded-xl sm:rounded-3xl shadow-2xs sm:shadow-xs">
                       <FormFieldBox 
                         label={tLabel('Advance Paid (Total)', 'ആകെ നൽകിയ തുക')}
                         icon="💰"
@@ -4190,18 +4264,18 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                             type="text"
                             readOnly
                             value={Number(selfTotalPending || 0).toLocaleString('en-IN')}
-                            className="pl-8 h-10 bg-purple-50/70 border-2 border-purple-300 rounded-xl font-black text-sm text-purple-950 shadow-2xs cursor-not-allowed"
+                            className="pl-8 h-10 bg-purple-50/70 border border-purple-300 sm:border-2 rounded-xl font-black text-sm text-purple-950 shadow-2xs cursor-not-allowed"
                           />
                         </div>
                       </FormFieldBox>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-800 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-800 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-2xs">
                       📂 <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = selfCategories.includes(cat.id);
                         return (
@@ -4210,7 +4284,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                             onClick={() => {
                               setSelfCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
                             }}
-                            className={`px-3.5 py-2 border-2 rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all shadow-2xs ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.08] text-brand-magenta scale-[1.01]' : 'border-slate-300 bg-white hover:border-slate-400 text-slate-700'}`}
+                            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 border sm:border-2 rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all shadow-2xs ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.08] text-brand-magenta scale-[1.01]' : 'border-slate-300 bg-white hover:border-slate-400 text-slate-700'}`}
                           >
                             <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
                             {cat.heading}
@@ -4220,17 +4294,17 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     </div>
 
                     {/* Detailed Inputs */}
-                    <div className="space-y-3 w-full min-w-0">
+                    <div className="space-y-2.5 sm:space-y-3 w-full min-w-0">
                       {selfCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-slate-300 rounded-2xl bg-white gap-3 shadow-xs w-full min-w-0">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#003366] text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3.5 border sm:border-2 border-slate-300 rounded-xl sm:rounded-2xl bg-white gap-2.5 sm:gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#003366] text-white text-[11px] sm:text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
                               📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💰 <span>{t('Paid', 'നൽകിയത്')}</span>
                                 </div>
                                 <Input 
@@ -4238,11 +4312,11 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Paid', 'നൽകിയത്')} 
                                   value={selfCategoryDetails[catId]?.paid || ''}
                                   onChange={(e) => handleCategoryDetailChange('self', catId, 'paid', e.target.value)}
-                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs w-full min-w-0"
+                                  className="h-9 sm:h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs w-full min-w-0"
                                 />
                               </div>
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
                                 </div>
                                 <Input 
@@ -4250,7 +4324,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Received', 'ലഭിച്ചത്')} 
                                   value={selfCategoryDetails[catId]?.received || ''}
                                   onChange={(e) => handleCategoryDetailChange('self', catId, 'received', e.target.value)}
-                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs w-full min-w-0"
+                                  className="h-9 sm:h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs w-full min-w-0"
                                 />
                               </div>
                             </div>
@@ -4274,19 +4348,18 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       'Enter any additional remarks if needed...',
                       'കൂടുതൽ വിവരങ്ങൾ എന്തെങ്കിലും ഉണ്ടെങ്കിൽ ഇവിടെ രേഖപ്പെടുത്താം...'
                     )}
-                    className="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl focus:border-brand-blue focus:bg-white focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
+                    className="w-full text-xs font-bold p-2.5 sm:p-3 border border-slate-300 rounded-xl focus:border-brand-blue focus:bg-white focus:ring-0 focus:outline-none min-h-16 sm:min-h-20 bg-white text-slate-900 shadow-2xs"
                   />
                 </FormFieldBox>
 
                 {/* Amount mini-badge */}
-                <div className="bg-slate-900 text-white rounded-2xl p-3.5 flex justify-between items-center text-xs font-bold shadow-sm">
-                  <span className="text-slate-300">{t('Total Pending Amount:', 'ആകെ മിച്ച തുക:')}</span>
-                  <span className="text-base font-black text-emerald-400">₹{selfTotalPending.toLocaleString('en-IN')}</span>
+                <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-3 sm:p-3.5 flex justify-between items-center text-xs font-bold shadow-sm">
+                  <span className="text-slate-300 text-[11px] sm:text-xs font-bold">{t('Total Pending Amount:', 'ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">₹{selfTotalPending.toLocaleString('en-IN')}</span>
                 </div>
-              </motion.div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
         {/* 3. PAYMENT & SETTLEMENT DETAILS REMOVED IN FAVOR OF SIMPLIFIED AUDIT VERIFICATION */}
@@ -4295,15 +4368,15 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           {renderFutureAndConditionsBlock('self')}
 
           {/* INLINE SUBMIT BUTTON FOR FORM 1 */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-            <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
+            <div className="pt-3 sm:pt-4 border-t border-amber-300 sm:border-t-2 sm:border-amber-300/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-amber-300/60">
               <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                <div className="font-black text-amber-950 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <div className="font-black text-amber-950 flex items-center gap-1.5 text-xs sm:text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   {t('Applicant Form Completed', 'അപേക്ഷകന്റെ ഫോം പൂർത്തിയായി')}
                 </div>
-                <p className="text-[11px] text-slate-600">
+                <p className="text-[10.5px] sm:text-[11px] text-slate-600">
                   {t('Click below to submit this claim form immediately and get official token.', 'ഈ ക്ലെയിം ഫോം സമർപ്പിക്കാനും ഔദ്യോഗിക ടോക്കൺ നമ്പർ നേടാനും താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
                 </p>
               </div>
@@ -4311,7 +4384,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 type="button"
                 disabled={loading}
                 onClick={() => handleSubmit('Self')}
-                className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                className="w-full sm:w-auto h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md sm:shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
               >
                     {loading ? (
                       <span className="flex items-center gap-2">
@@ -4331,14 +4404,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           )}
 
         {/* SECTION DIVIDER: FAMILY MEMBERS CLAIMS (OPTIONAL - MAX 4 PERSONS IN TOTAL) */}
-        <div className="bg-gradient-to-r from-pink-50 via-slate-50 to-indigo-50 border border-slate-200 rounded-3xl p-5 sm:p-6 space-y-2.5">
-          <div className="flex items-start gap-3">
-            <Users className="w-5 h-5 text-brand-magenta shrink-0 mt-0.5" />
+        <div className="bg-gradient-to-r from-pink-50 via-slate-50 to-indigo-50 border border-slate-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 space-y-2 sm:space-y-2.5">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-brand-magenta shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+              <h4 className="text-[11.5px] sm:text-xs font-black text-slate-900 uppercase tracking-wide">
                 {t('Family Members Claim (Optional - Fill only if applicable)', 'കുടുംബാംഗങ്ങളുടെ ക്ലെയിം (ആവശ്യമെങ്കിൽ മാത്രം പൂരിപ്പിക്കുക - ഓപ്ഷണൽ)')}
               </h4>
-              <p className="text-slate-700 font-bold text-xs leading-relaxed">
+              <p className="text-slate-700 font-bold text-[11px] sm:text-xs leading-relaxed">
                 {t(
                   'If you also wish to include claim details for your family members, please select and fill the respective sections below in order: 2. Spouse (Wife/Husband), 3. Parent (Mother/Father), 4. Child (Son/Daughter). Each member will receive an individual official court serial register token.',
                   'താങ്കളുടെ കുടുംബാംഗങ്ങളുടെ തുകകൾ കൂടി രേഖപ്പെടുത്താൻ ആഗ്രഹിക്കുന്നുവെങ്കിൽ താഴെ നൽകിയിട്ടുള്ള ക്രമത്തിൽ (2. ഭാര്യ / ഭർത്താവ്, 3. അമ്മ / അച്ഛൻ, 4. മകൻ / മകൾ) ആവശ്യമുള്ള ബോക്സ് ടിക്ക് ചെയ്ത് വിവരങ്ങൾ പൂരിപ്പിക്കുക. ഓരോ വ്യക്തിക്കും വ്യക്തിഗതമായ ഔദ്യോഗിക കോർട്ട് സീരിയൽ നമ്പർ ലഭിക്കുന്നതാണ്.'
@@ -4350,8 +4423,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* SUBMITTED CARD OR FULL FORM: 2. SPOUSE CLAIM FORM */}
         {hasSpouse && !editingSpouse && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+          <div className="border border-emerald-400/80 sm:border-2 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-xl sm:rounded-3xl shadow-xs sm:shadow-lg p-3 sm:p-6 space-y-2.5 sm:space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-emerald-200/80 pb-3 sm:pb-3.5 w-full min-w-0">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 2
@@ -4425,12 +4498,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* GOLD WRAPPER: 2. SPOUSE CLAIM FORM */}
         {(!hasSpouse || editingSpouse) && (
-        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+        <div className="border border-amber-300 sm:border-2 sm:border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl ring-0 sm:ring-2 sm:ring-amber-400/20 overflow-hidden p-2.5 sm:p-6 space-y-3 sm:space-y-6">
           {editingSpouse && (
-            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-amber-700" />
-                <span className="text-xs font-black uppercase tracking-wide">
+            <div className="bg-amber-100 border border-amber-400 sm:border-2 rounded-lg sm:rounded-2xl p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 text-amber-950">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wide leading-tight">
                   {t('Editing Form 2 (Spouse) Information', 'ഫോം 2 (ഭാര്യ / ഭർത്താവ് വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
                 </span>
               </div>
@@ -4439,29 +4512,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 size="sm"
                 variant="outline"
                 onClick={() => setEditingSpouse(false)}
-                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50 shrink-0"
               >
                 {t('Cancel Edit', 'റദ്ദാക്കുക')}
               </Button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
+          <div className="flex flex-wrap items-center justify-between pb-2.5 sm:pb-4 border-b border-amber-300 sm:border-b-2 sm:border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-2.5 sm:p-5 rounded-lg sm:rounded-2xl gap-2 sm:gap-3 w-full min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-md ring-1 sm:ring-2 ring-amber-300 shrink-0">
                 👑 2
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
+                <h3 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-1.5 sm:gap-2 break-words">
                   {t('2. SPOUSE CLAIM FORM (WIFE / HUSBAND)', '2. ഭാര്യ / ഭർത്താവ് ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
+                <p className="text-[9px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Spouse Settlement Claim Form', 'ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവിന്റെ സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] sm:text-[10px] font-black rounded-md sm:rounded-xl px-2 sm:px-3 py-0.5 sm:py-1 shadow-2xs sm:shadow-xs">
                 {t('Form 2 (Spouse)', 'ഫോം 2 (സ്പൗസ്)')}
               </Badge>
               <Checkbox 
@@ -4482,7 +4555,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     if (!spousePincode && pin) setSpousePincode(pin);
                   }
                 }} 
-                className="w-5 h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
+                className="w-4.5 h-4.5 sm:w-5 sm:h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
               />
             </div>
           </div>
@@ -4770,21 +4843,21 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </div>
 
                 {/* Sub-breakup Selector */}
-                <div className="bg-amber-50/70 p-3.5 rounded-2xl border-2 border-amber-200 flex items-center gap-3 shadow-xs">
+                <div className="bg-amber-50/70 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-amber-200 sm:border-2 flex items-center gap-2.5 sm:gap-3 shadow-2xs sm:shadow-xs">
                    <Checkbox 
                      id="spouse-no-breakup"
                      checked={spouseNoBreakup}
                      onCheckedChange={(val) => setSpouseNoBreakup(!!val)}
-                     className="w-5 h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer"
+                     className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer shrink-0"
                    />
-                   <Label htmlFor="spouse-no-breakup" className="text-xs font-black text-amber-950 leading-tight cursor-pointer">
+                   <Label htmlFor="spouse-no-breakup" className="text-[10.5px] sm:text-xs font-black text-amber-950 leading-tight cursor-pointer">
                      {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
                    </Label>
                 </div>
 
                 {/* Breakup Details OR Total manual entries */}
                 {spouseNoBreakup ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 bg-slate-50/40 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border border-slate-200 sm:border-0">
                     <FormFieldBox
                       label={tLabel('Advance Paid (Total)', 'ആകെ നൽകിയ തുക')}
                       icon="💵"
@@ -4793,13 +4866,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="rose"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
                           placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
                           value={spouseTotalPaid || ''}
                           onChange={(e) => handleTotalChange('spouse', 'paid', e.target.value)}
-                          className="pl-9 h-11 bg-white border-2 border-rose-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-rose-500"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-white border border-rose-200 sm:border-2 rounded-xl font-black text-sm text-slate-900 shadow-2xs focus:border-rose-500"
                         />
                       </div>
                     </FormFieldBox>
@@ -4812,13 +4885,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="emerald"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
                           placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
                           value={spouseTotalReceived || ''}
                           onChange={(e) => handleTotalChange('spouse', 'received', e.target.value)}
-                          className="pl-9 h-11 bg-white border-2 border-emerald-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-emerald-500"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-white border border-emerald-200 sm:border-2 rounded-xl font-black text-sm text-slate-900 shadow-2xs focus:border-emerald-500"
                         />
                       </div>
                     </FormFieldBox>
@@ -4831,25 +4904,25 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="purple"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="text"
                           readOnly
                           value={Number(spouseTotalPending || 0).toLocaleString('en-IN')}
-                          className="pl-9 h-11 bg-purple-50/70 border-2 border-purple-300 rounded-xl font-black text-sm text-purple-950 shadow-xs cursor-not-allowed"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-purple-50/70 border border-purple-300 sm:border-2 rounded-xl font-black text-sm text-purple-950 shadow-2xs cursor-not-allowed"
                         />
                       </div>
                     </FormFieldBox>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg bg-pink-100 text-pink-700 text-[11px] font-black">1</span>
+                      <Label className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-pink-100 text-pink-700 text-[10px] sm:text-[11px] font-black">1</span>
                         <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
                       </Label>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = spouseCategories.includes(cat.id);
                         return (
@@ -4858,7 +4931,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                             onClick={() => {
                               setSpouseCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
                             }}
-                            className={`px-3.5 py-2.5 border-2 rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2.5 transition-all ${isSel ? 'border-pink-500 bg-pink-50 text-pink-900 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
+                            className={`px-3 py-1.5 sm:px-3.5 sm:py-2.5 border sm:border-2 rounded-xl sm:rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2 sm:gap-2.5 transition-all ${isSel ? 'border-pink-500 bg-pink-50 text-pink-900 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
                           >
                             <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
                             {cat.heading}
@@ -4868,17 +4941,17 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     </div>
 
                      {/* Detailed Inputs */}
-                    <div className="space-y-3 w-full min-w-0">
+                    <div className="space-y-2.5 sm:space-y-3 w-full min-w-0">
                       {spouseCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-rose-100 rounded-2xl bg-rose-50/20 gap-3 shadow-xs w-full min-w-0">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-pink-700 text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3.5 border sm:border-2 border-rose-100 rounded-xl sm:rounded-2xl bg-rose-50/20 gap-2.5 sm:gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-700 text-white text-[11px] sm:text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
                               📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💰 <span>{t('Paid', 'നൽകിയത്')}</span>
                                 </div>
                                 <Input 
@@ -4886,11 +4959,11 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
                                   value={spouseCategoryDetails[catId]?.paid || ''}
                                   onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
-                                  className="h-10 border-2 border-rose-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                  className="h-9 sm:h-10 border border-rose-200 sm:border-2 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
                                 />
                               </div>
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
                                 </div>
                                 <Input 
@@ -4898,7 +4971,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
                                   value={spouseCategoryDetails[catId]?.received || ''}
                                   onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
-                                  className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                  className="h-9 sm:h-10 border border-emerald-200 sm:border-2 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
                                 />
                               </div>
                             </div>
@@ -4924,29 +4997,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       'Enter any details regarding bank account paid from or transaction references...',
                       'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
                     )}
-                    className="w-full text-xs font-semibold p-3 border-2 border-slate-200 rounded-xl focus:border-pink-500 focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
+                    className="w-full text-xs font-semibold p-2.5 sm:p-3 border border-slate-300 sm:border-2 rounded-xl focus:border-pink-500 focus:ring-0 focus:outline-none min-h-16 sm:min-h-20 bg-white text-slate-900 shadow-2xs"
                   />
                 </FormFieldBox>
 
                 {/* Amount mini-badge */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 flex justify-between items-center text-xs font-bold shadow-md">
-                  <span className="text-slate-300 font-black uppercase tracking-wide">{t('Spouse Total Pending Amount:', 'ഭാര്യ / ഭർത്താവിന്റെ ആകെ മിച്ച തുക:')}</span>
-                  <span className="text-base font-black text-emerald-400 font-mono">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
+                <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex justify-between items-center text-xs font-bold shadow-md">
+                  <span className="text-slate-300 text-[10.5px] sm:text-xs font-black uppercase tracking-wide">{t('Spouse Total Pending Amount:', 'ഭാര്യ / ഭർത്താവിന്റെ ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
                 </div>
 
                 {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
                 {renderFutureAndConditionsBlock('spouse')}
 
                 {/* INLINE SUBMIT BUTTON FOR SPOUSE FORM */}
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
+                  <div className="pt-3 sm:pt-4 border-t border-amber-300 sm:border-t-2 sm:border-amber-300/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-amber-300/60">
                     <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                      <div className="font-black text-amber-950 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div className="font-black text-amber-950 flex items-center gap-1.5 text-xs sm:text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         {t('Spouse Form Completed', 'ഭാര്യ / ഭർത്താവിന്റെ ഫോം പൂർത്തിയായി')}
                       </div>
-                      <p className="text-[11px] text-slate-600">
+                      <p className="text-[10.5px] sm:text-[11px] text-slate-600">
                         {t('Click below to submit claim form with spouse details.', 'ഭാര്യ / ഭർത്താവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
                       </p>
                     </div>
@@ -4954,7 +5027,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       type="button"
                       disabled={loading}
                       onClick={() => handleSubmit('Spouse')}
-                      className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                      className="w-full sm:w-auto h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md sm:shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
                     >
                     {loading ? (
                       <span className="flex items-center gap-2">
@@ -4979,8 +5052,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* SUBMITTED CARD OR FULL FORM: 3. PARENT CLAIM FORM */}
         {hasParent && !editingParent && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+          <div className="border border-emerald-400/80 sm:border-2 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-xl sm:rounded-3xl shadow-xs sm:shadow-lg p-3 sm:p-6 space-y-2.5 sm:space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-emerald-200/80 pb-3 sm:pb-3.5 w-full min-w-0">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 3
@@ -5054,12 +5127,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* GOLD WRAPPER: 3. PARENT CLAIM FORM */}
         {(!hasParent || editingParent) && (
-        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+        <div className="border border-amber-300 sm:border-2 sm:border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl ring-0 sm:ring-2 sm:ring-amber-400/20 overflow-hidden p-2.5 sm:p-6 space-y-3 sm:space-y-6">
           {editingParent && (
-            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-amber-700" />
-                <span className="text-xs font-black uppercase tracking-wide">
+            <div className="bg-amber-100 border border-amber-400 sm:border-2 rounded-lg sm:rounded-2xl p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 text-amber-950">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wide leading-tight">
                   {t('Editing Form 3 (Parent) Information', 'ഫോം 3 (മാതാവ് / പിതാവ് വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
                 </span>
               </div>
@@ -5068,29 +5141,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 size="sm"
                 variant="outline"
                 onClick={() => setEditingParent(false)}
-                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50 shrink-0"
               >
                 {t('Cancel Edit', 'റദ്ദാക്കുക')}
               </Button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
+          <div className="flex flex-wrap items-center justify-between pb-2.5 sm:pb-4 border-b border-amber-300 sm:border-b-2 sm:border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-2.5 sm:p-5 rounded-lg sm:rounded-2xl gap-2 sm:gap-3 w-full min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-md ring-1 sm:ring-2 ring-amber-300 shrink-0">
                 👑 3
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
+                <h3 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-1.5 sm:gap-2 break-words">
                   {t('3. PARENT CLAIM FORM (MOTHER / FATHER)', '3. മാതാവ് / പിതാവ് ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
+                <p className="text-[9px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Parent Settlement Claim Form', 'മാതാവ് അല്ലെങ്കിൽ പിതാവിന്റെ സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] sm:text-[10px] font-black rounded-md sm:rounded-xl px-2 sm:px-3 py-0.5 sm:py-1 shadow-2xs sm:shadow-xs">
                 {t('Form 3 (Parent)', 'ഫോം 3 (മാതാവ്/പിതാവ്)')}
               </Badge>
               <Checkbox 
@@ -5111,7 +5184,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     if (!parentPincode && pin) setParentPincode(pin);
                   }
                 }} 
-                className="w-5 h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
+                className="w-4.5 h-4.5 sm:w-5 sm:h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
               />
             </div>
           </div>
@@ -5399,21 +5472,21 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </div>
 
                 {/* Sub-breakup Selector */}
-                <div className="bg-amber-50/70 p-3.5 rounded-2xl border-2 border-amber-200 flex items-center gap-3 shadow-xs">
+                <div className="bg-amber-50/70 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-amber-200 sm:border-2 flex items-center gap-2.5 sm:gap-3 shadow-2xs sm:shadow-xs">
                    <Checkbox 
                      id="parent-no-breakup"
                      checked={parentNoBreakup}
                      onCheckedChange={(val) => setParentNoBreakup(!!val)}
-                     className="w-5 h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer"
+                     className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer shrink-0"
                    />
-                   <Label htmlFor="parent-no-breakup" className="text-xs font-black text-amber-950 leading-tight cursor-pointer">
+                   <Label htmlFor="parent-no-breakup" className="text-[10.5px] sm:text-xs font-black text-amber-950 leading-tight cursor-pointer">
                      {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
                    </Label>
                 </div>
 
                 {/* Breakup Details OR Total manual entries */}
                 {parentNoBreakup ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 bg-slate-50/40 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border border-slate-200 sm:border-0">
                     <FormFieldBox
                       label={tLabel('Advance Paid (Total)', 'ആകെ നൽകിയ തുക')}
                       icon="💵"
@@ -5422,13 +5495,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="amber"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
                           placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
                           value={parentTotalPaid || ''}
                           onChange={(e) => handleTotalChange('parent', 'paid', e.target.value)}
-                          className="pl-9 h-11 bg-white border-2 border-amber-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-white border border-amber-200 sm:border-2 rounded-xl font-black text-sm text-slate-900 shadow-2xs focus:border-amber-500"
                         />
                       </div>
                     </FormFieldBox>
@@ -5441,13 +5514,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="emerald"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
                           placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
                           value={parentTotalReceived || ''}
                           onChange={(e) => handleTotalChange('parent', 'received', e.target.value)}
-                          className="pl-9 h-11 bg-white border-2 border-emerald-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-emerald-500"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-white border border-emerald-200 sm:border-2 rounded-xl font-black text-sm text-slate-900 shadow-2xs focus:border-emerald-500"
                         />
                       </div>
                     </FormFieldBox>
@@ -5460,25 +5533,25 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="purple"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="text"
                           readOnly
                           value={Number(parentTotalPending || 0).toLocaleString('en-IN')}
-                          className="pl-9 h-11 bg-purple-50/70 border-2 border-purple-300 rounded-xl font-black text-sm text-purple-950 shadow-xs cursor-not-allowed"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-purple-50/70 border border-purple-300 sm:border-2 rounded-xl font-black text-sm text-purple-950 shadow-2xs cursor-not-allowed"
                         />
                       </div>
                     </FormFieldBox>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-black">1</span>
+                      <Label className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[10px] sm:text-[11px] font-black">1</span>
                         <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
                       </Label>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = parentCategories.includes(cat.id);
                         return (
@@ -5487,7 +5560,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                             onClick={() => {
                               setParentCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
                             }}
-                            className={`px-3.5 py-2.5 border-2 rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2.5 transition-all ${isSel ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
+                            className={`px-3 py-1.5 sm:px-3.5 sm:py-2.5 border sm:border-2 rounded-xl sm:rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2 sm:gap-2.5 transition-all ${isSel ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
                           >
                             <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
                             {cat.heading}
@@ -5497,17 +5570,17 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     </div>
 
                      {/* Detailed Inputs */}
-                    <div className="space-y-3 w-full min-w-0">
+                    <div className="space-y-2.5 sm:space-y-3 w-full min-w-0">
                       {parentCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs w-full min-w-0">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-700 text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3.5 border sm:border-2 border-amber-100 rounded-xl sm:rounded-2xl bg-amber-50/20 gap-2.5 sm:gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-700 text-white text-[11px] sm:text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
                               📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💰 <span>{t('Paid', 'നൽകിയത്')}</span>
                                 </div>
                                 <Input 
@@ -5515,11 +5588,11 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
                                   value={parentCategoryDetails[catId]?.paid || ''}
                                   onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
-                                  className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                  className="h-9 sm:h-10 border border-amber-200 sm:border-2 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
                                 />
                               </div>
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
                                 </div>
                                 <Input 
@@ -5527,7 +5600,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
                                   value={parentCategoryDetails[catId]?.received || ''}
                                   onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
-                                  className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                  className="h-9 sm:h-10 border border-emerald-200 sm:border-2 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
                                 />
                               </div>
                             </div>
@@ -5553,29 +5626,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       'Enter any details regarding bank account paid from or transaction references...',
                       'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
                     )}
-                    className="w-full text-xs font-semibold p-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
+                    className="w-full text-xs font-semibold p-2.5 sm:p-3 border border-slate-300 sm:border-2 rounded-xl focus:border-amber-500 focus:ring-0 focus:outline-none min-h-16 sm:min-h-20 bg-white text-slate-900 shadow-2xs"
                   />
                 </FormFieldBox>
 
                 {/* Amount mini-badge */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 flex justify-between items-center text-xs font-bold shadow-md">
-                  <span className="text-slate-300 font-black uppercase tracking-wide">{t('Parent Total Pending Amount:', 'മാതാവ് / പിതാവിന്റെ ആകെ മിച്ച തുക:')}</span>
-                  <span className="text-base font-black text-emerald-400 font-mono">₹{parentTotalPending.toLocaleString('en-IN')}</span>
+                <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex justify-between items-center text-xs font-bold shadow-md">
+                  <span className="text-slate-300 text-[10.5px] sm:text-xs font-black uppercase tracking-wide">{t('Parent Total Pending Amount:', 'മാതാവ് / പിതാവിന്റെ ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">₹{parentTotalPending.toLocaleString('en-IN')}</span>
                 </div>
 
                 {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
                 {renderFutureAndConditionsBlock('parent')}
 
                 {/* INLINE SUBMIT BUTTON FOR PARENT FORM */}
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
+                  <div className="pt-3 sm:pt-4 border-t border-amber-300 sm:border-t-2 sm:border-amber-300/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-amber-300/60">
                     <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                      <div className="font-black text-amber-950 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div className="font-black text-amber-950 flex items-center gap-1.5 text-xs sm:text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         {t('Parent Form Completed', 'മാതാവ് / പിതാവിന്റെ ഫോം പൂർത്തിയായി')}
                       </div>
-                      <p className="text-[11px] text-slate-600">
+                      <p className="text-[10.5px] sm:text-[11px] text-slate-600">
                         {t('Click below to submit claim form with parent details.', 'മാതാവ് / പിതാവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
                       </p>
                     </div>
@@ -5583,7 +5656,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       type="button"
                       disabled={loading}
                       onClick={() => handleSubmit('Parent')}
-                      className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                      className="w-full sm:w-auto h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md sm:shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
                     >
                     {loading ? (
                       <span className="flex items-center gap-2">
@@ -5608,8 +5681,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* SUBMITTED CARD OR FULL FORM: 4. CHILD CLAIM FORM */}
         {hasChild && !editingChild && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+          <div className="border border-emerald-400/80 sm:border-2 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-xl sm:rounded-3xl shadow-xs sm:shadow-lg p-3 sm:p-6 space-y-2.5 sm:space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-emerald-200/80 pb-3 sm:pb-3.5 w-full min-w-0">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 4
@@ -5683,12 +5756,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
         {/* GOLD WRAPPER: 4. CHILD CLAIM FORM */}
         {(!hasChild || editingChild) && (
-        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+        <div className="border border-amber-300 sm:border-2 sm:border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-xl sm:rounded-3xl shadow-md sm:shadow-xl ring-0 sm:ring-2 sm:ring-amber-400/20 overflow-hidden p-2.5 sm:p-6 space-y-3 sm:space-y-6">
           {editingChild && (
-            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-amber-700" />
-                <span className="text-xs font-black uppercase tracking-wide">
+            <div className="bg-amber-100 border border-amber-400 sm:border-2 rounded-lg sm:rounded-2xl p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 text-amber-950">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wide leading-tight">
                   {t('Editing Form 4 (Child) Information', 'ഫോം 4 (മക്കൾ വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
                 </span>
               </div>
@@ -5697,29 +5770,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 size="sm"
                 variant="outline"
                 onClick={() => setEditingChild(false)}
-                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50 shrink-0"
               >
                 {t('Cancel Edit', 'റദ്ദാക്കുക')}
               </Button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
+          <div className="flex flex-wrap items-center justify-between pb-2.5 sm:pb-4 border-b border-amber-300 sm:border-b-2 sm:border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-2.5 sm:p-5 rounded-lg sm:rounded-2xl gap-2 sm:gap-3 w-full min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-md ring-1 sm:ring-2 ring-amber-300 shrink-0">
                 👑 4
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
+                <h3 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-1.5 sm:gap-2 break-words">
                   {t('4. CHILD CLAIM FORM (SON / DAUGHTER)', '4. മകൻ / മകൾ ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
+                <p className="text-[9px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Child Settlement Claim Form', 'മകൻ അല്ലെങ്കിൽ മകളുടെ സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] sm:text-[10px] font-black rounded-md sm:rounded-xl px-2 sm:px-3 py-0.5 sm:py-1 shadow-2xs sm:shadow-xs">
                 {t('Form 4 (Child)', 'ഫോം 4 (മക്കൾ)')}
               </Badge>
               <Checkbox 
@@ -5740,7 +5813,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     if (!childPincode && pin) setChildPincode(pin);
                   }
                 }} 
-                className="w-5 h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
+                className="w-4.5 h-4.5 sm:w-5 sm:h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
               />
             </div>
           </div>
@@ -6028,21 +6101,21 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </div>
 
                 {/* Sub-breakup Selector */}
-                <div className="bg-amber-50/70 p-3.5 rounded-2xl border-2 border-amber-200 flex items-center gap-3 shadow-xs">
+                <div className="bg-amber-50/70 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-amber-200 sm:border-2 flex items-center gap-2.5 sm:gap-3 shadow-2xs sm:shadow-xs">
                    <Checkbox 
                      id="child-no-breakup"
                      checked={childNoBreakup}
                      onCheckedChange={(val) => setChildNoBreakup(!!val)}
-                     className="w-5 h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer"
+                     className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer shrink-0"
                    />
-                   <Label htmlFor="child-no-breakup" className="text-xs font-black text-amber-950 leading-tight cursor-pointer">
+                   <Label htmlFor="child-no-breakup" className="text-[10.5px] sm:text-xs font-black text-amber-950 leading-tight cursor-pointer">
                      {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
                    </Label>
                 </div>
 
                 {/* Breakup Details OR Total manual entries */}
                 {childNoBreakup ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 bg-slate-50/40 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border border-slate-200 sm:border-0">
                     <FormFieldBox
                       label={tLabel('Advance Paid (Total)', 'ആകെ നൽകിയ തുക')}
                       icon="💵"
@@ -6051,13 +6124,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="amber"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
                           placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
                           value={childTotalPaid || ''}
                           onChange={(e) => handleTotalChange('child', 'paid', e.target.value)}
-                          className="pl-9 h-11 bg-white border-2 border-amber-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-white border border-amber-200 sm:border-2 rounded-xl font-black text-sm text-slate-900 shadow-2xs focus:border-amber-500"
                         />
                       </div>
                     </FormFieldBox>
@@ -6070,13 +6143,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="emerald"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="number"
                           placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
                           value={childTotalReceived || ''}
                           onChange={(e) => handleTotalChange('child', 'received', e.target.value)}
-                          className="pl-9 h-11 bg-white border-2 border-emerald-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-emerald-500"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-white border border-emerald-200 sm:border-2 rounded-xl font-black text-sm text-slate-900 shadow-2xs focus:border-emerald-500"
                         />
                       </div>
                     </FormFieldBox>
@@ -6089,25 +6162,25 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       theme="purple"
                     >
                       <div className="relative">
-                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input 
                           type="text"
                           readOnly
                           value={Number(childTotalPending || 0).toLocaleString('en-IN')}
-                          className="pl-9 h-11 bg-purple-50/70 border-2 border-purple-300 rounded-xl font-black text-sm text-purple-950 shadow-xs cursor-not-allowed"
+                          className="pl-8 sm:pl-9 h-10 sm:h-11 bg-purple-50/70 border border-purple-300 sm:border-2 rounded-xl font-black text-sm text-purple-950 shadow-2xs cursor-not-allowed"
                         />
                       </div>
                     </FormFieldBox>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-black">1</span>
+                      <Label className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[10px] sm:text-[11px] font-black">1</span>
                         <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
                       </Label>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = childCategories.includes(cat.id);
                         return (
@@ -6116,7 +6189,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                             onClick={() => {
                               setChildCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
                             }}
-                            className={`px-3.5 py-2.5 border-2 rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2.5 transition-all ${isSel ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
+                            className={`px-3 py-1.5 sm:px-3.5 sm:py-2.5 border sm:border-2 rounded-xl sm:rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2 sm:gap-2.5 transition-all ${isSel ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
                           >
                             <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
                             {cat.heading}
@@ -6126,17 +6199,17 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                     </div>
 
                      {/* Detailed Inputs */}
-                    <div className="space-y-3 w-full min-w-0">
+                    <div className="space-y-2.5 sm:space-y-3 w-full min-w-0">
                       {childCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs w-full min-w-0">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-700 text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3.5 border sm:border-2 border-amber-100 rounded-xl sm:rounded-2xl bg-amber-50/20 gap-2.5 sm:gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-700 text-white text-[11px] sm:text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
                               📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💰 <span>{t('Paid', 'നൽകിയത്')}</span>
                                 </div>
                                 <Input 
@@ -6144,11 +6217,11 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
                                   value={childCategoryDetails[catId]?.paid || ''}
                                   onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
-                                  className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                  className="h-9 sm:h-10 border border-amber-200 sm:border-2 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
                                 />
                               </div>
                               <div className="space-y-1 w-full min-w-0">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[9.5px] sm:text-[10px] font-black uppercase">
                                   💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
                                 </div>
                                 <Input 
@@ -6156,7 +6229,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                                   placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
                                   value={childCategoryDetails[catId]?.received || ''}
                                   onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
-                                  className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                  className="h-9 sm:h-10 border border-emerald-200 sm:border-2 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
                                 />
                               </div>
                             </div>
@@ -6182,29 +6255,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       'Enter any details regarding bank account paid from or transaction references...',
                       'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
                     )}
-                    className="w-full text-xs font-semibold p-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
+                    className="w-full text-xs font-semibold p-2.5 sm:p-3 border border-slate-300 sm:border-2 rounded-xl focus:border-amber-500 focus:ring-0 focus:outline-none min-h-16 sm:min-h-20 bg-white text-slate-900 shadow-2xs"
                   />
                 </FormFieldBox>
 
                 {/* Amount mini-badge */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 flex justify-between items-center text-xs font-bold shadow-md">
-                  <span className="text-slate-300 font-black uppercase tracking-wide">{t('Child Total Pending Amount:', 'മകൻ / മകളുടെ ആകെ മിച്ച തുക:')}</span>
-                  <span className="text-base font-black text-emerald-400 font-mono">₹{childTotalPending.toLocaleString('en-IN')}</span>
+                <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex justify-between items-center text-xs font-bold shadow-md">
+                  <span className="text-slate-300 text-[10.5px] sm:text-xs font-black uppercase tracking-wide">{t('Child Total Pending Amount:', 'മകൻ / മകളുടെ ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">₹{childTotalPending.toLocaleString('en-IN')}</span>
                 </div>
 
                 {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
                 {renderFutureAndConditionsBlock('child')}
 
                 {/* INLINE SUBMIT BUTTON FOR CHILD FORM */}
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
+                  <div className="pt-3 sm:pt-4 border-t border-amber-300 sm:border-t-2 sm:border-amber-300/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-amber-300/60">
                     <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                      <div className="font-black text-amber-950 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div className="font-black text-amber-950 flex items-center gap-1.5 text-xs sm:text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         {t('Child Form Completed', 'മകൻ / മകളുടെ ഫോം പൂർത്തിയായി')}
                       </div>
-                      <p className="text-[11px] text-slate-600">
+                      <p className="text-[10.5px] sm:text-[11px] text-slate-600">
                         {t('Click below to submit claim form with child details.', 'മകൻ / മകളുടെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
                       </p>
                     </div>
@@ -6212,7 +6285,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       type="button"
                       disabled={loading}
                       onClick={() => handleSubmit('Child')}
-                      className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                      className="w-full sm:w-auto h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md sm:shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
                     >
                     {loading ? (
                       <span className="flex items-center gap-2">

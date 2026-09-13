@@ -45,6 +45,7 @@ const VOUCHERS_COL = 'eledger_vouchers';
 const MEMBER_ACCOUNTS_COL = 'eledger_member_accounts';
 const AUDIT_LOGS_COL = 'eledger_audit_logs';
 const BANK_CREDITS_COL = 'eledger_bank_credits';
+export const JANAMAIL_SUBMISSIONS_COL = 'janamail_submissions';
 
 /**
  * Helper to remove undefined, null, or empty optional fields from any Firestore payload

@@ -3,6 +3,7 @@ import { Mail, Check, Copy, RotateCcw, Send, HelpCircle, Share2, QrCode, Chevron
 import { CampaignTemplate, subscribeToCampaignTemplates, JanamailConfig } from "../../lib/cms";
 import { motion } from "motion/react";
 import { auth, db } from "../../lib/firebase";
+import { eledgerDb } from "../../eledger/lib/firebaseEledger";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import QRCode from "qrcode";
@@ -619,25 +620,42 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     }
 
-    // Check Firestore claims collection for campaign lock
+    // Check HCRS eLedger Firestore janamail_submissions for campaign lock
     let isSubscribed = true;
-    const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-    getDoc(doc(db, "claims", docId)).then((docSnap) => {
+    const submissionDocId = `${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+    getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId)).then((docSnap) => {
       if (!isSubscribed) return;
       if (docSnap.exists() && (docSnap.data()?.status === "Completed" || docSnap.data()?.participated === true)) {
         setHasParticipated(true);
         const lockData = {
           campaignId: currentCampaignId,
           email: emailId,
-          timestamp: docSnap.data()?.timestamp || new Date().toISOString(),
+          timestamp: docSnap.data()?.timestamp || docSnap.data()?.submittedAt || new Date().toISOString(),
           status: "Completed"
         };
         localStorage.setItem(lockKey, JSON.stringify(lockData));
       } else {
-        setHasParticipated(false);
+        // Read-only fallback check for legacy claims records so prior participants remain locked
+        const legacyDocId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+        getDoc(doc(db, "claims", legacyDocId)).then((legacySnap) => {
+          if (!isSubscribed) return;
+          if (legacySnap.exists() && (legacySnap.data()?.status === "Completed" || legacySnap.data()?.participated === true)) {
+            setHasParticipated(true);
+            localStorage.setItem(lockKey, JSON.stringify({
+              campaignId: currentCampaignId,
+              email: emailId,
+              timestamp: legacySnap.data()?.timestamp || new Date().toISOString(),
+              status: "Completed"
+            }));
+          } else {
+            setHasParticipated(false);
+          }
+        }).catch(() => {
+          if (isSubscribed) setHasParticipated(false);
+        });
       }
     }).catch((err) => {
-      console.warn("Firestore campaign lock check failed:", err);
+      console.warn("HCRS eLedger Firestore campaign lock check notice:", err);
     });
 
     return () => { isSubscribed = false; };
@@ -827,119 +845,86 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setApiError(null);
 
     const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
-    const lockRecord = {
-      campaignId: currentCampaignId,
-      email: emailId,
-      timestamp: new Date().toISOString(),
-      status: "Completed",
-      fullName: name.trim(),
-      mobileNumber: phone.trim(),
-      selectedSubject: finalSubject
-    };
+    const templateRef = activeComposeMethod === "template"
+      ? (currentSelectedTemplate?.title || currentSelectedTemplate?.subject || `Template ${currentTemplateDisplayIdx + 1}`)
+      : "Custom";
+
+    const emailLaunchStatus = `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`;
+
+    const submissionDocId = isWhitelisted
+      ? `${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}_${Date.now()}`
+      : `${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+
     const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
-    // 1. Record participation state in Google Sheets via Server API
+    // 1. Record participation state in HCRS eLedger Firestore (janamail_submissions)
     const loadingToast = toast.loading("പങ്കാളിത്തം രേഖപ്പെടുത്തുന്നു...");
     try {
-      const response = await fetch("/api/janamail/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName: name.trim(),
-          mobileNumber: phone.trim(),
-          district: district.trim(),
-          placePost: place.trim(),
-          category: category.trim(),
-          selectedSubject: finalSubject,
-          template: activeComposeMethod === "template"
-            ? (currentSelectedTemplate?.title || currentSelectedTemplate?.subject || `Template ${currentTemplateDisplayIdx + 1}`)
-            : "Custom",
-          date: new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
-          time: new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
-          dateTime: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-          gmailLaunchStatus: `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`,
-          bypassDuplicateCheck: true // Testing mode: allow multiple registrations to create rows in Google Sheets
-        })
-      });
-
-      if (!response.ok) {
-        let errorMsg = "";
+      // Duplicate prevention check directly against HCRS eLedger Firestore for regular participants
+      if (!isWhitelisted && config?.restrictOneParticipation !== false && !bypassParticipationCheck) {
         try {
-          const text = await response.text();
-          try {
-            const errorData = JSON.parse(text);
-            if (errorData.code === "DUPLICATE_REGISTRATION" || errorData.isDuplicate) {
-              if (!isWhitelisted) {
-                localStorage.setItem(lockKey, JSON.stringify(lockRecord));
-                localStorage.setItem("janamail_participated", "true");
-                setHasParticipated(true);
-                try {
-                  const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-                  await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
-                } catch (dbErr) {
-                  console.error("Failed to write campaign lock to claims in firestore:", dbErr);
-                }
-              }
-              setIsSubmitting(false);
-              setApiError(null);
-              toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
-              return;
-            }
-            errorMsg = errorData.error || errorData.message || text;
-          } catch {
-            errorMsg = text ? `Server HTTP ${response.status}: ${text.substring(0, 300)}` : `Server HTTP status ${response.status}`;
+          const existingDoc = await getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId));
+          if (existingDoc.exists() && (existingDoc.data()?.status === "Completed" || existingDoc.data()?.participated === true)) {
+            localStorage.setItem(lockKey, JSON.stringify({
+              campaignId: currentCampaignId,
+              email: emailId,
+              timestamp: existingDoc.data()?.timestamp || existingDoc.data()?.submittedAt || new Date().toISOString(),
+              status: "Completed"
+            }));
+            localStorage.setItem("janamail_participated", "true");
+            setHasParticipated(true);
+            setIsSubmitting(false);
+            toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
+            return;
           }
-        } catch {
-          errorMsg = `Server request failed with HTTP ${response.status}`;
+        } catch (checkErr) {
+          console.warn("Pre-submission duplicate check notice:", checkErr);
         }
-
-        throw new Error(errorMsg || `Server returned HTTP status ${response.status}`);
       }
 
-      const resData = await response.json().catch(() => ({}));
+      const submissionData = {
+        fullName: name.trim(),
+        mobileNumber: phone.trim(),
+        district: district.trim(),
+        placePost: place.trim(),
+        category: category.trim(),
+        selectedSubject: finalSubject,
+        template: templateRef,
+        campaignId: currentCampaignId,
+        emailId: emailId || null,
+        status: "Completed",
+        submissionStatus: "Completed",
+        emailLaunchStatus: emailLaunchStatus,
+        date: new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+        time: new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
+        dateTime: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+        participated: true,
+        createdAt: serverTimestamp(),
+        submittedAt: new Date().toISOString()
+      };
+
+      // Persist exclusively in HCRS eLedger Firestore
+      await setDoc(doc(eledgerDb, "janamail_submissions", submissionDocId), submissionData, { merge: true });
 
       // Record Permanent Campaign Lock ONLY for regular users (not whitelisted super admins)
       if (!isWhitelisted) {
-        localStorage.setItem(lockKey, JSON.stringify(lockRecord));
+        localStorage.setItem(lockKey, JSON.stringify({
+          campaignId: currentCampaignId,
+          email: emailId,
+          timestamp: new Date().toISOString(),
+          status: "Completed"
+        }));
         localStorage.setItem("janamail_participated", "true");
         setHasParticipated(true);
-
-        try {
-          const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-          await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
-        } catch (dbErr) {
-          console.error("Failed to write campaign lock to claims in firestore:", dbErr);
-        }
       }
 
-      if (resData?.isDuplicate || resData?.code === "DUPLICATE_REGISTRATION") {
-        toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
-      } else {
-        toast.success("വിവരങ്ങൾ ഗൂഗിൾ ഷീറ്റിൽ വിജയകരമായി രേഖപ്പെടുത്തിയിരിക്കുന്നു!", { id: loadingToast });
-      }
-      
+      toast.success("പങ്കാളിത്ത വിവരങ്ങൾ വിജയകരമായി രേഖപ്പെടുത്തിയിരിക്കുന്നു!", { id: loadingToast });
       setIsSubmitting(false);
       setApiError(null);
     } catch (err: any) {
-      console.error("Error saving participant details to Google Sheets:", err);
-      const errMsg = err.message || "വിവരങ്ങൾ ഷീറ്റിൽ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
-      
-      // Save local and Firestore fallback so user data is never lost even if Google Sheets fails
-      try {
-        if (!isWhitelisted) {
-          localStorage.setItem(lockKey, JSON.stringify(lockRecord));
-          localStorage.setItem("janamail_participated", "true");
-          setHasParticipated(true);
-          const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-          await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
-        }
-      } catch (fallbackDbErr) {
-        console.warn("Fallback claims save notice:", fallbackDbErr);
-      }
-
-      toast.error(`ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല: ${errMsg}`, { id: loadingToast, duration: 8000 });
+      console.error("Error saving participant details to HCRS eLedger Firestore:", err);
+      const errMsg = err.message || "വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
+      toast.error(`വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല: ${errMsg}`, { id: loadingToast, duration: 8000 });
       setApiError(errMsg);
       setIsSubmitting(false);
 
@@ -1722,123 +1707,25 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള <b>Go to Mail</b> ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.
                   </p>
 
-                  {apiError && (() => {
-                    const isSheetsApiDisabled = apiError.includes("sheets.googleapis.com") || apiError.includes("disabled") || apiError.includes("739674403429");
-                    const linkRegex = /(https?:\/\/[^\s]+)/g;
-                    const matches = apiError.match(linkRegex);
-                    const apiLink = matches && matches[0] ? matches[0].replace(/[.,;:()'"\s]+$/, "") : "https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=739674403429";
-
-                    if (isSheetsApiDisabled) {
-                      return (
-                        <div className="w-full max-w-md bg-amber-50 border border-amber-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
-                          <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs uppercase tracking-wider">
-                            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 animate-bounce" />
-                            <span>API ആക്ടിവേഷൻ ആവശ്യമാണ് / API ENABLEMENT REQUIRED</span>
-                          </div>
-                          <p className="text-xs text-amber-950 font-extrabold leading-relaxed">
-                            ഗൂഗിൾ ക്ലൗഡ് പ്രോജക്റ്റിൽ Google Sheets API പ്രവർത്തനക്ഷമമാക്കിയിട്ടില്ല. (The Google Sheets API is not enabled in your Google Cloud Project.)
-                          </p>
-                          <div className="text-[11px] text-amber-800 space-y-1 bg-amber-100/50 p-3 rounded-xl border border-amber-200/50 leading-relaxed font-semibold">
-                            <p className="font-extrabold">പരിഹാര മാർഗ്ഗങ്ങൾ (How to Fix):</p>
-                            <ol className="list-decimal list-inside space-y-1 text-[10px]">
-                              <li>താഴെ നൽകിയിരിക്കുന്ന ലിങ്ക് സന്ദർശിക്കുക.</li>
-                              <li>നിങ്ങളുടെ ഗൂഗിൾ അക്കൗണ്ട് ലോഗിൻ ചെയ്ത ശേഷം <b>Enable</b> ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.</li>
-                              <li>കുറച്ചു മിനിറ്റുകൾക്ക് ശേഷം പേജ് റീഫ്രഷ് ചെയ്ത് വീണ്ടും ശ്രമിക്കുക.</li>
-                            </ol>
-                          </div>
-                          <a
-                            href={apiLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex w-full items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] uppercase tracking-wider py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer shadow-md text-center"
-                          >
-                            <span>Google Sheets API അക്റ്റീവ് ചെയ്യുക</span>
-                            <span className="text-xs">🔗</span>
-                          </a>
-                        </div>
-                      );
-                    }
-
-                    const isPermissionError = apiError.toLowerCase().includes("permission") || 
-                                              apiError.toLowerCase().includes("denied") || 
-                                              apiError.toLowerCase().includes("403") || 
-                                              apiError.toLowerCase().includes("access");
-
-                    if (isPermissionError) {
-                      const serviceAccountEmail = "firebase-adminsdk-fbsvc@hcrs-membership.iam.gserviceaccount.com";
-                      return (
-                        <div className="w-full max-w-md bg-amber-50 border border-amber-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200 shadow-xs">
-                          <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs uppercase tracking-wider">
-                            <Lock className="w-5 h-5 shrink-0 text-amber-600 animate-pulse" />
-                            <span>അനുമതി ആവശ്യമാണ് / PERMISSION REQUIRED</span>
-                          </div>
-                          
-                          <p className="text-xs text-amber-950 font-bold leading-relaxed">
-                            ഈ ആപ്ലിക്കേഷന്റെ സർവീസ് അക്കൗണ്ടിന് നിങ്ങളുടെ ഗൂഗിൾ ഷീറ്റിലേക്ക് വിവരങ്ങൾ എഴുതാൻ ആവശ്യമായ അനുമതിയില്ല. (The service account does not have edit access to your Google Sheet.)
-                          </p>
-                          
-                          <div className="space-y-2 bg-amber-100/40 p-3.5 rounded-xl border border-amber-200/40 font-semibold text-[11px] text-amber-900 leading-relaxed">
-                            <p className="font-extrabold">പരിഹാര മാർഗ്ഗങ്ങൾ (How to Fix):</p>
-                            <ol className="list-decimal list-inside space-y-2 text-[10.5px]">
-                              <li>താഴെ നൽകിയിരിക്കുന്ന സർവീസ് അക്കൗണ്ട് ഇമെയിൽ കോപ്പി ചെയ്യുക.</li>
-                              <li>നിങ്ങളുടെ ഗൂഗിൾ ഷീറ്റ് തുറന്ന് മുകളിൽ വലതുവശത്തുള്ള <b>Share (പങ്കുവെക്കുക)</b> ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.</li>
-                              <li>ഈ സർവീസ് അക്കൗണ്ട് ഇമെയിൽ അവിടെ ചേർത്ത് റോൾ <b>Editor</b> ആയി സജ്ജീകരിച്ച് സേവ് ചെയ്യുക.</li>
-                            </ol>
-                          </div>
-
-                          <div className="flex flex-col gap-1.5 bg-white border border-slate-200 p-3 rounded-xl">
-                            <span className="text-[9px] font-black tracking-wider uppercase text-slate-400">സർവീസ് അക്കൗണ്ട് ഇമെയിൽ / Service Account Email</span>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-mono font-bold text-slate-800 select-all break-all leading-normal">
-                                {serviceAccountEmail}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(serviceAccountEmail);
-                                  toast.success("ഇമെയിൽ കോപ്പി ചെയ്തു! (Service account email copied!)");
-                                }}
-                                className="flex items-center justify-center p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer transition shrink-0"
-                                title="Copy Email"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    const isMissingConfig = apiError.includes("GOOGLE_SHEET_ID") || 
-                                            apiError.includes("GOOGLE_SERVICE_ACCOUNT_JSON") || 
-                                            apiError.includes("credentials not found");
-
-                    return (
-                      <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
-                        <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs uppercase tracking-wider">
-                          <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
-                          <span>രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു / REGISTRATION FAILED</span>
-                        </div>
-                        <p className="text-xs text-rose-700 font-extrabold leading-relaxed break-words font-mono">
-                          {apiError}
-                        </p>
-                        {isMissingConfig && (
-                          <div className="text-[11px] text-rose-900 bg-rose-100/60 p-3 rounded-xl border border-rose-200 leading-relaxed font-semibold space-y-1">
-                            <p className="font-extrabold">Vercel ക്രമീകരണം (Vercel Configuration):</p>
-                            <p>Vercel Dashboard ➔ Project ➔ Settings ➔ <b>Environment Variables</b>-ൽ <code className="bg-white/80 px-1 py-0.5 rounded text-rose-950 font-bold">GOOGLE_SHEET_ID</code> ഉം <code className="bg-white/80 px-1 py-0.5 rounded text-rose-950 font-bold">GOOGLE_SERVICE_ACCOUNT_JSON</code> ഉം ചേർക്കുക.</p>
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={openGmailDirectly}
-                          className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer mt-2"
-                        >
-                          <Send className="w-4 h-4 text-emerald-400" />
-                          <span>എങ്കിലും Gmail-ലേക്ക് തുടരുക (Proceed to Gmail anyway)</span>
-                        </button>
+                  {apiError && (
+                    <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs uppercase tracking-wider">
+                        <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
+                        <span>രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു / REGISTRATION FAILED</span>
                       </div>
-                    );
-                  })()}
+                      <p className="text-xs text-rose-700 font-extrabold leading-relaxed break-words font-mono">
+                        {apiError}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openGmailDirectly}
+                        className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer mt-2"
+                      >
+                        <Send className="w-4 h-4 text-emerald-400" />
+                        <span>എങ്കിലും Gmail-ലേക്ക് തുടരുക (Proceed to Gmail anyway)</span>
+                      </button>
+                    </div>
+                  )}
 
                   {!canSubmit && (
                     <div className="w-full max-w-md text-left bg-slate-100/90 border border-slate-200/80 p-5 rounded-2xl space-y-3.5 shadow-xs">
