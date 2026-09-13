@@ -981,33 +981,33 @@ export default function EmailEditor({ config }: EmailEditorProps) {
 
 
   return (
-    <section className="bg-white p-6 md:p-10 rounded-3xl border border-slate-100 shadow-xs">
-      <div className="max-w-2xl mx-auto space-y-8">
+    <section className="bg-white p-2 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs w-full">
+      <div className="w-full space-y-5 sm:space-y-8">
         
         {/* Section Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">
-            <Mail className="w-3.5 h-3.5" />
+        <div className="text-center space-y-1.5 sm:space-y-2">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-blue-50 text-blue-700 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-blue-100">
+            <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             ഇമെയിൽ അയക്കാം / SEND EMAIL
           </div>
-          <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight text-center">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight text-center">
             ഹർജി തയാറാക്കുക (Compose Your Petition)
           </h2>
-          <p className="text-xs md:text-sm text-slate-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-[11px] sm:text-xs md:text-sm text-slate-500 max-w-xl mx-auto leading-relaxed">
             നിങ്ങളുടെ വിവരങ്ങൾ നൽകി വളരെ എളുപ്പത്തിൽ ഇമെയിൽ തയാറാക്കി അയക്കാം.
           </p>
         </div>
 
         {/* Step 1: User Details */}
-        <div className="space-y-4 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl">
-          <h3 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black">1</span>
+        <div className="space-y-3 sm:space-y-4 bg-slate-50/50 border border-slate-200/60 p-2 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl w-full">
+          <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black shrink-0">1</span>
             നിങ്ങളുടെ വിവരങ്ങൾ (User Details)
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-5">
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 മുഴുവൻ പേര് / Full Name <span className="text-red-500 font-bold">*</span>
               </label>
               <input
@@ -1015,13 +1015,13 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
+                className="janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
                 placeholder="ഉദാ: രാഹുൽ കെ. / e.g. Rahul K."
               />
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 മൊബൈൽ നമ്പർ / Mobile Number <span className="text-red-500 font-bold">*</span>
               </label>
               <input
@@ -1029,13 +1029,13 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
+                className="janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
                 placeholder="ഉദാ: 9876543210 / 10-digit mobile"
               />
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 ജില്ല / District <span className="text-red-500 font-bold">*</span>
               </label>
               <div className="relative">
@@ -1043,7 +1043,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   required
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className={`janamail-field w-full px-4 py-3 pr-10 text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
+                  className={`janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 pr-9 sm:pr-10 text-xs sm:text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
                     !district ? "!text-slate-400 !font-normal" : "!text-slate-900 !font-medium"
                   }`}
                 >
@@ -1056,14 +1056,14 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 sm:px-3.5 text-slate-500">
                   <ChevronDown className="w-4 h-4" />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 സ്ഥലം / പോസ്റ്റ് / Place / Post <span className="text-red-500 font-bold">*</span>
               </label>
               <input
@@ -1071,13 +1071,13 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 required
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
-                className="janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
+                className="janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
                 placeholder="ഉദാ: ആലുവ / e.g. Aluva Post"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 വിഭാഗം / Category <span className="text-red-500 font-bold">*</span>
               </label>
               <div className="relative">
@@ -1085,7 +1085,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   required
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className={`janamail-field w-full px-4 py-3 pr-10 text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
+                  className={`janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 pr-9 sm:pr-10 text-xs sm:text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
                     !category ? "!text-slate-400 !font-normal" : "!text-slate-900 !font-medium"
                   }`}
                 >
@@ -1102,7 +1102,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     General Public (പൊതുജനം)
                   </option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 sm:px-3.5 text-slate-500">
                   <ChevronDown className="w-4 h-4" />
                 </div>
               </div>
@@ -1110,21 +1110,21 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           </div>
 
           {/* Recipient Information Display */}
-          <div className="pt-4 border-t border-slate-100 space-y-4">
+          <div className="pt-3.5 sm:pt-4 border-t border-slate-200/60 space-y-3 sm:space-y-4">
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 Primary Recipient (TO)
               </label>
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs md:text-sm text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-extrabold text-slate-800 flex items-center gap-1.5 text-sm">
-                    <Shield className="w-4 h-4 text-blue-600" />
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 sm:p-3.5 text-xs md:text-sm text-left">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                  <div className="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
                     <span>Competent Authority</span>
                   </div>
                   <button
                     type="button"
                     onClick={copyToRecipients}
-                    className="flex items-center gap-1 text-[11px] font-black uppercase text-blue-600 hover:text-blue-800 transition bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-2xs cursor-pointer select-none"
+                    className="flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase text-blue-600 hover:text-blue-800 transition bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-2xs cursor-pointer select-none"
                   >
                     {copiedTo ? (
                       <>
@@ -1139,26 +1139,26 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     )}
                   </button>
                 </div>
-                <div className="font-mono text-slate-700 break-all bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-medium">
+                <div className="font-mono text-slate-700 break-all bg-white border border-slate-300/80 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-medium text-[11px] sm:text-xs">
                   {recipients || (config && config.recipients) || "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com"}
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 Copies (CC)
               </label>
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs md:text-sm text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-extrabold text-slate-800 flex items-center gap-1.5 text-sm">
-                    <FileText className="w-4 h-4 text-blue-600" />
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 sm:p-3.5 text-xs md:text-sm text-left">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                  <div className="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
                     <span>ക്യാമ്പയിൻ പകർപ്പ് (Campaign Copies)</span>
                   </div>
                   <button
                     type="button"
                     onClick={copyCcRecipients}
-                    className="flex items-center gap-1 text-[11px] font-black uppercase text-blue-600 hover:text-blue-800 transition bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-2xs cursor-pointer select-none"
+                    className="flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase text-blue-600 hover:text-blue-800 transition bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-2xs cursor-pointer select-none"
                   >
                     {copiedCc ? (
                       <>
@@ -1173,7 +1173,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     )}
                   </button>
                 </div>
-                <div className="font-mono text-slate-700 break-all bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-medium">
+                <div className="font-mono text-slate-700 break-all bg-white border border-slate-300/80 rounded-lg px-2.5 py-1.5 shadow-2xs select-all font-medium text-[11px] sm:text-xs">
                   {cc || (config && config.cc) || "No CC recipients configured"}
                 </div>
               </div>
@@ -1182,57 +1182,57 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         </div>
 
         {/* Connector */}
-        <div className="flex justify-center my-1 text-slate-300 select-none">
-          <span className="text-lg font-bold">↓</span>
+        <div className="flex justify-center my-0.5 sm:my-1 text-slate-300 select-none">
+          <span className="text-base sm:text-lg font-bold">↓</span>
         </div>
 
         {/* Step 2: Email Subject */}
-        <div className="space-y-4 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl">
-          <h3 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black">2</span>
+        <div className="space-y-3 sm:space-y-4 bg-slate-50/50 border border-slate-200/60 p-2 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl w-full">
+          <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black shrink-0">2</span>
             വിഷയം (Email Subject)
           </h3>
 
           {/* Writing Mode Selector Card Grid */}
-          <div className="space-y-2">
-            <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+          <div className="space-y-1.5 sm:space-y-2">
+            <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1 sm:mb-2">
               ഹർജി തയാറാക്കേണ്ട രീതി / Select Writing Mode *
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5">
               {/* Option 1: Reference Templates */}
               <div
                 onClick={() => handleModeChange("template")}
-                className={`group relative p-5 rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
+                className={`group relative p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
                   activeComposeMethod === "template"
-                    ? "bg-blue-50/30 border-blue-600 shadow-sm ring-1 ring-blue-600/10"
+                    ? "bg-blue-50/30 border-blue-600 shadow-2xs ring-1 ring-blue-600/10"
                     : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40"
                 }`}
               >
-                <div className="flex items-start gap-3.5">
-                  <div className={`p-2.5 rounded-xl border shrink-0 transition-all ${
+                <div className="flex items-start gap-2.5 sm:gap-3.5">
+                  <div className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border shrink-0 transition-all ${
                     activeComposeMethod === "template"
                       ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/10"
                       : "bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-slate-100"
                   }`}>
-                    <FileText className="w-5 h-5 stroke-[2]" />
+                    <FileText className="w-3.5 h-3.5 sm:w-5 sm:h-5 stroke-[2]" />
                   </div>
-                  <div className="space-y-1">
-                    <h4 className={`font-extrabold text-sm leading-tight transition-colors ${
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                    <h4 className={`font-extrabold text-xs sm:text-sm leading-tight transition-colors ${
                       activeComposeMethod === "template" ? "text-blue-900" : "text-slate-800 group-hover:text-slate-950"
                     }`}>
                       Reference Templates
                     </h4>
-                    <p className="text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
                       റെഫറൻസ് ടെംപ്ലേറ്റുകൾ
                     </p>
-                    <p className="text-[11px] text-slate-400 font-semibold leading-relaxed pt-1">
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold leading-relaxed pt-0.5">
                       മുൻകൂട്ടി തയാറാക്കിയ ഔദ്യോഗിക വിഷയങ്ങളും ഉള്ളടക്കങ്ങളും നേരിട്ട് ഉപയോഗിക്കാം.
                     </p>
                   </div>
                 </div>
                 {activeComposeMethod === "template" && (
-                  <div className="absolute top-4 right-4 text-blue-600">
-                    <Check className="w-4 h-4 stroke-[3]" />
+                  <div className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 text-blue-600">
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                   </div>
                 )}
               </div>
@@ -1240,75 +1240,76 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               {/* Option 2: Write My Own Email */}
               <div
                 onClick={() => handleModeChange("custom")}
-                className={`group relative p-5 rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
+                className={`group relative p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
                   activeComposeMethod === "custom"
-                    ? "bg-blue-50/30 border-blue-600 shadow-sm ring-1 ring-blue-600/10"
+                    ? "bg-blue-50/30 border-blue-600 shadow-2xs ring-1 ring-blue-600/10"
                     : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40"
                 }`}
               >
-                <div className="flex items-start gap-3.5">
-                  <div className={`p-2.5 rounded-xl border shrink-0 transition-all ${
+                <div className="flex items-start gap-2.5 sm:gap-3.5">
+                  <div className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border shrink-0 transition-all ${
                     activeComposeMethod === "custom"
                       ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/10"
                       : "bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-slate-100"
                   }`}>
-                    <PenTool className="w-5 h-5 stroke-[2]" />
+                    <PenTool className="w-3.5 h-3.5 sm:w-5 sm:h-5 stroke-[2]" />
                   </div>
-                  <div className="space-y-1">
-                    <h4 className={`font-extrabold text-sm leading-tight transition-colors ${
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                    <h4 className={`font-extrabold text-xs sm:text-sm leading-tight transition-colors ${
                       activeComposeMethod === "custom" ? "text-blue-900" : "text-slate-800 group-hover:text-slate-950"
                     }`}>
                       Write My Own Email
                     </h4>
-                    <p className="text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
                       സ്വന്തമായി എഴുതാം
                     </p>
-                    <p className="text-[11px] text-slate-400 font-semibold leading-relaxed pt-1">
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold leading-relaxed pt-0.5">
                       നിങ്ങളുടേതായ വിഷയവും കത്തിന്റെ ഉള്ളടക്കവും പൂർണ്ണമായും സ്വന്തമായി തയാറാക്കാം.
                     </p>
                   </div>
                 </div>
                 {activeComposeMethod === "custom" && (
-                  <div className="absolute top-4 right-4 text-blue-600">
-                    <Check className="w-4 h-4 stroke-[3]" />
+                  <div className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 text-blue-600">
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {activeComposeMethod === "template" && (
-              <div className="space-y-4">
-                <div className="space-y-1.5 text-left">
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <div className="space-y-2.5 sm:space-y-4">
+                <div className="space-y-1 text-left">
+                  <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-0.5 sm:mb-1">
                     Select Email Subject / വിഷയം തിരഞ്ഞെടുക്കുക *
                   </label>
-                  <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                  <p className="text-[11px] sm:text-sm font-medium sm:font-bold text-slate-600 sm:text-slate-700 leading-snug sm:leading-relaxed">
                     താഴെ നൽകിയിരിക്കുന്ന വിഷയങ്ങളിൽ നിങ്ങൾക്ക് ഇഷ്ടമുള്ളത് തിരഞ്ഞെടുക്കാം. Next / Previous ബട്ടണുകൾ ഉപയോഗിച്ച് മറ്റ് വിഷയങ്ങൾ കാണാൻ സാധിക്കും.
                   </p>
                 </div>
                 
                 {templates.length > 0 && currentSelectedTemplate ? (
-                  <div className="space-y-4">
-                    {/* Active Template Card */}
-                    <div className="bg-gradient-to-br from-blue-50/40 via-white to-blue-50/10 border-2 border-blue-600 rounded-2xl p-5 md:p-6 shadow-md shadow-blue-100/40 transition-all duration-300 relative text-left">
-                      <div className="absolute top-4 right-4 bg-blue-600 text-white rounded-full p-1.5 shadow-sm">
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 border border-blue-200">
+                  <div className="space-y-2 sm:space-y-4">
+                    {/* Active Template Card - Maximum Width & Optimal Layout */}
+                    <div className="bg-gradient-to-br from-blue-50/40 via-white to-blue-50/10 border-2 border-blue-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 md:p-6 shadow-sm shadow-blue-100/40 transition-all duration-300 text-left w-full">
+                      <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-2.5">
+                        <span className="inline-flex items-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-xs font-black bg-blue-100 text-blue-800 border border-blue-200 tracking-wide">
                           ACTIVE SUBJECT • സജീവമായ വിഷയം
                         </span>
-                        
-                        <h4 className="font-extrabold text-base md:text-lg text-blue-950 leading-snug">
+                        <div className="bg-blue-600 text-white rounded-full p-1 shadow-2xs shrink-0">
+                          <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1.5 sm:space-y-3">
+                        <h4 className="font-extrabold text-xs sm:text-base md:text-lg text-blue-950 leading-snug break-words">
                           {currentSelectedTemplate.name}
                         </h4>
                         
-                        <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 md:p-4 space-y-1 text-slate-700">
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Subject Line Preview:</p>
-                          <p className="text-sm md:text-base font-bold leading-relaxed text-slate-800">
+                        <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg sm:rounded-xl p-2 sm:p-3.5 md:p-4 space-y-1 text-slate-700">
+                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-wider">Subject Line Preview:</p>
+                          <p className="text-[11.5px] sm:text-sm md:text-base font-bold leading-snug sm:leading-relaxed text-slate-800 break-words">
                             {currentSelectedTemplate.subject}
                           </p>
                         </div>
@@ -1316,32 +1317,32 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     </div>
 
                     {/* Navigation Buttons */}
-                    <div className="flex items-center justify-between gap-3 bg-slate-50/80 border border-slate-200/60 p-3 rounded-2xl">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-3 bg-slate-50/80 border border-slate-200/60 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl w-full">
                       <button
                         type="button"
                         onClick={handlePrevTemplate}
-                        className="flex items-center gap-1.5 px-4.5 py-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-xs md:text-sm cursor-pointer shadow-sm active:scale-95 transition-all duration-150"
+                        className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-[10.5px] sm:text-xs md:text-sm cursor-pointer shadow-2xs active:scale-95 transition-all duration-150 shrink-0"
                       >
-                        <ChevronLeft className="w-4 h-4 stroke-[3]" />
-                        <span>Previous (മുൻപത്തേത്)</span>
+                        <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
+                        <span>Previous <span className="hidden xs:inline">(മുൻപത്തേത്)</span></span>
                       </button>
                       
-                      <div className="text-center font-black text-xs md:text-sm text-slate-600 uppercase tracking-wider bg-slate-200/60 px-3.5 py-1.5 rounded-full border border-slate-300/40">
+                      <div className="text-center font-black text-[10px] sm:text-xs md:text-sm text-slate-600 uppercase tracking-wider bg-slate-200/60 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full border border-slate-300/40 shrink-0">
                         {currentTemplateDisplayIdx + 1} / {templates.length}
                       </div>
 
                       <button
                         type="button"
                         onClick={handleNextTemplate}
-                        className="flex items-center gap-1.5 px-4.5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs md:text-sm cursor-pointer shadow-sm hover:shadow-blue-600/10 active:scale-95 transition-all duration-150"
+                        className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10.5px] sm:text-xs md:text-sm cursor-pointer shadow-2xs hover:shadow-blue-600/10 active:scale-95 transition-all duration-150 shrink-0"
                       >
-                        <span>Next (അടുത്തത്)</span>
-                        <ChevronRight className="w-4 h-4 stroke-[3]" />
+                        <span>Next <span className="hidden xs:inline">(അടുത്തത്)</span></span>
+                        <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-200 text-slate-400 text-sm font-semibold uppercase tracking-wider animate-pulse">
+                  <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-200 text-slate-400 text-xs sm:text-sm font-semibold uppercase tracking-wider animate-pulse">
                     No active subjects available.
                   </div>
                 )}
@@ -1349,7 +1350,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             )}
 
             <div>
-              <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1 sm:mb-2">
                 {activeComposeMethod === "template" ? (
                   <>വിഷയം / Subject Line Details</>
                 ) : (
@@ -1362,7 +1363,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-                className={`janamail-field w-full px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all ${
+                className={`janamail-field w-full px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all ${
                   activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "!cursor-not-allowed opacity-80 !bg-slate-50/70" : ""
                 }`}
                 placeholder={activeComposeMethod === "template" ? "Email Subject" : "ഉദാ: ഹർജി വിഷയം / Enter custom subject..."}
@@ -1372,15 +1373,15 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         </div>
 
         {/* Connector */}
-        <div className="flex justify-center my-1 text-slate-300 select-none">
-          <span className="text-lg font-bold">↓</span>
+        <div className="flex justify-center my-0.5 sm:my-1 text-slate-300 select-none">
+          <span className="text-base sm:text-lg font-bold">↓</span>
         </div>
 
         {/* Step 3: Email Body */}
-        <div className="space-y-4 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black">3</span>
+        <div className="space-y-3 sm:space-y-4 bg-slate-50/50 border border-slate-200/60 p-2 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl w-full">
+          <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+            <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black shrink-0">3</span>
               കത്തിന്റെ ഉള്ളടക്കം (Email Body)
             </h3>
             
@@ -1388,25 +1389,25 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               {isCustomized && (
                 <button
                   onClick={handleResetTemplate}
-                  className="text-xs text-red-650 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  className="text-[11px] sm:text-xs text-red-650 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   Reset
                 </button>
               )}
               
               <button
                 onClick={copyToClipboard}
-                className="text-xs text-slate-650 hover:text-slate-850 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                className="text-[11px] sm:text-xs text-slate-650 hover:text-slate-850 font-bold flex items-center gap-1 cursor-pointer transition-colors"
               >
                 {copied ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
                     <span className="text-emerald-600">Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     <span>Copy</span>
                   </>
                 )}
@@ -1414,34 +1415,34 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             </div>
           </div>
 
-          <div className="janamail-textarea-container relative min-h-[350px] flex flex-col bg-white overflow-hidden">
+          <div className="janamail-textarea-container relative min-h-[260px] sm:min-h-[350px] flex flex-col bg-white overflow-hidden rounded-xl sm:rounded-2xl">
             <textarea
               value={body}
               onChange={handleBodyChange}
               readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-              className={`w-full flex-1 bg-transparent p-5 text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal leading-relaxed focus:outline-none resize-none font-sans min-h-[350px] ${
+              className={`w-full flex-1 bg-transparent p-3 sm:p-5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal leading-relaxed focus:outline-none resize-none font-sans min-h-[260px] sm:min-h-[350px] ${
                 activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "cursor-not-allowed select-all opacity-80 bg-slate-50/50" : ""
               }`}
               placeholder="കത്തിന്റെ ഉള്ളടക്കം ഇവിടെ തയ്യാറാക്കാം / Type petition content here..."
             />
 
             {/* Live Personal Signature Block */}
-            <div className="bg-slate-50 border-t border-slate-200 px-5 py-4 text-left select-none relative group">
-              <div className="absolute top-3.5 right-4 flex items-center gap-1.5 text-[9px] font-black text-blue-600 tracking-wider uppercase">
-                <Lock className="w-3 h-3" />
+            <div className="bg-slate-50 border-t border-slate-200 px-3.5 sm:px-5 py-3 sm:py-4 text-left select-none relative group">
+              <div className="absolute top-3 sm:top-3.5 right-3.5 sm:right-4 flex items-center gap-1 text-[8.5px] sm:text-[9px] font-black text-blue-600 tracking-wider uppercase">
+                <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 <span>Automatic Signature</span>
               </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5">
+              <p className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
                 കത്തിന്റെ ഒപ്പ് / Signature Preview
               </p>
-              <div className="font-sans text-xs font-bold text-slate-700 leading-relaxed bg-white/70 border border-slate-200/60 rounded-xl p-3 shadow-xs space-y-1.5">
+              <div className="font-sans text-xs font-bold text-slate-700 leading-relaxed bg-white/70 border border-slate-200/60 rounded-lg sm:rounded-xl p-2.5 sm:p-3 shadow-2xs space-y-1 sm:space-y-1.5">
                 <p className="text-slate-550 font-medium">വിശ്വസ്തതയോടെ,</p>
-                <p className="text-slate-800 text-sm">{name || "[പേര്]"}</p>
+                <p className="text-slate-800 text-xs sm:text-sm">{name || "[പേര്]"}</p>
                 <p className="text-slate-700">{place || "[സ്ഥലം]"}</p>
               </div>
             </div>
 
-            <div className="bg-slate-50 border-t border-slate-150 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+            <div className="bg-slate-50 border-t border-slate-150 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between text-[9.5px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider">
               {activeComposeMethod === "custom" || config?.writeMyOwnEnabled !== false ? (
                 <span>📝 നിങ്ങൾക്ക് ആവശ്യമെങ്കിൽ ഈ കത്തിന്റെ ഉള്ളടക്കത്തിൽ മാറ്റങ്ങൾ വരുത്താം.</span>
               ) : (
@@ -1452,15 +1453,15 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         </div>
 
         {/* Connector */}
-        <div className="flex justify-center my-1 text-slate-300 select-none">
-          <span className="text-lg font-bold">↓</span>
+        <div className="flex justify-center my-0.5 sm:my-1 text-slate-300 select-none">
+          <span className="text-base sm:text-lg font-bold">↓</span>
         </div>
 
         {/* Step 4: Confirmation */}
-        <div className="space-y-4 bg-slate-50/50 border border-slate-100 p-6 rounded-3xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <h3 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black">4</span>
+        <div className="space-y-3 sm:space-y-4 bg-slate-50/50 border border-slate-200/60 p-2 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[10px] font-black shrink-0">4</span>
               സ്ഥിരീകരണം (Required Confirmation)
             </h3>
             
@@ -1469,26 +1470,26 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               const count = Object.keys(checkedIndices).filter(k => checkedIndices[Number(k)]).length;
               const allChecked = count === activeConfirmations.length;
               return (
-                <div className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black tracking-wider uppercase transition-all duration-300 ${
+                <div className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-wider uppercase transition-all duration-300 self-start sm:self-auto ${
                   allChecked 
                     ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
                     : "bg-amber-100 text-amber-800 border border-amber-200"
                 }`}>
-                  <span className={`w-2 h-2 rounded-full ${allChecked ? "bg-emerald-600 animate-pulse" : "bg-amber-500 animate-ping"}`} />
+                  <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${allChecked ? "bg-emerald-600 animate-pulse" : "bg-amber-500 animate-ping"}`} />
                   <span>{count} / {activeConfirmations.length} VERIFIED</span>
                 </div>
               );
             })()}
           </div>
           
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-left shadow-xs space-y-5">
+          <div className="bg-white border border-slate-200/80 rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 text-left shadow-2xs space-y-3 sm:space-y-5 w-full">
             {/* Dynamic Progress Bar */}
             {(() => {
               const count = Object.keys(checkedIndices).filter(k => checkedIndices[Number(k)]).length;
               const percent = (count / activeConfirmations.length) * 100;
               return (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold text-slate-400">
                     <span>പുരോഗതി / CERTIFICATION PROGRESS</span>
                     <span className={count === activeConfirmations.length ? "text-emerald-600 font-extrabold" : "text-slate-650"}>
                       {percent}% Completed
@@ -1509,12 +1510,12 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             })()}
 
             {config?.confirmationSectionDescription && (
-              <p className="text-xs text-slate-500 leading-relaxed font-semibold bg-slate-50 p-3 rounded-xl border border-slate-100/60">
+              <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed font-semibold bg-slate-50 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-100/60">
                 {config.confirmationSectionDescription}
               </p>
             )}
             
-            <div className="grid grid-cols-1 gap-3.5">
+            <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5">
               {activeConfirmations.map((text, idx) => {
                 const isChecked = !!checkedIndices[idx];
                 
@@ -1532,9 +1533,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 return (
                   <label 
                     key={idx} 
-                    className={`relative flex items-start gap-4 p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none group/card ${
+                    className={`relative flex items-start gap-2.5 sm:gap-4 p-3 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none group/card w-full ${
                       isChecked
-                        ? "bg-emerald-50/20 border-emerald-500 shadow-sm shadow-emerald-500/5 ring-1 ring-emerald-500/20"
+                        ? "bg-emerald-50/20 border-emerald-500 shadow-2xs ring-1 ring-emerald-500/20"
                         : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/30"
                     }`}
                   >
@@ -1548,7 +1549,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                       />
                       <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 ${
                         isChecked 
-                          ? "bg-emerald-600 border-emerald-600 text-white shadow-sm" 
+                          ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs" 
                           : "bg-white border-slate-300 group-hover/card:border-slate-400 group-focus/card:border-blue-500"
                       }`}>
                         {isChecked && (
@@ -1563,26 +1564,26 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                       </div>
                     </div>
 
-                    <div className="flex-1 space-y-1.5 text-left">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2.5 py-0.5.5 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded border ${
+                    <div className="flex-1 space-y-1 text-left min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className={`px-2 sm:px-2.5 py-0.5 text-[8.5px] sm:text-[9.5px] md:text-[10px] font-black uppercase tracking-wider rounded border ${
                           isChecked ? "bg-emerald-100 text-emerald-800 border-emerald-200" : badge.color
                         }`}>
                           {isChecked ? "VERIFIED • സ്ഥിരീകരിച്ചു" : `${badge.labelMl} • ${badge.labelEn}`}
                         </span>
                       </div>
                       
-                      <p className={`text-sm md:text-base font-bold leading-relaxed transition-colors ${
+                      <p className={`text-xs sm:text-sm md:text-base font-bold leading-relaxed transition-colors break-words ${
                         isChecked ? "text-emerald-950" : "text-slate-800 group-hover/card:text-slate-950"
                       }`}>
                         {text}
                       </p>
                     </div>
 
-                    <div className={`p-2 rounded-lg shrink-0 transition-all ${
+                    <div className={`p-1.5 sm:p-2 rounded-lg shrink-0 transition-all ${
                       isChecked ? "text-emerald-600 bg-emerald-100/50" : "text-slate-300"
                     }`}>
-                      <IconComponent className="w-4 h-4 stroke-[2]" />
+                      <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2]" />
                     </div>
                   </label>
                 );
@@ -1595,18 +1596,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               const allChecked = count === activeConfirmations.length;
               if (!allChecked) {
                 return (
-                  <div className="bg-amber-50/40 border border-amber-200/60 p-3.5 rounded-xl flex items-start gap-2.5 text-amber-850">
+                  <div className="bg-amber-50/40 border border-amber-200/60 p-3 sm:p-3.5 rounded-xl flex items-start gap-2 sm:gap-2.5 text-amber-850">
                     <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5 animate-bounce" />
-                    <p className="text-[11px] md:text-xs font-semibold leading-relaxed">
+                    <p className="text-[10.5px] sm:text-[11px] md:text-xs font-semibold leading-relaxed">
                       തുടരുന്നതിനായി മുകളിലുള്ള 4 നിബന്ധനകളും വായിച്ച് കണ്ട് ടിക്ക് അടയാളപ്പെടുത്തേണ്ടതുണ്ട്. (Please read and check all 4 conditions above to unlock the submission button.)
                     </p>
                   </div>
                 );
               }
               return (
-                <div className="bg-emerald-50/40 border border-emerald-200/60 p-3.5 rounded-xl flex items-start gap-2.5 text-emerald-800">
+                <div className="bg-emerald-50/40 border border-emerald-200/60 p-3 sm:p-3.5 rounded-xl flex items-start gap-2 sm:gap-2.5 text-emerald-800">
                   <Check className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
-                  <p className="text-[11px] md:text-xs font-semibold leading-relaxed">
+                  <p className="text-[10.5px] sm:text-[11px] md:text-xs font-semibold leading-relaxed">
                     എല്ലാ നിബന്ധനകളും വിജയകരമായി സ്ഥിരീകരിച്ചിരിക്കുന്നു. താഴെയുള്ള <b>Continue to Gmail</b> ബട്ടൺ ഇപ്പോൾ ഉപയോഗിക്കാവുന്നതാണ്.
                   </p>
                 </div>
@@ -1616,24 +1617,24 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         </div>
 
         {/* Connector */}
-        <div className="flex justify-center my-1 text-slate-300 select-none">
-          <span className="text-lg font-bold">↓</span>
+        <div className="flex justify-center my-0.5 sm:my-1 text-slate-300 select-none">
+          <span className="text-base sm:text-lg font-bold">↓</span>
         </div>
 
         {/* Step 5: Gmail Button */}
-        <div className="space-y-4 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl flex flex-col items-center">
-          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 self-start">
-            <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[9px] font-black">5</span>
+        <div className="space-y-3 sm:space-y-4 bg-slate-50/50 border border-slate-200/60 p-2 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl flex flex-col items-center w-full">
+          <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 self-start">
+            <span className="flex items-center justify-center bg-blue-600 text-white rounded-full w-5 h-5 text-[9px] font-black shrink-0">5</span>
             പങ്കെടുക്കുക (Gmail Button)
           </h3>
 
           {showThankYou ? (
-            <div className="w-full bg-emerald-50 rounded-2xl border border-emerald-200 p-5 flex flex-col items-center text-center gap-3 animate-fade-in shadow-xs">
+            <div className="w-full bg-emerald-50 rounded-2xl border border-emerald-200 p-4 sm:p-5 flex flex-col items-center text-center gap-3 animate-fade-in shadow-xs">
               <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shadow-inner">
                 <Check className="w-5 h-5 stroke-[3]" />
               </div>
               <div className="space-y-1 max-w-xl text-center">
-                <h4 className="text-sm font-black text-emerald-800 text-center">
+                <h4 className="text-xs sm:text-sm font-black text-emerald-800 text-center">
                   ഹർജി വിജയകരമായി സമർപ്പിച്ചു! / Petition Drafted Successfully!
                 </h4>
                 <p className="text-xs md:text-sm text-emerald-700 font-semibold leading-relaxed whitespace-pre-wrap">
@@ -1641,12 +1642,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 </p>
               </div>
 
-
-
-              <div className="flex flex-wrap justify-center gap-2.5 mt-2">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-2.5 mt-2 w-full">
                 <button
                   onClick={(e) => handleParticipateNow(e, "gmail")}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] hover:shadow-lg text-white font-extrabold text-[11px] uppercase tracking-wider px-5 py-3 rounded-xl transition duration-150 cursor-pointer shadow-md"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] hover:shadow-lg text-white font-extrabold text-[11px] uppercase tracking-wider px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl transition duration-150 cursor-pointer shadow-md w-full sm:w-auto"
                 >
                   <Mail className="w-3.5 h-3.5" />
                   ഇമെയിൽ തുറക്കുക (GO TO MAIL)
@@ -1657,7 +1656,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     setCheckedIndices({});
                     setIsMailBodyTruncated(false);
                   }}
-                  className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] uppercase tracking-wider px-4 py-3 rounded-xl transition duration-150 cursor-pointer border border-slate-200"
+                  className="inline-flex items-center justify-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] uppercase tracking-wider px-4 py-2.5 sm:py-3 rounded-xl transition duration-150 cursor-pointer border border-slate-200 w-full sm:w-auto"
                 >
                   <RotateCcw className="w-3 h-3" />
                   മറ്റൊരു ഹർജി (New Petition)
@@ -1665,16 +1664,16 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               </div>
             </div>
           ) : (
-            <div className="w-full text-center space-y-4 pt-2 flex flex-col items-center">
+            <div className="w-full text-center space-y-3 sm:space-y-4 pt-1 sm:pt-2 flex flex-col items-center">
               {checkingAuth ? (
                 <div className="flex items-center gap-2 py-4 text-slate-400 text-xs font-bold uppercase tracking-wider animate-pulse">
                   <span className="inline-block animate-spin text-sm">🔄</span>
                   Checking participation status...
                 </div>
               ) : (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck) ? (
-                <div className="w-full bg-amber-50 border border-amber-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-sm">
-                    <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600" />
+                <div className="w-full bg-amber-50 border border-amber-200 p-4 sm:p-5 rounded-xl sm:rounded-2xl text-left space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs sm:text-sm">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-amber-600" />
                     <span>പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട് (Participation Recorded)</span>
                   </div>
                   <p className="text-xs md:text-sm text-amber-950 font-extrabold leading-relaxed whitespace-pre-line">
@@ -1703,14 +1702,14 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 </div>
               ) : (
                 <>
-                  <p className="text-xs text-slate-500 leading-relaxed font-semibold max-w-md">
+                  <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed font-semibold max-w-md text-center">
                     മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള <b>Go to Mail</b> ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.
                   </p>
 
                   {apiError && (
-                    <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
+                    <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-4 sm:p-5 rounded-xl sm:rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
                       <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs uppercase tracking-wider">
-                        <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
+                        <AlertTriangle className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 text-rose-600" />
                         <span>രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു / REGISTRATION FAILED</span>
                       </div>
                       <p className="text-xs text-rose-700 font-extrabold leading-relaxed break-words font-mono">
@@ -1719,7 +1718,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                       <button
                         type="button"
                         onClick={openGmailDirectly}
-                        className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer mt-2"
+                        className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider py-2.5 sm:py-3 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer mt-2"
                       >
                         <Send className="w-4 h-4 text-emerald-400" />
                         <span>എങ്കിലും Gmail-ലേക്ക് തുടരുക (Proceed to Gmail anyway)</span>
@@ -1728,15 +1727,15 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   )}
 
                   {!canSubmit && (
-                    <div className="w-full max-w-md text-left bg-slate-100/90 border border-slate-200/80 p-5 rounded-2xl space-y-3.5 shadow-xs">
-                      <p className="text-xs md:text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse shrink-0" />
+                    <div className="w-full max-w-md text-left bg-slate-100/90 border border-slate-200/80 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl space-y-2.5 sm:space-y-3.5 shadow-2xs">
+                      <p className="text-[11px] sm:text-xs md:text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 animate-pulse shrink-0" />
                         <span>ബട്ടൺ സജീവമാക്കാൻ താഴെ പറയുന്നവ പൂർത്തിയാക്കുക (To unlock Go to Mail button):</span>
                       </p>
-                      <ul className="space-y-2 text-xs md:text-sm font-extrabold text-slate-600">
+                      <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm font-extrabold text-slate-600">
                         {/* Check name */}
-                        <li className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${name.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <li className="flex items-center gap-2">
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${name.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                             {name.trim() ? "✓" : "✗"}
                           </span>
                           <span className={name.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
@@ -1744,8 +1743,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           </span>
                         </li>
                         {/* Check phone */}
-                        <li className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${phone.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <li className="flex items-center gap-2">
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${phone.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                             {phone.trim() ? "✓" : "✗"}
                           </span>
                           <span className={phone.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
@@ -1753,8 +1752,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           </span>
                         </li>
                         {/* Check district */}
-                        <li className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${district.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <li className="flex items-center gap-2">
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${district.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                             {district.trim() ? "✓" : "✗"}
                           </span>
                           <span className={district.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
@@ -1762,8 +1761,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           </span>
                         </li>
                         {/* Check place */}
-                        <li className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${place.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <li className="flex items-center gap-2">
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${place.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                             {place.trim() ? "✓" : "✗"}
                           </span>
                           <span className={place.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
@@ -1771,8 +1770,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           </span>
                         </li>
                         {/* Check category */}
-                        <li className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${category.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <li className="flex items-center gap-2">
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${category.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                             {category.trim() ? "✓" : "✗"}
                           </span>
                           <span className={category.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
@@ -1780,8 +1779,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           </span>
                         </li>
                         {/* Check confirmations */}
-                        <li className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${isFullyConfirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <li className="flex items-center gap-2">
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${isFullyConfirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                             {isFullyConfirmed ? "✓" : "✗"}
                           </span>
                           <span className={isFullyConfirmed ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
@@ -1847,7 +1846,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     
                     <motion.button
                       onClick={(e) => handleParticipateNow(e, "gmail")}
-                      className={`relative w-full flex items-center justify-center gap-3 font-black text-sm md:text-base uppercase tracking-wider px-6 py-4.5 rounded-2xl shadow-md border border-transparent transition-all duration-300 ${
+                      className={`relative w-full flex items-center justify-center gap-2.5 sm:gap-3 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider px-4 sm:px-6 py-3.5 sm:py-4.5 rounded-xl sm:rounded-2xl shadow-md border border-transparent transition-all duration-300 ${
                         canSubmit
                           ? "bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] text-white hover:shadow-lg cursor-pointer"
                           : "bg-slate-200 hover:bg-slate-300 text-slate-500 cursor-pointer shadow-none"
@@ -1865,11 +1864,11 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                         }
                       } : {}}
                     >
-                      <div className="bg-white p-1 rounded-lg shadow-sm flex items-center justify-center shrink-0">
+                      <div className="bg-white p-1 rounded-lg shadow-2xs flex items-center justify-center shrink-0">
                         {isSubmitting ? (
                           <span className="inline-block animate-spin text-sm text-[#EA4335]">🔄</span>
                         ) : (
-                          <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg className="w-4 h-4 sm:w-4.5 sm:h-4.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M20 4H18V13.5L12 18L6 13.5V4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H6V10.5L12 15L18 10.5V20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4Z" fill="#EA4335" />
                             <path d="M4 20H6V10.5L2 7.5V18C2 19.1 2.9 20 4 20Z" fill="#4285F4" />
                             <path d="M20 20H18V10.5L22 7.5V18C22 19.1 21.1 20 20 20Z" fill="#34A853" />

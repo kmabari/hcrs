@@ -92,67 +92,67 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
   const showBanner = config?.active === false || config?.campaignStatus === "disabled" || config?.campaignStatus === "completed" || config?.campaignStatus === "draft";
 
   return (
-    <main className="min-h-screen bg-slate-50 antialiased font-sans selection:bg-blue-100/40 text-slate-800 pb-16">
+    <main className="min-h-screen bg-slate-50 antialiased font-sans selection:bg-blue-100/40 text-slate-800 pb-12 sm:pb-16 overflow-x-hidden">
       
       {/* Sticky Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm py-4.5 px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-xs py-3 sm:py-4.5 px-3.5 sm:px-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           <button
             onClick={onBack}
-            className="group inline-flex items-center gap-2 text-slate-600 hover:text-[#1a2b5c] transition-colors text-xs font-bold uppercase tracking-widest"
+            className="group inline-flex items-center gap-1.5 sm:gap-2 text-slate-600 hover:text-[#1a2b5c] transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest shrink-0"
           >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span>മടങ്ങുക / Return Home</span>
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:-translate-x-1 transition-transform" />
+            <span>മടങ്ങുക <span className="hidden xs:inline">/ Return Home</span></span>
           </button>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {getStatusBadge()}
           </div>
         </div>
       </nav>
 
       {/* Header Section with Small Page Title */}
-      <header className="max-w-4xl mx-auto px-6 pt-12 pb-6 text-center space-y-4">
-        <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-bold tracking-wider text-blue-700 border border-blue-100/80">
-          <Mail className="w-3.5 h-3.5" />
+      <header className="max-w-4xl mx-auto px-3.5 sm:px-6 pt-8 sm:pt-12 pb-4 sm:pb-6 text-center space-y-3 sm:space-y-4">
+        <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-blue-50 px-3 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold tracking-wider text-blue-700 border border-blue-100/80">
+          <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           HCRS PUBLIC CAMPAIGN
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-950 uppercase tracking-tight">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-950 uppercase tracking-tight">
           {config?.campaignName || "OPERATION JANAMAIL"}
         </h1>
       </header>
 
       {/* Short Introduction Section (4-5 lines) */}
-      <section className="max-w-2xl mx-auto px-6 text-center mb-6">
-        <p className="text-sm md:text-base leading-relaxed text-slate-600 font-medium font-sans">
+      <section className="max-w-2xl mx-auto px-3.5 sm:px-6 text-center mb-6">
+        <p className="text-xs sm:text-sm md:text-base leading-relaxed text-slate-600 font-medium font-sans">
           {config?.campaignIntroduction || "ഓരോ പൗരനും അവരുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട സർക്കാർ അധികാരികളെ മാന്യവും ഉത്തരവാദിത്തപരവുമായി അറിയിക്കാൻ സഹായിക്കുന്ന ഒരു പൊതുപങ്കാളിത്ത ഇ-മെയിൽ ക്യാമ്പയിനാണ് Operation Janamail. ഇതിലൂടെ നിങ്ങളുടെ ശബ്ദം നേരിട്ട് അധികാരികളുടെ മുൻപിലേക്ക് എത്തിക്കാൻ സാധിക്കുന്നു."}
         </p>
 
         {!isReadMoreExpanded ? (
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5">
             <button
               onClick={() => {
                 setIsReadMoreExpanded(true);
                 setOpenSection(1); // Auto-open the first section for helpful onboarding
               }}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-bold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
             >
               <span>കൂടുതൽ വായിക്കാം / Read More</span>
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         ) : (
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5">
             <button
               onClick={() => {
                 setIsReadMoreExpanded(false);
                 setOpenSection(null);
               }}
-              className="inline-flex items-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-bold transition-all duration-200 cursor-pointer"
             >
               <span>വിവരങ്ങൾ ചുരുക്കാം / Read Less</span>
               <motion.span animate={{ rotate: 180 }} className="inline-block">
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </motion.span>
             </button>
           </div>
@@ -167,7 +167,7 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="max-w-2xl mx-auto px-6 mb-12 space-y-4"
+            className="max-w-2xl mx-auto px-3.5 sm:px-6 mb-8 sm:mb-12 space-y-4"
           >
             <div className="border-t border-slate-200 pt-6">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 text-center mb-4">
@@ -366,9 +366,9 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
       </AnimatePresence>
 
       {/* Main Sections Stacked Elegantly */}
-      <div className="max-w-4xl mx-auto px-6 space-y-8">
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 space-y-6 sm:space-y-8 w-full">
         {showBanner && (
-          <div className={`border rounded-2xl p-5 flex items-start gap-3 text-left shadow-xs ${
+          <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-5 flex items-start gap-3 text-left shadow-2xs ${
             config?.campaignStatus === "draft" 
               ? "bg-amber-50 border-amber-200" 
               : "bg-red-50 border-red-200"
@@ -401,12 +401,12 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
         )}
 
         {/* Email Editor Section containing the Form with strict order */}
-        <div className="bg-white rounded-3xl shadow-xs border border-slate-200/60 overflow-hidden">
+        <div className="w-full">
           <EmailEditor config={config} />
         </div>
 
         {/* Clean, low-contrast footer containing T&C and disclaimer */}
-        <footer className="pt-8 border-t border-slate-200 text-center space-y-4 text-slate-400 text-xs pb-12">
+        <footer className="pt-6 sm:pt-8 border-t border-slate-200 text-center space-y-3 sm:space-y-4 text-slate-400 text-[11px] sm:text-xs pb-8 sm:pb-12">
           {config?.termsAndConditions && (
             <p className="leading-relaxed">
               <b>വ്യവസ്ഥകളും നിബന്ധനകളും:</b> {config.termsAndConditions}

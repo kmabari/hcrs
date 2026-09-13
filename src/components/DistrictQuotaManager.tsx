@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DISTRICTS, CONSTITUENCIES } from '../constants';
 import { UserProfile } from '../types';
+import { getDistrictShareUrl, normalizeDistrictCode, getDistrictSlug } from '../lib/districtUtils';
 import { 
   MapPin, 
   Link as LinkIcon, 
@@ -86,14 +87,15 @@ export default function DistrictQuotaManager({
     ? window.location.origin 
     : 'https://hcrs-kerala.web.app';
 
-  // Generate distinct URL for a district
+  // Generate distinct URL for a district using canonical slug
   const getDistrictUrl = (districtCode: string) => {
-    return `${origin}/?view=register&district=${districtCode}`;
+    return getDistrictShareUrl(districtCode, origin);
   };
 
   // Copy district distinct link to clipboard
   const handleCopyLink = async (districtCode: string, districtName: string) => {
-    const url = getDistrictUrl(districtCode);
+    const canonicalCode = normalizeDistrictCode(districtCode) || districtCode;
+    const url = getDistrictUrl(canonicalCode);
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
@@ -105,7 +107,7 @@ export default function DistrictQuotaManager({
         document.execCommand('copy');
         document.body.removeChild(textArea);
       }
-      setCopiedCode(districtCode);
+      setCopiedCode(canonicalCode);
       toast.success(`${districtName} Distinct Registration Link Copied!`, {
         description: url
       });
@@ -117,12 +119,13 @@ export default function DistrictQuotaManager({
 
   // WhatsApp Share with customized Malayalam & English invite text
   const handleWhatsAppShare = (districtCode: string, districtName: string) => {
-    const url = getDistrictUrl(districtCode);
-    const detail = DISTRICT_DETAILS[districtCode];
+    const canonicalCode = normalizeDistrictCode(districtCode) || districtCode;
+    const url = getDistrictUrl(canonicalCode);
+    const detail = DISTRICT_DETAILS[canonicalCode];
     const mlName = detail?.mlName || districtName;
-    const rto = detail?.rto || districtCode;
-    const total = localQuotas[districtCode] ?? districtQuotas[districtCode] ?? 0;
-    const used = districtQuotasUsed[districtCode] || 0;
+    const rto = detail?.rto || canonicalCode;
+    const total = localQuotas[canonicalCode] ?? districtQuotas[canonicalCode] ?? 0;
+    const used = districtQuotasUsed[canonicalCode] || 0;
     const remains = Math.max(0, total - used);
 
     const message = `🏛️ *HCRS KERALA - ${districtName.toUpperCase()} DISTRICT REGISTRATION* 🏛️\n` +
@@ -133,12 +136,28 @@ export default function DistrictQuotaManager({
       `_ഈ ലിങ്ക് വഴി രജിസ്റ്റർ ചെയ്യുമ്പോൾ ${districtName} ജില്ല സ്വയം സെലക്റ്റ് ആകുന്നതാണ്._`;
 
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
+    
+    // Popup-blocker safe opener
+    try {
+      const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        const a = document.createElement('a');
+        a.href = waUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch {
+      window.location.href = waUrl;
+    }
   };
 
   // Generate QR Code Modal
   const handleOpenQr = async (districtCode: string, districtName: string) => {
-    const url = getDistrictUrl(districtCode);
+    const canonicalCode = normalizeDistrictCode(districtCode) || districtCode;
+    const url = getDistrictUrl(canonicalCode);
     try {
       const qrImage = await QRCodeLib.toDataURL(url, {
         width: 320,
@@ -149,7 +168,7 @@ export default function DistrictQuotaManager({
         }
       });
       setQrDataUrl(qrImage);
-      setQrModalDistrict({ code: districtCode, name: districtName, url });
+      setQrModalDistrict({ code: canonicalCode, name: districtName, url });
     } catch (err) {
       toast.error('Failed to generate QR Code');
     }
@@ -704,7 +723,22 @@ export default function DistrictQuotaManager({
                     </Button>
 
                     <Button
-                      onClick={() => window.open(distinctUrl, '_blank')}
+                      onClick={() => {
+                        try {
+                          const win = window.open(distinctUrl, '_blank', 'noopener,noreferrer');
+                          if (!win) {
+                            const a = document.createElement('a');
+                            a.href = distinctUrl;
+                            a.target = '_blank';
+                            a.rel = 'noopener noreferrer';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }
+                        } catch {
+                          window.location.href = distinctUrl;
+                        }
+                      }}
                       variant="ghost"
                       size="sm"
                       className="h-8 px-1.5 rounded-xl text-[10px] font-bold text-brand-blue hover:bg-blue-50 cursor-pointer flex items-center justify-center gap-1"

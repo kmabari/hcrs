@@ -28,6 +28,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { DISTRICTS, STATES, CONSTITUENCIES, BLOOD_GROUPS } from '@/src/constants';
+import { normalizeDistrictCode } from '../lib/districtUtils';
 import Logo from '../Logo';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -149,38 +150,13 @@ export default function RegistrationForm({
     const params = new URLSearchParams(window.location.search);
     const rawDist = params.get('district') || params.get('d') || params.get('dist');
     if (rawDist) {
-      const cleanDist = rawDist.trim().toUpperCase();
-      const rtoMap: Record<string, string> = {
-        'KL-01': 'TVM', 'KL01': 'TVM', '01': 'TVM', '1': 'TVM',
-        'KL-02': 'KLM', 'KL02': 'KLM', '02': 'KLM', '2': 'KLM',
-        'KL-03': 'PTA', 'KL03': 'PTA', '03': 'PTA', '3': 'PTA',
-        'KL-04': 'ALP', 'KL04': 'ALP', '04': 'ALP', '4': 'ALP',
-        'KL-05': 'KTM', 'KL05': 'KTM', '05': 'KTM', '5': 'KTM',
-        'KL-06': 'IDK', 'KL06': 'IDK', '06': 'IDK', '6': 'IDK',
-        'KL-07': 'EKM', 'KL07': 'EKM', '07': 'EKM', '7': 'EKM',
-        'KL-08': 'TCR', 'KL08': 'TCR', '08': 'TCR', '8': 'TCR',
-        'KL-09': 'PKD', 'KL09': 'PKD', '09': 'PKD', '9': 'PKD',
-        'KL-10': 'MLP', 'KL10': 'MLP', '10': 'MLP',
-        'KL-11': 'KOZ', 'KL11': 'KOZ', '11': 'KOZ',
-        'KL-12': 'WYD', 'KL12': 'WYD', '12': 'WYD',
-        'KL-13': 'KNR', 'KL13': 'KNR', '13': 'KNR',
-        'KL-14': 'KSD', 'KL14': 'KSD', '14': 'KSD',
-      };
-
-      let matchedCode: string | null = null;
-      if (rtoMap[cleanDist]) {
-        matchedCode = rtoMap[cleanDist];
-      } else {
-        const found = DISTRICTS.find(d => 
-          d.code.toUpperCase() === cleanDist || 
-          d.name.toUpperCase() === cleanDist ||
-          d.name.toUpperCase().startsWith(cleanDist)
-        );
-        if (found) matchedCode = found.code;
-      }
-
-      if (matchedCode) {
+      const matchedCode = normalizeDistrictCode(rawDist);
+      if (matchedCode && DISTRICTS.some(d => d.code === matchedCode)) {
         form.setValue('district', matchedCode, { shouldValidate: true });
+        const mandalams = CONSTITUENCIES[matchedCode];
+        if (mandalams && mandalams.length > 0) {
+          form.setValue('assemblyConstituency', mandalams[0], { shouldValidate: true });
+        }
       }
     }
   }, [form]);

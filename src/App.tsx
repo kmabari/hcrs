@@ -223,6 +223,10 @@ export default function App() {
       if (isELedgerPath) {
         return 'eledger';
       }
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('view') === 'register' || sp.has('district') || sp.has('dist') || sp.has('d')) {
+        return 'register';
+      }
     }
     return 'loading';
   });
@@ -1072,7 +1076,11 @@ export default function App() {
           const curUrl = new URLSearchParams(window.location.search);
           const allowedUnauthViews = ['landing', 'login', 'register', 'renewal', 'gallery', 'verify', 'janamail', 'eledger'];
           if (!allowedUnauthViews.includes(currentViewRef.current) && !curUrl.has('memberId')) {
-            setView('landing');
+            if (curUrl.get('view') === 'register' || curUrl.has('district') || curUrl.has('dist') || curUrl.has('d')) {
+              setView('register');
+            } else {
+              setView('landing');
+            }
           }
         }
         return;
