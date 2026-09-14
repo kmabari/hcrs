@@ -43,7 +43,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   // Form State
   const [razorpayEnabled, setRazorpayEnabled] = useState<boolean>(false);
   const [qrCodePaymentEnabled, setQrCodePaymentEnabled] = useState<boolean>(true);
-  const [upiId, setUpiId] = useState<string>('hcrs.kerala@okaxis');
+  const [upiId, setUpiId] = useState<string>('gpay-11261967768@okbizaxis');
   const [upiAccountName, setUpiAccountName] = useState<string>('HIGHRICH COMMUNITY REVIVAL SOCIETY');
   const [qrCodeImageUrl, setQrCodeImageUrl] = useState<string>('');
   const [bankName, setBankName] = useState<string>('State Bank of India (SBI)');
@@ -66,7 +66,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
       const settings: OrgSettings = await getOrgSettings();
       setRazorpayEnabled(settings.razorpayEnabled ?? false);
       setQrCodePaymentEnabled(settings.qrCodePaymentEnabled ?? true);
-      setUpiId(settings.upiId || defaultSettings.upiId || 'hcrs.kerala@okaxis');
+      setUpiId(settings.upiId || defaultSettings.upiId || 'gpay-11261967768@okbizaxis');
       setUpiAccountName(settings.upiAccountName || defaultSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY');
       setQrCodeImageUrl(settings.qrCodeImageUrl || defaultSettings.qrCodeImageUrl || '');
       setBankName(settings.bankName || defaultSettings.bankName || 'State Bank of India (SBI)');
@@ -138,9 +138,9 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
 
     setRazorpayEnabled(false);
     setQrCodePaymentEnabled(true);
-    setUpiId('hcrs.kerala@okaxis');
+    setUpiId('gpay-11261967768@okbizaxis');
     setUpiAccountName('HIGHRICH COMMUNITY REVIVAL SOCIETY');
-    setQrCodeImageUrl('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=hcrs.kerala@okaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR');
+    setQrCodeImageUrl('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR');
     setBankName('State Bank of India (SBI)');
     setAccountNumber('41235678901');
     setIfscCode('SBIN0070123');
@@ -581,7 +581,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
                 <Input
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
-                  placeholder="e.g. hcrs.kerala@okaxis"
+                  placeholder="e.g. gpay-11261967768@okbizaxis"
                   className="h-11 rounded-xl font-mono text-xs font-bold border-2 border-slate-200 focus:border-brand-magenta"
                 />
               </div>
@@ -928,3 +928,4 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
     </div>
   );
 }
+

@@ -937,7 +937,7 @@ export default function RegistrationForm({
                     <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800">
                       <div className="bg-white p-3 rounded-2xl shadow-lg shrink-0">
                         <img
-                          src={orgSettings.qrCodeImageUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'hcrs.kerala@okaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26cu=INR`}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'gpay-11261967768@okbizaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26am=${encodeURIComponent(regFee)}%26cu=INR`}
                           alt="HCRS Official UPI QR Code"
                           className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
                           referrerPolicy="no-referrer"
@@ -949,11 +949,11 @@ export default function RegistrationForm({
                         </div>
                         <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                           <span className="font-mono font-black text-xs sm:text-sm text-emerald-400 select-all truncate">
-                            {orgSettings.upiId || 'hcrs.kerala@okaxis'}
+                            {orgSettings.upiId || 'gpay-11261967768@okbizaxis'}
                           </span>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard(orgSettings.upiId || 'hcrs.kerala@okaxis', 'UPI ID')}
+                            onClick={() => copyToClipboard(orgSettings.upiId || 'gpay-11261967768@okbizaxis', 'UPI ID')}
                             className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
                           >
                             <Copy className="w-3 h-3" /> Copy
@@ -1063,3 +1063,7 @@ export default function RegistrationForm({
     </div>
   );
 }
+
+
+
+

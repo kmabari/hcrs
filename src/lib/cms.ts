@@ -117,9 +117,9 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   // Default Payment Operations Configuration
   razorpayEnabled: false, // Default false while verification is pending
   qrCodePaymentEnabled: true, // Default true to maintain active QR payments
-  upiId: 'hcrs.kerala@okaxis',
+  upiId: 'gpay-11261967768@okbizaxis',
   upiAccountName: 'HIGHRICH COMMUNITY REVIVAL SOCIETY',
-  qrCodeImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=hcrs.kerala@okaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR',
+  qrCodeImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR',
   bankName: 'State Bank of India (SBI)',
   accountNumber: '41235678901',
   ifscCode: 'SBIN0070123',
@@ -725,6 +725,7 @@ export function subscribeToCampaignTemplates(callback: (items: CampaignTemplate[
 }
 
 export { normalizeImageUrl } from './imageUrlUtils';
+
 
 
 
