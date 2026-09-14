@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useI18n } from './lib/i18n';
 import { motion } from 'motion/react';
 import { Search, ArrowRight, ArrowLeft, ShieldCheck, Heart, CreditCard, QrCode, Copy, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -647,7 +647,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   <Button
                     type="submit"
                     disabled={isSubmittingQr || !qrTransactionId.trim()}
-                    className="w-full h-13 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="w-full min-h-14 py-3 px-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-sm tracking-wide flex items-center justify-center gap-2 text-center leading-snug whitespace-normal transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{isSubmittingQr ? 'Submitting...' : `Submit Renewal (പുതുക്കൽ സമർപ്പിക്കുക - ₹${renewalFee})`}</span>
@@ -683,6 +683,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     </div>
   );
 }
+
 
 
 
