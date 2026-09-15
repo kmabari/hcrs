@@ -74,7 +74,8 @@ import {
   Printer,
   FileText,
   Wallet,
-  Sliders
+  Sliders,
+  CreditCard
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -101,7 +102,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
+import { onSnapshot, collection, query, where, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
@@ -269,6 +270,157 @@ export default function AdminDashboard({
     const last10_1 = clean1.slice(-10);
     const last10_2 = clean2.slice(-10);
     return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
+  };
+
+  const getClean10DigitMobile = (mobile: any): string => {
+    if (!mobile) return '';
+    const digits = String(mobile).replace(/\D/g, '');
+    return digits.length >= 10 ? digits.slice(-10) : digits;
+  };
+
+  const isPlaceholderName = (name: any): boolean => {
+    if (!name) return true;
+    const trimmed = String(name).trim();
+    return !trimmed || trimmed.toLowerCase() === 'member' || trimmed.toLowerCase() === 'undefined' || trimmed.toLowerCase() === 'null';
+  };
+
+  const extractNameFromAddressOrEmail = (m: UserProfile): string => {
+    if (m.address) {
+      const lines = m.address.split('\n').map(l => l.trim().replace(/,$/, '')).filter(Boolean);
+      const firstLine = lines[0];
+      if (firstLine && firstLine.length >= 3 && firstLine.length <= 40) {
+        const lower = firstLine.toLowerCase();
+        const isPlaceOrHouse = /house|bhavan|villa|nivas|manzil|flat|apt|apartment|road|street|ward|po\b|post|p\.o|kalliyoor|thiruvananthapuram|ernakulam|kozhikode|kollam|thrissur|palakkad|malappuram|kottayam|alappuzha|idukki|wayanad|kannur|kasaragod|pathanamthitta/i.test(lower);
+        if (!isPlaceOrHouse && !/^\d/.test(firstLine)) {
+          return firstLine;
+        }
+      }
+    }
+    return '';
+  };
+
+  const resolvePendingRenewalMember = (m: UserProfile, allMembers: UserProfile[]): UserProfile => {
+    const cleanMob = getClean10DigitMobile(m.mobile);
+    const cleanMemId = (m.membershipId || '').trim().toUpperCase();
+
+    let candidate: UserProfile | undefined;
+
+    // 1. Match by 10-digit mobile if available
+    if (cleanMob && cleanMob.length === 10) {
+      candidate = allMembers.find(other => {
+        if (other.uid === m.uid) return false;
+        const otherMob = getClean10DigitMobile(other.mobile);
+        if (otherMob === cleanMob) {
+          return !isPlaceholderName(other.name) || Boolean(other.membershipId && other.membershipId.trim().length > 0);
+        }
+        return false;
+      });
+    }
+
+    // 2. Match by membershipId if available
+    if (!candidate && cleanMemId && cleanMemId !== 'N/A' && cleanMemId !== 'PENDING') {
+      candidate = allMembers.find(other => {
+        if (other.uid === m.uid) return false;
+        const otherMemId = (other.membershipId || '').trim().toUpperCase();
+        return otherMemId === cleanMemId && !isPlaceholderName(other.name);
+      });
+    }
+
+    // 3. Match by alternative UID variants (e.g. offline_${cleanMob}, hcrs_imp_${cleanMob})
+    if (!candidate && cleanMob) {
+      const altUids = [`offline_${cleanMob}`, `hcrs_imp_${cleanMob}`, `life_${cleanMob}`, cleanMob];
+      candidate = allMembers.find(other => altUids.includes(other.uid) && !isPlaceholderName(other.name));
+    }
+
+    // Determine best name
+    let finalName = m.name;
+    if (isPlaceholderName(finalName)) {
+      if (candidate && !isPlaceholderName(candidate.name)) {
+        finalName = candidate.name;
+      } else {
+        const extracted = extractNameFromAddressOrEmail(m);
+        if (extracted) {
+          finalName = extracted;
+        } else {
+          finalName = 'Member';
+        }
+      }
+    }
+
+    // Determine best membershipId
+    let finalMemId = m.membershipId;
+    if (!finalMemId || finalMemId.trim() === '') {
+      if (candidate && candidate.membershipId && candidate.membershipId.trim() !== '') {
+        finalMemId = candidate.membershipId;
+      } else if (m.highrichId) {
+        finalMemId = m.highrichId;
+      }
+    }
+
+    // Determine best district
+    let finalDistrict = m.district;
+    if (!finalDistrict || finalDistrict.trim() === '') {
+      if (candidate && candidate.district) {
+        finalDistrict = candidate.district;
+      } else if (finalMemId) {
+        const segments = finalMemId.split(/[/ -]/).map(s => s.trim().toUpperCase());
+        const distMatch = DISTRICTS.find(d => segments.includes(d.code));
+        if (distMatch) {
+          finalDistrict = distMatch.code;
+        }
+      }
+    }
+
+    // Determine best mobile
+    let finalMobile = m.mobile;
+    if (!finalMobile || String(finalMobile).trim() === '') {
+      if (candidate && candidate.mobile) {
+        finalMobile = candidate.mobile;
+      }
+    }
+
+    return {
+      ...candidate,
+      ...m,
+      name: finalName,
+      membershipId: finalMemId,
+      district: finalDistrict,
+      mobile: finalMobile,
+      photoUrl: m.photoUrl || candidate?.photoUrl,
+      address: m.address || candidate?.address,
+      assemblyConstituency: m.assemblyConstituency || candidate?.assemblyConstituency,
+      bloodGroup: m.bloodGroup || candidate?.bloodGroup,
+      gender: m.gender || candidate?.gender,
+      dob: m.dob || candidate?.dob,
+      postOffice: m.postOffice || candidate?.postOffice,
+      pincode: m.pincode || candidate?.pincode,
+    };
+  };
+
+  const getDisplayDateStr = (val: any): string => {
+    if (!val) return 'N/A';
+    if (typeof val.toDate === 'function') {
+      try { return val.toDate().toLocaleDateString('en-IN'); } catch (e) {}
+    }
+    if (val.seconds || val._seconds) {
+      const s = val.seconds ?? val._seconds;
+      return new Date(s * 1000).toLocaleDateString('en-IN');
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString('en-IN');
+  };
+
+  const getDisplayDateTimeStr = (val: any): string => {
+    if (!val) return 'N/A';
+    if (typeof val.toDate === 'function') {
+      try { return val.toDate().toLocaleString('en-IN'); } catch (e) {}
+    }
+    if (val.seconds || val._seconds) {
+      const s = val.seconds ?? val._seconds;
+      return new Date(s * 1000).toLocaleString('en-IN');
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? String(val) : d.toLocaleString('en-IN');
   };
 
   const getComboClaimsForClaim = (claim: any, allClaims: any[]): any[] => {
@@ -646,6 +798,13 @@ export default function AdminDashboard({
   const [isBulkApproving, setIsBulkApproving] = useState(false);
   const [approvingRenewalUid, setApprovingRenewalUid] = useState<string | null>(null);
   const [approvedRenewalUids, setApprovedRenewalUids] = useState<string[]>([]);
+
+  // Pending Renewal Details View States
+  const [viewingRenewalMember, setViewingRenewalMember] = useState<UserProfile | null>(null);
+  const [resolvedRenewalMember, setResolvedRenewalMember] = useState<UserProfile | null>(null);
+  const [viewingRenewalReceipts, setViewingRenewalReceipts] = useState<any[]>([]);
+  const [loadingRenewalReceipts, setLoadingRenewalReceipts] = useState(false);
+  const [showRenewalCardPreview, setShowRenewalCardPreview] = useState(false);
 
   // Populate claims states when editingClaim changes
   useEffect(() => {
@@ -1478,6 +1637,71 @@ export default function AdminDashboard({
     }
   };
 
+  const handleViewRenewalDetails = async (member: UserProfile) => {
+    const resolved = resolvePendingRenewalMember(member, members);
+    setViewingRenewalMember(member);
+    setResolvedRenewalMember(resolved);
+    setViewingRenewalReceipts([]);
+    setShowRenewalCardPreview(false);
+    setLoadingRenewalReceipts(true);
+
+    try {
+      // 1. Fetch subcollection receipts for this member
+      const receiptsSnap = await getDocs(collection(db, 'users', member.uid, 'receipts'));
+      let recs: any[] = receiptsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // If candidate was resolved and has a different UID, check that too
+      if (resolved.uid && resolved.uid !== member.uid) {
+        try {
+          const altSnap = await getDocs(collection(db, 'users', resolved.uid, 'receipts'));
+          const altRecs = altSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          recs = [...recs, ...altRecs];
+        } catch (e) {}
+      }
+
+      // Deduplicate receipts
+      const seen = new Set<string>();
+      const dedupedRecs = recs.filter(r => {
+        const key = r.id || r.receiptNo || r.paymentId || JSON.stringify(r);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setViewingRenewalReceipts(dedupedRecs);
+    } catch (err) {
+      console.warn("Notice fetching renewal receipts:", err);
+    }
+
+    // 2. Extra Firestore resolution for missing/placeholder fields if needed
+    const cleanMob = getClean10DigitMobile(member.mobile);
+    if (isPlaceholderName(resolved.name) || !resolved.membershipId) {
+      try {
+        if (cleanMob && cleanMob.length === 10) {
+          const mobSnap = await getDocs(query(collection(db, 'users'), where('mobile', '==', cleanMob)));
+          if (!mobSnap.empty) {
+            const docsData = mobSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
+            const better = docsData.find(u => !isPlaceholderName(u.name) || Boolean(u.membershipId));
+            if (better) {
+              setResolvedRenewalMember(prev => ({
+                ...(prev || resolved),
+                name: !isPlaceholderName(better.name) ? better.name : (prev?.name || resolved.name),
+                membershipId: better.membershipId || prev?.membershipId || resolved.membershipId,
+                district: better.district || prev?.district || resolved.district,
+                address: better.address || prev?.address || resolved.address,
+                photoUrl: better.photoUrl || prev?.photoUrl || resolved.photoUrl,
+              }));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Notice querying Firestore for member resolution:", e);
+      }
+    }
+
+    setLoadingRenewalReceipts(false);
+  };
+
   const STABLE_URL = SHARED_URL;
   const baseUrl = typeof window !== 'undefined' && !window.location.origin.includes('ais-dev') && !window.location.origin.includes('google.com')
     ? window.location.origin 
@@ -2065,16 +2289,21 @@ export default function AdminDashboard({
       if (!(m as any).renewalPending) return false;
       
       const term = searchTerm.toLowerCase().trim();
+      const resolved = resolvePendingRenewalMember(m, members);
       const matchesSearch = !term || 
                            (m.name && m.name.toLowerCase().includes(term)) || 
+                           (resolved.name && resolved.name.toLowerCase().includes(term)) ||
                            (m.mobile && String(m.mobile).includes(term)) ||
                            (m.membershipId && m.membershipId.toLowerCase().includes(term)) ||
+                           (resolved.membershipId && resolved.membershipId.toLowerCase().includes(term)) ||
+                           ((m as any).renewalTransactionId && String((m as any).renewalTransactionId).toLowerCase().includes(term)) ||
+                           ((m as any).address && String((m as any).address).toLowerCase().includes(term)) ||
                            (m.email && m.email.toLowerCase().includes(term)) ||
                            (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
                            (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
                            (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
                            (m.district && DISTRICTS.find(d => d.code === m.district)?.name.toLowerCase().includes(term));
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter || resolved.district === districtFilter;
       
       let matchesSource = true;
       if (sourceFilter === 'online') {
@@ -3473,23 +3702,79 @@ export default function AdminDashboard({
                       </Badge>
                     </div>
                     <div className="space-y-3">
-                      {pendingRenewals.map(m => (
-                        <div key={m.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-50/40 rounded-2xl border border-amber-100 gap-3 w-full min-w-0">
-                          <div className="min-w-0">
-                            <p className="font-extrabold text-sm text-slate-800 break-words">{m.name} ({m.membershipId})</p>
-                            <p className="text-xs text-slate-500 font-bold break-words">{m.mobile} • {m.district}</p>
+                      {pendingRenewals.map(m => {
+                        const resolved = resolvePendingRenewalMember(m, members);
+                        const hasResolvedName = resolved.name && resolved.name !== 'Member';
+                        const displayName = hasResolvedName ? resolved.name : (m.name && m.name !== 'Member' ? m.name : 'Member');
+                        const displayMemId = resolved.membershipId || m.membershipId || (m.highrichId ? `HR: ${m.highrichId}` : 'ID: Not Assigned');
+                        const displayMobile = resolved.mobile || m.mobile || 'No Mobile';
+                        const displayDistrict = resolved.district || m.district || (DISTRICTS.find(d => (m.membershipId || '').includes(d.code))?.name || 'District Not Specified');
+                        const displayAmount = (m as any).paymentAmount || 100;
+                        const displayTxn = (m as any).renewalTransactionId || (m as any).transactionId || (m as any).paymentId || '';
+                        const displayDate = (m as any).renewalPaymentDate || '';
+                        const displayTime = (m as any).renewalPaymentTime || '';
+
+                        return (
+                          <div key={m.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-50/50 hover:bg-amber-50/80 transition-colors rounded-2xl border border-amber-200/80 gap-3 w-full min-w-0 shadow-xs">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-black text-sm text-slate-900 break-words">{displayName}</p>
+                                <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-200">
+                                  {displayMemId}
+                                </span>
+                                {m.name === 'Member' && hasResolvedName && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                                    Resolved
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium flex-wrap mt-1">
+                                <span className="font-semibold text-slate-700">{displayMobile}</span>
+                                <span>•</span>
+                                <span>{displayDistrict}</span>
+                                <span>•</span>
+                                <span className="text-emerald-700 font-black">₹{displayAmount}</span>
+                                {displayDate && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{displayDate}{displayTime ? ` ${displayTime}` : ''}</span>
+                                  </>
+                                )}
+                                {displayTxn && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono text-[11px] bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">
+                                      UTR: {displayTxn}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+                              <Button 
+                                type="button"
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleViewRenewalDetails(m)} 
+                                className="flex-1 sm:flex-initial min-h-9 h-auto py-1.5 px-3 rounded-xl text-xs font-black uppercase border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-xs flex items-center justify-center gap-1.5"
+                              >
+                                <Eye className="w-3.5 h-3.5 shrink-0 text-brand-blue" />
+                                <span>View Details</span>
+                              </Button>
+                              <Button 
+                                type="button"
+                                size="sm" 
+                                disabled={approvingRenewalUid === m.uid}
+                                onClick={() => handleApproveRenewal(m)} 
+                                className="flex-1 sm:flex-initial min-h-9 h-auto py-1.5 px-3 rounded-xl text-xs font-black uppercase bg-brand-blue hover:bg-brand-blue/90 text-white shadow-xs flex items-center justify-center gap-1.5"
+                              >
+                                {approvingRenewalUid === m.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                                <span>Approve</span>
+                              </Button>
+                            </div>
                           </div>
-                          <Button 
-                            size="sm" 
-                            disabled={approvingRenewalUid === m.uid}
-                            onClick={() => handleApproveRenewal(m)} 
-                            className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 rounded-xl text-xs font-black uppercase bg-brand-blue hover:bg-brand-blue/90 text-white shadow-sm shrink-0 whitespace-normal break-words max-w-full text-center"
-                          >
-                            {approvingRenewalUid === m.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 shrink-0 inline" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />}
-                            <span>Approve Renewal</span>
-                          </Button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
                 )}
@@ -4101,6 +4386,345 @@ export default function AdminDashboard({
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Renewal Request Details Dialog */}
+        <Dialog open={!!viewingRenewalMember} onOpenChange={(open) => {
+          if (!open) {
+            setViewingRenewalMember(null);
+            setResolvedRenewalMember(null);
+            setViewingRenewalReceipts([]);
+          }
+        }}>
+          <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-4 sm:p-6">
+            <DialogHeader className="border-b border-slate-100 pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 font-black text-xs uppercase px-2.5 py-1">
+                    Pending Renewal
+                  </Badge>
+                  <span className="text-xs font-mono font-bold text-slate-400">
+                    UID: {viewingRenewalMember?.uid ? viewingRenewalMember.uid.slice(0, 14) + '...' : ''}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                    Fee: ₹{(viewingRenewalMember as any)?.paymentAmount || 100}
+                  </span>
+                </div>
+              </div>
+              <DialogTitle className="text-xl font-black text-slate-900 uppercase tracking-tight mt-2 flex items-center gap-2">
+                <span>Renewal Request Details</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs font-bold text-slate-500">
+                അംഗത്വം പുതുക്കൽ അപേക്ഷയുടെ വിശദവിവരങ്ങളും പെയ്‌മെന്റ് പരിശോധനയും
+              </DialogDescription>
+            </DialogHeader>
+
+            {viewingRenewalMember && (() => {
+              const res = resolvedRenewalMember || resolvePendingRenewalMember(viewingRenewalMember, members);
+              const m = viewingRenewalMember as any;
+              const hasResolvedName = res.name && res.name !== 'Member';
+              const displayName = hasResolvedName ? res.name : (m.name && m.name !== 'Member' ? m.name : 'Member');
+              const displayMemId = res.membershipId || m.membershipId || (m.highrichId ? `HR: ${m.highrichId}` : 'Not Assigned (Pending Approval)');
+              const displayMobile = res.mobile || m.mobile || 'N/A';
+              const displayDistrict = res.district || m.district || (DISTRICTS.find(d => (m.membershipId || '').includes(d.code))?.name || 'Not Specified');
+              const txnId = m.renewalTransactionId || m.transactionId || m.paymentId || 'N/A';
+              const paymentDate = m.renewalPaymentDate || 'N/A';
+              const paymentTime = m.renewalPaymentTime || '';
+              const submittedDate = getDisplayDateTimeStr(m.renewalDate || m.createdAt);
+              const joiningDate = getDisplayDateStr(res.registrationDate || m.registrationDate);
+              const currentExpiry = getDisplayDateStr(res.expiryDate || m.expiryDate);
+              const statusStr = res.status || m.status || 'Active';
+
+              return (
+                <div className="space-y-4 py-2 text-slate-800">
+                  {/* Payment Verification Banner */}
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 border border-amber-200/80 rounded-2xl p-4 shadow-xs">
+                    <div className="flex items-center justify-between mb-3 border-b border-amber-200/60 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-amber-700" />
+                        <h4 className="text-xs font-black uppercase text-amber-900 tracking-wider">
+                          Payment Verification (പെയ്‌മെന്റ് വിവരങ്ങൾ)
+                        </h4>
+                      </div>
+                      <Badge className="bg-amber-600 text-white font-bold text-[11px]">
+                        {m.paymentStatus || 'Pending Verification'}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-amber-100">
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Renewal Amount</span>
+                        <span className="text-base font-black text-emerald-700">₹{m.paymentAmount || 100}</span>
+                        <span className="text-[11px] text-slate-500 block font-medium">Method: {m.paymentMethod || 'QR Code / UPI'}</span>
+                      </div>
+
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-amber-100">
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Transaction ID / UTR</span>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <span className="font-mono font-extrabold text-slate-800 break-all select-all">{txnId}</span>
+                          {txnId !== 'N/A' && (
+                            <Button 
+                              type="button"
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 shrink-0 text-slate-500 hover:text-slate-900"
+                              onClick={() => {
+                                navigator.clipboard.writeText(txnId);
+                                toast.success('UTR copied to clipboard');
+                              }}
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-amber-100">
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Payment Date & Time</span>
+                        <span className="font-bold text-slate-800">
+                          {paymentDate} {paymentTime ? `at ${paymentTime}` : ''}
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-amber-100">
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Request Submitted Date/Time</span>
+                        <span className="font-bold text-slate-800">{submittedDate}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Member Profile Details */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-brand-blue" />
+                        <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">
+                          Member Profile (അംഗത്തിന്റെ വിവരങ്ങൾ)
+                        </h4>
+                      </div>
+                      {hasResolvedName && m.name === 'Member' && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-bold">
+                          Resolved from Record
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Full Name (പേര്)</span>
+                        <span className="font-black text-sm text-slate-900">{displayName}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Member ID (അംഗത്വ നമ്പർ)</span>
+                        <span className="font-mono font-bold text-sm text-brand-blue">{displayMemId}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">Mobile Number</span>
+                        <span className="font-mono font-bold text-slate-800">{displayMobile}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-slate-400 block">District & Unit (ജില്ല / യൂണിറ്റ്)</span>
+                        <span className="font-bold text-slate-800">
+                          {displayDistrict}
+                          {res.assemblyConstituency ? ` • ${res.assemblyConstituency}` : ''}
+                        </span>
+                      </div>
+
+                      {(res.address || m.address) && (
+                        <div className="sm:col-span-2">
+                          <span className="text-[10px] font-black uppercase text-slate-400 block">Address (മേൽവിലാസം)</span>
+                          <span className="font-medium text-slate-700 whitespace-pre-line">{res.address || m.address}</span>
+                          {(res.postOffice || res.pincode) && (
+                            <span className="text-[11px] text-slate-500 block mt-0.5">
+                              {res.postOffice ? `Post Office: ${res.postOffice}, ` : ''}
+                              {res.pincode ? `PIN: ${res.pincode}` : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {(res.email || m.email) && !((res.email || m.email).endsWith('@hcrs.society')) && (
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-slate-400 block">Email</span>
+                          <span className="font-medium text-slate-700 break-all">{res.email || m.email}</span>
+                        </div>
+                      )}
+
+                      {(res.sponsorName || m.sponsorName) && (
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-slate-400 block">Sponsor / Recommender</span>
+                          <span className="font-bold text-slate-800">
+                            {res.sponsorName || m.sponsorName}
+                            {(res.sponsorMobile || m.sponsorMobile) ? ` (${res.sponsorMobile || m.sponsorMobile})` : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Membership Status & Renewal History */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+                    <div className="flex items-center gap-2 mb-3 border-b border-slate-200 pb-2">
+                      <Clock className="w-4 h-4 text-slate-600" />
+                      <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">
+                        Membership Status & Renewal History
+                      </h4>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Account Status</span>
+                        <span className="font-black text-slate-800 capitalize">{statusStr}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Joining Date</span>
+                        <span className="font-bold text-slate-800">{joiningDate}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Current Expiry</span>
+                        <span className="font-bold text-slate-800">{currentExpiry}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Renewal Pending</span>
+                        <span className="font-black text-amber-700">Yes (Action Required)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Previous Payment / Receipt History */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-emerald-700" />
+                        <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">
+                          Payment & Receipt History (രസീത് വിവരങ്ങൾ)
+                        </h4>
+                      </div>
+                      <Badge variant="outline" className="text-[11px] font-bold font-mono">
+                        {viewingRenewalReceipts.length} Recorded
+                      </Badge>
+                    </div>
+
+                    {loadingRenewalReceipts ? (
+                      <div className="flex items-center justify-center py-4 gap-2 text-xs text-slate-500 font-bold">
+                        <Loader2 className="w-4 h-4 animate-spin text-brand-blue" />
+                        <span>Loading receipts from Firestore...</span>
+                      </div>
+                    ) : viewingRenewalReceipts.length > 0 ? (
+                      <div className="space-y-2">
+                        {viewingRenewalReceipts.map((rec, idx) => (
+                          <div key={rec.id || idx} className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono font-black text-brand-blue">{rec.receiptNo || rec.id}</span>
+                                <Badge variant="outline" className="text-[10px] font-bold">
+                                  {rec.receiptLabel || rec.receiptType || 'Renewal'}
+                                </Badge>
+                                <span className="text-slate-400">•</span>
+                                <span className="text-slate-600 font-medium">
+                                  {getDisplayDateStr(rec.paymentDate || rec.createdAt)}
+                                </span>
+                              </div>
+                              {rec.transactionId && (
+                                <p className="text-[11px] font-mono text-slate-500 mt-0.5">
+                                  Txn / UTR: {rec.transactionId}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <span className="font-black text-emerald-700 text-sm">₹{rec.amount || 100}</span>
+                              <Badge className="bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                                {rec.status || rec.paymentStatus || 'Paid'}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+                        <p className="font-bold text-slate-800">Current Renewal Submission Receipt:</p>
+                        <p className="font-mono text-[11px]">
+                          Receipt No: <span className="font-bold text-brand-blue">{m.receiptNumber || 'Pending Generation'}</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          UTR: <span className="font-mono">{txnId}</span> • Amount: ₹{m.paymentAmount || 100} • Date: {paymentDate} {paymentTime}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Toggleable Member Card Preview */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-brand-blue" />
+                        <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">
+                          Member Card (ഡിജിറ്റൽ ഐഡി കാർഡ്)
+                        </h4>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowRenewalCardPreview(!showRenewalCardPreview)}
+                        className="text-xs font-bold text-brand-blue h-8 px-2.5 hover:bg-white"
+                      >
+                        {showRenewalCardPreview ? 'Hide Card' : 'Show Card Preview'}
+                      </Button>
+                    </div>
+
+                    {showRenewalCardPreview && (
+                      <div className="pt-3 flex justify-center">
+                        <div className="w-full max-w-sm">
+                          <MembershipCard member={res} isReadOnly={true} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setViewingRenewalMember(null);
+                        setResolvedRenewalMember(null);
+                        setViewingRenewalReceipts([]);
+                      }}
+                      className="rounded-xl font-bold text-xs order-2 sm:order-1 h-10 px-4"
+                    >
+                      Close (അടയ്ക്കുക)
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={approvingRenewalUid === viewingRenewalMember.uid}
+                      onClick={async () => {
+                        const target = viewingRenewalMember;
+                        await handleApproveRenewal(target);
+                        setViewingRenewalMember(null);
+                        setResolvedRenewalMember(null);
+                        setViewingRenewalReceipts([]);
+                      }}
+                      className="rounded-xl font-black text-xs uppercase bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm order-1 sm:order-2 h-10 px-5 flex items-center justify-center gap-2"
+                    >
+                      {approvingRenewalUid === viewingRenewalMember.uid ? (
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      )}
+                      <span>Approve Renewal (പുതുക്കൽ സ്ഥിരീകരിക്കുക)</span>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
