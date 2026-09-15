@@ -2284,14 +2284,14 @@ export default function AdminDashboard({
   }, [claims]);
 
   const pendingRenewals = useMemo(() => {
-    return members.filter(m => {
+    const filtered = members.filter(m => {
       if (approvedRenewalUids.includes(m.uid)) return false;
       if (!(m as any).renewalPending) return false;
-      
+
       const term = searchTerm.toLowerCase().trim();
       const resolved = resolvePendingRenewalMember(m, members);
-      const matchesSearch = !term || 
-                           (m.name && m.name.toLowerCase().includes(term)) || 
+      const matchesSearch = !term ||
+                           (m.name && m.name.toLowerCase().includes(term)) ||
                            (resolved.name && resolved.name.toLowerCase().includes(term)) ||
                            (m.mobile && String(m.mobile).includes(term)) ||
                            (m.membershipId && m.membershipId.toLowerCase().includes(term)) ||
@@ -2304,16 +2304,56 @@ export default function AdminDashboard({
                            (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
                            (m.district && DISTRICTS.find(d => d.code === m.district)?.name.toLowerCase().includes(term));
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter || resolved.district === districtFilter;
-      
+
       let matchesSource = true;
       if (sourceFilter === 'online') {
         matchesSource = !m.registeredBy;
       } else if (sourceFilter === 'manual') {
         matchesSource = !!m.registeredBy;
       }
-      
+
       return matchesSearch && matchesDistrict && matchesSource;
     });
+
+    const getRenewalTime = (m: UserProfile): number => {
+      const value = (m as any).renewalDate || (m as any).createdAt;
+      if (!value) return 0;
+
+      try {
+        if (typeof value.toMillis === 'function') return value.toMillis();
+        if (typeof value.toDate === 'function') return value.toDate().getTime();
+
+        const seconds = value.seconds ?? value._seconds;
+        if (typeof seconds === 'number') return seconds * 1000;
+
+        const parsed = new Date(value).getTime();
+        return Number.isNaN(parsed) ? 0 : parsed;
+      } catch {
+        return 0;
+      }
+    };
+
+    const uniquePending = new Map<string, UserProfile>();
+
+    filtered.forEach(m => {
+      const resolved = resolvePendingRenewalMember(m, members);
+      const membershipId = (resolved.membershipId || m.membershipId || '').trim().toUpperCase();
+      const mobile = getClean10DigitMobile(resolved.mobile || m.mobile);
+
+      const identityKey = membershipId
+        ? `member:${membershipId}`
+        : mobile
+          ? `mobile:${mobile}`
+          : `uid:${m.uid}`;
+
+      const existing = uniquePending.get(identityKey);
+
+      if (!existing || getRenewalTime(m) > getRenewalTime(existing)) {
+        uniquePending.set(identityKey, m);
+      }
+    });
+
+    return Array.from(uniquePending.values());
   }, [members, searchTerm, districtFilter, sourceFilter, approvedRenewalUids]);
 
   const exportToExcel = () => {
