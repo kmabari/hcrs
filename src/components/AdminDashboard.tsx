@@ -81,6 +81,7 @@ import { UserProfile } from '@/src/types';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import MembershipCard from './MembershipCard';
@@ -604,6 +605,7 @@ export default function AdminDashboard({
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
+  const [isSavingMember, setIsSavingMember] = useState(false);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [selectedReceiptsMember, setSelectedReceiptsMember] = useState<UserProfile | null>(null);
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
@@ -1564,7 +1566,7 @@ export default function AdminDashboard({
     }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMember) return;
     const cleanMobile = (editingMember.mobile || '').replace(/\D/g, '');
@@ -1572,18 +1574,49 @@ export default function AdminDashboard({
       toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
       return;
     }
+    const cleanName = (editingMember.name || '').trim();
+    if (!cleanName) {
+      toast.error('പേര് നൽകേണ്ടതുണ്ട്. (Full Name is required.)');
+      return;
+    }
+
+    // Check duplicate mobile safely
+    const duplicate = members.find(m => m.uid !== editingMember.uid && m.mobile && m.mobile.replace(/\D/g, '') === cleanMobile);
+    if (duplicate) {
+      toast.error(`ഈ മൊബൈൽ നമ്പർ (${cleanMobile}) മറ്റൊരു അംഗത്തിന്റെ അക്കൗണ്ടിൽ (${duplicate.name} - ${duplicate.membershipId || duplicate.uid}) നിലവിലുണ്ട്. (Mobile number already in use by another member.)`);
+      return;
+    }
+
     const cleanPin = (editingMember.pin || '123456').trim();
     const isDefaultPin = cleanPin === '123456';
-    const updatedMember = { 
+    const updatedMember: UserProfile = { 
       ...editingMember, 
+      name: cleanName,
       mobile: cleanMobile,
+      email: (editingMember.email || '').trim().toLowerCase(),
+      address: (editingMember.address || '').trim(),
+      district: editingMember.district || 'MLP',
+      assemblyConstituency: (editingMember.assemblyConstituency || '').trim(),
+      postOffice: (editingMember.postOffice || '').trim(),
+      pincode: (editingMember.pincode || '').replace(/\D/g, '').slice(0, 6),
+      bloodGroup: editingMember.bloodGroup || '',
+      highrichId: (editingMember.highrichId || '').trim(),
+      membershipId: (editingMember.membershipId || '').trim(),
       pin: cleanPin,
       mustChangePassword: isDefaultPin,
       pinResetRequested: isDefaultPin,
       mustCompleteProfile: false
     };
-    onUpdate(updatedMember.uid, updatedMember);
-    setEditingMember(null);
+
+    setIsSavingMember(true);
+    try {
+      await onUpdate(updatedMember.uid, updatedMember);
+      setEditingMember(null);
+    } catch (err: any) {
+      console.error("[AdminDashboard] Save member profile failed:", err);
+    } finally {
+      setIsSavingMember(false);
+    }
   };
 
   const actualMembers = useMemo(() => {
@@ -4085,51 +4118,133 @@ export default function AdminDashboard({
             {editingMember && (
               <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold">Full Name (പേര്)</Label>
+                  <Label className="text-xs font-bold text-slate-700">Full Name (പേര്) <span className="text-red-500">*</span></Label>
                   <Input 
                     name="name" 
-                    defaultValue={editingMember.name} 
+                    value={editingMember.name || ''} 
+                    onChange={e => setEditingMember({ ...editingMember, name: e.target.value })}
                     className="h-10 rounded-xl text-xs font-bold" 
+                    placeholder="Enter full name"
                     required 
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold">Mobile Number</Label>
+                    <Label className="text-xs font-bold text-slate-700">Registered Mobile (മൊബൈൽ) <span className="text-red-500">*</span></Label>
                     <Input 
                       name="mobile" 
-                      defaultValue={editingMember.mobile} 
+                      value={editingMember.mobile || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                       className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      maxLength={10}
+                      placeholder="10-digit mobile"
                       required 
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold">Highrich ID</Label>
+                    <Label className="text-xs font-bold text-slate-700">Email Address (ഇമെയിൽ)</Label>
                     <Input 
-                      name="highrichId" 
-                      defaultValue={editingMember.highrichId} 
-                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      name="email" 
+                      type="email"
+                      value={editingMember.email || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, email: e.target.value })}
+                      className="h-10 rounded-xl text-xs font-bold" 
+                      placeholder="member@email.com"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-700">Address / Place (മേൽവിലാസം / സ്ഥലം)</Label>
+                  <Textarea 
+                    name="address" 
+                    value={editingMember.address || ''} 
+                    onChange={e => setEditingMember({ ...editingMember, address: e.target.value })}
+                    className="rounded-xl text-xs font-semibold resize-none h-16" 
+                    placeholder="House name, street, locality..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold">District (ജില്ല)</Label>
+                    <Label className="text-xs font-bold text-slate-700">District (ജില്ല) <span className="text-red-500">*</span></Label>
                     <select
                       name="district"
-                      defaultValue={editingMember.district}
+                      value={editingMember.district || 'MLP'}
+                      onChange={e => {
+                        const dist = e.target.value;
+                        const defaultConst = CONSTITUENCIES[dist]?.[0] || '';
+                        setEditingMember({
+                          ...editingMember,
+                          district: dist,
+                          assemblyConstituency: defaultConst
+                        });
+                      }}
                       className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
                     >
                       {DISTRICTS.map(d => (
-                        <option key={d.code} value={d.code}>{d.name}</option>
+                        <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold">Blood Group</Label>
+                    <Label className="text-xs font-bold text-slate-700">Assembly Constituency (നിയമസഭാ മണ്ഡലം)</Label>
+                    {CONSTITUENCIES[editingMember.district || 'MLP'] ? (
+                      <select
+                        name="assemblyConstituency"
+                        value={editingMember.assemblyConstituency || ''}
+                        onChange={e => setEditingMember({ ...editingMember, assemblyConstituency: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
+                      >
+                        <option value="">Select Constituency</option>
+                        {CONSTITUENCIES[editingMember.district || 'MLP'].map((c: string) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input 
+                        name="assemblyConstituency" 
+                        value={editingMember.assemblyConstituency || ''} 
+                        onChange={e => setEditingMember({ ...editingMember, assemblyConstituency: e.target.value })}
+                        className="h-10 rounded-xl text-xs font-bold" 
+                        placeholder="Constituency name"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Post Office (പോസ്റ്റ് ഓഫീസ്)</Label>
+                    <Input 
+                      name="postOffice" 
+                      value={editingMember.postOffice || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, postOffice: e.target.value })}
+                      className="h-10 rounded-xl text-xs font-bold" 
+                      placeholder="Post Office"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">PIN Code (പിൻകോഡ്)</Label>
+                    <Input 
+                      name="pincode" 
+                      value={editingMember.pincode || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      maxLength={6}
+                      placeholder="6-digit PIN"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Blood Group (രക്തഗ്രൂപ്പ്)</Label>
                     <select
                       name="bloodGroup"
-                      defaultValue={editingMember.bloodGroup || ''}
+                      value={editingMember.bloodGroup || ''}
+                      onChange={e => setEditingMember({ ...editingMember, bloodGroup: e.target.value })}
                       className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
                     >
                       <option value="">Select Blood Group</option>
@@ -4138,21 +4253,64 @@ export default function AdminDashboard({
                       ))}
                     </select>
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Highrich ID</Label>
+                    <Input 
+                      name="highrichId" 
+                      value={editingMember.highrichId || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, highrichId: e.target.value })}
+                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      placeholder="HR..."
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Assembly Constituency (നിയമസഭാ മണ്ഡലം)</Label>
-                  <Input 
-                    name="assemblyConstituency" 
-                    defaultValue={editingMember.assemblyConstituency} 
-                    className="h-10 rounded-xl text-xs font-bold" 
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Membership ID</Label>
+                    <Input 
+                      name="membershipId" 
+                      value={editingMember.membershipId || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, membershipId: e.target.value })}
+                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      placeholder="KL/..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Login PIN / Password</Label>
+                    <Input 
+                      name="pin" 
+                      value={editingMember.pin || ''} 
+                      onChange={e => setEditingMember({ ...editingMember, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                      className="h-10 rounded-xl text-xs font-bold font-mono" 
+                      maxLength={6}
+                      placeholder="123456"
+                    />
+                  </div>
                 </div>
-                <DialogFooter className="gap-2 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => setEditingMember(null)} className="rounded-xl font-bold">
+
+                <DialogFooter className="gap-2 pt-4 border-t sm:justify-end">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    disabled={isSavingMember}
+                    onClick={() => setEditingMember(null)} 
+                    className="rounded-xl font-bold"
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" className="rounded-xl font-black uppercase bg-brand-blue text-white">
-                    Save Changes
+                  <Button 
+                    type="submit" 
+                    disabled={isSavingMember}
+                    className="rounded-xl font-black uppercase bg-brand-blue text-white hover:bg-brand-blue/90"
+                  >
+                    {isSavingMember ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving Changes...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
