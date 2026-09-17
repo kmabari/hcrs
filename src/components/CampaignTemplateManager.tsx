@@ -14,13 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import JanamailSubmissionsPanel from './JanamailSubmissionsPanel';
 
 export default function CampaignTemplateManager() {
   const [templates, setTemplates] = useState<CampaignTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Navigation Sub Tabs state
-  const [subTab, setSubTab] = useState<"details" | "templates">("templates");
+  const [subTab, setSubTab] = useState<"details" | "templates" | "submissions">("templates");
 
   // Global Campaign Settings State
   const [config, setConfig] = useState<JanamailConfig | null>(null);
@@ -533,11 +534,23 @@ export default function CampaignTemplateManager() {
           >
             ⚙️ Campaign Settings
           </button>
+          <button
+            onClick={() => setSubTab("submissions")}
+            className={`px-5 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+              subTab === "submissions"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            📊 Submissions / Excel
+          </button>
         </div>
       </div>
 
+      {subTab === "submissions" && <JanamailSubmissionsPanel />}
+
       {/* Quick Global Activation Status Banner */}
-      <div className={`p-6 rounded-[24px] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 text-left ${
+      {subTab !== "submissions" && <div className={`p-6 rounded-[24px] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 text-left ${
         configActive 
           ? "bg-emerald-50/50 border-emerald-100 text-emerald-900 shadow-xs" 
           : "bg-rose-50/50 border-rose-100 text-rose-900 shadow-xs"
@@ -592,7 +605,7 @@ export default function CampaignTemplateManager() {
             )}
           </Button>
         </div>
-      </div>
+      </div>}
 
       {/* RENDER CAMPAIGN SETTINGS SUB-TAB */}
       {subTab === "details" && (

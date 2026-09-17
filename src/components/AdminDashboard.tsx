@@ -1479,6 +1479,22 @@ export default function AdminDashboard({
     }
   };
 
+  const handleClaimVerificationChange = async (claimId: string, verificationStatus: string) => {
+    const loadingToast = toast.loading('Verification status saving...');
+    try {
+      await updateDoc(doc(db, 'claims', claimId), {
+        verificationStatus,
+        verifiedAt: verificationStatus === 'VERIFIED' ? serverTimestamp() : null,
+        verifiedBy: user?.email || user?.uid || 'admin',
+        updatedAt: serverTimestamp()
+      });
+      toast.success('Verification status saved.', { id: loadingToast });
+    } catch (error: any) {
+      console.error('Claim verification update failed:', error);
+      toast.error('Verification status save failed.', { id: loadingToast });
+    }
+  };
+
   // Handle district management labels update
   const getAdminLabel = (email: string) => {
     if (MAIN_ADMINS.includes(email)) return 'Main Admin';
@@ -2388,6 +2404,50 @@ export default function AdminDashboard({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Members");
     XLSX.writeFile(wb, `HCRS_Members_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const exportAllIndividualClaimsToExcel = () => {
+    const preferenceLabels: Record<string, string> = {
+      settlement: 'Settlement and account closure after balance payment',
+      wait: 'Wait after part / one-fourth payment',
+      continue: 'Continue with company after restart',
+      urgent: 'Urgent payment required'
+    };
+    const rows = claims.map((claim: any, index: number) => {
+      const member = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
+      const paid = Number(claim.totalPaid || 0);
+      const received = Number(claim.totalReceived || 0);
+      const pending = claim.totalPending !== undefined && claim.totalPending !== null
+        ? Number(claim.totalPending)
+        : paid - received;
+      return {
+        'Sl No': index + 1,
+        'Claim Token': claim.tokenNo || claim.serialNo || '',
+        'Claimant Name': claim.userName || member?.name || '',
+        'Relation': claim.relationLabel || claim.relation || 'Self',
+        'Mobile Number': claim.userMobile || member?.mobile || '',
+        'Member ID': claim.membershipId || member?.membershipId || '',
+        'Highrich ID': claim.highrichId || member?.highrichId || '',
+        'PAN Number': claim.panNumber || claim.pan || (member as any)?.panNumber || (member as any)?.pan || '',
+        'District': claim.userDistrict || claim.district || member?.district || '',
+        'Total Paid': paid,
+        'Total Received': received,
+        'Balance / Pending': pending,
+        'Future Planning Code': claim.futurePreference || '',
+        'Future Planning': preferenceLabels[claim.futurePreference] || claim.futurePreferenceText || '',
+        'Hardship / Current Situation': Array.isArray(claim.hardshipStatus) ? claim.hardshipStatus.join(', ') : (claim.hardshipStatus || ''),
+        'Priority Status': claim.priorityStatus || '',
+        'Verification Status': claim.verificationStatus || 'PENDING_VERIFICATION',
+        'Verified By': claim.verifiedBy || '',
+        'Notes / Remarks': claim.notes || '',
+        'Submitted Date': claim.createdAt?.toDate ? claim.createdAt.toDate().toLocaleString('en-IN') : (claim.submittedAt || claim.createdAt || '')
+      };
+    });
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet['!cols'] = [8, 14, 24, 16, 16, 22, 18, 16, 16, 14, 16, 18, 20, 42, 32, 20, 22, 24, 36, 24].map(wch => ({ wch }));
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, 'Individual Claims');
+    XLSX.writeFile(book, `HCRS_Individual_Claims_Bulk_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   return (
@@ -3872,6 +3932,16 @@ export default function AdminDashboard({
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={exportAllIndividualClaimsToExcel}
+                      disabled={claims.length === 0}
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-blue-600/30 text-blue-800 bg-blue-50/50 hover:bg-blue-100/70"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
+                      <span>Bulk Excel (All Claims)</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => refreshClaimsList(true)}
                       disabled={isSyncingClaims}
                       className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-emerald-600/30 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/70 text-center whitespace-normal break-words max-w-full"
@@ -4018,11 +4088,26 @@ export default function AdminDashboard({
                                       </div>
                                     </TableCell>
                                     <TableCell>
-                                      {c.isEmergency ? (
-                                        <Badge variant="destructive" className="text-[8px] font-black uppercase">Emergency</Badge>
-                                      ) : (
-                                        <Badge variant="outline" className="text-[8px] font-bold">Standard</Badge>
-                                      )}
+                                      <div className="space-y-1.5 min-w-[150px]">
+                                        {c.isEmergency ? (
+                                          <Badge variant="destructive" className="text-[8px] font-black uppercase">Emergency</Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="text-[8px] font-bold">Standard</Badge>
+                                        )}
+                                        <Select
+                                          value={c.verificationStatus || 'PENDING_VERIFICATION'}
+                                          onValueChange={(value) => handleClaimVerificationChange(c.id, value)}
+                                        >
+                                          <SelectTrigger className="h-8 rounded-lg text-[9px] font-black bg-white">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="PENDING_VERIFICATION">Pending Verification</SelectItem>
+                                            <SelectItem value="VERIFIED">Verified</SelectItem>
+                                            <SelectItem value="NEEDS_REVIEW">Needs Review</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex items-center justify-end gap-1.5 flex-wrap">
