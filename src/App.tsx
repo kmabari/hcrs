@@ -337,6 +337,10 @@ export default function App() {
   const isSyncingRef = useRef(false);
   const hasInitialSyncedRef = useRef(false);
   const lastAuthUserUidRef = useRef<string | null>(null);
+  // A profile snapshot may trigger UID/profile healing. Guard that write so the
+  // write's own snapshot cannot start an uncontrolled read/write feedback loop.
+  const healedProfileUidsRef = useRef<Set<string>>(new Set());
+  const profileHealingInFlightRef = useRef<Set<string>>(new Set());
 
   const refreshMembersList = useCallback(async (customUser?: UserProfile, isManual: boolean = false) => {
     const activeUser = customUser || user;
@@ -1068,6 +1072,8 @@ export default function App() {
         console.log("No authenticated user found.");
         hasInitialSyncedRef.current = false;
         lastAuthUserUidRef.current = null;
+        healedProfileUidsRef.current.clear();
+        profileHealingInFlightRef.current.clear();
         if (!isMagicLink) {
           setUser(null);
           setMembers([]);
@@ -1215,7 +1221,13 @@ export default function App() {
             const isPlaceholderOrBroken = !freshData.membershipId || freshData.name === 'Member' || freshData.name === 'undefined' || !freshData.name;
             const isPendingOrExpired = freshData.renewalPending === true || (freshData.expiryDate && (freshData.expiryDate.toDate ? freshData.expiryDate.toDate().getTime() : new Date(freshData.expiryDate).getTime()) < Date.now());
 
-            if (cleanMob.length === 10 && (isPlaceholderOrBroken || isPendingOrExpired)) {
+            if (
+              cleanMob.length === 10 &&
+              (isPlaceholderOrBroken || isPendingOrExpired) &&
+              !healedProfileUidsRef.current.has(authUser.uid) &&
+              !profileHealingInFlightRef.current.has(authUser.uid)
+            ) {
+              profileHealingInFlightRef.current.add(authUser.uid);
               try {
                 const qMob = query(collection(db, 'users'), where('mobile', '==', cleanMob), limit(10));
                 const snapMob = await getDocs(qMob);
@@ -1224,17 +1236,23 @@ export default function App() {
                   if (bestDoc && bestDoc.id !== authUser.uid) {
                     const bestData = bestDoc.data();
                     console.log(`Auto-healing active document ${authUser.uid} with best profile from ${bestDoc.id}`);
-                    freshData = {
+                    const healedData = {
                       ...bestData,
                       uid: authUser.uid,
                       role: bestData.role || 'member',
                       status: bestData.status || 'active'
                     };
-                    await setDoc(doc(db, 'users', authUser.uid), freshData, { merge: true }).catch(() => {});
+                    freshData = healedData;
+                    // Mark before writing because Firestore can deliver the resulting
+                    // snapshot immediately. Never delete or mutate the source record.
+                    healedProfileUidsRef.current.add(authUser.uid);
+                    await setDoc(doc(db, 'users', authUser.uid), healedData, { merge: true });
                   }
                 }
               } catch (e) {
                 console.warn("Non-blocking best doc healing note:", e);
+              } finally {
+                profileHealingInFlightRef.current.delete(authUser.uid);
               }
             }
           }
@@ -1346,11 +1364,8 @@ export default function App() {
                 await setDoc(doc(db, 'users', authUser.uid), userData, { merge: true });
                 console.log("Dynamic UID healing successful! Document ID:", selectedDoc.id);
                 
-                if (selectedDoc.id.startsWith('offline_') || selectedDoc.id.startsWith('life_')) {
-                  try {
-                    await deleteDoc(doc(db, 'users', selectedDoc.id));
-                  } catch (delErr) {}
-                }
+                // Preserve the matched legacy/source record. Removing it here can
+                // destroy payment, renewal or claim history linked to that UID.
               }
             }
           } catch (healErr) {
@@ -2810,72 +2825,10 @@ export default function App() {
           errCode === 'unavailable';
 
         if (isOfflineError) {
-          console.warn("Database connection issue detected during handleAddOffline! Running offline direct-write fallback...");
-          
-          let nextSerial = 1001;
-          try {
-            // Read from server or local cache (fallback is instant if offline)
-            const metaDoc = await getDoc(metadataRef);
-            if (metaDoc.exists()) {
-              nextSerial = (metaDoc.data()?.count || 1000) + 1;
-            } else {
-              const maxLocal = members && members.length > 0 ? Math.max(...members.map(m => m.serialNo || 1000), 1000) : 1000;
-              nextSerial = maxLocal + 1;
-            }
-          } catch (e) {
-            const maxLocal = members && members.length > 0 ? Math.max(...members.map(m => m.serialNo || 1000), 1000) : 1000;
-            nextSerial = maxLocal + 1;
-          }
-
-          const memberDistCode = getDistrictCode(values.district || 'MLP').toUpperCase();
-          const assemblyCode = getAssemblyCode(values.assemblyConstituency || '').toUpperCase();
-          const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial);
-
-          const isMainAdminFinal = MAIN_ADMINS.some(e => e.toLowerCase() === (user?.email || '').toLowerCase());
-          const isBulk = orgSettings?.registrationMode === 'bulk';
-          const isAdminAccount = values.role === 'admin' || values.role === 'operator';
-          const expiry = new Date('2026-04-15T12:00:00Z');
-
-          const offlineMemberData: any = {
-            uid,
-            ...values,
-            email: finalEmail,
-            registrationDate: new Date('2025-04-15T12:00:00Z'),
-            membershipId: finalId,
-            status: 'active',
-            isPaid: true,
-            isApproved: true,
-            issueDate: new Date('2025-04-15T12:00:00Z'),
-            expiryDate: expiry,
-            isAdmin: isAdminAccount,
-            role: values.role || 'member',
-            quota: values.quota || 0,
-            quotaUsed: 0,
-            registeredBy: user?.uid,
-            registeredByName: user?.name || 'Admin',
-            serialNo: nextSerial,
-            waStatus: isBulk ? 'Pending' : 'Sent',
-            stateCode: 'KL',
-            districtCode: memberDistCode,
-            constituencyCode: assemblyCode,
-            membership_type: 'ADHOC_MEMBER',
-            isQuotaCounted: countsTowardQuota
-          };
-
-          // Safe, direct, offline-first non-blocking writes
-          await setDoc(metadataRef, { count: nextSerial }, { merge: true });
-          
-          if (countsTowardQuota) {
-            await setDoc(quotaRef, { used: increment(1) }, { merge: true });
-          }
-
-          if (user?.role === 'operator' || (user?.role === 'admin' && !isMainAdminFinal)) {
-            const operatorRef = doc(db, 'users', user.uid);
-            await setDoc(operatorRef, { quotaUsed: increment(1) }, { merge: true });
-          }
-
-          await setDoc(userRef, offlineMemberData);
-          newlyCreatedUser = offlineMemberData as UserProfile;
+          // A locally calculated serial followed by direct writes is not atomic and
+          // can allocate the same statewide serial to simultaneous registrations.
+          // Fail safely; no member/payment record is fabricated or partially written.
+          throw new Error('Secure statewide member ID allocation is temporarily unavailable. No member record was created; please retry when the database connection is restored.');
         } else {
           throw error;
         }
