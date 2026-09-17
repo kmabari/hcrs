@@ -3964,11 +3964,10 @@ export default function AdminDashboard({
 
                   <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
                     <Button
-                      variant="outline"
                       size="sm"
                       onClick={exportAllIndividualClaimsToExcel}
                       disabled={claims.length === 0}
-                      className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase bg-blue-700 hover:bg-blue-800 text-white shadow-sm"
+                      className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase !bg-blue-700 hover:!bg-blue-800 !text-white shadow-sm disabled:!bg-slate-200 disabled:!text-slate-500"
                       title="Admin Panel-ലുള്ള എല്ലാ Individual Claim records-ഉം Excel file ആയി download ചെയ്യുക"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
@@ -3984,16 +3983,6 @@ export default function AdminDashboard({
                     >
                       <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0 inline", isSyncingClaims && "animate-spin")} />
                       <span>{isSyncingClaims ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Sync Claims from DB'}</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsClaimsImportOpen(true)}
-                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-bold text-[10px] uppercase border-slate-200 text-slate-500 hover:bg-slate-50 text-center whitespace-normal break-words max-w-full"
-                      title="പഴയ website-ൽ നിന്നുള്ള legacy claim file migration-നു മാത്രം"
-                    >
-                      <Upload className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0 inline" />
-                      <span>Legacy Migration Upload Only</span>
                     </Button>
                     <Button
                       variant="outline"
