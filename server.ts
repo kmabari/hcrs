@@ -8,18 +8,8 @@ import { google } from "googleapis";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import admin from "firebase-admin";
-import { initializeApp as initClientApp, getApps as getClientApps } from "firebase/app";
-import { collection, getDocs, getDoc, doc, updateDoc, query, where, limit, getFirestore } from "firebase/firestore";
-
-const clientApp = getClientApps().length
-  ? getClientApps()[0]
-  : initClientApp({
-      apiKey: process.env.FIREBASE_API_KEY,
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-      appId: process.env.FIREBASE_APP_ID
-    });
-const clientDb = getFirestore(clientApp);
+import { db as clientDb } from "./src/lib/firebase";
+import { collection, getDocs, getDoc, doc, updateDoc, setDoc, query, where, limit, serverTimestamp } from "firebase/firestore";
 
 // In-memory cache for fast members retrieval
 let membersMemoryCache: { data: any[]; timestamp: number } | null = null;
@@ -46,7 +36,13 @@ export const app = express();
 export const handler = (req: any, res: any) => app(req, res);
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, _res, buffer) => {
+    if (req.originalUrl?.includes('/razorpay/webhook')) {
+      req.rawBody = Buffer.from(buffer);
+    }
+  }
+}));
 
 // Normalize request URL for Vercel serverless environments where /api prefix might be stripped
 if (process.env.VERCEL) {
@@ -1849,10 +1845,22 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                           keySecret.length >= 8 &&
                           keySecret !== "VITE_RAZORPAY_KEY_ID";
 
+      if (!hasRealKeys) {
+        return res.status(503).json({
+          error: "Razorpay payment verification is unavailable because server credentials are not configured."
+        });
+      }
+
+      if (!razorpay_signature || razorpay_signature === 'demo_signature') {
+        return res.status(400).json({
+          error: "Security Violation: A valid Razorpay payment signature is required."
+        });
+      }
+
       let payment: any = null;
 
-      // Perform full signature and API verification if real keys exist
-      if (hasRealKeys && razorpay_signature && razorpay_signature !== 'demo_signature') {
+      // Every successful response must be backed by Razorpay signature and API verification.
+      {
         const expectedSignature = crypto
           .createHmac("sha256", keySecret)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -1873,7 +1881,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           key_secret: keySecret
         });
 
-        const payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
+        payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
         if (!payment) {
           return res.status(400).json({
             error: "Payment Verification Failure: Payment record not found on Razorpay server."
@@ -1909,12 +1917,18 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       const paymentTimeISO = new Date().toISOString();
       const finalReceiptNumber = clientReceipt || `RCP-${paymentType.toUpperCase().slice(0,3)}-${Date.now().toString().slice(-6)}`;
-      const statusResult = paymentType === 'registration' ? 'Active' : 'Renewed';
+      const statusResult = paymentType === 'registration' ? 'Pending Approval' : 'Renewal Pending Approval';
 
       // 4. Record Verified Payment in Firestore and Activate Member
       let isAlreadyProcessed = false;
 
-      if (dbAdmin) {
+      if (!dbAdmin) {
+        return res.status(503).json({
+          error: "Payment was verified, but membership persistence is unavailable. Please contact support before retrying."
+        });
+      }
+
+      {
         try {
           const existingPayDoc = await dbAdmin.collection('payments').doc(razorpay_payment_id).get();
           if (existingPayDoc.exists && existingPayDoc.data()?.status === 'SUCCESS') {
@@ -1934,7 +1948,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
 
           // Perform Server-Side Firestore Member Activation
-          if (paymentType === 'registration' && registrationData?.uid) {
+          // Do not repeat member mutations or create duplicate receipts when a verified
+          // payment callback is retried by the browser or payment provider.
+          if (!isAlreadyProcessed && paymentType === 'registration' && registrationData?.uid) {
             const userUid = registrationData.uid;
             const userRef = dbAdmin.collection('users').doc(userUid);
             const now = new Date();
@@ -1970,29 +1986,14 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               memberId: registrationData.membershipId || userUid
             });
-          } else if (paymentType === 'renewal' && memberId) {
+          } else if (!isAlreadyProcessed && paymentType === 'renewal' && memberId) {
             const userRef = dbAdmin.collection('users').doc(memberId);
             const userDoc = await userRef.get();
             if (userDoc.exists) {
               const userData = userDoc.data();
-              let newExpiryDate = new Date();
-              if (userData?.expiryDate) {
-                const expD = userData.expiryDate.toDate ? userData.expiryDate.toDate() : new Date(userData.expiryDate);
-                if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
-                  newExpiryDate = new Date(expD);
-                  newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                } else {
-                  newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                }
-              } else {
-                newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-              }
-
               const now = new Date();
               await userRef.update({
-                status: 'active',
-                isApproved: true,
-                renewalPending: false,
+                renewalPending: true,
                 renewalTransactionId: razorpay_payment_id,
                 renewalDate: admin.firestore.FieldValue.serverTimestamp(),
                 renewalPaymentDate: now.toISOString().split('T')[0],
@@ -2002,9 +2003,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 transactionId: razorpay_payment_id,
                 paymentTime: paymentTimeISO,
                 paymentMethod: 'Razorpay',
-                paymentStatus: 'Renewed',
-                receiptNumber: finalReceiptNumber,
-                expiryDate: newExpiryDate
+                paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
+                receiptNumber: finalReceiptNumber
               });
 
               await userRef.collection('receipts').add({
@@ -2017,7 +2017,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 transactionId: razorpay_payment_id,
                 paymentTime: paymentTimeISO,
                 paymentMethod: 'Razorpay',
-                paymentStatus: 'Renewed',
+                paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
                 status: 'Paid',
                 paymentDate: now.toISOString().split('T')[0],
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2026,7 +2026,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             }
           }
         } catch (dbAdminErr: any) {
-          console.warn("[Firebase Admin] Firestore write notice (continuing payment verification):", dbAdminErr?.message || dbAdminErr);
+          console.error("[Firebase Admin] Verified payment persistence failed:", dbAdminErr?.message || dbAdminErr);
+          return res.status(503).json({
+            error: "Payment was verified, but saving the membership update failed. Please contact support before retrying."
+          });
         }
       }
 
@@ -2160,61 +2163,57 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   app.post(["/api/admin/approve-member", "/admin/approve-member"], async (req, res) => {
     try {
       const { uid, membershipId, district, assemblyConstituency, serialNo, mobile } = req.body || {};
-      if (!uid && !mobile) {
-        return res.status(400).json({ error: "Member UID is required" });
+      if (!uid) {
+        return res.status(400).json({ error: "Exact member UID is required" });
       }
 
       if (!dbAdmin) {
-        return res.json({ success: true, note: "Handled via client Firestore SDK" });
+        return res.status(503).json({ success: false, error: "Membership approval persistence is unavailable" });
       }
 
       try {
-        let userSnap = null;
-        let existingData: any = null;
-        if (uid) {
-          const userRef = dbAdmin.collection('users').doc(uid);
-          userSnap = await userRef.get();
-          existingData = userSnap.exists ? userSnap.data() : null;
-        }
+        const userRef = dbAdmin.collection('users').doc(uid);
+        const totalsRef = dbAdmin.collection('system').doc('totals');
+        let finalId = '';
 
-        const distCode = (district || existingData?.district || 'MLP').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'MLP';
-        const assemblyCode = (assemblyConstituency || existingData?.assemblyConstituency || '001').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || '001';
-        const paddedSerial = String(serialNo || existingData?.serialNo || 1001).padStart(3, '0');
+        await dbAdmin.runTransaction(async transaction => {
+          const userSnap = await transaction.get(userRef);
+          if (!userSnap.exists) throw new Error('Member document not found');
+          const existingData = userSnap.data() || {};
+          const distCode = (district || existingData.district || 'MLP').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'MLP';
+          const assemblyCode = (assemblyConstituency || existingData.assemblyConstituency || '001').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || '001';
+          const candidateId = String(membershipId || existingData.membershipId || '');
+          let allocatedSerial = Number(serialNo || existingData.serialNo || 0);
 
-        let finalId = membershipId || existingData?.membershipId;
-        if (!finalId || (!finalId.startsWith('KL/') && !finalId.startsWith('HCRS-'))) {
-          finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
-        }
-
-        const now = new Date();
-        const expiry = new Date();
-        expiry.setFullYear(now.getFullYear() + 1);
-
-        const updateData: any = {
-          status: 'active',
-          isApproved: true,
-          membershipId: finalId,
-          expiryDate: admin.firestore.Timestamp.fromDate(expiry),
-          issueDate: admin.firestore.FieldValue.serverTimestamp(),
-          waStatus: 'Sent',
-          stateCode: 'KL',
-          districtCode: distCode,
-          constituencyCode: assemblyCode,
-          renewalPending: false
-        };
-
-        if (!existingData?.registrationDate) {
-          updateData.registrationDate = admin.firestore.FieldValue.serverTimestamp();
-        }
-
-        if (uid) {
-          const userRef = dbAdmin.collection('users').doc(uid);
-          if (userSnap && userSnap.exists) {
-            await userRef.update(updateData);
+          if (candidateId.startsWith('KL/') || candidateId.startsWith('HCRS-')) {
+            finalId = candidateId;
           } else {
-            await userRef.set(updateData, { merge: true });
+            const totalsSnap = await transaction.get(totalsRef);
+            allocatedSerial = Number(totalsSnap.data()?.count || 1000) + 1;
+            finalId = `KL/${distCode}/${assemblyCode}/${allocatedSerial}`;
+            transaction.set(totalsRef, { count: allocatedSerial }, { merge: true });
           }
-        }
+
+          const expiry = new Date();
+          expiry.setFullYear(expiry.getFullYear() + 1);
+          const updateData: any = {
+            status: 'active',
+            isApproved: true,
+            membershipId: finalId,
+            serialNo: allocatedSerial || existingData.serialNo,
+            expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+            issueDate: admin.firestore.FieldValue.serverTimestamp(),
+            waStatus: 'Sent',
+            stateCode: 'KL',
+            districtCode: distCode,
+            constituencyCode: assemblyCode,
+            renewalPending: false
+          };
+          if (!existingData.registrationDate) {
+            updateData.registrationDate = admin.firestore.FieldValue.serverTimestamp();
+          }
+          transaction.set(userRef, updateData, { merge: true });
+        });
 
         return res.json({
           success: true,
@@ -2224,13 +2223,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           isApproved: true
         });
       } catch (dbErr: any) {
-        // Log note only and allow client-side Firestore SDK to complete
         console.warn("[Admin Approval API Notice - falling back to client Firestore]:", dbErr?.message || dbErr);
-        return res.json({ success: true, note: "Client-side Firestore fallback active" });
+        return res.status(500).json({ success: false, error: "Failed to persist member approval" });
       }
     } catch (err: any) {
       console.warn("[Admin Approval API Notice]:", err?.message || err);
-      return res.json({ success: true, note: "Client-side Firestore fallback active" });
+      return res.status(500).json({ success: false, error: err?.message || "Failed to approve member" });
     }
   });
 
@@ -2254,7 +2252,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       if (!dbAdmin) {
-        return res.json({ success: true, note: "Handled via client Firestore SDK" });
+        return res.status(503).json({ success: false, error: "Renewal persistence is unavailable" });
       }
 
       try {
@@ -2270,7 +2268,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         const receiptNo = receiptNumber || `RCP-REN-${Date.now().toString().slice(-6)}`;
 
         const renewalUpdate: any = {
-          renewalPending: !isRazorpay,
+          renewalPending: true,
           renewalTransactionId: transactionId || '',
           renewalDate: admin.firestore.FieldValue.serverTimestamp(),
           renewalPaymentDate: paymentDate || todayStr,
@@ -2279,21 +2277,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           paymentId: transactionId || '',
           transactionId: transactionId || '',
           paymentMethod: paymentMethod || 'QR Code',
-          paymentStatus: isRazorpay ? 'Renewed' : 'Pending Verification',
+          paymentStatus: isRazorpay ? 'RENEWAL_AWAITING_APPROVAL' : 'Pending Verification',
           receiptNumber: receiptNo
         };
 
         if (isRazorpay) {
-          renewalUpdate.status = 'active';
-          renewalUpdate.isApproved = true;
           renewalUpdate.orderId = orderId || '';
-          if (expiryDate) {
-            renewalUpdate.expiryDate = admin.firestore.Timestamp.fromDate(new Date(expiryDate));
-          } else {
-            const exp = new Date();
-            exp.setFullYear(exp.getFullYear() + 1);
-            renewalUpdate.expiryDate = admin.firestore.Timestamp.fromDate(exp);
-          }
         }
 
         await userRef.set(renewalUpdate, { merge: true });
@@ -2310,7 +2299,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             transactionId: transactionId || '',
             paymentTime: new Date().toISOString(),
             paymentMethod: paymentMethod || 'QR Code',
-            paymentStatus: isRazorpay ? 'Renewed' : 'Pending Verification',
+            paymentStatus: isRazorpay ? 'RENEWAL_AWAITING_APPROVAL' : 'Pending Verification',
             status: isRazorpay ? 'Paid' : 'Pending Verification',
             paymentDate: paymentDate || todayStr,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2328,11 +2317,11 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         });
       } catch (dbErr: any) {
         console.warn("[Submit Renewal API Notice - falling back to client Firestore]:", dbErr?.message || dbErr);
-        return res.json({ success: true, note: "Client-side Firestore fallback active" });
+        return res.status(500).json({ success: false, error: "Failed to persist renewal request" });
       }
     } catch (err: any) {
       console.warn("[Submit Renewal API Notice]:", err?.message || err);
-      return res.json({ success: true, note: "Client-side Firestore fallback active" });
+      return res.status(500).json({ success: false, error: err?.message || "Failed to submit renewal" });
     }
   });
 
@@ -2347,41 +2336,21 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const expiry = new Date();
       expiry.setFullYear(now.getFullYear() + 1);
 
-      if (dbAdmin && uid) {
-        try {
-          const updatePayload: any = {
-            status: 'active',
-            isApproved: true,
-            renewalPending: false,
-            expiryDate: admin.firestore.Timestamp.fromDate(expiry),
-            renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
-            renewalDate: admin.firestore.FieldValue.serverTimestamp(),
-            issueDate: admin.firestore.FieldValue.serverTimestamp()
-          };
-          const userRef = dbAdmin.collection('users').doc(uid);
-          await userRef.set(updatePayload, { merge: true });
-        } catch (dbErr: any) {
-          console.warn("[Admin Renewal Approval dbAdmin notice]:", dbErr?.message || dbErr);
-        }
+      if (!dbAdmin || !uid) {
+        return res.status(503).json({ success: false, error: "Renewal approval persistence is unavailable" });
       }
 
-      if (clientDb && uid) {
-        try {
-          const { doc, setDoc } = await import("firebase/firestore");
-          const updatePayload: any = {
-            status: 'active',
-            isApproved: true,
-            renewalPending: false,
-            expiryDate: expiry.toISOString(),
-            renewalApprovedAt: now.toISOString(),
-            renewalDate: now.toISOString(),
-            issueDate: now.toISOString()
-          };
-          await setDoc(doc(clientDb, 'users', uid), updatePayload, { merge: true });
-        } catch (cErr: any) {
-          console.warn("[Admin Renewal Approval clientDb notice]:", cErr?.message || cErr);
-        }
-      }
+      const updatePayload: any = {
+        status: 'active',
+        isApproved: true,
+        renewalPending: false,
+        expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+        renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
+        renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+        issueDate: admin.firestore.FieldValue.serverTimestamp()
+      };
+      const userRef = dbAdmin.collection('users').doc(uid);
+      await userRef.set(updatePayload, { merge: true });
 
       // Invalidate memory cache so next read is fresh
       membersMemoryCache = null;
@@ -2394,7 +2363,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       });
     } catch (err: any) {
       console.warn("[Admin Renewal Approval API Notice]:", err?.message || err);
-      return res.json({ success: true, note: "Client-side Firestore fallback active" });
+      return res.status(500).json({ success: false, error: err?.message || "Failed to approve renewal" });
     }
   });
 
@@ -2414,20 +2383,33 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         }
       }
 
-      if (uid) {
-        if (dbAdmin) {
+      let writeSuccess = false;
+      let targetUid = uid;
+
+      // If targetUid is missing or starts with offline_, attempt to resolve by mobile
+      if (!targetUid && mobile) {
+        const cleanMob = String(mobile).replace(/\D/g, '');
+        if (cleanMob) {
           try {
-            await dbAdmin.collection('users').doc(uid).set(cleanData, { merge: true });
-          } catch (dbErr: any) {
-            console.warn("[Admin Update Member dbAdmin notice]:", dbErr?.message || dbErr);
+            const q = query(collection(clientDb, 'users'), where('mobile', '==', cleanMob), limit(1));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              targetUid = snap.docs[0].id;
+            }
+          } catch (lookupErr: any) {
+            console.warn("[Admin Update Member Mobile Lookup]:", lookupErr?.message || lookupErr);
           }
         }
-        if (clientDb) {
+      }
+
+      if (targetUid) {
+        // Try dbAdmin first if initialized and credentialed
+        if (dbAdmin) {
           try {
-            const { doc, setDoc } = await import("firebase/firestore");
-            await setDoc(doc(clientDb, 'users', uid), cleanData, { merge: true });
-          } catch (cErr: any) {
-            console.warn("[Admin Update Member clientDb notice]:", cErr?.message || cErr);
+            await dbAdmin.collection('users').doc(targetUid).set(cleanData, { merge: true });
+            writeSuccess = true;
+          } catch (dbErr: any) {
+            console.warn("[Admin Update Member dbAdmin notice]:", dbErr?.message || dbErr);
           }
         }
       }
@@ -2435,10 +2417,107 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       // Invalidate cache
       membersMemoryCache = null;
 
-      return res.json({ success: true, uid: uid || mobile, updated: true });
+      if (writeSuccess) {
+        return res.json({ success: true, uid: targetUid || mobile, updated: true });
+      } else {
+        return res.status(500).json({ success: false, error: "Failed to persist member update to database" });
+      }
     } catch (err: any) {
       console.warn("[Update Profile Server API Note]:", err?.message || err);
-      return res.json({ success: true, note: "Client-side fallback active" });
+      return res.status(500).json({ success: false, error: err?.message || "Internal server error during update" });
+    }
+  });
+
+  app.post(["/api/admin/save-settings", "/api/save-settings"], async (req, res) => {
+    try {
+      const { settings } = req.body || {};
+      if (!settings || typeof settings !== 'object') {
+        return res.status(400).json({ success: false, error: "Settings object is required" });
+      }
+
+      const cleanSettings: Record<string, any> = {};
+      for (const [k, v] of Object.entries(settings)) {
+        if (v !== undefined) {
+          cleanSettings[k] = v;
+        }
+      }
+
+      console.log("[save-settings API] Processing settings update:", {
+        razorpayEnabled: cleanSettings.razorpayEnabled,
+        qrCodePaymentEnabled: cleanSettings.qrCodePaymentEnabled,
+        updatedKeys: Object.keys(cleanSettings)
+      });
+
+      let writeSuccess = false;
+      let dbErrMessage = '';
+      let clientErrMessage = '';
+
+      // 1. Try dbAdmin first if initialized
+      if (dbAdmin) {
+        try {
+          await dbAdmin.collection('settings').doc('main_config').set({
+            ...cleanSettings,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          writeSuccess = true;
+          console.log("[save-settings API] Saved via dbAdmin successfully");
+        } catch (dbErr: any) {
+          dbErrMessage = dbErr?.message || String(dbErr);
+          console.warn("[save-settings API dbAdmin note]:", dbErrMessage);
+        }
+      }
+
+      if (writeSuccess) {
+        // Read back document to verify persistence
+        let verifiedData: any = null;
+        try {
+          if (dbAdmin) {
+            const snap = await dbAdmin.collection('settings').doc('main_config').get();
+            if (snap.exists) verifiedData = snap.data();
+          } else if (clientDb) {
+            const snap = await getDoc(doc(clientDb, 'settings', 'main_config'));
+            if (snap.exists()) verifiedData = snap.data();
+          }
+        } catch (readErr) {
+          console.warn("[save-settings API verification note]:", readErr);
+        }
+
+        return res.json({
+          success: true,
+          message: "Settings persisted successfully to database",
+          settings: verifiedData || cleanSettings
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: "Failed to persist settings to Firestore",
+          details: { dbError: dbErrMessage, clientError: clientErrMessage }
+        });
+      }
+    } catch (err: any) {
+      console.error("[save-settings API Error]:", err);
+      return res.status(500).json({
+        success: false,
+        error: err?.message || "Internal server error saving settings"
+      });
+    }
+  });
+
+  app.get(["/api/settings", "/api/admin/get-settings"], async (req, res) => {
+    try {
+      let data: any = null;
+      if (dbAdmin) {
+        try {
+          const snap = await dbAdmin.collection('settings').doc('main_config').get();
+          if (snap.exists) data = snap.data();
+        } catch (e) {}
+      }
+      if (data) {
+        return res.json({ success: true, settings: data });
+      }
+      return res.status(404).json({ success: false, error: "Settings not found" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message || "Failed to fetch settings" });
     }
   });
 
@@ -2600,51 +2679,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
-  async function syncClaimCounters() {
-    if (!dbAdmin) return;
-    try {
-      const claimsSnap = await dbAdmin.collection('claims').get();
-      if (claimsSnap.empty) {
-        console.log("[System Init] Claims collection is empty. Ensuring claims counters are reset to 0 so next claim starts at 1.");
-        await dbAdmin.collection('system').doc('totals').set({
-          claimsCounter: 0,
-          redClaimsCounter: 0,
-          orangeClaimsCounter: 0,
-          greenClaimsCounter: 0
-        }, { merge: true });
-      } else {
-        let maxSerial = 0;
-        let maxRed = 0;
-        let maxOrange = 0;
-        let maxGreen = 0;
-        claimsSnap.docs.forEach(d => {
-          const data = d.data();
-          const num = typeof data.serialNo === 'number' ? data.serialNo : parseInt(String(data.serialNo || data.tokenNo || '').replace(/\D/g, ''), 10);
-          if (!isNaN(num) && num > maxSerial) maxSerial = num;
-          const tok = String(data.tokenNo || data.serialNo || '');
-          if (tok.startsWith('R-')) {
-            const rNum = parseInt(tok.replace('R-', ''), 10);
-            if (!isNaN(rNum) && rNum > maxRed) maxRed = rNum;
-          } else if (tok.startsWith('O-')) {
-            const oNum = parseInt(tok.replace('O-', ''), 10);
-            if (!isNaN(oNum) && oNum > maxOrange) maxOrange = oNum;
-          } else if (tok.startsWith('G-')) {
-            const gNum = parseInt(tok.replace('G-', ''), 10);
-            if (!isNaN(gNum) && gNum > maxGreen) maxGreen = gNum;
-          }
-        });
-        await dbAdmin.collection('system').doc('totals').set({
-          claimsCounter: Math.max(claimsSnap.size, maxSerial),
-          redClaimsCounter: maxRed,
-          orangeClaimsCounter: maxOrange,
-          greenClaimsCounter: maxGreen
-        }, { merge: true });
-      }
-    } catch (err: any) {
-      console.warn("[System Init] Claims counter sync notice:", err?.message || err);
-    }
-  }
-
   // ============================================================================
   // RAZORPAY WEBHOOK ENDPOINT
   // Receives asynchronous payment updates (payment.captured, order.paid, payment.failed)
@@ -2654,14 +2688,22 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || "";
       const signature = req.headers['x-razorpay-signature'] as string;
 
-      if (webhookSecret && signature) {
-        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-        const expectedSig = crypto.createHmac('sha256', webhookSecret).update(bodyStr).digest('hex');
-
-        if (signature !== expectedSig) {
-          console.error("Razorpay Webhook Signature Mismatch!");
-          return res.status(400).json({ status: "invalid_signature" });
-        }
+      if (!webhookSecret) {
+        return res.status(503).json({ status: "webhook_not_configured" });
+      }
+      if (!signature) {
+        return res.status(400).json({ status: "missing_signature" });
+      }
+      const rawBody = (req as any).rawBody;
+      if (!rawBody) {
+        return res.status(400).json({ status: "missing_raw_body" });
+      }
+      const expectedSig = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+      const providedBuffer = Buffer.from(signature);
+      const expectedBuffer = Buffer.from(expectedSig);
+      if (providedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
+        console.error("Razorpay Webhook Signature Mismatch!");
+        return res.status(400).json({ status: "invalid_signature" });
       }
 
       const eventData = req.body || {};
@@ -2712,29 +2754,15 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                       paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
                     });
                   } else if (paymentType === 'renewal') {
-                    const userData = userDoc.data();
-                    let newExpiryDate = new Date();
-                    if (userData?.expiryDate) {
-                      const expD = userData.expiryDate.toDate ? userData.expiryDate.toDate() : new Date(userData.expiryDate);
-                      if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
-                        newExpiryDate = new Date(expD);
-                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                      } else {
-                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                      }
-                    } else {
-                      newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                    }
                     await userRef.update({
-                      status: 'active',
-                      isApproved: true,
-                      renewalPending: false,
+                      renewalPending: true,
+                      renewalTransactionId: paymentId,
+                      renewalDate: admin.firestore.FieldValue.serverTimestamp(),
                       paymentAmount: 100,
                       paymentId,
                       orderId,
                       paymentMethod: 'Razorpay',
-                      paymentStatus: 'Renewed',
-                      expiryDate: newExpiryDate
+                      paymentStatus: 'RENEWAL_AWAITING_APPROVAL'
                     });
                   }
                 }
@@ -2792,7 +2820,6 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
-    syncClaimCounters().catch(err => console.warn("[Startup claim sync warning]:", err));
   });
 }
 

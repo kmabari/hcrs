@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useI18n } from './lib/i18n';
 import { motion } from 'motion/react';
 import { Search, ArrowRight, ArrowLeft, ShieldCheck, Heart, CreditCard, QrCode, Copy, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -11,8 +11,7 @@ import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, lim
 import { UserProfile } from './types';
 import Logo from './Logo';
 import { processRazorpayPayment } from './lib/razorpay';
-import { sendWARenewalMessage } from './lib/whatsapp';
-import { getOrgSettings, subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
+import { subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
 
 interface RenewalFormProps {
   onBack: () => void;
@@ -77,32 +76,15 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
       toast.loading('Saving renewal payment record to database...', { id: loadingToast });
 
-      const memberRef = doc(db, 'users', foundMember.uid);
       const now = new Date();
       
-      // Calculate extended expiry date (current expiry + 1 year, or today + 1 year)
-      let newExpiryDate = new Date();
-      if (foundMember.expiryDate) {
-        const expD = (foundMember.expiryDate as any).toDate ? (foundMember.expiryDate as any).toDate() : ((foundMember.expiryDate as any).seconds ? new Date((foundMember.expiryDate as any).seconds * 1000) : new Date(foundMember.expiryDate as any));
-        if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
-          newExpiryDate = new Date(expD);
-          newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-        } else {
-          newExpiryDate.setFullYear(now.getFullYear() + 1);
-        }
-      } else {
-        newExpiryDate.setFullYear(now.getFullYear() + 1);
-      }
-
       const todayStr = now.toISOString().split('T')[0];
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
 
       const renewalData = {
-        status: 'active',
-        isApproved: true,
-        renewalPending: false,
+        renewalPending: true,
         renewalTransactionId: paymentDetails.paymentId,
-        renewalDate: serverTimestamp(),
+        renewalDate: now,
         renewalPaymentDate: todayStr,
         renewalPaymentTime: timeStr,
         paymentAmount: renewalFee,
@@ -111,63 +93,16 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
         transactionId: paymentDetails.paymentId,
         paymentTime: paymentDetails.paymentTime,
         paymentMethod: 'Razorpay',
-        paymentStatus: 'Renewed',
-        receiptNumber: paymentDetails.receiptNumber,
-        expiryDate: newExpiryDate
+        paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
+        receiptNumber: paymentDetails.receiptNumber
       };
 
-      await updateDoc(memberRef, renewalData);
-
-      // Save receipt to users/{uid}/receipts subcollection
-      try {
-        const receiptsRef = collection(db, 'users', foundMember.uid, 'receipts');
-        await addDoc(receiptsRef, {
-          receiptNo: paymentDetails.receiptNumber,
-          receiptType: 'Membership Renewal',
-          receiptLabel: 'Membership Renewal Receipt',
-          amount: renewalFee,
-          paymentId: paymentDetails.paymentId,
-          orderId: paymentDetails.orderId,
-          transactionId: paymentDetails.paymentId,
-          paymentTime: paymentDetails.paymentTime,
-          paymentMethod: 'Razorpay',
-          paymentStatus: 'Renewed',
-          status: 'Paid',
-          paymentDate: todayStr,
-          createdAt: serverTimestamp(),
-          memberId: foundMember.membershipId || foundMember.uid
-        });
-      } catch (rErr) {
-        console.warn("Notice saving renewal receipt document:", rErr);
-      }
-
-      toast.success('Membership Renewed Successfully! (അംഗത്വം വിജയകരമായി പുതുക്കി)', { id: loadingToast });
+      toast.success('Payment verified. Renewal is awaiting admin approval.', { id: loadingToast });
 
       const updatedMember: UserProfile = {
         ...foundMember,
-        ...renewalData,
-        expiryDate: newExpiryDate
+        ...renewalData
       } as UserProfile;
-
-      // Auto-trigger WhatsApp message if enabled
-      try {
-        const settings = await getOrgSettings();
-        if (settings.whatsappEnabled !== false && settings.whatsappRenewalEnabled !== false && settings.registrationMode !== 'bulk') {
-          setTimeout(() => {
-            sendWARenewalMessage({
-              name: foundMember.name,
-              mobile: foundMember.mobile,
-              uid: foundMember.uid,
-              membershipId: foundMember.membershipId,
-              transactionId: paymentDetails.paymentId,
-              amount: renewalFee,
-              expiryDate: newExpiryDate.toLocaleDateString('en-IN')
-            });
-          }, 600);
-        }
-      } catch (waErr) {
-        console.warn("WhatsApp renewal trigger error:", waErr);
-      }
 
       onSuccess(updatedMember);
     } catch (err: any) {
@@ -191,6 +126,15 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     setIsSubmittingQr(true);
     const loadingToast = toast.loading('Submitting Renewal Request for Verification...');
     try {
+      const usersRef = collection(db, 'users');
+      const [renewalTxMatches, generalTxMatches] = await Promise.all([
+        getDocs(query(usersRef, where('renewalTransactionId', '==', cleanTxId), limit(1))),
+        getDocs(query(usersRef, where('transactionId', '==', cleanTxId), limit(1)))
+      ]);
+      if (!renewalTxMatches.empty || !generalTxMatches.empty) {
+        throw new Error('ഈ UTR / Transaction ID ഇതിനകം ഉപയോഗിച്ചിട്ടുണ്ട്. മറ്റൊരു സാധുവായ UTR നൽകുക. (This UTR / Transaction ID has already been used.)');
+      }
+
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
@@ -573,39 +517,53 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   </div>
 
                   {/* QR Image and UPI details */}
-                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <div className="bg-white p-2.5 rounded-2xl shadow-lg shrink-0">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'gpay-11261967768@okbizaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26am=${encodeURIComponent(renewalFee)}%26cu=INR`}
-                        alt="HCRS Official UPI QR Code"
-                        className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">UPI ID:</span>
-                      <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
-                        <span className="font-mono font-black text-xs text-emerald-400 select-all truncate">
-                          {orgSettings.upiId || 'gpay-11261967768@okbizaxis'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(orgSettings.upiId || 'gpay-11261967768@okbizaxis', 'UPI ID')}
-                          className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <Copy className="w-3 h-3" /> Copy
-                        </button>
+                  {(() => {
+                    const activeUpiId = (orgSettings.upiId && !orgSettings.upiId.includes('hcrs.kerala@okaxis'))
+                      ? orgSettings.upiId
+                      : 'gpay-11261967768@okbizaxis';
+                    const activeQrImg = (orgSettings.qrCodeImageUrl && !orgSettings.qrCodeImageUrl.includes('hcrs.kerala@okaxis'))
+                      ? orgSettings.qrCodeImageUrl
+                      : '/hcrs-renewal-qr.svg';
+
+                    return (
+                      <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                        <div className="bg-white p-2.5 rounded-2xl shadow-lg shrink-0">
+                          <img
+                            src={activeQrImg}
+                            onError={(e) => {
+                              e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR`;
+                            }}
+                            alt="HCRS Official UPI QR Code"
+                            className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">UPI ID:</span>
+                          <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
+                            <span className="font-mono font-black text-xs text-emerald-400 select-all truncate">
+                              {activeUpiId}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(activeUpiId, 'UPI ID')}
+                              className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
+                            >
+                              <Copy className="w-3 h-3" /> Copy
+                            </button>
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-300">
+                            {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
+                          </p>
+                          {orgSettings.bankName && (
+                            <p className="text-[10px] text-slate-400">
+                              {orgSettings.bankName} • {orgSettings.accountNumber}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-[11px] font-bold text-slate-300">
-                        {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
-                      </p>
-                      {orgSettings.bankName && (
-                        <p className="text-[10px] text-slate-400">
-                          {orgSettings.bankName} • {orgSettings.accountNumber}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {/* UTR input */}
                   <div className="space-y-1.5 text-left bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
@@ -647,10 +605,17 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   <Button
                     type="submit"
                     disabled={isSubmittingQr || !qrTransactionId.trim()}
-                    className="w-full min-h-14 py-3 px-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-sm tracking-wide flex items-center justify-center gap-2 text-center leading-snug whitespace-normal transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="w-full h-auto min-h-[58px] py-2.5 sm:py-3 px-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-950/30 flex flex-col items-center justify-center text-center transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-normal"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isSubmittingQr ? 'Submitting...' : `Submit Renewal (പുതുക്കൽ സമർപ്പിക്കുക - ₹${renewalFee})`}</span>
+                    <div className="flex items-center justify-center gap-1.5 text-white leading-tight">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                      <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
+                        {isSubmittingQr ? 'Submitting Renewal...' : 'Submit Renewal'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] sm:text-xs font-bold text-white/95 leading-tight mt-1 normal-case tracking-normal">
+                      ({isSubmittingQr ? 'സമർപ്പിക്കുന്നു...' : `പുതുക്കൽ സമർപ്പിക്കുക - ₹${renewalFee}`})
+                    </span>
                   </Button>
                 </form>
               )}
@@ -683,8 +648,3 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     </div>
   );
 }
-
-
-
-
-

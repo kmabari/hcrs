@@ -84,37 +84,6 @@ export function sanitizeForFirestore<T extends Record<string, any>>(obj: T): Par
   return clean as Partial<T>;
 }
 
-/**
- * Bootstrap the initial eLedger database state if empty
- */
-export async function bootstrapEledgerDataIfEmpty(): Promise<void> {
-  try {
-    // 1. Ensure initial treasury metrics
-    const metricsRef = doc(eledgerDb, 'eledger_treasury_metrics', 'current_state');
-    const metricsSnap = await getDoc(metricsRef);
-    if (!metricsSnap.exists()) {
-      await setDoc(metricsRef, {
-        ...INITIAL_TREASURY_METRICS,
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    // 2. Ensure Fund Categories
-    const catSnap = await getDocs(collection(eledgerDb, CATEGORIES_COL));
-    if (catSnap.empty) {
-      for (const cat of INITIAL_CATEGORY_SUMMARIES) {
-        const catId = cat.category.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        await setDoc(doc(eledgerDb, CATEGORIES_COL, catId), {
-          ...cat,
-          updatedAt: serverTimestamp(),
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('[eLedger Service] Bootstrap check note:', err);
-  }
-}
-
 export const CENTRAL_ADMIN_EMAILS = [
   'hcrskerala@gmail.com',
   'kmabarikiyafoods@gmail.com',
@@ -129,33 +98,24 @@ export const TREASURER_UIDS = [
   'NX2b63Hzu4RFhR4BCQP5OMpI4jw1',
 ];
 
+export const TREASURER_EMAILS = [
+  'treasurer@hcrs.society',
+  'hcrstreasurer@gmail.com',
+  'treasurer.eledger@hcrs.org',
+  'statetreasurer@hcrs.society',
+];
+
 export function isCentralAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  return (
-    CENTRAL_ADMIN_EMAILS.includes(clean) ||
-    clean.includes('hcrskerala') ||
-    clean.includes('mabarikiyafoods') ||
-    clean.includes('admin') ||
-    clean.includes('eledger') ||
-    clean.includes('admin_auth') ||
-    clean.includes('highrich') ||
-    clean.includes('hcrsindia') ||
-    clean.includes('9645934571') ||
-    clean.endsWith('@hcrs.society') ||
-    clean.endsWith('@hcrs.org')
-  );
+  return CENTRAL_ADMIN_EMAILS.includes(clean);
 }
 
 export function isTreasurerUser(fbUser?: FirebaseUser | null, email?: string | null): boolean {
   if (fbUser && TREASURER_UIDS.includes(fbUser.uid)) return true;
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  return (
-    clean.includes('treasurer') ||
-    clean.includes('hcrstreasurer') ||
-    clean.includes('state_treasurer')
-  );
+  return TREASURER_EMAILS.includes(clean);
 }
 
 /**
@@ -870,9 +830,11 @@ export async function toggleEledgerUserStatus(
 
 export async function deleteEledgerUser(id: string): Promise<{ success: boolean; message: string }> {
   try {
-    await deleteDoc(doc(eledgerDb, USERS_COL, id));
-    await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, id));
-    return { success: true, message: 'User account deleted successfully.' };
+    await setDoc(doc(eledgerDb, USERS_COL, id), {
+      status: 'inactive',
+      deactivatedAt: serverTimestamp(),
+    }, { merge: true });
+    return { success: true, message: 'User account deactivated. Financial history was preserved.' };
   } catch (err: any) {
     return { success: false, message: err.message || 'Failed to delete user account.' };
   }
@@ -1042,13 +1004,11 @@ export async function syncEledgerMetricsFromVouchers(): Promise<void> {
         });
       }
 
-      // Cleanup redundant duplicate/orphan docs in background
-      for (const dupId of duplicateDocIdsToDelete) {
-        try {
-          await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, dupId));
-        } catch (delErr) {
-          console.warn('[eLedger Service] Cleanup duplicate member doc note:', delErr);
-        }
+      // Never delete duplicate or legacy financial records during a read/reconciliation.
+      // They are excluded from the calculated view above and must be reviewed through an
+      // explicitly approved migration before any persistent cleanup is attempted.
+      if (duplicateDocIdsToDelete.length > 0) {
+        console.warn('[eLedger Service] Duplicate/orphan member accounts detected; no records were deleted:', duplicateDocIdsToDelete);
       }
 
       uniqueMembersMap.forEach((m) => {
@@ -1265,24 +1225,6 @@ export async function allocateMemberCreditInDb(
       });
     }
 
-    // Clean redundant duplicate placeholder docs (like default-member) if this is a real committee member
-    if (memberUser?.email) {
-      try {
-        const cleanEmail = memberUser.email.trim().toLowerCase();
-        const qEmail = query(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
-        const emailSnap = await getDocs(qEmail);
-        for (const docAcc of emailSnap.docs) {
-          const accData = docAcc.data() as MemberFinancialAccount;
-          if (docAcc.id !== memberId && (docAcc.id === 'default-member' || (accData.email && accData.email.trim().toLowerCase() === cleanEmail))) {
-            // Delete redundant duplicate doc so total allocations are not double-counted
-            await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, docAcc.id));
-          }
-        }
-      } catch (cleanErr) {
-        console.warn('[eLedger Service] Duplicate member cleanup note:', cleanErr);
-      }
-    }
-
     // Recalculate unified treasury reconciliation
     await syncEledgerMetricsFromVouchers();
 
@@ -1353,23 +1295,6 @@ export async function setMemberExactAllocationInDb(
         ...memberPayload,
         createdAt: serverTimestamp(),
       });
-    }
-
-    // Clean redundant duplicate docs
-    if (memberUser?.email) {
-      try {
-        const cleanEmail = memberUser.email.trim().toLowerCase();
-        const qEmail = query(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
-        const emailSnap = await getDocs(qEmail);
-        for (const docAcc of emailSnap.docs) {
-          const accData = docAcc.data() as MemberFinancialAccount;
-          if (docAcc.id !== memberId && (docAcc.id === 'default-member' || (accData.email && accData.email.trim().toLowerCase() === cleanEmail))) {
-            await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, docAcc.id));
-          }
-        }
-      } catch (cleanErr) {
-        console.warn('[eLedger Service] Duplicate member cleanup note:', cleanErr);
-      }
     }
 
     // Recalculate unified treasury reconciliation
@@ -1504,120 +1429,6 @@ export async function submitMemberExpenseInDb(
 }
 
 /**
- * Testing System Tool: Reset All Financial Ledger Data to Zero
- * Retains all user logins and accounts intact, but resets all vouchers, credits,
- * member balances, category balances, and opening bank balances to ₹0.
- */
-export async function resetAllEledgerFinancialsToZero(actorName: string = 'Central Administrator'): Promise<{ success: boolean; message: string }> {
-  try {
-    // 1. Delete all vouchers in eledger_vouchers
-    const vouchersSnap = await getDocs(collection(eledgerDb, VOUCHERS_COL));
-    for (const d of vouchersSnap.docs) {
-      await deleteDoc(d.ref);
-    }
-
-    // 2. Delete all bank credit records in eledger_bank_credits
-    const creditsSnap = await getDocs(collection(eledgerDb, BANK_CREDITS_COL));
-    for (const d of creditsSnap.docs) {
-      await deleteDoc(d.ref);
-    }
-
-    // 3. Reset all member financial accounts to zero
-    const membersSnap = await getDocs(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
-    for (const d of membersSnap.docs) {
-      const data = d.data();
-      await setDoc(d.ref, {
-        userId: data.userId || d.id,
-        membershipId: data.membershipId || '',
-        memberName: data.memberName || '',
-        email: data.email || '',
-        mobile: data.mobile || '',
-        district: data.district || '',
-        allocatedCredit: 0,
-        totalContributed: 0,
-        expensesClaimed: 0,
-        availableBalance: 0,
-        billsSubmitted: 0,
-        status: data.status || 'active',
-        recentTransactions: [],
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    // 4. Reset fund categories
-    const categoriesSnap = await getDocs(collection(eledgerDb, CATEGORIES_COL));
-    if (categoriesSnap.empty) {
-      for (const cat of INITIAL_CATEGORY_SUMMARIES) {
-        const catId = cat.category.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        await setDoc(doc(eledgerDb, CATEGORIES_COL, catId), {
-          ...cat,
-          allocated: 0,
-          spent: 0,
-          balance: 0,
-          updatedAt: serverTimestamp(),
-        });
-      }
-    } else {
-      for (const d of categoriesSnap.docs) {
-        const data = d.data();
-        await updateDoc(d.ref, {
-          allocated: 0,
-          spent: 0,
-          balance: 0,
-          updatedAt: serverTimestamp(),
-        });
-      }
-    }
-
-    // 5. Reset Treasury Metrics Doc
-    const metricsRef = doc(eledgerDb, 'eledger_treasury_metrics', 'current_state');
-    await setDoc(metricsRef, {
-      openingBankBalance: 0,
-      totalBankCredits: 0,
-      totalIncome: 0,
-      totalAllocatedCredit: 0,
-      totalExpensesClaimed: 0,
-      totalUnspentBalance: 0,
-      totalVouchersApproved: 0,
-      totalDisbursed: 0,
-      totalExpense: 0,
-      bankBalance: 0,
-      cashInHand: 0,
-      allocatedToMembers: 0,
-      pendingVouchersCount: 0,
-      auditedVouchersCount: 0,
-      updatedAt: serverTimestamp(),
-    });
-
-    // 6. Log Audit Event
-    try {
-      const auditRef = doc(eledgerDb, AUDIT_LOGS_COL, `audit-reset-${Date.now()}`);
-      await setDoc(auditRef, {
-        id: `audit-reset-${Date.now()}`,
-        action: 'FINANCIAL_SYSTEM_RESET_ZERO',
-        performedBy: actorName,
-        details: 'Full financial reset executed. All vouchers, credits, bank balances, and member allocations reset to zero for testing.',
-        timestamp: new Date().toISOString(),
-        createdAt: serverTimestamp(),
-      });
-    } catch (auditErr) {
-      console.warn('[eLedger Service] Audit log for reset failed:', auditErr);
-    }
-
-    return {
-      success: true,
-      message: 'All financial balances, vouchers, and member allocations have been successfully reset to ₹0 for testing.',
-    };
-  } catch (err: any) {
-    console.error('[eLedger Service] resetAllEledgerFinancialsToZero error:', err);
-    return {
-      success: false,
-      message: err.message || 'Failed to reset financial records.',
-    };
-  }
-}
-
-/**
  * Legacy compatibility wrapper for submitMemberBillClaimInDb
  */
 export async function submitMemberBillClaimInDb(
@@ -1632,4 +1443,3 @@ export async function submitMemberBillClaimInDb(
     invoiceRef: claim.invoiceRef,
   });
 }
-

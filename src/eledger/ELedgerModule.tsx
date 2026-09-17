@@ -16,7 +16,6 @@ import {
 } from './data/ledgerData';
 import { ELedgerUser, LedgerVoucher, MemberFinancialAccount, ELedgerBankCredit } from './types';
 import {
-  bootstrapEledgerDataIfEmpty,
   subscribeToEledgerAuth,
   eledgerSignOut,
   subscribeToUsers,
@@ -90,11 +89,6 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
       setMemberAccounts(INITIAL_MEMBER_FINANCIAL_ACCOUNTS);
       setAuditLogs(INITIAL_AUDIT_LOGS);
       return;
-    }
-
-    // If Admin, ensure initial empty metrics / category structures exist
-    if (currentUser.role === 'admin') {
-      bootstrapEledgerDataIfEmpty();
     }
 
     const unsubUsers = subscribeToUsers((u) => {

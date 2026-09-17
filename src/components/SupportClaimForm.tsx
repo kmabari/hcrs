@@ -44,7 +44,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction, setDoc, limit, writeBatch, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, serverTimestamp, updateDoc, runTransaction, setDoc, limit, writeBatch, onSnapshot } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from '../lib/claimPrint';
 import { sendWAClaimMessage } from '../lib/whatsapp';
@@ -2239,32 +2239,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     try {
       setLoading(true);
       
-      const deleteExistingForCategory = async (relations: string[]) => {
-        try {
-          if (user.uid) {
-            const qUid = query(collection(db, 'claims'), where('uid', '==', user.uid));
-            const snapUid = await getDocs(qUid);
-            for (const docSnap of snapUid.docs) {
-              const d = docSnap.data();
-              if (relations.includes(d.relation)) {
-                await deleteDoc(docSnap.ref);
-              }
-            }
-          } else if (user.mobile) {
-            const qMobile = query(collection(db, 'claims'), where('userMobile', '==', user.mobile));
-            const snapMobile = await getDocs(qMobile);
-            for (const docSnap of snapMobile.docs) {
-              const d = docSnap.data();
-              if (relations.includes(d.relation)) {
-                await deleteDoc(docSnap.ref);
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error deleting matching key:", err);
-        }
-      };
-
       const effectiveMainAddress = customerAddress || (user as any)?.houseName || (user as any)?.house || user.address || (user as any)?.residentialAddress || (user as any)?.userAddress || '';
       const effectiveMainDistrict = customerDistrict || user.district || (user as any)?.userDistrict || '';
       const effectiveMainConstituency = customerConstituency || user.assemblyConstituency || user.constituency || (user as any)?.assembly || (user as any)?.mandalam || '';

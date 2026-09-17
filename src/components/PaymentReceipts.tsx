@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UserProfile, PaymentReceipt } from '../types';
 import { Button } from '@/components/ui/button';
@@ -39,18 +39,24 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       }
       setLoading(true);
 
-      // Generate virtual registration receipt first
+      // Only derive a profile-level receipt when the profile contains real payment
+      // evidence. Never fabricate a paid receipt or default amount from membership data.
       const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
-      const registrationReceipt: PaymentReceipt = {
+      const profileReceiptId = (user as any).receiptNumber || user.paymentId || user.transactionId || '';
+      const profilePaymentAmount = Number(user.paymentAmount || 0);
+      const registrationReceipt: PaymentReceipt | null = profileReceiptId && profilePaymentAmount > 0 ? {
         id: `reg-${user.uid}`,
-        receiptNo: `HCRS-REG-${String(user.serialNo || 1000).padStart(4, '0')}`,
+        receiptNo: profileReceiptId,
         receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
         receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-        amount: isLifeMember ? 300 : 200,
-        status: 'Paid',
-        paymentDate: regDateStr,
-        createdAt: user.registrationDate
-      };
+        amount: profilePaymentAmount,
+        status: user.isPaid || String(user.paymentStatus || '').toLowerCase().includes('verified') ? 'Paid' : 'Pending Verification',
+        paymentDate: user.paymentDate || regDateStr,
+        createdAt: user.registrationDate,
+        transactionId: user.transactionId,
+        paymentId: user.paymentId,
+        paymentStatus: user.paymentStatus
+      } : null;
 
       let dbReceipts: PaymentReceipt[] = [];
       try {
@@ -65,38 +71,34 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
         console.warn('PaymentReceipts: Could not load extra subcollection receipts, falling back to profile record:', error);
       }
 
-      let combined: PaymentReceipt[] = [registrationReceipt];
+      let combined: PaymentReceipt[] = registrationReceipt ? [registrationReceipt] : [];
 
-      // Life members never renew - only show one receipt
-      if (!isLifeMember && dbReceipts.length > 0) {
-        // Exclude duplicate registration receipts and flag them for subcollection cleanup
+      if (dbReceipts.length > 0) {
+        // Keep genuine registration receipts from Firestore and only de-duplicate the
+        // rendered view by stable receipt/payment identity.
         const nonRegReceipts: PaymentReceipt[] = [];
-        const regDocIdsToDelete: string[] = [];
 
         for (const r of dbReceipts) {
           const isReg = r.id === `reg-${user.uid}` || 
-                        r.receiptNo === registrationReceipt.receiptNo || 
+                        (!!registrationReceipt && r.receiptNo === registrationReceipt.receiptNo) ||
                         r.receiptType === 'Membership Fee' || 
                         r.receiptType === 'Life Membership' ||
-                        r.receiptLabel?.includes('Registration') ||
-                        (r.amount === 200 || r.amount === 300);
+                        r.receiptLabel?.includes('Registration');
           if (isReg) {
-            if (r.id && !r.id.startsWith('reg-')) {
-              regDocIdsToDelete.push(r.id);
+            const duplicate = combined.some(existing =>
+              (r.receiptNo && existing.receiptNo === r.receiptNo) ||
+              (r.paymentId && existing.paymentId === r.paymentId) ||
+              (r.transactionId && existing.transactionId === r.transactionId)
+            );
+            if (!duplicate) {
+              combined.push(r);
             }
           } else {
             nonRegReceipts.push(r);
           }
         }
 
-        // Cleanup redundant registration receipts in subcollection if any
-        if (regDocIdsToDelete.length > 0) {
-          regDocIdsToDelete.forEach(docId => {
-            deleteDoc(doc(db, 'users', user.uid, 'receipts', docId)).catch(() => {});
-          });
-        }
-
-        // Deduplicate renewals strictly by year / renewal cycle and auto-clean extra duplicate documents
+        // Deduplicate renewals strictly in the rendered view; never mutate history.
         const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
 
         for (const r of nonRegReceipts) {
@@ -147,16 +149,11 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
           }
         }
 
-        // Asynchronously clean up redundant duplicate renewal documents from Firestore
+        // Display one derived receipt per renewal cycle without mutating receipt history.
         for (const [_, entry] of renewalMap) {
           combined.push(entry.primary);
           if (entry.docIdsToDelete.length > 0) {
-            entry.docIdsToDelete.forEach(docId => {
-              console.log(`PaymentReceipts: Auto-cleaning redundant duplicate receipt document: ${docId}`);
-              deleteDoc(doc(db, 'users', user.uid, 'receipts', docId)).catch(delErr => {
-                console.warn(`PaymentReceipts: Could not delete duplicate receipt ${docId}:`, delErr);
-              });
-            });
+            console.warn('PaymentReceipts: Duplicate renewal receipts detected; no records were deleted:', entry.docIdsToDelete);
           }
         }
       }

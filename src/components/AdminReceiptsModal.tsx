@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UserProfile, PaymentReceipt } from '../types';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { X, Receipt, Plus, Trash2, Calendar, FileText, CheckCircle2 } from 'lucide-react';
+import { X, Receipt, Plus, Calendar, FileText, CheckCircle2 } from 'lucide-react';
 
 interface AdminReceiptsModalProps {
   member: UserProfile;
@@ -45,18 +45,24 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
     }
     setLoading(true);
 
-    // Generate virtual registration receipt
+    // Only derive a profile-level receipt when the profile contains real payment
+    // evidence. Never fabricate a paid receipt or default amount from membership data.
     const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];
-    const registrationReceipt: PaymentReceipt = {
+    const profileReceiptId = (member as any).receiptNumber || member.paymentId || member.transactionId || '';
+    const profilePaymentAmount = Number(member.paymentAmount || 0);
+    const registrationReceipt: PaymentReceipt | null = profileReceiptId && profilePaymentAmount > 0 ? {
       id: `reg-${member.uid}`,
-      receiptNo: `HCRS-REG-${String(member.serialNo || 1000).padStart(4, '0')}`,
+      receiptNo: profileReceiptId,
       receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
       receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-      amount: isLifeMember ? 300 : 200,
-      status: 'Paid',
-      paymentDate: regDateStr,
-      createdAt: member.registrationDate
-    };
+      amount: profilePaymentAmount,
+      status: member.isPaid || String(member.paymentStatus || '').toLowerCase().includes('verified') ? 'Paid' : 'Pending Verification',
+      paymentDate: member.paymentDate || regDateStr,
+      createdAt: member.registrationDate,
+      transactionId: member.transactionId,
+      paymentId: member.paymentId,
+      paymentStatus: member.paymentStatus
+    } : null;
 
     let dbReceipts: PaymentReceipt[] = [];
     try {
@@ -71,37 +77,34 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
       console.warn('AdminReceiptsModal: Notice while fetching subcollection receipts:', error);
     }
 
-    let combined: PaymentReceipt[] = [registrationReceipt];
+    let combined: PaymentReceipt[] = registrationReceipt ? [registrationReceipt] : [];
 
-    if (!isLifeMember && dbReceipts.length > 0) {
-      // Exclude duplicate registration receipts and flag them for subcollection cleanup
+    if (dbReceipts.length > 0) {
+      // Keep genuine registration receipts from Firestore and only de-duplicate the
+      // rendered view by stable receipt/payment identity.
       const nonRegReceipts: PaymentReceipt[] = [];
-      const regDocIdsToDelete: string[] = [];
 
       for (const r of dbReceipts) {
         const isReg = r.id === `reg-${member.uid}` || 
-                      r.receiptNo === registrationReceipt.receiptNo || 
+                      (!!registrationReceipt && r.receiptNo === registrationReceipt.receiptNo) ||
                       r.receiptType === 'Membership Fee' || 
                       r.receiptType === 'Life Membership' ||
-                      r.receiptLabel?.includes('Registration') ||
-                      (r.amount === 200 || r.amount === 300);
+                      r.receiptLabel?.includes('Registration');
         if (isReg) {
-          if (r.id && !r.id.startsWith('reg-')) {
-            regDocIdsToDelete.push(r.id);
+          const duplicate = combined.some(existing =>
+            (r.receiptNo && existing.receiptNo === r.receiptNo) ||
+            (r.paymentId && existing.paymentId === r.paymentId) ||
+            (r.transactionId && existing.transactionId === r.transactionId)
+          );
+          if (!duplicate) {
+            combined.push(r);
           }
         } else {
           nonRegReceipts.push(r);
         }
       }
 
-      // Cleanup redundant registration receipts in subcollection if any
-      if (regDocIdsToDelete.length > 0) {
-        regDocIdsToDelete.forEach(docId => {
-          deleteDoc(doc(db, 'users', member.uid, 'receipts', docId)).catch(() => {});
-        });
-      }
-
-      // Deduplicate renewals strictly by year / renewal cycle and auto-clean extra duplicate documents
+      // Deduplicate renewals strictly in the rendered view; never mutate history.
       const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
 
       for (const r of nonRegReceipts) {
@@ -152,16 +155,11 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
         }
       }
 
-      // Asynchronously clean up redundant duplicate renewal documents from Firestore
+      // Display one derived receipt per renewal cycle without mutating receipt history.
       for (const [_, entry] of renewalMap) {
         combined.push(entry.primary);
         if (entry.docIdsToDelete.length > 0) {
-          entry.docIdsToDelete.forEach(docId => {
-            console.log(`AdminReceiptsModal: Auto-cleaning redundant duplicate receipt document: ${docId}`);
-            deleteDoc(doc(db, 'users', member.uid, 'receipts', docId)).catch(delErr => {
-              console.warn(`AdminReceiptsModal: Could not delete duplicate receipt ${docId}:`, delErr);
-            });
-          });
+          console.warn('AdminReceiptsModal: Duplicate renewal receipts detected; no records were deleted:', entry.docIdsToDelete);
         }
       }
     }
@@ -242,27 +240,6 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
     }
   };
 
-  const handleDeleteReceipt = async (receiptId: string) => {
-    if (receiptId.startsWith('reg-')) {
-      toast.error('The core registration receipt is virtual and cannot be deleted.');
-      return;
-    }
-
-    if (!window.confirm('Are you sure you want to delete this receipt? This action cannot be undone.')) {
-      return;
-    }
-
-    const loadingToast = toast.loading('Deleting receipt...');
-    try {
-      await deleteDoc(doc(db, 'users', member.uid, 'receipts', receiptId));
-      toast.success('Receipt deleted successfully!', { id: loadingToast });
-      fetchReceipts();
-    } catch (error) {
-      console.error('Error deleting receipt:', error);
-      toast.error('Failed to delete receipt', { id: loadingToast });
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[999] animate-in fade-in duration-200">
       <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
@@ -336,16 +313,6 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
                           </span>
                         </div>
 
-                        {!receipt.id.startsWith('reg-') && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleDeleteReceipt(receipt.id)}
-                            className="w-8 h-8 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))}

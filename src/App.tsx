@@ -473,30 +473,11 @@ export default function App() {
         console.warn("IndexedDB cache save notice:", idbErr);
       }
 
-      // AUTO-CLEANUP DUPLICATE LIFE MEMBER SERIAL NO 1
+      // AUDIT NOTE: Duplicate Life Member detection is logged only.
+      // No automatic deletion is performed to protect production data.
       const life1s = cleanList.filter(u => u.membership_type === 'LIFE_MEMBER' && u.serialNo === 1);
       if (life1s.length > 1) {
-        const sorted = [...life1s].sort((a, b) => {
-          const getTimeVal = (r: any) => {
-            if (!r) return 0;
-            if (typeof r.toDate === 'function') return r.toDate().getTime();
-            if (r.seconds) return r.seconds * 1000;
-            return new Date(r).getTime() || 0;
-          };
-          return getTimeVal(a.registrationDate) - getTimeVal(b.registrationDate);
-        });
-
-        const toDelete = sorted.slice(1);
-        for (const duplicateToKill of toDelete) {
-          try {
-            await deleteDoc(doc(db, 'users', duplicateToKill.uid));
-          } catch (delErr) {
-            console.error("Failed to delete duplicate life 1 member:", delErr);
-          }
-        }
-
-        const deletedUids = toDelete.map(u => u.uid);
-        cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
+        console.warn("Database Notice: Found duplicate Life Members with serialNo = 1. Manual review recommended:", life1s.map(l => l.uid));
       }
 
       setMembers(cleanList);
@@ -1200,7 +1181,8 @@ export default function App() {
             freshData.district = strictDistrict;
           }
           
-          // Backport missing district to Firestore if missing on the document
+          // Derive a missing admin district in memory. Snapshot listeners must stay
+          // read-only; persistent profile migrations require an explicit admin action.
           if (!freshData.district) {
             let detectedDist = '';
             if (currentEmail.startsWith('hcrs')) {
@@ -1210,8 +1192,6 @@ export default function App() {
             }
             if (detectedDist) {
               freshData.district = detectedDist;
-              updateDoc(doc(db, 'users', authUser.uid), { district: detectedDist })
-                .catch(e => console.error("Failed to backport missing district:", e));
             }
           }
 
@@ -1235,7 +1215,7 @@ export default function App() {
                   const bestDoc = selectBestUserDocument(snapMob.docs, cleanMob);
                   if (bestDoc && bestDoc.id !== authUser.uid) {
                     const bestData = bestDoc.data();
-                    console.log(`Auto-healing active document ${authUser.uid} with best profile from ${bestDoc.id}`);
+                    console.log(`Using legacy profile ${bestDoc.id} as a read-only display fallback for ${authUser.uid}`);
                     const healedData = {
                       ...bestData,
                       uid: authUser.uid,
@@ -1243,10 +1223,9 @@ export default function App() {
                       status: bestData.status || 'active'
                     };
                     freshData = healedData;
-                    // Mark before writing because Firestore can deliver the resulting
-                    // snapshot immediately. Never delete or mutate the source record.
+                    // Mark this resolution for the current session only. Do not write a
+                    // copied profile from inside a realtime snapshot callback.
                     healedProfileUidsRef.current.add(authUser.uid);
-                    await setDoc(doc(db, 'users', authUser.uid), healedData, { merge: true });
                   }
                 }
               } catch (e) {
@@ -1280,9 +1259,6 @@ export default function App() {
             district: autoDistrict
           } as any;
           
-          // Create user document for admin if it doesn't exist
-          setDoc(doc(db, 'users', authUser.uid), userData)
-            .catch(e => console.error("Initial admin profile creation failed:", e));
         } else {
           console.warn("Profile document not found for UID:", authUser.uid, "- Initiating Dynamic UID Healing...");
           
@@ -1361,8 +1337,7 @@ export default function App() {
                   issueDate: profileData.issueDate || serverTimestamp(),
                 };
                 
-                await setDoc(doc(db, 'users', authUser.uid), userData, { merge: true });
-                console.log("Dynamic UID healing successful! Document ID:", selectedDoc.id);
+                console.log("Dynamic UID profile resolved read-only. Document ID:", selectedDoc.id);
                 
                 // Preserve the matched legacy/source record. Removing it here can
                 // destroy payment, renewal or claim history linked to that UID.
@@ -2518,13 +2493,11 @@ export default function App() {
 
     const previousMemberState = { ...member };
 
-    const paddedSerial = String(member.serialNo || 1001).padStart(3, '0');
     const distCode = getDistrictCode(member.district || 'MLP').toUpperCase();
     const assemblyCode = getAssemblyCode(member.assemblyConstituency || '').toUpperCase();
     const isUpgraded = member.membershipId && member.membershipId.toUpperCase().startsWith('HCRS-');
-    const finalId = isUpgraded 
-      ? member.membershipId 
-      : `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+    const hasValidExistingId = Boolean(member.membershipId && (member.membershipId.startsWith('KL/') || isUpgraded));
+    let finalId = hasValidExistingId ? member.membershipId! : '';
 
     const now = new Date();
     const expiry = new Date();
@@ -2535,7 +2508,7 @@ export default function App() {
     const updatePayload: Partial<UserProfile> = {
       status: 'active',
       isApproved: true,
-      membershipId: finalId,
+      ...(finalId ? { membershipId: finalId } : {}),
       expiryDate: expiry,
       waStatus: isBulk ? 'Pending' : 'Sent',
       stateCode: 'KL',
@@ -2594,12 +2567,20 @@ export default function App() {
           })
         });
         if (resp.ok) {
+          const responseData = await resp.json();
+          if (responseData.membershipId) {
+            finalId = responseData.membershipId;
+            updatePayload.membershipId = finalId;
+          }
           serverSuccess = true;
         }
       } catch (apiErr) {
         console.warn("[Admin Approve API] Note:", apiErr);
       }
 
+      if (!finalId) {
+        throw new Error('Secure statewide Member ID allocation failed. Approval was not completed.');
+      }
       const finalRegDate = member.registrationDate || serverTimestamp();
 
       try {
@@ -2613,6 +2594,25 @@ export default function App() {
         if (!serverSuccess) {
           throw fsErr;
         }
+      }
+
+      setMembers(prev => prev.map(m => m.uid === uid ? {
+        ...m,
+        ...updatePayload,
+        membershipId: finalId,
+        issueDate: now,
+        registrationDate: m.registrationDate || now,
+        expiryDate: expiry
+      } : m));
+      if (user?.uid === uid) {
+        setUser(prev => prev ? {
+          ...prev,
+          ...updatePayload,
+          membershipId: finalId,
+          issueDate: now,
+          registrationDate: prev.registrationDate || now,
+          expiryDate: expiry
+        } : prev);
       }
 
       // Trigger WhatsApp Welcome Message if enabled
@@ -2718,14 +2718,19 @@ export default function App() {
         await signOut(secondaryAuth);
       } catch (authError: any) {
         if (authError.code === 'auth/email-already-in-use') {
-           console.log('Email exists, using offline ID method');
-           uid = `offline_${values.mobile}_${Date.now()}`;
+          try {
+            const existingCredential = await signInWithEmailAndPassword(secondaryAuth, finalEmail, values.pin);
+            uid = existingCredential.user.uid;
+            await signOut(secondaryAuth);
+          } catch {
+            throw new Error('ഈ email/mobile-ന് Firebase Auth account നിലവിലുണ്ട്. നൽകിയ PIN ഉപയോഗിച്ച് തിരിച്ചറിയാൻ കഴിഞ്ഞില്ല; duplicate offline profile സൃഷ്ടിച്ചിട്ടില്ല.');
+          }
         } else {
            throw authError; // Re-throw if it's a different error
         }
       }
 
-      if (!uid) uid = `offline_${values.mobile}`;
+      if (!uid) throw new Error('Firebase Auth UID could not be resolved. No member profile was created.');
       
       const userRef = doc(db, 'users', uid);
       const metadataRef = doc(db, 'system', 'totals');
@@ -2984,6 +2989,8 @@ export default function App() {
       });
 
       // 1. Server API update (reliable backend fallback)
+      let serverSuccess = false;
+      let serverErrorMsg = '';
       try {
         const apiData = { ...cleanData };
         if (apiData.issueDate instanceof Date) apiData.issueDate = apiData.issueDate.toISOString();
@@ -2991,20 +2998,36 @@ export default function App() {
         if (apiData.expiryDate instanceof Date) apiData.expiryDate = apiData.expiryDate.toISOString();
         if (apiData.registrationDate instanceof Date) apiData.registrationDate = apiData.registrationDate.toISOString();
 
-        await fetch('/api/admin/update-member', {
+        const res = await fetch('/api/admin/update-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid, data: apiData, mobile: targetMobile })
         });
-      } catch (apiErr) {
+        const json = await res.json().catch(() => null);
+        if (res.ok && json && json.success) {
+          serverSuccess = true;
+        } else if (json && json.error) {
+          serverErrorMsg = json.error;
+        }
+      } catch (apiErr: any) {
         console.warn("[handleUpdateMember API note]:", apiErr);
+        serverErrorMsg = apiErr?.message || '';
       }
 
       // 2. Client Firestore SDK update
+      let clientSuccess = false;
+      let clientError: any = null;
       try {
         await setDoc(doc(db, 'users', uid), cleanData, { merge: true });
-      } catch (fsErr) {
+        clientSuccess = true;
+      } catch (fsErr: any) {
         console.warn("[handleUpdateMember Firestore note]:", fsErr);
+        clientError = fsErr;
+      }
+
+      if (!serverSuccess && !clientSuccess) {
+        const detailMsg = clientError?.message || serverErrorMsg || 'ഡാറ്റാബേസിൽ വിവരങ്ങൾ മാറ്റാൻ സാധിച്ചില്ല. ദയവായി അഡ്മിൻ പെർമിഷൻ പരിശോധിക്കുക. (Failed to save member details to Firestore)';
+        throw new Error(detailMsg);
       }
 
       // Automatically generate or update renewal receipt when renewal is approved
@@ -3098,10 +3121,19 @@ export default function App() {
         } catch (e) {}
       }
 
-      toast.success('Successfully updated.', { id: loadingToast });
-    } catch (error) {
-      toast.error('Update failed.', { id: loadingToast });
+      // Synchronize cached member lists in storage
+      try {
+        const nextList = members.map(m => m.uid === uid ? { ...m, ...cleanData } : m);
+        localStorage.setItem('hcrs_cached_members_list', JSON.stringify(nextList));
+        await idbSet('hcrs_cached_members_list', nextList);
+      } catch (e) {}
+
+      toast.success('അംഗത്തിന്റെ വിവരങ്ങൾ വിജയകരമായി സേവ് ചെയ്തു (Successfully saved to Firestore)', { id: loadingToast });
+    } catch (error: any) {
+      console.error("[handleUpdateMember Error]:", error);
+      toast.error(error?.message || 'Update failed / വിവരങ്ങൾ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.', { id: loadingToast });
       handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+      throw error;
     }
   };
 
@@ -3359,7 +3391,12 @@ export default function App() {
 
   const handleDeleteMember = async (uid: string) => {
     const existing = members.find(m => m.uid === uid);
-    const shouldHardDelete = existing && existing.status === 'deleted';
+    const shouldHardDelete = false;
+
+    if (existing?.status === 'deleted') {
+      toast.info('ഈ അംഗം ഇതിനകം deactivated ആണ്. ചരിത്ര record ശാശ്വതമായി delete ചെയ്യില്ല.');
+      return;
+    }
 
     const loadingToast = toast.loading(shouldHardDelete ? 'അംഗത്തെ ശാശ്വതമായി ഒഴിവാക്കുന്നു...' : 'Deactivating member profile...');
     console.log(`Attempting to ${shouldHardDelete ? 'permanently delete' : 'deactivate'} document:`, uid);

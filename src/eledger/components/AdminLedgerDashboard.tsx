@@ -26,13 +26,9 @@ import {
   AlertTriangle,
   Info,
   Lock,
-  RotateCcw,
-  AlertOctagon,
-  Sparkles,
-  X
+  Sparkles
 } from 'lucide-react';
 import { LedgerVoucher, TreasuryMetrics, CategorySummary, ELedgerUser, ELedgerRole, AccountStatus } from '../types';
-import { resetAllEledgerFinancialsToZero } from '../lib/eledgerService';
 
 interface AdminLedgerDashboardProps {
   metrics: TreasuryMetrics;
@@ -46,7 +42,6 @@ interface AdminLedgerDashboardProps {
   onToggleUserStatus: (id: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
   onSendPasswordReset: (email: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
   onDeleteUser: (id: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
-  onResetFinancialsToZero?: () => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
 }
 
 export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
@@ -61,7 +56,6 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
   onToggleUserStatus,
   onSendPasswordReset,
   onDeleteUser,
-  onResetFinancialsToZero,
 }) => {
   const [activeAdminTab, setActiveAdminTab] = useState<'users' | 'vouchers' | 'allocations'>('users');
   
@@ -74,8 +68,6 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'pending_setup'>('all');
   
   // Dedicated Testing Reset Modal State
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [isResettingData, setIsResettingData] = useState(false);
   
   // Dedicated Secure Change Password Modal State
   const [passwordResetTargetUser, setPasswordResetTargetUser] = useState<ELedgerUser | null>(null);
@@ -107,29 +99,6 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
     setTimeout(() => {
       setActionNotification(null);
     }, 5000);
-  };
-
-  const handleExecuteResetToZero = async () => {
-    setIsResettingData(true);
-    try {
-      let result;
-      if (onResetFinancialsToZero) {
-        result = await onResetFinancialsToZero();
-      } else {
-        result = await resetAllEledgerFinancialsToZero('Central Administrator');
-      }
-
-      if (result && typeof result === 'object' && 'success' in result && !result.success) {
-        showNotification('error', result.message || 'Failed to reset financial records.');
-      } else {
-        showNotification('success', 'എല്ലാ സാമ്പത്തിക കണക്കുകളും വിജയകരമായി സീറോ (₹0) ആക്കി റീസെറ്റ് ചെയ്തു! All financial records reset to zero.');
-        setShowResetModal(false);
-      }
-    } catch (err: any) {
-      showNotification('error', err.message || 'Error occurred while resetting financial data.');
-    } finally {
-      setIsResettingData(false);
-    }
   };
 
   const handleOpenAddModal = () => {
@@ -384,27 +353,6 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
             <div className="text-lg sm:text-xl font-black text-amber-400">{totalCount} / 23 Total <span className="text-xs text-slate-300 font-normal">({memberCount}/20 Members)</span></div>
           </div>
         </div>
-      </div>
-
-      {/* Testing Sandbox Control Bar (Temporary Tool for Testing - Can be removed when real accounts go live) */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-extrabold text-sm">
-            <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>ടെസ്റ്റിംഗ് മോഡ്: കണക്കുകൾ റീസെറ്റ് ചെയ്യുക (Testing Reset Mode)</span>
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
-            ടെസ്റ്റിംഗ് വേളയിൽ എല്ലാ വൗച്ചറുകളും, ബാങ്ക് ക്രെഡിറ്റുകളും, 20 മെമ്പർമാരുടെയും അലോക്കേഷൻ/ചിലവ് ബാലൻസുകളും സീറോ (₹0) ആക്കി പുനഃക്രമീകരിക്കാം. ലോഗിൻ വിവരങ്ങൾ അതേപടി നിലനിൽക്കും.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowResetModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 shadow-md shrink-0 cursor-pointer transition border border-red-500/30"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Reset All Data to ₹0</span>
-        </button>
       </div>
 
       {/* Action Notification Toast */}
@@ -1350,82 +1298,6 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
         </div>
       )}
 
-      {/* DEDICATED TESTING MODAL: RESET ALL FINANCIALS TO ZERO */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
-                  <AlertOctagon className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    റീസെറ്റ് സ്ഥിരീകരിക്കുക (Reset to ₹0)
-                  </h3>
-                  <p className="text-xs text-red-600 dark:text-red-400 font-bold">
-                    Testing Mode Financial Reset Confirmation
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => !isResettingData && setShowResetModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg cursor-pointer transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
-              <div className="font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
-                <Info className="w-4 h-4 text-amber-500" />
-                <span>ഈ ഓപ്പറേഷൻ ചെയ്യുന്ന കാര്യങ്ങൾ:</span>
-              </div>
-              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400 list-disc list-inside">
-                <li>എല്ലാ <b>വൗച്ചറുകളും (Vouchers)</b> ഡിലീറ്റ് ചെയ്യപ്പെടും.</li>
-                <li>എല്ലാ <b>ബാങ്ക് ക്രെഡിറ്റ് രേഖകളും</b> ഡിലീറ്റ് ചെയ്യപ്പെടും.</li>
-                <li>തുടക്ക ബാങ്ക് ബാലൻസ് (Opening Balance) <b>₹0</b> ആയി മാറും.</li>
-                <li><b>20 മെമ്പർമാരുടെയും</b> അലോക്കേഷൻ, ചിലവുകൾ, ബാലൻസ് എന്നിവ <b>₹0</b> ആകും.</li>
-                <li>എല്ലാ ഫണ്ട് വിഭാഗങ്ങളുടെയും ബാലൻസ് <b>₹0</b> ആകും.</li>
-                <li><b>യൂസർ അക്കൗണ്ടുകളും പാസ്‌വേഡുകളും</b> മാറ്റമില്ലാതെ നിലനിൽക്കും.</li>
-              </ul>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-[11px] text-amber-900 dark:text-amber-300 font-medium">
-              💡 <b>കുറിപ്പ്:</b> ടെസ്റ്റിംഗ് പൂർത്തിയായി യഥാർത്ഥ കണക്കുകൾ രേഖപ്പെടുത്തി തുടങ്ങുമ്പോൾ ഈ ബട്ടൺ സുരക്ഷിതമായി ഒഴിവാക്കാവുന്നതാണ്.
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                disabled={isResettingData}
-                onClick={() => setShowResetModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition disabled:opacity-50"
-              >
-                Cancel (റദ്ദാക്കുക)
-              </button>
-              <button
-                type="button"
-                disabled={isResettingData}
-                onClick={handleExecuteResetToZero}
-                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black text-xs shadow-lg cursor-pointer flex items-center gap-2 transition disabled:opacity-50"
-              >
-                {isResettingData ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>റീസെറ്റ് ചെയ്യുന്നു...</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="w-4 h-4" />
-                    <span>അതെ, എല്ലാം ₹0 ആക്കുക (Confirm Reset)</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

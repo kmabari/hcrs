@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
 import { DISTRICTS, CONSTITUENCIES, BLOOD_GROUPS, getAssemblyCode } from '@/src/constants';
@@ -305,24 +305,6 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
       toast.error("തിരച്ചിൽ പരാജയപ്പെട്ടു: " + e.message);
     } finally {
       setIsSearchingDup(false);
-    }
-  };
-
-  const handleDeleteDuplicate = async (uidToDelete: string, mobileToCheck: string) => {
-    if (!window.confirm("ഈ റെക്കോർഡ് ഇല്ലാതാക്കാൻ നിങ്ങൾ തീർച്ചയായും ആഗ്രഹിക്കുന്നുണ്ടോ? തനിപ്പകർപ്പിൽ ഒരെണ്ണം മാത്രം ബാക്കി വെച്ച് മറ്റുള്ളവ ഡിലീറ്റ് ചെയ്യുക.")) {
-      return;
-    }
-    const loadingToast = toast.loading('മെമ്പർ റെക്കോർഡ് ഇല്ലാതാക്കുന്നു...');
-    try {
-      await deleteDoc(doc(db, 'users', uidToDelete));
-      toast.success("റെക്കോർഡ് വിജയകരമായി നീക്കം ചെയ്തു!", { id: loadingToast });
-      
-      if (mobileToCheck) {
-        handleSearchDuplicateByMobile(mobileToCheck);
-      }
-    } catch (err: any) {
-      console.error("Error deleting duplicate:", err);
-      toast.error("ഡിലീറ്റ് ചെയ്യാൻ സാധിച്ചില്ല: " + err.message, { id: loadingToast });
     }
   };
 
@@ -974,20 +956,6 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                           </div>
 
                           <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER'}
-                              onClick={() => handleDeleteDuplicate(m.uid, m.mobile)}
-                              className={`h-8 text-[10px] font-black uppercase tracking-wider px-3 rounded-lg flex items-center gap-1 text-white ${
-                                (m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER')
-                                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                                  : 'bg-red-600 hover:bg-red-750'
-                              }`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                              {(m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER') ? 'Life Member (Locked/Safe)' : 'Delete Duplicate Record'}
-                            </Button>
                           </div>
                         </div>
                       );

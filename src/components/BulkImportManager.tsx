@@ -1029,6 +1029,9 @@ export default function BulkImportManager({ members, adminUser, onRefresh }: Bul
 
   // Rollback operation
   const handleRollbackAction = async (log: any) => {
+    toast.error("Imported member records are preserved. Rollback deletion requires a separately approved migration plan.");
+    return;
+
     if (log.rolled_back) {
       toast.error("This import migration has already been rolled back.");
       return;

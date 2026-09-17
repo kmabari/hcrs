@@ -4,8 +4,7 @@ import {
   doc, 
   setDoc, 
   writeBatch, 
-  getDocs,
-  deleteDoc
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { 
@@ -429,56 +428,9 @@ export default function BackupRestoreManager({ adminUser, onRefresh }: BackupRes
   };
 
   const clearDatabaseBeforeRestore = async () => {
-    setIsProcessing(true);
     setShowClearConfirm(false);
-    addLog("കളക്ഷനുകൾ ഡിലീറ്റ് ചെയ്യാൻ ആരംഭിക്കുന്നു...");
-    const toastId = toast.loading("കളക്ഷനുകൾ നീക്കം ചെയ്യുന്നു...");
-
-    try {
-      const collectionsToClear = ['users', 'districtQuotas', 'claims', 'support_tickets', 'announcements', 'committees'];
-      let totalDeleted = 0;
-
-      for (const collName of collectionsToClear) {
-        addLog(`ഡിലീറ്റ് ചെയ്യുന്നു കളക്ഷൻ: "${collName}"`);
-        const q = collection(db, collName);
-        const snap = await getDocs(q);
-        
-        if (!snap.empty) {
-          const docs = snap.docs;
-          for (let i = 0; i < docs.length; i += 100) {
-            const chunk = docs.slice(i, i + 100);
-            const batch = writeBatch(db);
-            chunk.forEach(d => {
-              batch.delete(doc(db, collName, d.id));
-              totalDeleted++;
-            });
-            await batch.commit();
-          }
-          addLog(`"${collName}": ${docs.length} ഡോക്യുമെന്റുകൾ പൂർണ്ണമായും ഡിലീറ്റ് ചെയ്തു.`);
-        }
-      }
-
-      // Reset the system/totals counters/metadata
-      const systemTotalsRef = doc(db, 'system', 'totals');
-      await setDoc(systemTotalsRef, {
-        count: 1000,
-        redClaimsCounter: 0,
-        orangeClaimsCounter: 0,
-        greenClaimsCounter: 0,
-        claimsCounter: 0
-      });
-      addLog("സിസ്റ്റം ടോട്ടലുകളും അപേക്ഷാ കൗണ്ടറുകളും പൂജ്യത്തിലേക്ക് (Reset) മാറ്റിയിരിക്കുന്നു.");
-
-      toast.success(`വിജയകരമായി കളക്ഷനുകൾ ഡിലീറ്റ് ചെയ്തു (Deleted docs: ${totalDeleted})`, { id: toastId });
-      addLog(`SUCCESS: കളക്ഷനുകൾ ഡിലീറ്റ് ചെയ്തു കഴിഞ്ഞു. ക്ലീൻ സ്ലേറ്റ് റെഡിയാണ്.`);
-      if (onRefresh) onRefresh();
-    } catch (err: any) {
-      console.error(err);
-      toast.error("ഡിലീറ്റ് ചെയ്യുന്നത് പരാജയപ്പെട്ടു: " + err.message, { id: toastId });
-      addLog(`ERROR: ഡിലീറ്റ് പ്രക്രിയയിൽ എറർ: ${err.message}`);
-    } finally {
-      setIsProcessing(false);
-    }
+    addLog("SAFETY BLOCK: Production collections cannot be cleared from the portal.");
+    toast.error("ഡാറ്റാ സുരക്ഷയ്ക്കായി database clear/reset പ്രവർത്തനം തടഞ്ഞിരിക്കുന്നു.");
   };
 
   // Helper validation for the confirm input text

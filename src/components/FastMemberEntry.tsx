@@ -229,9 +229,16 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         await signOut(secondaryAuth);
       } catch (authErr: any) {
         if (authErr.code === 'auth/email-already-in-use') {
-          // Fallback if auth exists but firestore was missing/stale
-          finalUid = `offline_${cleanMobile}_${Date.now()}`;
-          valResult += ` | Secondary auth reported credentials exist. Fallback local generated UID: '${finalUid}'`;
+          // Reuse only the real Firebase Auth UID. Never create a disconnected
+          // offline UID/profile for an existing mobile identity.
+          try {
+            const existingCredential = await signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD);
+            finalUid = existingCredential.user.uid;
+            await signOut(secondaryAuth);
+            valResult += ` | Existing Auth identity resolved to UID: '${finalUid}'`;
+          } catch {
+            throw new Error('ഈ മൊബൈൽ നമ്പറിന് Firebase Auth account നിലവിലുണ്ട്. അതിന്റെ നിലവിലെ PIN അറിയാത്തതിനാൽ പുതിയ duplicate profile സൃഷ്ടിച്ചില്ല. Admin account resolution ആവശ്യമാണ്.');
+          }
         } else {
           valResult += ` | Auth registration aborted: ${authErr.message || authErr}`;
           throw authErr;
@@ -243,10 +250,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       }
 
       // 5. TRANSACTION FOR INCREMENTING SERIAl NO & WRITING RECORD
-      const stateCode = 'KER'; // Standard State code for Kerala
       const metadataRef = doc(db, 'system', 'totals');
       const quotaRef = doc(db, 'districtQuotas', district);
-      const userRef = doc(db, 'users', finalUid);
 
       let nextSerial = 1001;
       let finalMembershipId = '';
@@ -352,83 +357,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         valResult += ' | [SecondarySession] Secondary session clean signed out.';
       } catch (error: any) {
         valResult += ` | runTransaction FAILED! Direct exception details: ${error?.message || error}`;
-        const errMsg = error?.message || String(error);
-        const errCode = error?.code || '';
-        const isOfflineError = 
-          errMsg.toLowerCase().includes('offline') || 
-          errMsg.toLowerCase().includes('connection') || 
-          errMsg.toLowerCase().includes('could not reach') || 
-          errMsg.toLowerCase().includes('backend') ||
-          errMsg.toLowerCase().includes('timeout') ||
-          errMsg.toLowerCase().includes('unavailable') ||
-          errCode === 'unavailable';
-
-        if (isOfflineError) {
-          valResult += ' | Connection interruption detected. Transitioning to local offline direct-write sequence...';
-          console.warn("Database connection issue detected during FastMemberEntry! Running offline direct-write fallback...");
-          
-          try {
-            const metaDoc = await getDoc(metadataRef);
-            if (metaDoc.exists()) {
-              nextSerial = (metaDoc.data().count || 1000) + 1;
-            } else {
-              nextSerial = 1000 + Math.floor(Math.random() * 900) + 1;
-            }
-          } catch (e) {
-            nextSerial = 1000 + Math.floor(Math.random() * 900) + 1;
-          }
-
-          const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
-
-          const newProfile: any = {
-            uid: finalUid,
-            name: name.trim(),
-            mobile: cleanMobile,
-            email: '',
-            state: state,
-            district: district,
-            assemblyConstituency: mandalam,
-            address: '',
-            pincode: '',
-            postOffice: '',
-            bloodGroup: '',
-            gender: '',
-            dob: '',
-            membershipId: generatedMembershipId,
-            status: 'active',
-            isPaid: true,
-            isApproved: true,
-            isAdmin: false,
-            role: 'member',
-            serialNo: nextSerial,
-            registrationDate: new Date('2025-04-15T12:00:00Z'),
-            expiryDate: new Date('2026-04-15T12:00:00Z'),
-            registeredBy: adminUser?.uid || 'district_admin',
-            registeredByName: adminUser?.name || 'District Admin',
-            waStatus: 'Pending',
-            stateCode: 'KL',
-            districtCode: getDistrictCode(district).toUpperCase(),
-            constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
-            isQuotaCounted: countsTowardQuota
-          };
-
-          // Safe direct offline-first writes
-          await setDoc(metadataRef, { count: nextSerial }, { merge: true });
-          
-          if (countsTowardQuota) {
-            await setDoc(quotaRef, { used: increment(1) }, { merge: true });
-          }
-
-          if (adminUser) {
-            const opRef = doc(db, 'users', adminUser.uid);
-            await setDoc(opRef, { quotaUsed: increment(1) }, { merge: true });
-          }
-
-          await setDoc(userRef, newProfile);
-          valResult += ' | Offline fallback sequence executed locally.';
-        } else {
-          throw error;
-        }
+        throw new Error(`Statewide serial allocation failed safely; no local/random Member ID was issued. ${error?.message || error}`);
       }
 
       // 6. SUCCESS

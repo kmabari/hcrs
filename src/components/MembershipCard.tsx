@@ -646,6 +646,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
   const isLifeMember = String(member.membership_type || '').toUpperCase().includes('LIFE') ||
     String(member.membershipType || '').toUpperCase().includes('LIFE');
+  const effectiveJoinDate = member.registrationDate || member.issueDate ||
+    (member as any).paymentVerifiedAt || (member as any).paymentTime || (member as any).createdAt;
   const isBanned = (member.status || '').toLowerCase() === 'banned' || (member.status || '').toLowerCase() === 'disabled';
   const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && member.renewalPending !== true && !isLifeMember && (
     (() => {
@@ -653,7 +655,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       if (expDate) {
         return expDate.getTime() < Date.now();
       }
-      const regDate = parseDateField(member.registrationDate);
+      const regDate = parseDateField(effectiveJoinDate);
       if (!regDate) return false;
       const expD = new Date(regDate);
       expD.setFullYear(expD.getFullYear() + 1);
@@ -676,7 +678,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
     
     // Fallback if no expiry date on user profile
-    const regDate = parseDateField(date || member.registrationDate);
+    const regDate = parseDateField(date || effectiveJoinDate);
     if (!regDate) return '---';
     const d = new Date(regDate);
     d.setFullYear(d.getFullYear() + 1);
@@ -700,13 +702,13 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const cardDetails = [
     { label: 'Phone', value: member.mobile || 'N/A', icon: Phone },
     ...(member.renewalDate ? [
-      { label: 'Join Date', value: formatDate(member.registrationDate), icon: Award },
+      { label: 'Join Date', value: formatDate(effectiveJoinDate), icon: Award },
       { label: 'Renewed', value: formatDate(member.renewalDate), icon: Calendar },
-      { label: 'Expiry Date', value: getRenewalDate(member.registrationDate), icon: Clock }
+      { label: 'Expiry Date', value: getRenewalDate(effectiveJoinDate), icon: Clock }
     ] : [
       { label: 'Email', value: member.email || 'N/A', icon: Mail },
-      { label: 'Join Date', value: formatDate(member.registrationDate), icon: Award },
-      { label: 'Expiry Date', value: getRenewalDate(member.registrationDate), icon: Clock }
+      { label: 'Join Date', value: formatDate(effectiveJoinDate), icon: Award },
+      { label: 'Expiry Date', value: getRenewalDate(effectiveJoinDate), icon: Clock }
     ])
   ];
 
@@ -977,14 +979,14 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 {/* 4. JOIN DATE */}
                 <div className={itemPlateClass}>
                   <span className={textTitleClass}>JOIN DATE</span>
-                  <span className={textValueClass}>{formatDate(member.registrationDate)}</span>
+                  <span className={textValueClass}>{formatDate(effectiveJoinDate)}</span>
                 </div>
 
                 {/* 5. EXPIRY DATE */}
                 <div className={itemPlateClass}>
                   <span className={textTitleClass}>{isLifeMember ? 'VALIDITY' : 'EXPIRY DATE'}</span>
                   <span className={`${textValueClass} ${!isLifeMember ? 'text-[#1a2b5c]' : 'text-amber-900 font-extrabold'}`}>
-                    {isLifeMember ? '⭐ PERMANENT / LIFETIME' : getRenewalDate(member.registrationDate)}
+                    {isLifeMember ? '⭐ PERMANENT / LIFETIME' : getRenewalDate(effectiveJoinDate)}
                   </span>
                 </div>
               </div>
