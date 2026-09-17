@@ -2422,6 +2422,7 @@ export default function AdminDashboard({
         : paid - received;
       return {
         'Sl No': index + 1,
+        'Firestore Claim ID': claim.id || '',
         'Claim Token': claim.tokenNo || claim.serialNo || '',
         'Claimant Name': claim.userName || member?.name || '',
         'Relation': claim.relationLabel || claim.relation || 'Self',
@@ -2430,24 +2431,57 @@ export default function AdminDashboard({
         'Highrich ID': claim.highrichId || member?.highrichId || '',
         'PAN Number': claim.panNumber || claim.pan || (member as any)?.panNumber || (member as any)?.pan || '',
         'District': claim.userDistrict || claim.district || member?.district || '',
+        'Assembly Constituency': claim.userConstituency || claim.constituency || claim.assemblyConstituency || member?.assemblyConstituency || '',
+        'Address': claim.userAddress || claim.address || claim.residentialAddress || claim.houseName || '',
+        'Place': claim.place || claim.customerPlace || '',
+        'Post Office': claim.postOffice || claim.po || '',
+        'PIN Code': claim.pincode || claim.pin || claim.postalCode || '',
+        'Joining Date': claim.joiningDate || '',
+        'Sponsor Name': claim.sponsorName || '',
+        'Sponsor Mobile': claim.sponsorMobile || '',
+        'Claim Categories': Array.isArray(claim.categories) ? claim.categories.join(', ') : (claim.categories || ''),
+        'Other Category': claim.otherCategory || '',
+        'Category Details': claim.categoryDetails || '',
+        'No Breakup Declared': claim.noBreakup ? 'Yes' : 'No',
         'Total Paid': paid,
         'Total Received': received,
         'Balance / Pending': pending,
+        'Company Payment Account / Receipt / UTR': claim.paidFromAccount || claim.transactionRef || claim.transactionId || '',
+        'Company Paid Bank': claim.paidFromBank || '',
+        'Company Paid Branch': claim.paidFromBranch || '',
+        'Company Paid IFSC': claim.paidFromIfsc || '',
+        'Payment Date': claim.paymentDate || '',
+        'Settlement Account Holder': claim.settlementAccountHolder || '',
+        'Settlement Account Number': claim.settlementAccountNumber || '',
+        'Settlement Bank': claim.settlementBankName || '',
+        'Settlement Branch': claim.settlementBranch || '',
+        'Settlement IFSC': claim.settlementIfsc || '',
         'Future Planning Code': claim.futurePreference || '',
         'Future Planning': preferenceLabels[claim.futurePreference] || claim.futurePreferenceText || '',
         'Hardship / Current Situation': Array.isArray(claim.hardshipStatus) ? claim.hardshipStatus.join(', ') : (claim.hardshipStatus || ''),
+        'Emergency': claim.isEmergency ? 'Yes' : 'No',
         'Priority Status': claim.priorityStatus || '',
+        'Legal Consent': claim.consentLegal ? 'Yes' : 'No',
         'Verification Status': claim.verificationStatus || 'PENDING_VERIFICATION',
         'Verified By': claim.verifiedBy || '',
         'Notes / Remarks': claim.notes || '',
-        'Submitted Date': claim.createdAt?.toDate ? claim.createdAt.toDate().toLocaleString('en-IN') : (claim.submittedAt || claim.createdAt || '')
+        'Submitted Date': claim.createdAt?.toDate ? claim.createdAt.toDate().toLocaleString('en-IN') : (claim.submittedAt || claim.createdAt || ''),
+        'Last Updated': claim.updatedAt?.toDate ? claim.updatedAt.toDate().toLocaleString('en-IN') : (claim.updatedAt || '')
       };
     });
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    sheet['!cols'] = [8, 14, 24, 16, 16, 22, 18, 16, 16, 14, 16, 18, 20, 42, 32, 20, 22, 24, 36, 24].map(wch => ({ wch }));
-    const book = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book, sheet, 'Individual Claims');
-    XLSX.writeFile(book, `HCRS_Individual_Claims_Bulk_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    try {
+      const sheet = XLSX.utils.json_to_sheet(rows);
+      sheet['!cols'] = Object.keys(rows[0] || {}).map(key => ({
+        wch: Math.min(45, Math.max(12, key.length + 2))
+      }));
+      const book = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book, sheet, 'All Individual Claims');
+      XLSX.writeFile(book, `HCRS_All_Individual_Claims_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(`${rows.length} claim records Excel ആയി download ചെയ്തു.`);
+    } catch (error: any) {
+      console.error('Claims Excel export failed:', error);
+      toast.error('Claims Excel download പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക.');
+    }
   };
 
   return (
@@ -3934,10 +3968,11 @@ export default function AdminDashboard({
                       size="sm"
                       onClick={exportAllIndividualClaimsToExcel}
                       disabled={claims.length === 0}
-                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-blue-600/30 text-blue-800 bg-blue-50/50 hover:bg-blue-100/70"
+                      className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase bg-blue-700 hover:bg-blue-800 text-white shadow-sm"
+                      title="Admin Panel-ലുള്ള എല്ലാ Individual Claim records-ഉം Excel file ആയി download ചെയ്യുക"
                     >
-                      <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-                      <span>Bulk Excel (All Claims)</span>
+                      <Download className="w-4 h-4 mr-1.5" />
+                      <span>Download All Claims Excel ({claims.length})</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -3954,10 +3989,11 @@ export default function AdminDashboard({
                       variant="outline"
                       size="sm"
                       onClick={() => setIsClaimsImportOpen(true)}
-                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5 text-center whitespace-normal break-words max-w-full"
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-bold text-[10px] uppercase border-slate-200 text-slate-500 hover:bg-slate-50 text-center whitespace-normal break-words max-w-full"
+                      title="പഴയ website-ൽ നിന്നുള്ള legacy claim file migration-നു മാത്രം"
                     >
-                      <Upload className="w-3.5 h-3.5 mr-1.5 text-brand-blue shrink-0 inline" />
-                      <span>Import Old Site Claims</span>
+                      <Upload className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0 inline" />
+                      <span>Legacy Migration Upload Only</span>
                     </Button>
                     <Button
                       variant="outline"
