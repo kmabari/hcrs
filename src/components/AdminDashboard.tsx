@@ -757,6 +757,7 @@ export default function AdminDashboard({
 
   const [viewingMember, setViewingMember] = useState<UserProfile | null>(null);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
+  const originalEditingMobileRef = useRef<string>('');
   const [isSavingMember, setIsSavingMember] = useState(false);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [selectedReceiptsMember, setSelectedReceiptsMember] = useState<UserProfile | null>(null);
@@ -1805,7 +1806,10 @@ export default function AdminDashboard({
     }
 
     // Check duplicate mobile safely
-    const duplicate = members.find(m => m.uid !== editingMember.uid && m.mobile && m.mobile.replace(/\D/g, '') === cleanMobile);
+    const originalMobile = originalEditingMobileRef.current;
+    const duplicate = cleanMobile !== originalMobile
+      ? members.find(m => m.uid !== editingMember.uid && m.mobile && m.mobile.replace(/\D/g, '') === cleanMobile)
+      : undefined;
     if (duplicate) {
       toast.error(`ഈ മൊബൈൽ നമ്പർ (${cleanMobile}) മറ്റൊരു അംഗത്തിന്റെ അക്കൗണ്ടിൽ (${duplicate.name} - ${duplicate.membershipId || duplicate.uid}) നിലവിലുണ്ട്. (Mobile number already in use by another member.)`);
       return;
@@ -3602,7 +3606,7 @@ export default function AdminDashboard({
                                       <MoreVertical className="w-4 h-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
-                                      <DropdownMenuItem onClick={() => setEditingMember(m)} className="text-xs font-bold">
+                                      <DropdownMenuItem onClick={() => { originalEditingMobileRef.current = (m.mobile || '').replace(/\D/g, ''); setEditingMember(m); }} className="text-xs font-bold">
                                         <Pencil className="w-3.5 h-3.5 mr-2 text-slate-500" /> Edit Details
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => setSelectedReceiptsMember(m)} className="text-xs font-bold">
