@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { auth, db } from "../../lib/firebase";
 import { eledgerDb } from "../../eledger/lib/firebaseEledger";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 
@@ -78,6 +78,11 @@ export const getCampaignId = (
   return `${cleanBase}_${hashHex}`;
 };
 
+const getRotationDocumentId = (conf: JanamailConfig | null | undefined): string => {
+  const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
+  return `__rotation__${String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
+};
+
 interface EmailEditorProps {
   config?: JanamailConfig | null;
 }
@@ -148,6 +153,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
     return localStorage.getItem("janamail_draft_templateId") || "";
   });
+  const [rotationVersion, setRotationVersion] = useState(0);
 
   const currentTemplateIdx = templates.findIndex(t => t.id === selectedTemplateId);
   const currentTemplateDisplayIdx = currentTemplateIdx !== -1 ? currentTemplateIdx : 0;
@@ -493,15 +499,30 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const unsubscribe = subscribeToCampaignTemplates((items) => {
       const activeItems = items.filter(t => t.active);
       setTemplates(activeItems);
-      
-      // Select the first template by default if none selected yet
-      if (activeItems.length > 0 && !selectedTemplateId) {
-        const first = activeItems[0];
-        setSelectedTemplateId(first.id || "");
-      }
     });
     return () => unsubscribe();
-  }, [selectedTemplateId]);
+  }, []);
+
+  // Keep every browser on the same globally assigned default template.
+  // The pointer is advanced atomically with a successful submission below.
+  useEffect(() => {
+    if (templates.length === 0) return;
+    const rotationRef = doc(eledgerDb, "janamail_submissions", getRotationDocumentId(config));
+    return onSnapshot(rotationRef, snapshot => {
+      const data = snapshot.data();
+      const nextIndex = Math.max(0, Number(data?.nextIndex || 0)) % templates.length;
+      setRotationVersion(Math.max(0, Number(data?.version || 0)));
+      if (activeComposeMethod === "template" && !isCustomized) {
+        setSelectedTemplateId(templates[nextIndex].id || "");
+      }
+    }, error => {
+      console.warn("Janamail rotation state read failed; using the first active template:", error);
+      setRotationVersion(0);
+      if (activeComposeMethod === "template" && !isCustomized) {
+        setSelectedTemplateId(templates[0].id || "");
+      }
+    });
+  }, [templates, config, activeComposeMethod, isCustomized]);
 
   // Dynamically update body if the user hasn't manually customized the body textarea (Reference Templates mode)
   useEffect(() => {
@@ -890,6 +911,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         category: category.trim(),
         selectedSubject: finalSubject,
         template: templateRef,
+        templateId: activeComposeMethod === "template" ? (currentSelectedTemplate?.id || null) : null,
         campaignId: currentCampaignId,
         emailId: emailId || null,
         status: "Completed",
@@ -903,8 +925,46 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         submittedAt: new Date().toISOString()
       };
 
-      // Persist exclusively in HCRS eLedger Firestore
-      await setDoc(doc(eledgerDb, "janamail_submissions", submissionDocId), submissionData, { merge: true });
+      // Persist the submission and advance the global Subject + Body pair atomically.
+      // A stale browser cannot launch a duplicate default template; it must refresh to
+      // the newly assigned pair and ask the participant to confirm again.
+      const submissionRef = doc(eledgerDb, "janamail_submissions", submissionDocId);
+      const rotationRef = doc(eledgerDb, "janamail_submissions", getRotationDocumentId(config));
+      await runTransaction(eledgerDb, async transaction => {
+        const existingSubmission = await transaction.get(submissionRef);
+        const rotationSnapshot = activeComposeMethod === "template"
+          ? await transaction.get(rotationRef)
+          : null;
+
+        if (!isWhitelisted && config?.restrictOneParticipation !== false && !bypassParticipationCheck &&
+            existingSubmission.exists() &&
+            (existingSubmission.data()?.status === "Completed" || existingSubmission.data()?.participated === true)) {
+          throw new Error("ALREADY_PARTICIPATED");
+        }
+
+        if (activeComposeMethod === "template") {
+          const latestVersion = Math.max(0, Number(rotationSnapshot?.data()?.version || 0));
+          if (latestVersion !== rotationVersion) {
+            throw new Error("ROTATION_CHANGED");
+          }
+        }
+
+        transaction.set(submissionRef, submissionData, { merge: true });
+
+        if (activeComposeMethod === "template" && templates.length > 0) {
+          const usedIndex = Math.max(0, templates.findIndex(template => template.id === currentSelectedTemplate?.id));
+          const nextIndex = (usedIndex + 1) % templates.length;
+          transaction.set(rotationRef, {
+            recordType: "rotation_state",
+            campaignId: (config as any)?.campaignId || config?.id || config?.campaignName || "janamail_campaign",
+            lastTemplateId: currentSelectedTemplate?.id || null,
+            nextTemplateId: templates[nextIndex]?.id || null,
+            nextIndex,
+            version: rotationVersion + 1,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+      });
 
       // Record Permanent Campaign Lock ONLY for regular users (not whitelisted super admins)
       if (!isWhitelisted) {
@@ -923,6 +983,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       setApiError(null);
     } catch (err: any) {
       console.error("Error saving participant details to HCRS eLedger Firestore:", err);
+      if (err?.message === "ROTATION_CHANGED") {
+        toast.error("മറ്റൊരു പങ്കാളി ഇപ്പോൾ Mail ആരംഭിച്ചതിനാൽ അടുത്ത Subject തയ്യാറാക്കിയിരിക്കുന്നു. പുതിയ Subject പരിശോധിച്ച് വീണ്ടും Send അമർത്തുക.", { id: loadingToast, duration: 9000 });
+        setApiError("Subject updated. Please review the new Subject and send again.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (err?.message === "ALREADY_PARTICIPATED") {
+        toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
+        setHasParticipated(true);
+        setIsSubmitting(false);
+        return;
+      }
       const errMsg = err.message || "വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
       toast.error(`വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല: ${errMsg}`, { id: loadingToast, duration: 8000 });
       setApiError(errMsg);
@@ -1282,10 +1354,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               <div className="space-y-2.5 sm:space-y-4">
                 <div className="space-y-1 text-left">
                   <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-0.5 sm:mb-1">
-                    Select Email Subject / വിഷയം തിരഞ്ഞെടുക്കുക *
+                    Automatic Email Subject / ഓട്ടോമാറ്റിക് വിഷയം *
                   </label>
                   <p className="text-[11px] sm:text-sm font-medium sm:font-bold text-slate-600 sm:text-slate-700 leading-snug sm:leading-relaxed">
-                    താഴെ നൽകിയിരിക്കുന്ന വിഷയങ്ങളിൽ നിങ്ങൾക്ക് ഇഷ്ടമുള്ളത് തിരഞ്ഞെടുക്കാം. Next / Previous ബട്ടണുകൾ ഉപയോഗിച്ച് മറ്റ് വിഷയങ്ങൾ കാണാൻ സാധിക്കും.
+                    നിങ്ങൾക്കായി Subject-ഉം അതുമായി ബന്ധപ്പെട്ട Body-യും തയ്യാറാക്കിയിട്ടുണ്ട്. ഓരോ വിജയകരമായ Mail ആരംഭിക്കുമ്പോഴും അടുത്ത active pair ഓട്ടോമാറ്റിക്കായി വരും; വേണമെങ്കിൽ Next / Previous ഉപയോഗിച്ച് മറ്റൊന്ന് തിരഞ്ഞെടുക്കാം.
                   </p>
                 </div>
                 

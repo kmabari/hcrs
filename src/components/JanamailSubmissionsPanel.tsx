@@ -45,7 +45,9 @@ export default function JanamailSubmissionsPanel() {
   useEffect(() => {
     const submissionsRef = collection(eledgerDb, 'janamail_submissions');
     const unsubscribe = onSnapshot(submissionsRef, snapshot => {
-      const rows = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as JanamailSubmission));
+      const rows = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as JanamailSubmission & { recordType?: string }))
+        .filter(row => row.recordType !== 'rotation_state');
       setItems(rows.sort((a, b) => dateValue(b) - dateValue(a)));
       setLoading(false);
       setError('');
