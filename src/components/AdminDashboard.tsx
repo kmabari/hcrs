@@ -2288,9 +2288,50 @@ export default function AdminDashboard({
   }, [claims]);
 
   const pendingRenewals = useMemo(() => {
-    const filtered = members.filter(m => {
-      if (approvedRenewalUids.includes(m.uid)) return false;
-      if (!(m as any).renewalPending) return false;
+    const approvedSet = new Set(approvedRenewalUids);
+    const timestampOf = (value: any): number => {
+      if (!value) return 0;
+      try {
+        if (typeof value.toDate === 'function') return value.toDate().getTime();
+        if (value.seconds || value._seconds) return Number(value.seconds ?? value._seconds) * 1000;
+        const time = new Date(value).getTime();
+        return Number.isFinite(time) ? time : 0;
+      } catch {
+        return 0;
+      }
+    };
+    const renewalTimeOf = (m: UserProfile): number => Math.max(
+      timestampOf((m as any).renewalDate),
+      timestampOf((m as any).renewalPaymentDate),
+      timestampOf((m as any).updatedAt),
+      timestampOf((m as any).issueDate),
+      timestampOf((m as any).registrationDate)
+    );
+    const approvalTimeOf = (m: UserProfile): number => Math.max(
+      timestampOf((m as any).renewalApprovedAt),
+      (m as any).renewalPending === false ? timestampOf((m as any).renewalDate) : 0,
+      (m as any).renewalPending === false ? timestampOf((m as any).issueDate) : 0
+    );
+    const identityOf = (m: UserProfile): string => {
+      const mobile = getClean10DigitMobile(m.mobile);
+      // Never group solely by membershipId because legacy duplicate IDs exist.
+      return mobile.length === 10 ? `mobile:${mobile}` : `uid:${m.uid}`;
+    };
+
+    const latestApprovalByIdentity = new Map<string, number>();
+    for (const member of members) {
+      const identity = identityOf(member);
+      const approvedAt = approvedSet.has(member.uid) ? Date.now() : approvalTimeOf(member);
+      if (approvedAt > (latestApprovalByIdentity.get(identity) || 0)) {
+        latestApprovalByIdentity.set(identity, approvedAt);
+      }
+    }
+
+    const visiblePending = members.filter(m => {
+      if (approvedSet.has(m.uid) || !(m as any).renewalPending) return false;
+      const pendingAt = renewalTimeOf(m);
+      const approvedAt = latestApprovalByIdentity.get(identityOf(m)) || 0;
+      if (approvedAt > 0 && approvedAt >= pendingAt) return false;
 
       const term = searchTerm.toLowerCase().trim();
       const resolved = resolvePendingRenewalMember(m, members);
@@ -2319,45 +2360,15 @@ export default function AdminDashboard({
       return matchesSearch && matchesDistrict && matchesSource;
     });
 
-    const getRenewalTime = (m: UserProfile): number => {
-      const value = (m as any).renewalDate || (m as any).createdAt;
-      if (!value) return 0;
-
-      try {
-        if (typeof value.toMillis === 'function') return value.toMillis();
-        if (typeof value.toDate === 'function') return value.toDate().getTime();
-
-        const seconds = value.seconds ?? value._seconds;
-        if (typeof seconds === 'number') return seconds * 1000;
-
-        const parsed = new Date(value).getTime();
-        return Number.isNaN(parsed) ? 0 : parsed;
-      } catch {
-        return 0;
+    const latestPendingByIdentity = new Map<string, UserProfile>();
+    for (const pending of visiblePending) {
+      const identity = identityOf(pending);
+      const current = latestPendingByIdentity.get(identity);
+      if (!current || renewalTimeOf(pending) > renewalTimeOf(current)) {
+        latestPendingByIdentity.set(identity, pending);
       }
-    };
-
-    const uniquePending = new Map<string, UserProfile>();
-
-    filtered.forEach(m => {
-      const resolved = resolvePendingRenewalMember(m, members);
-      const membershipId = (resolved.membershipId || m.membershipId || '').trim().toUpperCase();
-      const mobile = getClean10DigitMobile(resolved.mobile || m.mobile);
-
-      const identityKey = membershipId
-        ? `member:${membershipId}`
-        : mobile
-          ? `mobile:${mobile}`
-          : `uid:${m.uid}`;
-
-      const existing = uniquePending.get(identityKey);
-
-      if (!existing || getRenewalTime(m) > getRenewalTime(existing)) {
-        uniquePending.set(identityKey, m);
-      }
-    });
-
-    return Array.from(uniquePending.values());
+    }
+    return Array.from(latestPendingByIdentity.values());
   }, [members, searchTerm, districtFilter, sourceFilter, approvedRenewalUids]);
 
   const exportToExcel = () => {
@@ -2455,7 +2466,7 @@ export default function AdminDashboard({
             )}
           >
             <div className="flex items-center gap-3">
-              <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' && pendingRenewals.length > 0 ? 'text-white animate-spin-slow' : 'text-amber-500')} />
+              <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' && pendingRenewals.length > 0 ? 'text-white' : 'text-amber-500')} />
               <span>Pending Renewals (റിന്യൂവൽ)</span>
             </div>
             {pendingRenewals.length > 0 && (
@@ -3192,7 +3203,7 @@ export default function AdminDashboard({
                   : "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70"
               )}
             >
-              <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin-slow" />
+              <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
               <span>🔄 Pending Renewals (റിന്യൂവൽ)</span>
               <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-500 text-white">
                 {pendingRenewals.length}
