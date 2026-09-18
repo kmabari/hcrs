@@ -777,62 +777,6 @@ export default function LandingPage({
                 </InfinityBorderCard>
               </div>
 
-              {/* Dedicated HCRS eledger Portal Apple UI Glass Action Button */}
-              <div className="max-w-4xl mx-auto w-full px-2">
-                <motion.div
-                  whileHover={{ scale: 1.015, y: -2 }}
-                  whileTap={{ scale: 0.985 }}
-                  className="relative group cursor-pointer"
-                  onClick={onELedgerClick}
-                >
-                  {/* Subtle Apple-style ambient backglow */}
-                  <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-600/25 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500" />
-
-                  {/* Apple UI Glass Button Container */}
-                  <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_8px_32px_0_rgba(16,185,129,0.12)] p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 transition-all duration-300 group-hover:border-emerald-500/40 group-hover:shadow-[0_12px_40px_0_rgba(16,185,129,0.2)]">
-                    {/* Top glass highlight reflection */}
-                    <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-t-3xl" />
-
-                    <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-0.5 shadow-lg shadow-emerald-600/25 flex items-center justify-center shrink-0 text-white">
-                        <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center">
-                          <Lock className="w-6 h-6 stroke-[2.2] text-white" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 text-left min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Authorized Portal
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                            23 Seats
-                          </span>
-                        </div>
-                        <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase font-heading">
-                          Go to eledger portal
-                        </h3>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium line-clamp-1">
-                          {lang === 'ml' 
-                            ? 'സ്റ്റേറ്റ് കമ്മിറ്റി അംഗങ്ങൾ, ട്രഷറർ, ഓഡിറ്റർ എന്നിവർക്കുള്ള പോർട്ടൽ' 
-                            : 'Dedicated portal for State Committee (Admin, Treasurer, Auditor & 20 Members)'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right Action Glass Pill */}
-                    <div className="w-full sm:w-auto shrink-0">
-                      <div className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-900/20 transition-all group-hover:scale-[1.02] active:scale-95">
-                        <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Go to eledger portal</span>
-                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
               {/* Unified Key Services Glass Card (New Membership, Renewal, Settlement in 1 Glass Card) */}
               <div className="max-w-6xl mx-auto">
                 <InfinityBorderCard
@@ -2575,6 +2519,50 @@ export default function LandingPage({
             </section>
 
             {/* Map & Address Section */}
+            {/* Restricted eLedger access is intentionally placed at the bottom of the public home page. */}
+            <div className="max-w-4xl mx-auto w-full px-2 mt-12 sm:mt-16">
+              <motion.div
+                whileHover={{ scale: 1.015, y: -2 }}
+                whileTap={{ scale: 0.985 }}
+                className="relative group cursor-pointer"
+                onClick={onELedgerClick}
+              >
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-600/25 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500" />
+                <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_8px_32px_0_rgba(16,185,129,0.12)] p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 transition-all duration-300 group-hover:border-emerald-500/40 group-hover:shadow-[0_12px_40px_0_rgba(16,185,129,0.2)]">
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-t-3xl" />
+                  <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-0.5 shadow-lg shadow-emerald-600/25 flex items-center justify-center shrink-0 text-white">
+                      <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center">
+                        <Lock className="w-6 h-6 stroke-[2.2] text-white" />
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-left min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Authorized Portal
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">23 Seats</span>
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase font-heading">Go to eledger portal</h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 font-medium line-clamp-1">
+                        {lang === 'ml'
+                          ? 'സ്റ്റേറ്റ് കമ്മിറ്റി അംഗങ്ങൾ, ട്രഷറർ, ഓഡിറ്റർ എന്നിവർക്കുള്ള നിയന്ത്രിത പോർട്ടൽ'
+                          : 'Restricted portal for State Committee (Admin, Treasurer, Auditor & 20 Members)'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-auto shrink-0">
+                    <div className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-900/20 transition-all group-hover:scale-[1.02] active:scale-95">
+                      <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>State Committee Login</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
             <section id="contact-us" className="bg-white border border-slate-200 rounded-[10px] shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 max-w-6xl mx-auto mt-12 sm:mt-16 md:mt-20 text-left font-sans">
               <div className="p-8 md:p-12 space-y-10">
                 <div className="space-y-3">

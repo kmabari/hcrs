@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { Download, Mail, RefreshCw, Search } from 'lucide-react';
-import { eledgerDb } from '../eledger/lib/firebaseEledger';
+import { db } from '../lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ type JanamailSubmission = {
   time?: string;
   submittedAt?: string;
   createdAt?: any;
+  participated?: boolean;
 };
 
 const dateValue = (item: JanamailSubmission): number => {
@@ -43,11 +44,14 @@ export default function JanamailSubmissionsPanel() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const submissionsRef = collection(eledgerDb, 'janamail_submissions');
+    const submissionsRef = collection(db, 'claims');
     const unsubscribe = onSnapshot(submissionsRef, snapshot => {
       const rows = snapshot.docs
         .map(d => ({ id: d.id, ...d.data() } as JanamailSubmission & { recordType?: string }))
-        .filter(row => row.recordType !== 'rotation_state');
+        .filter(row => row.recordType === 'janamail_submission' || (
+          row.id.startsWith('janamail_lock_') &&
+          (row.participated === true || row.status === 'Completed')
+        ));
       setItems(rows.sort((a, b) => dateValue(b) - dateValue(a)));
       setLoading(false);
       setError('');
@@ -100,7 +104,7 @@ export default function JanamailSubmissionsPanel() {
           <CardTitle className="flex items-center gap-2 text-base font-black">
             <Mail className="w-4 h-4 text-brand-magenta" /> Janamail Submissions ({items.length})
           </CardTitle>
-          <p className="text-[11px] text-slate-500 font-semibold mt-1">Firestore: hcrs-eledger / janamail_submissions</p>
+          <p className="text-[11px] text-slate-500 font-semibold mt-1">Firestore: HCRS / claims (Janamail records)</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative">

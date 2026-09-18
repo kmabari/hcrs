@@ -3,7 +3,6 @@ import { Mail, Check, Copy, RotateCcw, Send, HelpCircle, Share2, QrCode, Chevron
 import { CampaignTemplate, subscribeToCampaignTemplates, JanamailConfig } from "../../lib/cms";
 import { motion } from "motion/react";
 import { auth, db } from "../../lib/firebase";
-import { eledgerDb } from "../../eledger/lib/firebaseEledger";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import QRCode from "qrcode";
@@ -80,8 +79,11 @@ export const getCampaignId = (
 
 const getRotationDocumentId = (conf: JanamailConfig | null | undefined): string => {
   const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
-  return `__rotation__${String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
+  return `janamail_rotation_${String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
 };
+
+const getSubmissionDocumentId = (campaignId: string, emailId: string): string =>
+  `janamail_lock_${campaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
 
 interface EmailEditorProps {
   config?: JanamailConfig | null;
@@ -507,7 +509,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   // The pointer is advanced atomically with a successful submission below.
   useEffect(() => {
     if (templates.length === 0) return;
-    const rotationRef = doc(eledgerDb, "janamail_submissions", getRotationDocumentId(config));
+    const rotationRef = doc(db, "claims", getRotationDocumentId(config));
     return onSnapshot(rotationRef, snapshot => {
       const data = snapshot.data();
       const nextIndex = Math.max(0, Number(data?.nextIndex || 0)) % templates.length;
@@ -641,10 +643,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     }
 
-    // Check HCRS eLedger Firestore janamail_submissions for campaign lock
+    // Check the existing HCRS Firestore claims collection for the campaign lock.
     let isSubscribed = true;
-    const submissionDocId = `${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-    getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId)).then((docSnap) => {
+    const submissionDocId = getSubmissionDocumentId(currentCampaignId, emailId);
+    getDoc(doc(db, "claims", submissionDocId)).then((docSnap) => {
       if (!isSubscribed) return;
       if (docSnap.exists() && (docSnap.data()?.status === "Completed" || docSnap.data()?.participated === true)) {
         setHasParticipated(true);
@@ -655,28 +657,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           status: "Completed"
         };
         localStorage.setItem(lockKey, JSON.stringify(lockData));
-      } else {
-        // Read-only fallback check for legacy claims records so prior participants remain locked
-        const legacyDocId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-        getDoc(doc(db, "claims", legacyDocId)).then((legacySnap) => {
-          if (!isSubscribed) return;
-          if (legacySnap.exists() && (legacySnap.data()?.status === "Completed" || legacySnap.data()?.participated === true)) {
-            setHasParticipated(true);
-            localStorage.setItem(lockKey, JSON.stringify({
-              campaignId: currentCampaignId,
-              email: emailId,
-              timestamp: legacySnap.data()?.timestamp || new Date().toISOString(),
-              status: "Completed"
-            }));
-          } else {
-            setHasParticipated(false);
-          }
-        }).catch(() => {
-          if (isSubscribed) setHasParticipated(false);
-        });
-      }
+      } else setHasParticipated(false);
     }).catch((err) => {
-      console.warn("HCRS eLedger Firestore campaign lock check notice:", err);
+      console.warn("HCRS Firestore campaign lock check notice:", err);
+      if (isSubscribed) setHasParticipated(false);
     });
 
     return () => { isSubscribed = false; };
@@ -873,18 +857,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const emailLaunchStatus = `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`;
 
     const submissionDocId = isWhitelisted
-      ? `${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}_${Date.now()}`
-      : `${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+      ? `${getSubmissionDocumentId(currentCampaignId, emailId)}_${Date.now()}`
+      : getSubmissionDocumentId(currentCampaignId, emailId);
 
     const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
-    // 1. Record participation state in HCRS eLedger Firestore (janamail_submissions)
+    // 1. Record participation in the existing HCRS Firestore claims collection.
     const loadingToast = toast.loading("പങ്കാളിത്തം രേഖപ്പെടുത്തുന്നു...");
     try {
       // Duplicate prevention check directly against HCRS eLedger Firestore for regular participants
       if (!isWhitelisted && config?.restrictOneParticipation !== false && !bypassParticipationCheck) {
         try {
-          const existingDoc = await getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId));
+          const existingDoc = await getDoc(doc(db, "claims", submissionDocId));
           if (existingDoc.exists() && (existingDoc.data()?.status === "Completed" || existingDoc.data()?.participated === true)) {
             localStorage.setItem(lockKey, JSON.stringify({
               campaignId: currentCampaignId,
@@ -904,6 +888,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
 
       const submissionData = {
+        recordType: "janamail_submission",
         fullName: name.trim(),
         mobileNumber: phone.trim(),
         district: district.trim(),
@@ -928,9 +913,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       // Persist the submission and advance the global Subject + Body pair atomically.
       // A stale browser cannot launch a duplicate default template; it must refresh to
       // the newly assigned pair and ask the participant to confirm again.
-      const submissionRef = doc(eledgerDb, "janamail_submissions", submissionDocId);
-      const rotationRef = doc(eledgerDb, "janamail_submissions", getRotationDocumentId(config));
-      await runTransaction(eledgerDb, async transaction => {
+      const submissionRef = doc(db, "claims", submissionDocId);
+      const rotationRef = doc(db, "claims", getRotationDocumentId(config));
+      await runTransaction(db, async transaction => {
         const existingSubmission = await transaction.get(submissionRef);
         const rotationSnapshot = activeComposeMethod === "template"
           ? await transaction.get(rotationRef)
@@ -982,7 +967,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       setIsSubmitting(false);
       setApiError(null);
     } catch (err: any) {
-      console.error("Error saving participant details to HCRS eLedger Firestore:", err);
+      console.error("Error saving participant details to HCRS Firestore:", err);
       if (err?.message === "ROTATION_CHANGED") {
         toast.error("മറ്റൊരു പങ്കാളി ഇപ്പോൾ Mail ആരംഭിച്ചതിനാൽ അടുത്ത Subject തയ്യാറാക്കിയിരിക്കുന്നു. പുതിയ Subject പരിശോധിച്ച് വീണ്ടും Send അമർത്തുക.", { id: loadingToast, duration: 9000 });
         setApiError("Subject updated. Please review the new Subject and send again.");
