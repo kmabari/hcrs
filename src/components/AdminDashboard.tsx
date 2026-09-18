@@ -78,6 +78,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
+import { INDIA_STATES, getIndiaDistricts, getIndiaAssemblies } from '@/src/data/indiaLocations';
 import { UserProfile } from '@/src/types';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -4918,7 +4919,25 @@ export default function AdminDashboard({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">State (സംസ്ഥാനം) <span className="text-red-500">*</span></Label>
+                    <select
+                      name="state"
+                      value={editingMember.state || 'Kerala'}
+                      onChange={e => setEditingMember({
+                        ...editingMember,
+                        state: e.target.value,
+                        district: '',
+                        assemblyConstituency: ''
+                      })}
+                      className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
+                    >
+                      {INDIA_STATES.map(item => (
+                        <option key={item.code} value={item.name}>{item.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-bold text-slate-700">Registered Mobile (മൊബൈൽ) <span className="text-red-500">*</span></Label>
                     <Input 
@@ -4960,10 +4979,16 @@ export default function AdminDashboard({
                     <Label className="text-xs font-bold text-slate-700">District (ജില്ല) <span className="text-red-500">*</span></Label>
                     <select
                       name="district"
-                      value={editingMember.district || 'MLP'}
+                      value={editingMember.district || ''}
                       onChange={e => {
                         const dist = e.target.value;
-                        const defaultConst = CONSTITUENCIES[dist]?.[0] || '';
+                        const state = editingMember.state || 'Kerala';
+                        const districtName = state === 'Kerala'
+                          ? (DISTRICTS.find(item => item.code === dist)?.name || dist)
+                          : dist;
+                        const defaultConst = state === 'Kerala'
+                          ? (CONSTITUENCIES[dist]?.[0] || '')
+                          : (getIndiaAssemblies(state, districtName)[0] || '');
                         setEditingMember({
                           ...editingMember,
                           district: dist,
@@ -4972,34 +4997,29 @@ export default function AdminDashboard({
                       }}
                       className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
                     >
-                      {DISTRICTS.map(d => (
-                        <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
-                      ))}
+                      <option value="">Select District</option>
+                      {((editingMember.state || 'Kerala') === 'Kerala'
+                        ? DISTRICTS.map(item => ({ value: item.code, label: item.name }))
+                        : getIndiaDistricts(editingMember.state || '').map(name => ({ value: name, label: name }))
+                      ).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-bold text-slate-700">Assembly Constituency (നിയമസഭാ മണ്ഡലം)</Label>
-                    {CONSTITUENCIES[editingMember.district || 'MLP'] ? (
-                      <select
+                    <select
                         name="assemblyConstituency"
                         value={editingMember.assemblyConstituency || ''}
                         onChange={e => setEditingMember({ ...editingMember, assemblyConstituency: e.target.value })}
                         className="w-full h-10 px-3 rounded-xl text-xs font-bold border border-slate-200 bg-white"
                       >
                         <option value="">Select Constituency</option>
-                        {CONSTITUENCIES[editingMember.district || 'MLP'].map((c: string) => (
+                        {((editingMember.state || 'Kerala') === 'Kerala'
+                          ? (CONSTITUENCIES[editingMember.district || ''] || [])
+                          : getIndiaAssemblies(editingMember.state || '', editingMember.district || '')
+                        ).map((c: string) => (
                           <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
-                    ) : (
-                      <Input 
-                        name="assemblyConstituency" 
-                        value={editingMember.assemblyConstituency || ''} 
-                        onChange={e => setEditingMember({ ...editingMember, assemblyConstituency: e.target.value })}
-                        className="h-10 rounded-xl text-xs font-bold" 
-                        placeholder="Constituency name"
-                      />
-                    )}
                   </div>
                 </div>
 

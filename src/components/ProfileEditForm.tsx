@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Lock, Save, ArrowLeft, Mail, MapPin, Heart, Calendar, AlertTriangle, LogOut, CheckCircle2, KeyRound } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, getAssemblyCode } from '@/src/constants';
+import { INDIA_STATES, getIndiaDistricts, getIndiaAssemblies } from '@/src/data/indiaLocations';
 import { sanitizeMemberAddress } from '@/src/lib/utils';
 
 interface ProfileEditFormProps {
@@ -29,6 +30,7 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
   const [bloodGroup, setBloodGroup] = useState(user.bloodGroup || '');
   const [gender, setGender] = useState(user.gender || '');
   const [dob, setDob] = useState(user.dob || '');
+  const [state, setState] = useState(user.state || 'Kerala');
   const [district, setDistrict] = useState(user.district || '');
   const [assemblyConstituency, setAssemblyConstituency] = useState(
     user.assemblyConstituency && user.assemblyConstituency !== 'NA' ? user.assemblyConstituency : ''
@@ -66,7 +68,7 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
     }
 
     // 1. District
-    if (!district || !district.trim() || !DISTRICTS.some(d => d.code === district)) {
+    if (!district || !district.trim()) {
       newErrors.district = 'ദയവായി ജില്ല തിരഞ്ഞെടുക്കുക / Please select District';
     }
 
@@ -173,6 +175,7 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
       bloodGroup: bloodGroup,
       gender: gender,
       dob: dob,
+      state,
       district: district,
       assemblyConstituency: assemblyConstituency,
       sponsorName: sponsorName.trim(),
@@ -345,8 +348,27 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
             <span className="text-rose-600 text-[9px] font-bold">* ചിഹ്നമുള്ളവ നിർബന്ധം</span>
           </div>
 
-          {/* District & Assembly Constituency */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* State, District & Assembly Constituency */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5" id="field-state">
+              <Label className="text-[10px] font-black text-slate-700 uppercase tracking-wider">
+                State / സംസ്ഥാനം <span className="text-rose-600">*</span>
+              </Label>
+              <Select value={state} onValueChange={(val) => {
+                setState(val);
+                setDistrict('');
+                setAssemblyConstituency('');
+              }}>
+                <SelectTrigger className="h-11 rounded-xl border border-slate-300 text-xs font-black bg-white">
+                  <SelectValue placeholder="Select State" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {INDIA_STATES.map(item => (
+                    <SelectItem key={item.code} value={item.name}>{item.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5" id="field-district">
               <Label className="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
                 District / ജില്ല <span className="text-rose-600 font-bold">*</span>
@@ -354,16 +376,23 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
               <Select value={district} onValueChange={(val) => {
                 setDistrict(val);
                 clearFieldError('district');
-                setAssemblyConstituency(CONSTITUENCIES[val]?.[0] || '');
+                const districtName = state === 'Kerala'
+                  ? (DISTRICTS.find(item => item.code === val)?.name || val)
+                  : val;
+                const next = state === 'Kerala'
+                  ? (CONSTITUENCIES[val] || [])
+                  : getIndiaAssemblies(state, districtName);
+                setAssemblyConstituency(next[0] || '');
                 clearFieldError('assemblyConstituency');
               }}>
                 <SelectTrigger className={`h-11 rounded-xl border text-xs font-black bg-white transition-all ${errors.district ? 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20' : 'border-slate-300 focus:ring-brand-blue'}`}>
                   <SelectValue placeholder="-- ജില്ല തിരഞ്ഞെടുക്കുക / Select District --" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  {DISTRICTS.map(d => (
-                    <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
-                  ))}
+                  {(state === 'Kerala'
+                    ? DISTRICTS.map(item => ({ value: item.code, label: item.name }))
+                    : getIndiaDistricts(state).map(name => ({ value: name, label: name }))
+                  ).map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
                 </SelectContent>
               </Select>
               {errors.district && (
@@ -387,7 +416,10 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
                   <SelectValue placeholder={district ? "-- മണ്ഡലം തിരഞ്ഞെടുക്കുക --" : "ആദ്യം ജില്ല തിരഞ്ഞെടുക്കുക"} />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  {(CONSTITUENCIES[district] || []).map(ac => (
+                  {(state === 'Kerala'
+                    ? (CONSTITUENCIES[district] || [])
+                    : getIndiaAssemblies(state, district)
+                  ).map(ac => (
                     <SelectItem key={ac} value={ac}>{ac}</SelectItem>
                   ))}
                 </SelectContent>

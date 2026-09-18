@@ -18,6 +18,7 @@ import { subscribeToOrgSettings, OrgSettings, defaultSettings, subscribeToAnnoun
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode, getAssemblyCode, generateNewMembershipId } from './constants';
+import { INDIA_STATE_CODES } from './data/indiaLocations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth, secondaryDb } from './lib/firebase';
@@ -2368,7 +2369,12 @@ export default function App() {
 
           const memberDistCode = getDistrictCode(values.district);
           const assemblyCode = getAssemblyCode(values.assemblyConstituency);
-          const membershipId = generateNewMembershipId(values.district, values.assemblyConstituency, nextSerial);
+          const membershipId = generateNewMembershipId(
+            values.district,
+            values.assemblyConstituency,
+            nextSerial,
+            INDIA_STATE_CODES[values.state || 'Kerala'] || 'KL'
+          );
           createdMembershipId = membershipId;
 
           const now = new Date();

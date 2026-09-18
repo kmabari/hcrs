@@ -27,7 +27,8 @@ import {
   Smartphone,
   Loader2
 } from 'lucide-react';
-import { DISTRICTS, STATES, CONSTITUENCIES, BLOOD_GROUPS } from '@/src/constants';
+import { DISTRICTS, CONSTITUENCIES, BLOOD_GROUPS } from '@/src/constants';
+import { INDIA_STATES, getIndiaDistricts, getIndiaAssemblies } from '@/src/data/indiaLocations';
 import { normalizeDistrictCode } from '../lib/districtUtils';
 import Logo from '../Logo';
 import { toast } from 'sonner';
@@ -216,8 +217,17 @@ export default function RegistrationForm({
     }
   }, [watchedSponsorMobile, form]);
 
+  const selectedState = form.watch('state');
   const district = form.watch('district');
-  const availableConstituencies = CONSTITUENCIES[district] || [];
+  const availableDistricts = selectedState === 'Kerala'
+    ? DISTRICTS.map(item => ({ value: item.code, label: item.name }))
+    : getIndiaDistricts(selectedState).map(name => ({ value: name, label: name }));
+  const selectedDistrictName = selectedState === 'Kerala'
+    ? (DISTRICTS.find(item => item.code === district)?.name || district)
+    : district;
+  const availableConstituencies = selectedState === 'Kerala'
+    ? (CONSTITUENCIES[district] || [])
+    : getIndiaAssemblies(selectedState, selectedDistrictName);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -499,7 +509,11 @@ export default function RegistrationForm({
                           <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wide block">
                             Gender (ലിംഗം) *
                           </FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue('district', '');
+                            form.setValue('assemblyConstituency', '');
+                          }} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger className={`h-[48px] sm:h-12 bg-white border-2 border-slate-300 focus:border-brand-blue rounded-xl font-bold text-xs sm:text-sm text-slate-950 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder="Select Gender" />
@@ -630,7 +644,7 @@ export default function RegistrationForm({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {STATES.map(s => <SelectItem key={s.code} value={s.name}>{s.name}</SelectItem>)}
+                              {INDIA_STATES.map(s => <SelectItem key={s.code} value={s.name}>{s.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <FormMessage className="text-xs font-bold text-red-600" />
@@ -646,7 +660,13 @@ export default function RegistrationForm({
                           <Select 
                             onValueChange={(val) => {
                               field.onChange(val);
-                              form.setValue('assemblyConstituency', CONSTITUENCIES[val]?.[0] || '');
+                              const districtName = selectedState === 'Kerala'
+                                ? (DISTRICTS.find(item => item.code === val)?.name || val)
+                                : val;
+                              const nextConstituencies = selectedState === 'Kerala'
+                                ? (CONSTITUENCIES[val] || [])
+                                : getIndiaAssemblies(selectedState, districtName);
+                              form.setValue('assemblyConstituency', nextConstituencies[0] || '');
                             }} 
                             value={field.value || ""}
                           >
@@ -656,7 +676,7 @@ export default function RegistrationForm({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-h-60">
-                              {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
+                              {availableDistricts.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <FormMessage className="text-xs font-bold text-red-600" />

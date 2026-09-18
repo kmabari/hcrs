@@ -404,11 +404,10 @@ export const getAssemblyCode = (name: string): string => {
   return clean.length >= 3 ? clean.substring(0, 3) : clean.padEnd(3, 'X');
 };
 
-export const generateNewMembershipId = (district: string, assembly: string, serial: number): string => {
+export const generateNewMembershipId = (district: string, assembly: string, serial: number, stateCode = 'KL'): string => {
   const dCode = getDistrictCode(district).toUpperCase();
   const rawDist = dCode === 'TCR' ? 'TSR' : dCode;
   const aCode = getAssemblyCode(assembly).toUpperCase();
   const paddedSerial = String(serial).padStart(4, '0');
-  return `HCRS-KL-${rawDist}-${aCode}-${paddedSerial}`;
+  return `HCRS-${stateCode}-${rawDist}-${aCode}-${paddedSerial}`;
 };
-
