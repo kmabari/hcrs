@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 56796)
+Total output lines: 3441
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
@@ -118,6 +121,23 @@ export default function LandingPage({
 
   const [copiedLink, setCopiedLink] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const guidelinesStartRef = useRef<HTMLDivElement | null>(null);
+
+  // The shared HCRS introduction remains above every stage. When New
+  // Membership opens the guidelines stage, move directly to that actionable
+  // card so the introduction/logo is not mistaken for a loading screen.
+  useEffect(() => {
+    if (stage !== 'guidelines') return;
+    const showGuidelines = () => {
+      guidelinesStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    };
+    const frame = window.requestAnimationFrame(showGuidelines);
+    const settledFrame = window.setTimeout(showGuidelines, 750);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settledFrame);
+    };
+  }, [stage]);
 
   const campaignUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/?view=janamail`
@@ -1645,420 +1665,7 @@ export default function LandingPage({
                   {
                     category: 'Membership Campaigns',
                     title: 'Membership Campaigns Archive',
-                    desc: 'Sneak peek into physical membership campaigns, active recruitment zones, and community interactions.',
-                    icon: <IdCard className="w-5 h-5 text-[#1a2b5c]" />,
-                    bgColor: 'bg-white',
-                    btnColor: 'text-[#1a2b5c] hover:bg-slate-100 border-slate-200'
-                  },
-                  {
-                    category: 'Welfare Activities',
-                    title: 'Welfare Activities Photo Grid',
-                    desc: 'Capturing moments of direct relief campaigns, compassionate delivery work, and home visits.',
-                    icon: <HeartHandshake className="w-5 h-5 text-[#c9a227]" />,
-                    bgColor: 'bg-white',
-                    btnColor: 'text-[#c9a227] hover:bg-slate-100 border-slate-200'
-                  },
-                  {
-                    category: 'Financial Support',
-                    title: 'Financial Support & Activity Gallery',
-                    desc: 'Transparency and active record checking of educational support, emergency medical disbursements.',
-                    icon: <Coins className="w-5 h-5 text-[#233875]" />,
-                    bgColor: 'bg-white',
-                    btnColor: 'text-[#233875] hover:bg-slate-100 border-slate-200'
-                  }
-                ].map((act) => {
-                  const sectionImages = gallery.filter(img => img.category === act.category).slice(0, 6);
-                  return (
-                    <div 
-                      key={act.category} 
-                      className="p-6 md:p-8 rounded-3xl border border-slate-200/65 bg-white shadow-premium text-left space-y-6"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-[6px] bg-white shadow-sm border border-slate-200 flex items-center justify-center shrink-0">
-                            {act.icon}
-                          </div>
-                          <div>
-                            <h3 className="text-base font-semibold text-slate-900 uppercase tracking-tight">{act.title}</h3>
-                            <p className="text-[11px] text-slate-500 font-normal">{act.desc}</p>
-                          </div>
-                        </div>
-
-                        <Button 
-                          onClick={onGalleryClick}
-                          className={`rounded-[10px] h-9 text-[10px] font-semibold uppercase tracking-wider px-4 bg-white border border-slate-200 shadow-sm transition-all ${act.btnColor}`}
-                        >
-                          View All Photos
-                          <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                        </Button>
-                      </div>
-
-                      {sectionImages.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 animate-fade-in">
-                          {sectionImages.map((img, i) => (
-                            <motion.div
-                              key={img.url + i}
-                              whileHover={{ y: -3 }}
-                              onClick={onGalleryClick}
-                              className="aspect-square bg-slate-100 border border-slate-200 rounded-[8px] overflow-hidden relative cursor-pointer group shadow-sm"
-                            >
-                              <img 
-                                src={normalizeImageUrl(img.url)} 
-                                alt={img.title} 
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                referrerPolicy="no-referrer"
-                                onError={(e) => {
-                                  const target = e.currentTarget;
-                                  if (!target.dataset.retried) {
-                                    target.dataset.retried = 'true';
-                                    target.src = getProxiedImageUrl(img.url);
-                                  }
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-[#222222]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-350 flex items-end p-2.5 backdrop-blur-[1px]">
-                                <p className="text-[9px] font-bold text-white uppercase tracking-tight line-clamp-2 leading-tight">
-                                  {img.title}
-                                </p>
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="py-8 bg-white border border-dashed border-slate-200 rounded-[8px] flex flex-col items-center justify-center text-center">
-                          <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
-                          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Preview Gallery Empty</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* OUR JOURNEY SECTION */}
-            <section className="space-y-8 sm:space-y-12 max-w-5xl mx-auto pt-12 sm:pt-16 md:pt-20 pb-8 sm:pb-10">
-              <div className="text-center space-y-3 sm:space-y-4 font-sans">
-                <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-900 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap justify-center">
-                  <Compass className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
-                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">The Timeline • ചരിത്രവഴി</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
-                  Our <span className="text-[#c9a227]">Journey</span>
-                </h2>
-                <p className="text-slate-700 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
-                  A timeline tracking our establishment, unity, and dedicated ongoing community efforts.
-                </p>
-              </div>
-
-              {/* Timeline graphic wrapper */}
-              <div className="relative border-l-2 border-slate-700 ml-4 md:ml-32 space-y-12 text-left">
-                {/* Milestone 1 */}
-                <div className="relative pl-8 sm:pl-12 group">
-                  {/* Flat Professional Node */}
-                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-[#c9a227] shadow-sm group-hover:scale-110 transition-transform" />
-                  
-                  {/* Content Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start font-sans">
-                    {/* Year/Signpost (Left alignment offset) */}
-                    <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
-                      <span className="inline-block bg-amber-500/10 text-amber-400 font-bold text-xs px-3.5 py-1.5 rounded-full border border-amber-500/20 shadow-sm uppercase tracking-wider">
-                        2025 • ESTD
-                      </span>
-                    </div>
-                    {/* Card container */}
-                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-[#c9a227]/40 transition-all duration-200">
-                      <h3 className="text-lg md:text-xl font-semibold text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#c9a227]" />
-                        Foundation In Thrissur
-                      </h3>
-                      <p className="text-slate-700 font-normal text-xs sm:text-sm md:text-base leading-relaxed">
-                        The Highrich Community Revival Society (HCRS) was formed in 2025 in Thrissur, Kerala.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Milestone 2 */}
-                <div className="relative pl-8 sm:pl-12 group">
-                  {/* Flat Professional Node */}
-                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-[#1a2b5c] shadow-sm group-hover:scale-110 transition-transform" />
-                  
-                  {/* Content Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start font-sans">
-                    {/* Year/Signpost */}
-                    <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
-                      <span className="inline-block bg-blue-500/10 text-blue-300 font-bold text-xs px-3.5 py-1.5 rounded-full border border-blue-500/20 shadow-sm uppercase tracking-wider">
-                        OUR FOCUS
-                      </span>
-                    </div>
-                    {/* Card container */}
-                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-[#1a2b5c]/40 transition-all duration-200">
-                      <h3 className="text-lg md:text-xl font-semibold text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#1a2b5c]" />
-                        Unity & Welfare Mobilization
-                      </h3>
-                      <p className="text-slate-700 font-normal text-xs sm:text-sm md:text-base leading-relaxed">
-                        The organization was established to unite members, promote community welfare, and provide support initiatives during difficult circumstances.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Milestone 3 */}
-                <div className="relative pl-8 sm:pl-12 group">
-                  {/* Flat Professional Node */}
-                  <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-white border-4 border-emerald-600 shadow-sm group-hover:scale-110 transition-transform" />
-                  
-                  {/* Content Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start font-sans">
-                    {/* Year/Signpost */}
-                    <div className="md:col-span-3 -ml-4 md:-ml-40 md:text-right pr-0 md:pr-10">
-                      <span className="inline-block bg-emerald-500/10 text-emerald-400 font-bold text-xs px-3.5 py-1.5 rounded-full border border-emerald-500/20 shadow-sm uppercase tracking-wider">
-                        ONGOING
-                      </span>
-                    </div>
-                    {/* Card container */}
-                    <div className="md:col-span-9 bg-white border border-slate-200 p-6 md:p-8 rounded-[10px] shadow-sm hover:border-emerald-500/40 transition-all duration-200">
-                      <h3 className="text-lg md:text-xl font-semibold text-slate-900 uppercase tracking-tight mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                        Continuous Support Platform
-                      </h3>
-                      <p className="text-slate-700 font-normal text-xs sm:text-sm md:text-base leading-relaxed">
-                        Today HCRS continues to serve as a platform for awareness, welfare, support, and community engagement.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* OUR VISION & FOCUS AREAS SECTION */}
-            <section className="space-y-8 sm:space-y-12 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch font-sans">
-                {/* OUR VISION (Left 5-cols) */}
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
-                  className="lg:col-span-5 relative bg-[#1a2b5c] rounded-[10px] p-8 md:p-10 shadow-sm flex flex-col justify-between overflow-hidden text-left"
-                >
-                  <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none max-md:hidden" />
-
-                  <div className="space-y-6 relative max-w-sm font-sans text-white">
-                    <div className="inline-flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-[4px] border border-white/20 max-w-full flex-wrap">
-                      <Eye className="w-4 h-4 text-white shrink-0 stroke-[2.5]" />
-                      <span className="font-black text-xs uppercase tracking-wider text-slate-100 leading-snug break-words">Our society Vision • ദർശനം</span>
-                    </div>
-
-                    <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight uppercase leading-tight">
-                      Our <span className="text-white">Vision</span>
-                    </h2>
-
-                    <p className="text-slate-100 font-normal text-sm leading-relaxed pt-2">
-                      To build empowered communities where every individual enjoys dignity, support, opportunity, and access to essential resources.
-                    </p>
-                  </div>
-
-                  <div className="pt-8 border-t border-white/15 mt-8 flex items-center gap-4 relative">
-                    <div className="w-11 h-11 rounded-[6px] bg-white/10 text-white flex items-center justify-center border border-white/20 shrink-0">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-white text-xs font-semibold uppercase tracking-wider">Empowerment First</h4>
-                      <p className="text-[10px] text-slate-300 font-normal tracking-wide mt-0.5">Dignity • Opportunity • Support</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* FOCUS AREAS (Right 7-cols) */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 15 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: 0.05 }}
-                  className="lg:col-span-7 bg-white border border-slate-200 p-8 md:p-10 rounded-[10px] shadow-sm flex flex-col justify-between text-left"
-                >
-                  <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/8 text-[#1a2b5c] px-4 py-2 rounded-[4px] border border-[#1a2b5c]/15 max-w-full flex-wrap">
-                      <Target className="w-4 h-4 text-[#1a2b5c] shrink-0 stroke-[2.5]" />
-                      <span className="font-black text-xs uppercase tracking-wider leading-snug break-words">Social Pillars • സുപ്രധാന ലക്ഷ്യങ്ങൾ</span>
-                    </div>
-
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight uppercase leading-tight">
-                      Focus <span className="text-[#1a2b5c]">Areas</span>
-                    </h2>
-
-                    <p className="text-slate-700 font-medium text-xs sm:text-sm md:text-base leading-relaxed">
-                      We focus on critical development blocks to foster societal health and security.
-                    </p>
-
-                    <div className="flex flex-col gap-4 pt-2 font-sans">
-                      {[
-                        {
-                          num: 1,
-                          title: "Social Welfare",
-                          titleMl: "സാമൂഹിക ക്ഷേമം",
-                          desc: "Supporting health, education, and livelihood initiatives.",
-                          icon: Heart,
-                          tabColor: "bg-[#c9a227]",
-                          numColor: "text-[#c9a227]",
-                          iconColor: "text-[#c9a227]",
-                        },
-                        {
-                          num: 2,
-                          title: "Women & Youth Development",
-                          titleMl: "സ്ത്രീ-യുവജന ക്ഷേമം",
-                          desc: "Encouraging participation, empowerment, and leadership.",
-                          icon: Users,
-                          tabColor: "bg-[#1a2b5c]",
-                          numColor: "text-[#1a2b5c]",
-                          iconColor: "text-[#1a2b5c]",
-                        },
-                        {
-                          num: 3,
-                          title: "Community Support",
-                          titleMl: "കമ്മ्युनिटी പിന്തുണ",
-                          desc: "Building stronger support networks and crisis response structures.",
-                          icon: HeartHandshake,
-                          tabColor: "bg-[#233875]",
-                          numColor: "text-[#233875]",
-                          iconColor: "text-[#233875]",
-                        },
-                        {
-                          num: 4,
-                          title: "Awareness Programs",
-                          titleMl: "ബോധവൽക്കരണം",
-                          desc: "Promoting education, legal orientation, and information sharing.",
-                          icon: Compass,
-                          tabColor: "bg-[#0D9488]",
-                          numColor: "text-[#0D9488]",
-                          iconColor: "text-[#0D9488]",
-                        }
-                      ].map((area) => {
-                        const AreaIcon = area.icon;
-                        return (
-                          <div 
-                            key={area.title} 
-                            className="bg-white border border-slate-200/90 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-stretch overflow-hidden relative min-h-[90px]"
-                          >
-                            {/* Left Badge/Pill Container - inspired by Reference #7 */}
-                            <div className="w-16 shrink-0 flex items-center justify-center relative bg-slate-50 border-r border-slate-100">
-                              {/* Vertical Color Tab Accent */}
-                              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${area.tabColor}`} />
-                              {/* Number Circle */}
-                              <div className={`w-9 h-9 rounded-full ${area.tabColor} flex items-center justify-center shadow-sm text-white font-extrabold text-xs`}>
-                                {area.num}
-                              </div>
-                            </div>
-
-                            {/* Main Card Content */}
-                            <div className="flex-1 p-4 pr-12 flex flex-col justify-center text-left">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                <h4 className="text-slate-900 font-bold text-xs md:text-sm uppercase tracking-wide leading-tight">
-                                  {area.title}
-                                </h4>
-                                <span className="text-[10px] text-[#c9a227] font-bold uppercase tracking-wider hidden sm:inline">•</span>
-                                <span className="text-[10px] sm:text-[11px] text-slate-700 font-bold uppercase tracking-wider">
-                                  {area.titleMl}
-                                </span>
-                              </div>
-                              <p className="text-slate-700 text-xs sm:text-sm font-normal leading-relaxed pt-1">{area.desc}</p>
-                            </div>
-
-                            {/* Right Icon - inspired by Reference #7 */}
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300">
-                              <AreaIcon className="w-5 h-5 stroke-[1.5]" />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </section>
-
-            {/* OUR STATE & DISTRICT COMMITTEES SECTION */}
-            <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
-              <div className="text-center space-y-3 sm:space-y-4">
-                <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#1a2b5c]/20 shadow-xs max-w-full flex-wrap justify-center">
-                  <Network className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
-                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Organizational leadership • കമ്മിറ്റികൾ</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
-                  HCRS Committee <span className="text-[#c9a227]">Members</span>
-                </h2>
-                <p className="text-slate-700 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
-                  സംസ്ഥാന, ജില്ലാ, മണ്ഡലം തലങ്ങളിലെ ഞങ്ങളുടെ നേതൃത്വ നിരയും ഭാരവാഹികളും താഴെ കാണാം.
-                </p>
-              </div>
-
-              {/* Committee Tabs */}
-              <div className="flex flex-col items-center gap-6">
-                <div className="bg-white/10 p-1.5 rounded-2xl flex items-center justify-between gap-1.5 w-full max-w-lg border border-white/15 backdrop-blur-md shadow-lg">
-                  <button
-                    onClick={() => setActiveCommTab('state')}
-                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                      activeCommTab === 'state'
-                        ? 'bg-[#c9a227] text-slate-950 font-black shadow-md font-sans'
-                        : 'text-slate-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    State <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">സംസ്ഥാന സമിതി</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveCommTab('district')}
-                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                      activeCommTab === 'district'
-                        ? 'bg-[#c9a227] text-slate-950 font-black shadow-md font-sans'
-                        : 'text-slate-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    District <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">ജില്ലാ കമ്മിറ്റികൾ</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveCommTab('mandalam')}
-                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                      activeCommTab === 'mandalam'
-                        ? 'bg-[#c9a227] text-slate-950 font-black shadow-md font-sans'
-                        : 'text-slate-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    Mandalam <span className="block text-[9px] font-bold mt-0.5 normal-case opacity-90 label-text">മണ്ഡലം കമ്മിറ്റികൾ</span>
-                  </button>
-                </div>
-
-                {/* District Selector (visible for District & Mandalam committees) */}
-                {activeCommTab !== 'state' && (
-                  <div className="w-full max-w-md space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block text-center">Select District (ജില്ല തിരഞ്ഞെടുക്കുക)</label>
-                    <div className="relative">
-                      <select
-                        value={selectedCommDistrict}
-                        onChange={(e) => setSelectedCommDistrict(e.target.value)}
-                        className="w-full h-11 px-4 pr-10 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-sm appearance-none outline-none focus:border-[#1a2b5c]/30 focus:ring-1 focus:ring-[#1a2b5c]/10 transition-all cursor-pointer"
-                      >
-                        {DISTRICTS.map(d => (
-                          <option key={d.code} value={d.code}>
-                            {d.name === 'Kasaragod' ? 'Kasaragod (കാസർകോട്)' : 
-                             d.name === 'Kannur' ? 'Kannur (കണ്ണൂർ)' : 
-                             d.name === 'Wayanad' ? 'Wayanad (വയനാട്)' : 
-                             d.name === 'Kozhikode' ? 'Kozhikode (കോഴിക്കോട്)' : 
-                             d.name === 'Malappuram' ? 'Malappuram (മലപ്പുറം)' : 
-                             d.name === 'Palakkad' ? 'Palakkad (പാലക്കാട്)' : 
-                             d.name === 'Thrissur' ? 'Thrissur (തൃശ്ശൂർ)' : 
-                             d.name === 'Ernakulam' ? 'Ernakulam (എറണാകുളം)' : 
-                             d.name === 'Idukki' ? 'Idukki (ഇടുക്കി)' : 
-                             d.name === 'Kottayam' ? 'Kottayam (കോട്ടയം)' : 
-                             d.name === 'Alappuzha' ? 'Alappuzha (ആലപ്പുഴ)' : 
-                             d.name === 'Pathanamthitta' ? 'Pathanamthitta (പത്തനംതിട്ട)' : 
-                             d.name === 'Kollam' ? 'Kollam (കൊല്ലം)' : 
-                             d.name === 'Thiruvananthapuram' ? 'Thiruvananthapuram (തിരുവനന്തപുരം)' : d.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                    desc: '…6796 tokens truncated…events-none text-slate-400">
                         <ChevronRight className="w-4 h-4 rotate-90" />
                       </div>
                     </div>
@@ -2652,11 +2259,12 @@ export default function LandingPage({
           </motion.div>
         ) : stage === 'guidelines' ? (
           <motion.div
+            ref={guidelinesStartRef}
             key="guidelines"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="max-w-2xl mx-auto px-4 pb-24 pt-4"
+            className="max-w-2xl mx-auto px-4 pb-24 pt-4 scroll-mt-16 sm:scroll-mt-20"
           >
             <Card className="border border-slate-200 bg-white shadow-sm overflow-hidden rounded-[10px]">
               <CardHeader className="bg-slate-50 border-b border-slate-200 pb-6 pt-6 px-8 md:px-10">
