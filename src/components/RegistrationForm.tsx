@@ -48,7 +48,7 @@ const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പൂർണ്ണമായ പേര് നൽകുക'),
   mobile: z.string().regex(/^\d{10}$/, 'Enter 10-digit mobile number / 10 അക്ക മെബൈൽ നമ്പർ നൽകുക'),
   email: z.string().email('Enter valid email / സാധുവായ ഇമെയിൽ നൽകുക').or(z.literal('')),
-  dob: z.string().min(1, 'Select Date of Birth / ജനന തീയതി തിരഞ്ഞെടുക്കുക'),
+  dob: z.string().optional().or(z.literal('')),
   gender: z.string().min(1, 'Select gender / ലിംഗം തിരഞ്ഞെടുക്കുക'),
   bloodGroup: z.string().min(1, 'Select blood group / രക്തഗ്രൂപ്പ് തിരഞ്ഞെടുക്കുക'),
   address: z.string().min(3, 'Address is required / മേൽവിലാസം നൽകുക'),
@@ -126,7 +126,10 @@ export default function RegistrationForm({
   }, [step]);
 
   const razorpayEnabled = orgSettings?.razorpayEnabled ?? false;
-  const qrCodePaymentEnabled = orgSettings?.qrCodePaymentEnabled ?? true;
+  // Temporarily hard-disabled because the bank-issued merchant QR is inactive.
+  // Keep this independent from Firestore settings so a stale remote flag cannot
+  // expose a payment route that is known to fail.
+  const qrCodePaymentEnabled = false;
   const regFee = orgSettings?.registrationFee || 200;
 
   // Auto set active payment method when settings change
@@ -264,6 +267,10 @@ export default function RegistrationForm({
 
   const handleQrCodeRegistration = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!qrCodePaymentEnabled) {
+      toast.error('QR കോഡിലെ സാങ്കേതിക തകരാർ പരിഹരിക്കുന്നതുവരെ ദയവായി പണമടയ്ക്കരുത്.');
+      return;
+    }
     const cleanTxId = qrTransactionId.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!cleanTxId || cleanTxId.length < 6) {
       toast.error('Please enter a valid 12-digit UPI UTR / Transaction ID (സാധുവായ ട്രാൻസാക്ഷൻ ഐഡി നൽകുക)');
@@ -470,7 +477,7 @@ export default function RegistrationForm({
                       <FormField control={form.control} name="dob" render={({ field, fieldState }) => (
                         <FormItem className="space-y-1.5">
                           <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wide block">
-                            DOB (ജനന തീയതി) *
+                            DOB (ജനന തീയതി) <span className="text-[9px] text-slate-400 normal-case">(Optional / നിർബന്ധമില്ല)</span>
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -1066,9 +1073,9 @@ export default function RegistrationForm({
                 {!razorpayEnabled && !qrCodePaymentEnabled && (
                   <div className="bg-amber-50 border-2 border-amber-300 p-6 rounded-3xl text-center space-y-3">
                     <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto" />
-                    <h4 className="text-base font-black text-amber-900 uppercase">Online Payments Temporarily Paused</h4>
+                    <h4 className="text-base font-black text-amber-900 uppercase">QR Payment Temporarily Unavailable</h4>
                     <p className="text-xs text-amber-800 font-medium leading-relaxed max-w-md mx-auto">
-                      ഓൺലൈൻ പേയ്‌മെന്റ് സംവിധാനം താൽക്കാലികമായി അപ്ഡേറ്റ് ചെയ്തുകൊണ്ടിരിക്കുകയാണ്. അഡ്ഹോക്ക് മെമ്പർഷിപ്പിനായി ദയവായി നിങ്ങളുടെ ജില്ലാ കൺവീനറുമായോ കേന്ദ്ര ഓഫീസുമായോ നേരിട്ട് ബന്ധപ്പെടുക.
+                      QR കോഡിലെ സാങ്കേതിക തകരാർ പരിഹരിക്കുന്നതുവരെ ദയവായി പണമടയ്ക്കരുത്. QR പേയ്‌മെന്റ് സംവിധാനം പൂർണ്ണമായി ശരിയായാൽ ഈ അറിയിപ്പ് ഇവിടെനിന്ന് സ്വയം നീക്കം ചെയ്യുന്നതാണ്.
                     </p>
                   </div>
                 )}

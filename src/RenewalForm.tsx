@@ -45,7 +45,8 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
   }, []);
 
   const razorpayEnabled = orgSettings?.razorpayEnabled ?? false;
-  const qrCodePaymentEnabled = orgSettings?.qrCodePaymentEnabled ?? true;
+  // Temporarily hard-disabled because the bank-issued merchant QR is inactive.
+  const qrCodePaymentEnabled = false;
   const renewalFee = orgSettings?.renewalFee || 100;
 
   useEffect(() => {
@@ -131,6 +132,10 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
   const handleQrCodeRenewal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!qrCodePaymentEnabled) {
+      toast.error('QR കോഡിലെ സാങ്കേതിക തകരാർ പരിഹരിക്കുന്നതുവരെ ദയവായി പണമടയ്ക്കരുത്.');
+      return;
+    }
     if (!foundMember) return;
 
     const cleanTxId = qrTransactionId.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -643,9 +648,9 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
               {!razorpayEnabled && !qrCodePaymentEnabled && (
                 <div className="bg-amber-50 border-2 border-amber-300 p-6 rounded-3xl text-center space-y-3">
                   <AlertTriangle className="w-8 h-8 text-amber-600 mx-auto" />
-                  <h4 className="text-sm font-black text-amber-900 uppercase">Online Payments Temporarily Paused</h4>
+                  <h4 className="text-sm font-black text-amber-900 uppercase">QR Payment Temporarily Unavailable</h4>
                   <p className="text-xs text-amber-800 font-medium leading-relaxed max-w-md mx-auto">
-                    ഓൺലൈൻ പേയ്‌മെന്റ് സംവിധാനം താൽക്കാലികമായി അപ്ഡേറ്റ് ചെയ്തുകൊണ്ടിരിക്കുകയാണ്. പുതുക്കലിനായി ദയവായി നിങ്ങളുടെ ജില്ലാ കൺവീനറുമായോ അഡ്മിനുമായോ ബന്ധപ്പെടുക.
+                    QR കോഡിലെ സാങ്കേതിക തകരാർ പരിഹരിക്കുന്നതുവരെ ദയവായി പണമടയ്ക്കരുത്. QR പേയ്‌മെന്റ് സംവിധാനം പൂർണ്ണമായി ശരിയായാൽ ഈ അറിയിപ്പ് ഇവിടെനിന്ന് സ്വയം നീക്കം ചെയ്യുന്നതാണ്.
                   </p>
                 </div>
               )}

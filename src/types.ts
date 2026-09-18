@@ -61,6 +61,7 @@ export interface UserProfile {
   pinResetRequested?: boolean;
   mustCompleteProfile?: boolean;
   profileCompleted?: boolean;
+  identityChangeUsed?: boolean;
 }
 
 export interface GalleryItem {

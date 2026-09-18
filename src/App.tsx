@@ -1128,10 +1128,7 @@ export default function App() {
           if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal' && currentViewRef.current !== 'janamail') {
             const isAdm = cachedData.role === 'admin' || cachedData.isAdmin || isSuperAdminEmail;
             const isOp = (cachedData.role === 'operator' || isSecondAdminEmail) && !isAdm;
-            const isMustChange = !isAdm && !isOp && (
-              cachedData.mustChangePassword === true ||
-              cachedData.pinResetRequested === true
-            );
+            const isMustChange = false;
             const isMustComplete = !isAdm && !isOp && !isMustChange && (
               cachedData.mustCompleteProfile === true && !cachedData.name && !cachedData.membershipId
             );
@@ -1411,15 +1408,10 @@ export default function App() {
           const isAdmin = userData.role === 'admin' || userData.isAdmin === true || isSuperAdminEmail;
           const isOperator = (userData.role === 'operator' || isSecondAdminEmail) && !isAdmin;
           
-          const isMustChange = !isAdmin && !isOperator && (
-            userData.mustChangePassword === true ||
-            userData.pinResetRequested === true ||
-            String(userData.pin || '').trim() === '123456' ||
-            !userData.pin
-          );
+          const isMustChange = false;
           const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
             userData.mustCompleteProfile === true ||
-            (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.dob || !userData.gender || !userData.bloodGroup))
+            (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup))
           );
 
           if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
@@ -1460,15 +1452,10 @@ export default function App() {
             if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal') {
               const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
               const isOp = cachedData.role === 'operator';
-              const isMustChange = !isAdm && !isOp && (
-                cachedData.mustChangePassword === true ||
-                cachedData.pinResetRequested === true ||
-                String(cachedData.pin || '').trim() === '123456' ||
-                !cachedData.pin
-              );
+              const isMustChange = false;
               const isMustComplete = !isAdm && !isOp && !isMustChange && (
                 cachedData.profileCompleted !== true &&
-                (cachedData.mustCompleteProfile === true || (!cachedData.address || !cachedData.gender || !cachedData.dob || !cachedData.bloodGroup))
+                (cachedData.mustCompleteProfile === true || (!cachedData.address || !cachedData.gender || !cachedData.bloodGroup))
               );
 
               if (isAdm) {
@@ -1856,15 +1843,15 @@ export default function App() {
       const isAdminMasterPin = isAdmin && (trimmedPin === '246810' || trimmedPin === '123456');
 
       storedPin = mappedUserData?.pin ? String(mappedUserData.pin).trim() : '';
-      const userMustChangePass = mappedUserData?.mustChangePassword === true || mappedUserData?.mustChangePassword === undefined || !storedPin || storedPin === '123456';
-
-      // Universal Member PIN validation:
+      // Member PIN validation:
       // Accepts:
       // 1. Registered custom PIN (e.g. 252525)
-      // 2. Standard universal default password (123456)
+      // 2. Default password (123456), only while that member still uses it
       // 3. Admin master PIN (246810 / 123456)
       const isCustomPinMatched = Boolean(storedPin && trimmedPin === storedPin);
-      const isDefaultPinMatched = Boolean(trimmedPin === '123456');
+      const isDefaultPinMatched = Boolean(
+        trimmedPin === '123456' && (!storedPin || storedPin === '123456')
+      );
       const isDbPinMatched = Boolean(
         isAdminMasterPin || 
         !storedPin || 
@@ -1872,13 +1859,13 @@ export default function App() {
         isDefaultPinMatched
       );
 
-      // Only reject if PIN does not match stored PIN AND is not 123456 AND not admin
+      // Reject a default PIN after that member has chosen a custom PIN.
       if (mappedUserData && !isAdminMasterPin && !isDbPinMatched) {
         try {
           await signOut(auth);
           setUser(null);
         } catch (e) {}
-        const passErr: any = new Error('തെറ്റായ പാസ്‌വേഡ്! താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക. അല്ലെങ്കിൽ 123456 ഉപയോഗിക്കുക. (Incorrect Password! Please enter your correct 6-digit password or 123456.)');
+        const passErr: any = new Error('തെറ്റായ പാസ്‌വേഡ്! താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക. (Incorrect Password! Please enter your correct 6-digit password.)');
         passErr.code = 'auth/wrong-password';
         throw passErr;
       }
@@ -2113,15 +2100,10 @@ export default function App() {
       if (finalUser) {
         const isAdm = finalUser.role === 'admin' || finalUser.isAdmin === true || isSuperAdmin;
         const isOp = (finalUser.role === 'operator' || isSecondAdmin) && !isAdm;
-        const isMustChange = !isAdm && !isOp && (
-          finalUser.mustChangePassword === true ||
-          finalUser.pinResetRequested === true ||
-          String(finalUser.pin || '').trim() === '123456' ||
-          !finalUser.pin
-        );
+        const isMustChange = false;
         const isMustComplete = !isAdm && !isOp && !isMustChange && (
           finalUser.mustCompleteProfile === true ||
-          (finalUser.profileCompleted !== true && (!finalUser.address || !finalUser.pincode || !finalUser.dob || !finalUser.gender || !finalUser.bloodGroup))
+          (finalUser.profileCompleted !== true && (!finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup))
         );
 
         if (isAdm) {
@@ -3137,17 +3119,13 @@ export default function App() {
     }
   };
 
-  const handleChangePassword = async (newPin: string) => {
+  const handleChangePassword = async (newPin: string, redirectAfterChange = true) => {
     if (!user) return;
     const loadingToast = toast.loading('Updating password / പാസ്‌വേഡ് മാറ്റുന്നു...');
     try {
       const cleanNewPin = newPin.replace(/\D/g, '').slice(0, 6);
       if (!cleanNewPin || cleanNewPin.length !== 6) {
         throw new Error('Password must be exactly 6 digits (പാസ്‌വേഡ് കൃത്യമായി 6 അക്കങ്ങൾ വേണം)');
-      }
-
-      if (cleanNewPin === '123456') {
-        throw new Error('Cannot use default password 123456 (ഡീഫോൾട്ട് പാസ്‌വേഡ് 123456 ഉപയോഗിക്കാൻ പാടില്ല)');
       }
 
       // 1. Update Firebase Auth password safely (graceful catch so session re-auth issues don't abort DB update)
@@ -3247,10 +3225,11 @@ export default function App() {
 
       toast.success('പാസ്‌വേഡ് വിജയകരമായി മാറ്റി! (Password updated successfully)', { id: loadingToast });
 
-      // 5. Always redirect to complete-profile (Edit Profile) after password setup/change
-      currentViewRef.current = 'complete-profile';
-      setView('complete-profile');
-      toast.info('പാസ്‌വേഡ് മാറ്റി! അടുത്തതായി താങ്കളുടെ പ്രൊഫൈൽ വിവരങ്ങൾ പരിശോധിച്ച് സേവ് ചെയ്യുക. (Please verify and save your profile details)', { duration: 6000 });
+      if (redirectAfterChange) {
+        currentViewRef.current = 'complete-profile';
+        setView('complete-profile');
+        toast.info('പാസ്‌വേഡ് മാറ്റി! അടുത്തതായി താങ്കളുടെ പ്രൊഫൈൽ വിവരങ്ങൾ പരിശോധിച്ച് സേവ് ചെയ്യുക. (Please verify and save your profile details)', { duration: 6000 });
+      }
     } catch (err: any) {
       console.error("Change password error:", err);
       toast.error('പാസ്‌വേഡ് മാറ്റുന്നതിൽ തടസ്സം നേരിട്ടു: ' + (err?.message || 'Error'), { id: loadingToast });
@@ -3258,12 +3237,74 @@ export default function App() {
     }
   };
 
+  const handleOptionalPasswordChange = async (currentPin: string, newPin: string) => {
+    if (!user) return;
+    const storedPin = String(user.pin || '123456').trim();
+    if (currentPin !== storedPin) {
+      throw new Error('നിലവിലെ PIN തെറ്റാണ്. (Current PIN is incorrect)');
+    }
+    if (newPin === storedPin) {
+      throw new Error('പുതിയ PIN നിലവിലെ PIN-ൽ നിന്ന് വ്യത്യസ്തമായിരിക്കണം.');
+    }
+    await handleChangePassword(newPin, false);
+  };
+
   const handleSaveProfile = async (updatedData: Partial<UserProfile>) => {
     if (!user) return;
     const loadingToast = toast.loading('Saving your profile...');
     try {
+      const requestedName = updatedData.name?.trim();
+      const requestedMobile = updatedData.mobile ? String(updatedData.mobile).replace(/\D/g, '').slice(-10) : undefined;
+      const currentMobile = String(user.mobile || '').replace(/\D/g, '').slice(-10);
+      const identityChanged = Boolean(
+        (requestedName && requestedName !== user.name) ||
+        (requestedMobile && requestedMobile !== currentMobile)
+      );
+      const identityData: Partial<UserProfile> = {};
+
+      if (identityChanged) {
+        if (user.identityChangeUsed === true) {
+          throw new Error('പേരും മൊബൈൽ നമ്പറും ഒരിക്കൽ മാത്രമേ തിരുത്താൻ കഴിയൂ. കൂടുതൽ മാറ്റത്തിന് അഡ്മിനുമായി ബന്ധപ്പെടുക.');
+        }
+        if (!requestedName || requestedName.length < 2 || !requestedMobile || !/^\d{10}$/.test(requestedMobile)) {
+          throw new Error('സാധുവായ പേരും 10 അക്ക മൊബൈൽ നമ്പറും നൽകുക.');
+        }
+
+        if (requestedMobile !== currentMobile) {
+          const mobileMatches = await getDocs(query(collection(db, 'users'), where('mobile', '==', requestedMobile)));
+          const belongsToAnotherMember = mobileMatches.docs.some((match) => {
+            if (match.id === user.uid || match.id === auth.currentUser?.uid) return false;
+            const data = match.data() as Partial<UserProfile>;
+            return !user.membershipId || !data.membershipId || data.membershipId !== user.membershipId;
+          });
+          if (belongsToAnotherMember) {
+            throw new Error('ഈ മൊബൈൽ നമ്പർ മറ്റൊരു അംഗം ഉപയോഗിക്കുന്നു. (Mobile number already in use)');
+          }
+        }
+
+        identityData.name = requestedName;
+        identityData.mobile = requestedMobile;
+        identityData.identityChangeUsed = true;
+
+        await runTransaction(db, async (transaction) => {
+          const memberRef = doc(db, 'users', user.uid);
+          const latest = await transaction.get(memberRef);
+          if (!latest.exists()) throw new Error('Member profile not found.');
+          if (latest.data().identityChangeUsed === true) {
+            throw new Error('പേര്/മൊബൈൽ one-time correction ഇതിനകം ഉപയോഗിച്ചിട്ടുണ്ട്.');
+          }
+          transaction.set(memberRef, identityData, { merge: true });
+        });
+
+        if (auth.currentUser && auth.currentUser.uid !== user.uid) {
+          await setDoc(doc(db, 'users', auth.currentUser.uid), identityData, { merge: true });
+        }
+      }
+
+      // Identity fields are persisted only by the guarded transaction above.
+      const { name: _name, mobile: _mobile, identityChangeUsed: _identityChangeUsed, ...safeUpdatedData } = updatedData;
       const finalData: Partial<UserProfile> = { 
-        ...updatedData, 
+        ...safeUpdatedData,
         mustCompleteProfile: false,
         profileCompleted: true 
       };
@@ -3359,6 +3400,7 @@ export default function App() {
       const updatedUser: UserProfile = {
         ...user,
         ...cleanData,
+        ...identityData,
         mustCompleteProfile: false,
         profileCompleted: true
       };
@@ -3366,6 +3408,7 @@ export default function App() {
       setMembers(prev => prev.map(m => (m.uid === user.uid || (user.mobile && m.mobile === user.mobile)) ? {
         ...m,
         ...cleanData,
+        ...identityData,
         mustCompleteProfile: false,
         profileCompleted: true
       } : m));
@@ -3873,6 +3916,7 @@ export default function App() {
                 onSave={handleSaveProfile} 
                 onCancel={() => setIsEditingProfile(false)} 
                 isMandatory={false}
+                onPasswordChange={handleOptionalPasswordChange}
               />
             </div>
           ) : (

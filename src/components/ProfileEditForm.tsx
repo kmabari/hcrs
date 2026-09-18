@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Lock, Save, ArrowLeft, Mail, MapPin, Heart, Calendar, AlertTriangle, LogOut, CheckCircle2 } from 'lucide-react';
+import { Lock, Save, ArrowLeft, Mail, MapPin, Heart, Calendar, AlertTriangle, LogOut, CheckCircle2, KeyRound } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, getAssemblyCode } from '@/src/constants';
 import { sanitizeMemberAddress } from '@/src/lib/utils';
 
@@ -16,9 +16,12 @@ interface ProfileEditFormProps {
   onSave: (updatedData: Partial<UserProfile>) => Promise<void>;
   onCancel: () => void;
   isMandatory?: boolean;
+  onPasswordChange?: (currentPin: string, newPin: string) => Promise<void>;
 }
 
-export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = false }: ProfileEditFormProps) {
+export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = false, onPasswordChange }: ProfileEditFormProps) {
+  const [name, setName] = useState(user.name || '');
+  const [mobile, setMobile] = useState(user.mobile || '');
   const [address, setAddress] = useState(sanitizeMemberAddress(user.address) || '');
   const [email, setEmail] = useState(user.email || '');
   const [pincode, setPincode] = useState(user.pincode || '');
@@ -34,6 +37,11 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
   const [sponsorMobile, setSponsorMobile] = useState(user.sponsorMobile || '');
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [isChangingPin, setIsChangingPin] = useState(false);
+  const canChangeIdentity = user.identityChangeUsed !== true;
 
   // Field validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,6 +57,13 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
 
   const validateAll = (): { isValid: boolean; newErrors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
+
+    if (canChangeIdentity && name.trim().length < 2) {
+      newErrors.name = 'പൂർണ്ണമായ പേര് നൽകുക / Enter full name';
+    }
+    if (canChangeIdentity && !/^\d{10}$/.test(mobile.replace(/\D/g, '').slice(-10))) {
+      newErrors.mobile = 'സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക / Enter valid mobile number';
+    }
 
     // 1. District
     if (!district || !district.trim() || !DISTRICTS.some(d => d.code === district)) {
@@ -83,10 +98,8 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
       newErrors.pincode = 'സാധുവായ 6 അക്ക പിൻകോഡ് നൽകുക / Enter valid 6-digit PIN code';
     }
 
-    // 6. Date of Birth
-    if (!dob || !dob.trim()) {
-      newErrors.dob = 'ദയവായി ജനന തീയതി നൽകുക / Please select Date of Birth';
-    } else {
+    // 6. Date of Birth (Optional, but must be a valid past date if entered)
+    if (dob && dob.trim()) {
       const birthDate = new Date(dob);
       const now = new Date();
       if (isNaN(birthDate.getTime()) || birthDate > now) {
@@ -168,6 +181,12 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
       profileCompleted: true
     };
 
+    if (canChangeIdentity && (name.trim() !== user.name || mobile.replace(/\D/g, '').slice(-10) !== String(user.mobile || '').replace(/\D/g, '').slice(-10))) {
+      updatedData.name = name.trim();
+      updatedData.mobile = mobile.replace(/\D/g, '').slice(-10);
+      updatedData.identityChangeUsed = true;
+    }
+
     try {
       await onSave(updatedData);
       if (!isMandatory) {
@@ -178,6 +197,32 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
       toast.error("Failed to update profile details.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!onPasswordChange) return;
+    const cleanCurrent = currentPin.replace(/\D/g, '').slice(0, 6);
+    const cleanNew = newPin.replace(/\D/g, '').slice(0, 6);
+    const cleanConfirm = confirmPin.replace(/\D/g, '').slice(0, 6);
+    if (cleanCurrent.length !== 6 || cleanNew.length !== 6 || cleanConfirm.length !== 6) {
+      toast.error('Current, New, Confirm PIN എന്നിവ കൃത്യമായി 6 അക്കങ്ങൾ ആയിരിക്കണം.');
+      return;
+    }
+    if (cleanNew !== cleanConfirm) {
+      toast.error('New PIN, Confirm PIN എന്നിവ പൊരുത്തപ്പെടുന്നില്ല.');
+      return;
+    }
+    setIsChangingPin(true);
+    try {
+      await onPasswordChange(cleanCurrent, cleanNew);
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmPin('');
+    } catch (error: any) {
+      toast.error(error?.message || 'PIN മാറ്റാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.');
+    } finally {
+      setIsChangingPin(false);
     }
   };
 
@@ -238,22 +283,34 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         
-        {/* PERMANENTLY LOCKED FIELDS SECTION */}
+        {/* CORE IDENTITY SECTION */}
         <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-3">
           <div className="flex items-center gap-1.5 text-slate-400 font-black text-[9px] uppercase tracking-wider mb-1">
             <Lock className="w-3.5 h-3.5 text-indigo-500" />
-            Locked Fields (Permanently Permanent)
+            {canChangeIdentity ? 'One-time identity correction' : 'Identity fields locked'}
           </div>
-          
+
+          {canChangeIdentity ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div id="field-name" className="space-y-1.5">
+                <Label htmlFor="m-name" className="text-[9px] font-black text-slate-600 uppercase">Name / പേര് *</Label>
+                <Input id="m-name" value={name} onChange={(e) => { setName(e.target.value); clearFieldError('name'); }} className={errors.name ? 'border-rose-500' : 'border-slate-300'} />
+                {errors.name && <p className="text-[10px] font-bold text-rose-600">{errors.name}</p>}
+              </div>
+              <div id="field-mobile" className="space-y-1.5">
+                <Label htmlFor="m-mobile" className="text-[9px] font-black text-slate-600 uppercase">Mobile / മൊബൈൽ *</Label>
+                <Input id="m-mobile" inputMode="numeric" maxLength={10} value={mobile} onChange={(e) => { setMobile(e.target.value.replace(/\D/g, '').slice(0, 10)); clearFieldError('mobile'); }} className={errors.mobile ? 'border-rose-500' : 'border-slate-300'} />
+                {errors.mobile && <p className="text-[10px] font-bold text-rose-600">{errors.mobile}</p>}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3.5">
+              <div><span className="block text-[8px] font-bold text-slate-400 uppercase">Name</span><span className="text-xs font-black text-slate-600">{user.name}</span></div>
+              <div><span className="block text-[8px] font-bold text-slate-400 uppercase">Mobile</span><span className="text-xs font-mono font-black text-slate-600">{user.mobile}</span></div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3.5 divide-y divide-slate-100/50">
-            <div className="pb-1.5">
-              <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Name</span>
-              <span className="text-xs font-black text-slate-600 truncate block">{user.name}</span>
-            </div>
-            <div className="pb-1.5">
-              <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Mobile</span>
-              <span className="text-xs font-mono font-black text-slate-600 truncate block">{user.mobile}</span>
-            </div>
             <div className="pt-2 pb-1.5 col-span-2">
               <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Membership ID</span>
               <span className="text-xs font-mono font-black text-brand-blue truncate block">{user.membershipId || 'KL/HCRS/PENDING'}</span>
@@ -271,10 +328,12 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
           </div>
           <div className="mt-2.5 bg-amber-50 border border-amber-300 rounded-xl p-3 text-center">
             <p className="text-xs sm:text-sm font-bold text-amber-950 leading-snug">
-              പേര്, മൊബൈൽ നമ്പർ, മെമ്പർഷിപ്പ് നമ്പർ എന്നിവയിൽ മാറ്റങ്ങൾ വരുത്തുവാൻ അഡ്മിനുമായി ബന്ധപ്പെടുക.
+              {canChangeIdentity
+                ? 'പേരും മൊബൈൽ നമ്പറും ഒരിക്കൽ മാത്രം തിരുത്താം. സേവ് ചെയ്ത ശേഷം വീണ്ടും മാറ്റാൻ കഴിയില്ല.'
+                : 'പേര്, മൊബൈൽ നമ്പർ വീണ്ടും മാറ്റുന്നതിനും മെമ്പർഷിപ്പ്/ജോയിൻ/എക്സ്പയറി തീയതികൾ മാറ്റുന്നതിനും അഡ്മിനുമായി ബന്ധപ്പെടുക.'}
             </p>
             <p className="text-[11px] font-semibold text-amber-800 mt-0.5">
-              (Contact admin to update core credentials)
+              {canChangeIdentity ? '(One-time correction only)' : '(Protected administrative fields)'}
             </p>
           </div>
         </div>
@@ -365,7 +424,7 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5" id="field-dob">
               <Label htmlFor="m-dob" className="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-slate-400" /> Date of Birth / ജനന തീയതി <span className="text-rose-600 font-bold">*</span>
+                <Calendar className="w-3 h-3 text-slate-400" /> Date of Birth / ജനന തീയതി <span className="text-[9px] text-slate-400 normal-case">(Optional)</span>
               </Label>
               <Input 
                 id="m-dob"
@@ -548,6 +607,23 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
             </div>
           </div>
         </div>
+
+        {onPasswordChange && !isMandatory && (
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 space-y-3">
+            <div className="flex items-center gap-2 font-black text-xs text-indigo-900 uppercase">
+              <KeyRound className="w-4 h-4" /> Change 6-digit PIN / പാസ്‌വേഡ് മാറ്റുക
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Input type="password" inputMode="numeric" maxLength={6} placeholder="Current PIN" value={currentPin} onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+              <Input type="password" inputMode="numeric" maxLength={6} placeholder="New PIN" value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+              <Input type="password" inputMode="numeric" maxLength={6} placeholder="Confirm PIN" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+            </div>
+            <Button type="button" variant="outline" disabled={isChangingPin} onClick={handlePasswordChange} className="w-full border-indigo-300 text-indigo-900 font-black">
+              {isChangingPin ? 'Changing PIN...' : 'Confirm & Change PIN'}
+            </Button>
+            <p className="text-[10px] text-indigo-700 font-semibold">123456 ഉപയോഗിച്ച് തുടരാം. PIN മാറ്റുന്നത് നിർബന്ധമല്ല.</p>
+          </div>
+        )}
 
         {/* MANDATORY VERIFICATION CONFIRMATION CHECKBOX */}
         {isMandatory && (
