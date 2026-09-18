@@ -12,6 +12,7 @@ import { UserProfile } from './types';
 import Logo from './Logo';
 import { processRazorpayPayment } from './lib/razorpay';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
+import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from './lib/upi';
 
 interface RenewalFormProps {
   onBack: () => void;
@@ -520,10 +521,13 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   {(() => {
                     const activeUpiId = (orgSettings.upiId && !orgSettings.upiId.includes('hcrs.kerala@okaxis'))
                       ? orgSettings.upiId
-                      : 'gpay-11261967768@okbizaxis';
-                    const activeQrImg = (orgSettings.qrCodeImageUrl && !orgSettings.qrCodeImageUrl.includes('hcrs.kerala@okaxis'))
-                      ? orgSettings.qrCodeImageUrl
-                      : '/hcrs-renewal-qr.svg';
+                      : HCRS_OFFICIAL_UPI_ID;
+                    const isOfficialUpi = activeUpiId.trim().toLowerCase() === HCRS_OFFICIAL_UPI_ID;
+                    const activeQrImg = isOfficialUpi
+                      ? buildUpiQrImageUrl(activeUpiId, orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME, renewalFee)
+                      : ((orgSettings.qrCodeImageUrl && !orgSettings.qrCodeImageUrl.includes('hcrs.kerala@okaxis'))
+                        ? orgSettings.qrCodeImageUrl
+                        : buildUpiQrImageUrl(activeUpiId, orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME, renewalFee));
 
                     return (
                       <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
@@ -531,7 +535,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                           <img
                             src={activeQrImg}
                             onError={(e) => {
-                              e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR`;
+                              e.currentTarget.src = buildUpiQrImageUrl(HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, renewalFee);
                             }}
                             alt="HCRS Official UPI QR Code"
                             className="w-28 h-28 sm:w-32 sm:h-32 object-contain"

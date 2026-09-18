@@ -42,6 +42,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { processRazorpayPayment } from '../lib/razorpay';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
+import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from '../lib/upi';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പൂർണ്ണമായ പേര് നൽകുക'),
@@ -937,7 +938,12 @@ export default function RegistrationForm({
                     <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800">
                       <div className="bg-white p-3 rounded-2xl shadow-lg shrink-0">
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'gpay-11261967768@okbizaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26am=${encodeURIComponent(regFee)}%26cu=INR`}
+                          src={buildUpiQrImageUrl(
+                            orgSettings.upiId || HCRS_OFFICIAL_UPI_ID,
+                            orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME,
+                            regFee,
+                            250
+                          )}
                           alt="HCRS Official UPI QR Code"
                           className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
                           referrerPolicy="no-referrer"
@@ -1063,7 +1069,6 @@ export default function RegistrationForm({
     </div>
   );
 }
-
 
 
 

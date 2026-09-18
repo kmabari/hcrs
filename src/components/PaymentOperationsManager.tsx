@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
 import { UserProfile } from '../types';
+import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from '../lib/upi';
 
 interface PaymentOperationsManagerProps {
   user?: UserProfile | null;
@@ -87,9 +88,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   };
 
   const handleGenerateDefaultQr = () => {
-    const encodedPa = encodeURIComponent(upiId.trim());
-    const encodedPn = encodeURIComponent(upiAccountName.trim());
-    const newQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=${encodedPa}%26pn=${encodedPn}%26cu=INR`;
+    const newQrUrl = buildUpiQrImageUrl(upiId, upiAccountName);
     setQrCodeImageUrl(newQrUrl);
     toast.success('Generated official UPI QR Code for ' + upiId);
   };
@@ -110,7 +109,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
         qrCodePaymentEnabled,
         upiId: upiId.trim(),
         upiAccountName: upiAccountName.trim(),
-        qrCodeImageUrl: qrCodeImageUrl.trim() || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=${encodeURIComponent(upiId.trim())}%26pn=${encodeURIComponent(upiAccountName.trim())}%26cu=INR`,
+        qrCodeImageUrl: buildUpiQrImageUrl(upiId, upiAccountName),
         bankName: bankName.trim(),
         accountNumber: accountNumber.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
@@ -138,9 +137,9 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
 
     setRazorpayEnabled(false);
     setQrCodePaymentEnabled(true);
-    setUpiId('gpay-11261967768@okbizaxis');
-    setUpiAccountName('HIGHRICH COMMUNITY REVIVAL SOCIETY');
-    setQrCodeImageUrl('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR');
+    setUpiId(HCRS_OFFICIAL_UPI_ID);
+    setUpiAccountName(HCRS_OFFICIAL_UPI_NAME);
+    setQrCodeImageUrl(buildUpiQrImageUrl(HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME));
     setBankName('State Bank of India (SBI)');
     setAccountNumber('41235678901');
     setIfscCode('SBIN0070123');
@@ -654,7 +653,9 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
                 <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm shrink-0">
                   <img
-                    src={qrCodeImageUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${encodeURIComponent(upiId)}%26pn=${encodeURIComponent(upiAccountName)}%26cu=INR`}
+                    src={upiId.trim().toLowerCase() === HCRS_OFFICIAL_UPI_ID
+                      ? buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200)
+                      : (qrCodeImageUrl || buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200))}
                     alt="HCRS UPI QR Code"
                     className="w-28 h-28 object-contain rounded-lg"
                     referrerPolicy="no-referrer"
@@ -874,7 +875,9 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
                   <div className="bg-white p-2 rounded-xl shrink-0">
                     <img
-                      src={qrCodeImageUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${encodeURIComponent(upiId)}%26pn=${encodeURIComponent(upiAccountName)}%26cu=INR`}
+                      src={upiId.trim().toLowerCase() === HCRS_OFFICIAL_UPI_ID
+                        ? buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200)
+                        : (qrCodeImageUrl || buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200))}
                       alt="UPI QR Code"
                       className="w-24 h-24 object-contain"
                       referrerPolicy="no-referrer"
@@ -928,4 +931,3 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
     </div>
   );
 }
-

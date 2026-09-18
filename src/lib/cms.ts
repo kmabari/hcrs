@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, query, addDoc, deleteDoc, serverTimestamp, orderBy, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 import { handleFirestoreError, OperationType } from './firebase';
+import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from './upi';
 
 export interface OrgSettings {
   fullName: string;
@@ -119,7 +120,7 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   qrCodePaymentEnabled: true, // Default true to maintain active QR payments
   upiId: 'gpay-11261967768@okbizaxis',
   upiAccountName: 'HIGHRICH COMMUNITY REVIVAL SOCIETY',
-  qrCodeImageUrl: '/hcrs-renewal-qr.svg',
+  qrCodeImageUrl: buildUpiQrImageUrl(HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME),
   bankName: 'State Bank of India (SBI)',
   accountNumber: '41235678901',
   ifscCode: 'SBIN0070123',
@@ -820,5 +821,4 @@ export function subscribeToCampaignTemplates(callback: (items: CampaignTemplate[
 }
 
 export { normalizeImageUrl } from './imageUrlUtils';
-
 
