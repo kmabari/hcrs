@@ -61,10 +61,15 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
   // Open the campaign at its actionable compose card. The explanatory
   // content remains available above for users who intentionally scroll up.
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
+    const scrollToCompose = () => {
       composeStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    });
-    return () => window.cancelAnimationFrame(frame);
+    };
+    const frame = window.requestAnimationFrame(scrollToCompose);
+    const settledFrame = window.setTimeout(scrollToCompose, 750);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settledFrame);
+    };
   }, []);
 
   // Default fallback if no dynamic campaign images are fetched

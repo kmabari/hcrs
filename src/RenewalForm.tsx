@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useI18n } from './lib/i18n';
 import { motion } from 'motion/react';
 import { Search, ArrowRight, ArrowLeft, ShieldCheck, Heart, CreditCard, QrCode, Copy, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -22,6 +22,7 @@ interface RenewalFormProps {
 
 export default function RenewalForm({ onBack, onSuccess, initialMobile }: RenewalFormProps) {
   const { t } = useI18n();
+  const renewalStartRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<'search' | 'confirm' | 'payment'>('search');
   const [searchQuery, setSearchQuery] = useState(initialMobile || '');
   const [searching, setSearching] = useState(false);
@@ -56,6 +57,20 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       setActivePaymentMethod('qrcode');
     }
   }, [razorpayEnabled, qrCodePaymentEnabled]);
+
+  // Keep each renewal action (search, confirmation and payment) at the active
+  // card instead of leaving mobile users at the decorative logo above it.
+  useEffect(() => {
+    const scrollToRenewal = () => {
+      renewalStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    };
+    const frame = window.requestAnimationFrame(scrollToRenewal);
+    const settledFrame = window.setTimeout(scrollToRenewal, 750);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settledFrame);
+    };
+  }, [step]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -317,7 +332,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
         </div>
 
         {/* Card with Border and Brand Gradient Strip */}
-        <div className="relative bg-white border-2 border-slate-200 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1.5 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
+        <div ref={renewalStartRef} id="membership-renewal-start" className="scroll-mt-3 sm:scroll-mt-6 relative bg-white border-2 border-slate-200 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1.5 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
           {step === 'search' && (
             <div className="space-y-6">
               <div className="space-y-2">

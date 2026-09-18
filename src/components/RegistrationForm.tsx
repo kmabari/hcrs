@@ -110,14 +110,20 @@ export default function RegistrationForm({
     return () => unsubscribe();
   }, []);
 
-  // A service-button click must land on the actionable form, not on the
-  // decorative page header retained above it.
+  // The parent view enters with a 700ms animation. Scroll once after mount and
+  // once after that animation settles so mobile browsers cannot restore the
+  // decorative header to the top of the viewport.
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
+    const scrollToForm = () => {
       registrationStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+    };
+    const frame = window.requestAnimationFrame(scrollToForm);
+    const settledFrame = window.setTimeout(scrollToForm, 750);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settledFrame);
+    };
+  }, [step]);
 
   const razorpayEnabled = orgSettings?.razorpayEnabled ?? false;
   const qrCodePaymentEnabled = orgSettings?.qrCodePaymentEnabled ?? true;
@@ -1081,5 +1087,4 @@ export default function RegistrationForm({
     </div>
   );
 }
-
 
