@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Mail, ShieldAlert, ExternalLink, Calendar, Users, Star, BookOpen, AlertTriangle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import CampaignInfo from "./CampaignInfo";
@@ -13,6 +13,7 @@ interface OperationJanamailProps {
 }
 
 export default function OperationJanamail({ onBack }: OperationJanamailProps) {
+  const composeStartRef = useRef<HTMLDivElement>(null);
   const [campaignImages, setCampaignImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [config, setConfig] = useState<JanamailConfig | null>(null);
@@ -55,6 +56,15 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
       unsubGallery();
       unsubAnnouncements();
     };
+  }, []);
+
+  // Open the campaign at its actionable compose card. The explanatory
+  // content remains available above for users who intentionally scroll up.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      composeStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   // Default fallback if no dynamic campaign images are fetched
@@ -401,7 +411,7 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
         )}
 
         {/* Email Editor Section containing the Form with strict order */}
-        <div className="w-full">
+        <div ref={composeStartRef} id="janamail-compose-start" className="w-full scroll-mt-20 sm:scroll-mt-24">
           <EmailEditor config={config} />
         </div>
 

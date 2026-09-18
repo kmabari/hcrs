@@ -1055,7 +1055,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   return (
     <section className="bg-white p-2 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs w-full">
       <div className="w-full space-y-5 sm:space-y-8">
-        
+
         {/* Section Header */}
         <div className="text-center space-y-1.5 sm:space-y-2">
           <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-blue-50 text-blue-700 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-blue-100">
@@ -1069,6 +1069,17 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             നിങ്ങളുടെ വിവരങ്ങൾ നൽകി വളരെ എളുപ്പത്തിൽ ഇമെയിൽ തയാറാക്കി അയക്കാം.
           </p>
         </div>
+
+        {activeComposeMethod === "template" && currentSelectedTemplate && (
+          <div className="rounded-xl sm:rounded-2xl border-2 border-blue-200 bg-blue-50/80 p-3 sm:p-4 text-left shadow-xs">
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">
+              നിങ്ങൾക്കായി തയ്യാറാക്കിയ വിഷയം / Assigned Subject
+            </p>
+            <p className="text-xs sm:text-sm font-extrabold leading-relaxed text-blue-950">
+              {currentSelectedTemplate.subject}
+            </p>
+          </div>
+        )}
 
         {/* Step 1: User Details */}
         <div className="space-y-3 sm:space-y-4 bg-slate-50/50 border border-slate-200/60 p-2 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl w-full">

@@ -82,6 +82,7 @@ export default function RegistrationForm({
   orgSettings: propOrgSettings
 }: RegistrationFormProps) {
   const { t } = useI18n();
+  const registrationStartRef = React.useRef<HTMLDivElement>(null);
   const [step, setStep] = React.useState<'details' | 'payment'>('details');
   const [agreeAdhoc, setAgreeAdhoc] = React.useState(false);
   const [isProcessingRazorpay, setIsProcessingRazorpay] = React.useState(false);
@@ -107,6 +108,15 @@ export default function RegistrationForm({
       setOrgSettings(settings);
     });
     return () => unsubscribe();
+  }, []);
+
+  // A service-button click must land on the actionable form, not on the
+  // decorative page header retained above it.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      registrationStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const razorpayEnabled = orgSettings?.razorpayEnabled ?? false;
@@ -337,6 +347,7 @@ export default function RegistrationForm({
         </div>
 
         {/* Sleek Form Container */}
+        <div ref={registrationStartRef} id="membership-registration-start" className="scroll-mt-3 sm:scroll-mt-6">
         <Card className="border-2 border-slate-200 bg-white shadow-2xl overflow-hidden rounded-[26px] sm:rounded-[36px] w-full">
           <CardHeader className="bg-slate-100/90 border-b-2 border-slate-200 p-4 sm:p-7 md:p-8">
             <CardTitle className="text-lg sm:text-2xl font-black text-slate-950 flex items-center gap-2.5 uppercase tracking-tight">
@@ -1065,10 +1076,10 @@ export default function RegistrationForm({
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
 }
-
 
 
