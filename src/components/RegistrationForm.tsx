@@ -42,7 +42,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { processRazorpayPayment } from '../lib/razorpay';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
-import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from '../lib/upi';
+import { getUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL } from '../lib/upi';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പൂർണ്ണമായ പേര് നൽകുക'),
@@ -957,15 +957,18 @@ export default function RegistrationForm({
                     <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800">
                       <div className="bg-white p-3 rounded-2xl shadow-lg shrink-0">
                         <img
-                          src={buildUpiQrImageUrl(
+                          src={getUpiQrImageUrl(
                             orgSettings.upiId || HCRS_OFFICIAL_UPI_ID,
                             orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME,
                             regFee,
                             250
                           )}
                           alt="HCRS Official UPI QR Code"
-                          className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
+                          className="w-56 sm:w-64 h-auto max-h-[34rem] object-contain"
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.src = HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL;
+                          }}
                         />
                       </div>
                       <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">

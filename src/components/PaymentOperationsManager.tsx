@@ -29,7 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
 import { UserProfile } from '../types';
-import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from '../lib/upi';
+import { getUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL } from '../lib/upi';
 
 interface PaymentOperationsManagerProps {
   user?: UserProfile | null;
@@ -88,7 +88,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   };
 
   const handleGenerateDefaultQr = () => {
-    const newQrUrl = buildUpiQrImageUrl(upiId, upiAccountName);
+    const newQrUrl = getUpiQrImageUrl(upiId, upiAccountName);
     setQrCodeImageUrl(newQrUrl);
     toast.success('Generated official UPI QR Code for ' + upiId);
   };
@@ -109,7 +109,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
         qrCodePaymentEnabled,
         upiId: upiId.trim(),
         upiAccountName: upiAccountName.trim(),
-        qrCodeImageUrl: buildUpiQrImageUrl(upiId, upiAccountName),
+        qrCodeImageUrl: getUpiQrImageUrl(upiId, upiAccountName),
         bankName: bankName.trim(),
         accountNumber: accountNumber.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
@@ -139,7 +139,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
     setQrCodePaymentEnabled(true);
     setUpiId(HCRS_OFFICIAL_UPI_ID);
     setUpiAccountName(HCRS_OFFICIAL_UPI_NAME);
-    setQrCodeImageUrl(buildUpiQrImageUrl(HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME));
+    setQrCodeImageUrl(HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL);
     setBankName('State Bank of India (SBI)');
     setAccountNumber('41235678901');
     setIfscCode('SBIN0070123');
@@ -654,8 +654,8 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
                 <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm shrink-0">
                   <img
                     src={upiId.trim().toLowerCase() === HCRS_OFFICIAL_UPI_ID
-                      ? buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200)
-                      : (qrCodeImageUrl || buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200))}
+                      ? getUpiQrImageUrl(upiId, upiAccountName, undefined, 200)
+                      : (qrCodeImageUrl || getUpiQrImageUrl(upiId, upiAccountName, undefined, 200))}
                     alt="HCRS UPI QR Code"
                     className="w-28 h-28 object-contain rounded-lg"
                     referrerPolicy="no-referrer"
@@ -876,8 +876,8 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
                   <div className="bg-white p-2 rounded-xl shrink-0">
                     <img
                       src={upiId.trim().toLowerCase() === HCRS_OFFICIAL_UPI_ID
-                        ? buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200)
-                        : (qrCodeImageUrl || buildUpiQrImageUrl(upiId, upiAccountName, undefined, 200))}
+                        ? getUpiQrImageUrl(upiId, upiAccountName, undefined, 200)
+                        : (qrCodeImageUrl || getUpiQrImageUrl(upiId, upiAccountName, undefined, 200))}
                       alt="UPI QR Code"
                       className="w-24 h-24 object-contain"
                       referrerPolicy="no-referrer"

@@ -1,5 +1,6 @@
 export const HCRS_OFFICIAL_UPI_ID = 'gpay-11261967768@okbizaxis';
 export const HCRS_OFFICIAL_UPI_NAME = 'HIGHRICH COMMUNITY REVIVAL SOCIETY';
+export const HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL = '/hcrs-official-gpay-qr.jpg';
 
 // Decoded from the original working Google Pay merchant QR supplied by HCRS.
 // Merchant metadata must be preserved; a plain pa/pn UPI URI is rejected by
@@ -28,4 +29,14 @@ export function buildUpiPaymentPayload(upiId: string, accountName: string, amoun
 export function buildUpiQrImageUrl(upiId: string, accountName: string, amount?: number, size = 300): string {
   const payload = buildUpiPaymentPayload(upiId, accountName, amount);
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(payload)}`;
+}
+
+export function getUpiQrImageUrl(upiId: string, accountName: string, amount?: number, size = 300): string {
+  const normalizedUpiId = (upiId || HCRS_OFFICIAL_UPI_ID).trim().toLowerCase();
+  if (normalizedUpiId === HCRS_OFFICIAL_UPI_ID) {
+    // Use the original bank-issued merchant QR supplied by HCRS. Google Pay
+    // rejects the regenerated bitmap even when its decoded URI looks equal.
+    return HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL;
+  }
+  return buildUpiQrImageUrl(normalizedUpiId, accountName, amount, size);
 }

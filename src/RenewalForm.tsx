@@ -12,7 +12,7 @@ import { UserProfile } from './types';
 import Logo from './Logo';
 import { processRazorpayPayment } from './lib/razorpay';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
-import { buildUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME } from './lib/upi';
+import { getUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL } from './lib/upi';
 
 interface RenewalFormProps {
   onBack: () => void;
@@ -539,10 +539,10 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                       : HCRS_OFFICIAL_UPI_ID;
                     const isOfficialUpi = activeUpiId.trim().toLowerCase() === HCRS_OFFICIAL_UPI_ID;
                     const activeQrImg = isOfficialUpi
-                      ? buildUpiQrImageUrl(activeUpiId, orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME, renewalFee)
+                      ? getUpiQrImageUrl(activeUpiId, orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME, renewalFee)
                       : ((orgSettings.qrCodeImageUrl && !orgSettings.qrCodeImageUrl.includes('hcrs.kerala@okaxis'))
                         ? orgSettings.qrCodeImageUrl
-                        : buildUpiQrImageUrl(activeUpiId, orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME, renewalFee));
+                        : getUpiQrImageUrl(activeUpiId, orgSettings.upiAccountName || HCRS_OFFICIAL_UPI_NAME, renewalFee));
 
                     return (
                       <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
@@ -550,10 +550,10 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                           <img
                             src={activeQrImg}
                             onError={(e) => {
-                              e.currentTarget.src = buildUpiQrImageUrl(HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, renewalFee);
+                              e.currentTarget.src = HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL;
                             }}
                             alt="HCRS Official UPI QR Code"
-                            className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
+                            className="w-56 sm:w-64 h-auto max-h-[34rem] object-contain"
                             referrerPolicy="no-referrer"
                           />
                         </div>
