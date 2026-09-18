@@ -1834,6 +1834,27 @@ export default function AdminDashboard({
 
     const cleanPin = (editingMember.pin || '123456').trim();
     const isDefaultPin = cleanPin === '123456';
+    const joiningDate = editingMember.registrationDate?.toDate
+      ? editingMember.registrationDate.toDate()
+      : editingMember.registrationDate?.seconds
+        ? new Date(editingMember.registrationDate.seconds * 1000)
+        : new Date(editingMember.registrationDate);
+    if (isNaN(joiningDate.getTime())) {
+      toast.error('ശരിയായ ജോയിനിങ് തീയതി നൽകുക. (Please enter a valid joining date.)');
+      return;
+    }
+    const expiryDate = new Date(joiningDate);
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    const hasRealRenewalRequest = Boolean(
+      (editingMember as any).renewalTransactionId ||
+      (editingMember as any).renewalPaymentDate ||
+      (editingMember as any).renewalPaymentTime
+    );
+    const mayReactivateFromDateCorrection =
+      editingMember.renewalPending === true &&
+      !hasRealRenewalRequest &&
+      expiryDate.getTime() > Date.now() &&
+      (editingMember.isApproved === true || editingMember.status === 'active' || editingMember.status === 'offline');
     const updatedMember: UserProfile = { 
       ...editingMember, 
       name: cleanName,
@@ -1847,6 +1868,13 @@ export default function AdminDashboard({
       bloodGroup: editingMember.bloodGroup || '',
       highrichId: (editingMember.highrichId || '').trim(),
       membershipId: (editingMember.membershipId || '').trim(),
+      registrationDate: joiningDate,
+      expiryDate,
+      ...(mayReactivateFromDateCorrection ? {
+        status: 'active' as const,
+        isApproved: true,
+        renewalPending: false
+      } : {}),
       pin: cleanPin,
       mustChangePassword: isDefaultPin,
       pinResetRequested: isDefaultPin,
@@ -5070,6 +5098,53 @@ export default function AdminDashboard({
                       onChange={e => setEditingMember({ ...editingMember, highrichId: e.target.value })}
                       className="h-10 rounded-xl text-xs font-bold font-mono" 
                       placeholder="HR..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Joining Date (ചേർന്ന തീയതി) <span className="text-red-500">*</span></Label>
+                    <Input
+                      name="registrationDate"
+                      type="date"
+                      value={(() => {
+                        const raw = editingMember.registrationDate;
+                        const date = raw?.toDate ? raw.toDate() : raw?.seconds ? new Date(raw.seconds * 1000) : new Date(raw);
+                        if (isNaN(date.getTime())) return '';
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      })()}
+                      onChange={e => {
+                        const joining = new Date(`${e.target.value}T00:00:00`);
+                        if (isNaN(joining.getTime())) return;
+                        const expiry = new Date(joining);
+                        expiry.setFullYear(expiry.getFullYear() + 1);
+                        setEditingMember({ ...editingMember, registrationDate: joining, expiryDate: expiry });
+                      }}
+                      className="h-10 rounded-xl text-xs font-bold"
+                      required
+                    />
+                    <p className="text-[10px] font-semibold text-slate-400">Admin only — expiry date automatically becomes one year from joining.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Expiry Date (കാലാവധി)</Label>
+                    <Input
+                      type="date"
+                      value={(() => {
+                        const raw = editingMember.expiryDate;
+                        const date = raw?.toDate ? raw.toDate() : raw?.seconds ? new Date(raw.seconds * 1000) : new Date(raw);
+                        if (isNaN(date.getTime())) return '';
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      })()}
+                      className="h-10 rounded-xl text-xs font-bold bg-slate-50"
+                      readOnly
+                      aria-readonly="true"
                     />
                   </div>
                 </div>

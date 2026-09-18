@@ -3019,7 +3019,12 @@ export default function App() {
       }
 
       // Automatically generate or update renewal receipt when renewal is approved
-      const isRenewalApproval = cleanData.renewalPending === false && existingMember?.renewalPending === true;
+      const hasSubmittedRenewalPayment = Boolean(
+        existingMember?.renewalTransactionId ||
+        existingMember?.renewalPaymentDate ||
+        (existingMember as any)?.renewalPaymentTime
+      );
+      const isRenewalApproval = cleanData.renewalPending === false && existingMember?.renewalPending === true && hasSubmittedRenewalPayment;
       if (isRenewalApproval && existingMember) {
         try {
           const serialNoStr = existingMember.serialNo ? String(existingMember.serialNo).padStart(4, '0') : '1000';
