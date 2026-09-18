@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Mail, ShieldAlert, ExternalLink, Calendar, Users, Star, BookOpen, AlertTriangle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import CampaignInfo from "./CampaignInfo";
@@ -13,7 +13,6 @@ interface OperationJanamailProps {
 }
 
 export default function OperationJanamail({ onBack }: OperationJanamailProps) {
-  const composeStartRef = useRef<HTMLDivElement>(null);
   const [campaignImages, setCampaignImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [config, setConfig] = useState<JanamailConfig | null>(null);
@@ -58,14 +57,15 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
     };
   }, []);
 
-  // Open the campaign at its actionable compose card. The explanatory
-  // content remains available above for users who intentionally scroll up.
+  // Janamail is a complete campaign page. Always open it from the absolute
+  // top; the parent view has a 700ms entrance animation, so enforce the same
+  // position again when that transition settles.
   useEffect(() => {
-    const scrollToCompose = () => {
-      composeStartRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     };
-    const frame = window.requestAnimationFrame(scrollToCompose);
-    const settledFrame = window.setTimeout(scrollToCompose, 750);
+    const frame = window.requestAnimationFrame(scrollToTop);
+    const settledFrame = window.setTimeout(scrollToTop, 750);
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(settledFrame);
@@ -416,7 +416,7 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
         )}
 
         {/* Email Editor Section containing the Form with strict order */}
-        <div ref={composeStartRef} id="janamail-compose-start" className="w-full scroll-mt-20 sm:scroll-mt-24">
+        <div id="janamail-compose-start" className="w-full">
           <EmailEditor config={config} />
         </div>
 
