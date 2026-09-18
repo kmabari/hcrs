@@ -340,7 +340,9 @@ export default function RegistrationForm({
       <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none max-md:hidden" />
 
       <div className="max-w-2xl w-full z-10 mx-auto px-0.5 sm:px-2">
-        <div className="text-center mb-3 sm:mb-8">
+        {/* On phones the actionable form must be the first visible content.
+            The full brand header remains unchanged on tablet/desktop. */}
+        <div className="hidden sm:block text-center mb-3 sm:mb-8">
           <div className="inline-block p-3 sm:p-5 bg-white shadow-premium rounded-[26px] sm:rounded-[36px] mb-2 sm:mb-4 border border-slate-100 transition-all hover:scale-105">
             <Logo className="w-28 h-28 xs:w-32 xs:h-32 sm:w-44 sm:h-44 md:w-48 md:h-48 mx-auto" size="lg" />
           </div>
@@ -1087,4 +1089,3 @@ export default function RegistrationForm({
     </div>
   );
 }
-
