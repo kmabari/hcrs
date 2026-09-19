@@ -70,6 +70,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { InfinityBorderCard } from './InfinityBorderCard';
 import { InfinityBorderButton } from './InfinityBorderButton';
 import { normalizeImageUrl, getProxiedImageUrl } from '../lib/imageUrlUtils';
+import YouTubeVideoCard from './YouTubeVideoCard';
 
 export function extractDirectImageUrl(url: string | undefined): string {
   return normalizeImageUrl(url);
@@ -909,6 +910,20 @@ export default function LandingPage({
                 </InfinityBorderCard>
               </div>
             </section>
+
+            {/* Admin-selected current main video. The YouTube iframe is loaded only after a click. */}
+            {settings.homeVideoUrl && (
+              <section className="mx-auto max-w-3xl space-y-4 pt-4" id="latest-video-update">
+                <div className="text-center">
+                  <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700">Latest Video Update • ഏറ്റവും പുതിയ വീഡിയോ</span>
+                </div>
+                <YouTubeVideoCard
+                  url={settings.homeVideoUrl}
+                  title={settings.homeVideoTitle || 'HCRS Latest Update'}
+                  description="പുതിയ അറിയിപ്പുകളും പ്രധാന വിവരങ്ങളും വീഡിയോയിൽ കാണാം"
+                />
+              </section>
+            )}
 
             {/* Featured Campaign Section */}
             {janamailConfig?.active !== false && (
@@ -2757,6 +2772,15 @@ export default function LandingPage({
               <CardContent className="space-y-8 pt-8 pb-6 px-8 md:px-10">
                 {!claimResult ? (
                   <div className="space-y-8">
+                    {settings.verificationVideoUrl && (
+                      <YouTubeVideoCard
+                        url={settings.verificationVideoUrl}
+                        title={settings.verificationVideoTitle || 'Verification Form എങ്ങനെ പൂരിപ്പിക്കാം?'}
+                        description="Verification Form സംബന്ധിച്ച വിശദീകരണം കാണുക"
+                        buttonLabel="ഇതിനെക്കുറിച്ച് അറിയാൻ വീഡിയോ കാണുക"
+                        compact
+                      />
+                    )}
                     {/* Secure and Trusted Registry Information Block */}
                     <div className="bg-slate-50 border border-slate-200 p-6 rounded-[10px] space-y-4 text-left font-sans">
                       <div className="flex items-center gap-3">
