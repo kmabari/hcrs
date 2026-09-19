@@ -31,6 +31,7 @@ import { googleProvider } from './lib/firebase';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, downloadCourtClaimPdf, getCourtComboHtml, getSingleCourtClaimHtml } from './lib/claimPrint';
 import { sendWAMessage } from './lib/whatsapp';
 import OperationJanamail from "./components/OperationJanamail";
+import YouTubeVideoCard from './components/YouTubeVideoCard';
 import { ELedgerModule } from "./eledger";
 import { InfinityBorderCard } from './components/InfinityBorderCard';
 import { InfinityBorderButton } from './components/InfinityBorderButton';
@@ -4151,6 +4152,25 @@ export default function App() {
                                 FINANCIAL VERIFICATION FORM
                               </span>
                             </Button>
+
+                            {orgSettings.verificationVideoUrl && (
+                              <div className="space-y-3">
+                                <p className="text-xs sm:text-sm font-black leading-relaxed text-amber-100">
+                                  ആദ്യം ഈ വീഡിയോ കാണുക; ശേഷം മുകളിലെ Verification Form പൂരിപ്പിക്കുക.
+                                  <span className="block text-[11px] sm:text-xs font-semibold text-slate-300 mt-1">
+                                    Watch this video first, then complete the Verification Form above.
+                                  </span>
+                                </p>
+                                <YouTubeVideoCard
+                                  url={orgSettings.verificationVideoUrl}
+                                  title={orgSettings.verificationVideoTitle || 'Verification Form എങ്ങനെ പൂരിപ്പിക്കാം?'}
+                                  description="Verification Form പൂരിപ്പിക്കുന്ന വിധം മനസ്സിലാക്കാൻ വീഡിയോ കാണുക."
+                                  buttonLabel="വീഡിയോ കാണുക / Watch Video"
+                                  compact
+                                  className="border-white/15 bg-white/95"
+                                />
+                              </div>
+                            )}
 
                             {/* Subtitle / guidance description text with spacious line height */}
                             <p className="text-xs sm:text-[13px] font-normal text-slate-200/95 leading-relaxed sm:leading-6">
