@@ -45,6 +45,13 @@ const MAIN_ADMINS = [
   'hcrskerala@gmail.com'
 ];
 
+// Public login aliases only. Password verification is still performed by
+// Firebase Authentication against the existing admin email account. Never put
+// an admin password or password hash in browser code or Git.
+const ADMIN_MOBILE_ALIASES: Record<string, string> = {
+  '9349711410': 'kmabarikiyafoods@gmail.com'
+};
+
 const SECOND_ADMINS = [
   'hcrskasaragod@hcrs.society',
   'hcrsksd@hcrs.society',
@@ -1604,6 +1611,8 @@ export default function App() {
     try {
       let targetEmail = '';
       const usersRef = collection(db, 'users');
+      const directAdminAliasEmail = isMobile ? ADMIN_MOBILE_ALIASES[sanitizedMobile] : undefined;
+      const isDirectAdminAlias = Boolean(directAdminAliasEmail);
 
       const isMainAdminBypass = (
         MAIN_ADMINS.some(email => email.toLowerCase() === originalInput.toLowerCase() || email.toLowerCase() === `${sanitizedMobile}@hcrs.society`) ||
@@ -1611,7 +1620,11 @@ export default function App() {
         originalInput === '9645934571'
       ) && (trimmedPin === '246810' || trimmedPin === '123456');
 
-      if (isMainAdminBypass) {
+      if (directAdminAliasEmail) {
+        // Mobile is only an alias for the existing admin Auth account. Firebase
+        // still validates the exact password; no Auth user/profile is created.
+        targetEmail = directAdminAliasEmail;
+      } else if (isMainAdminBypass) {
         console.log("Main Admin iframe bypass activated for:", originalInput);
         targetEmail = 'admin@hcrs.society';
       } else {
@@ -1876,6 +1889,13 @@ export default function App() {
         console.log("Auth sign-in successful for:", authResult.user.uid);
       } catch (signInError: any) {
         console.warn("Initial sign-in on targetEmail failed:", targetEmail, signInError.code);
+
+        // A direct admin alias must never use account-creation, fallback PIN,
+        // or alternate-email recovery paths. Only the existing Firebase Auth
+        // account and its real password may grant administrator access.
+        if (isDirectAdminAlias) {
+          throw signInError;
+        }
 
         // Admin recovery channels
         if (isAdminMasterPin || isAdmin) {
