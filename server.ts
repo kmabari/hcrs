@@ -55,14 +55,19 @@ if (process.env.VERCEL) {
 }
 
 // Setup Gemini SDK securely
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
+// Gemini is optional for the API runtime. Do not let a missing AI key crash
+// the whole Vercel function (including Razorpay and Firestore endpoints).
+const geminiApiKey = (process.env.GEMINI_API_KEY || '').trim();
+const ai = geminiApiKey
+  ? new GoogleGenAI({
+      apiKey: geminiApiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    })
+  : null;
 
   // Server-side fallback Malayalam FAQ generator when Gemini API hits sandbox quotas
   function generateServerFallbackResponse(userQuery: string, member: any, orgSettings?: any): string {
@@ -676,7 +681,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const modelsToTry = ["gemini-3.5-flash", "gemini-flash-latest"];
       let lastErr = null;
 
-      for (const modelName of modelsToTry) {
+      if (ai) for (const modelName of modelsToTry) {
         try {
           const geminiResponse = await ai.models.generateContent({
             model: modelName,
