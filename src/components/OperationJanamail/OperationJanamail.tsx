@@ -6,7 +6,8 @@ import EmailEditor from "./EmailEditor";
 import QRSection from "./QRSection";
 import FAQ from "./FAQ";
 import Disclaimer from "./Disclaimer";
-import { subscribeToGallery, subscribeToAnnouncements, subscribeToJanamailConfig, JanamailConfig } from "../../lib/cms";
+import { subscribeToGallery, subscribeToAnnouncements, subscribeToJanamailConfig, subscribeToOrgSettings, JanamailConfig, OrgSettings, defaultSettings } from "../../lib/cms";
+import YouTubeVideoCard from "../YouTubeVideoCard";
 
 interface OperationJanamailProps {
   onBack: () => void;
@@ -16,6 +17,7 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
   const [campaignImages, setCampaignImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [config, setConfig] = useState<JanamailConfig | null>(null);
+  const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [isReadMoreExpanded, setIsReadMoreExpanded] = useState(false);
   const [openSection, setOpenSection] = useState<number | null>(null);
 
@@ -55,6 +57,11 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
       unsubGallery();
       unsubAnnouncements();
     };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToOrgSettings(setOrgSettings);
+    return unsubscribe;
   }, []);
 
   // Janamail is a complete campaign page. Always open it from the absolute
@@ -173,6 +180,18 @@ export default function OperationJanamail({ onBack }: OperationJanamailProps) {
           </div>
         )}
       </section>
+
+      {orgSettings.janamailVideoUrl && (
+        <section className="mx-auto mb-7 max-w-2xl px-3.5 sm:px-6">
+          <YouTubeVideoCard
+            url={orgSettings.janamailVideoUrl}
+            title={orgSettings.janamailVideoTitle || 'Operation Janamail എങ്ങനെ ഉപയോഗിക്കാം?'}
+            description="ഇമെയിൽ അയയ്ക്കുന്ന രീതി വീഡിയോയിൽ കാണാം"
+            buttonLabel="എങ്ങനെയാണ് മെയിൽ അയയ്ക്കുക? വീഡിയോ കാണുക"
+            compact
+          />
+        </section>
+      )}
 
       {/* Expandable Accordion Cards Section */}
       <AnimatePresence initial={false}>

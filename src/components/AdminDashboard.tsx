@@ -14,6 +14,7 @@ import BackupRestoreManager from './BackupRestoreManager';
 import CampaignTemplateManager from './CampaignTemplateManager';
 import AdminReportsTab from './AdminReportsTab';
 import PaymentOperationsManager from './PaymentOperationsManager';
+import VideoUpdatesManager from './VideoUpdatesManager';
 import { 
   printCourtClaimReport, 
   printCourtComboReport, 
@@ -75,7 +76,8 @@ import {
   FileText,
   Wallet,
   Sliders,
-  CreditCard
+  CreditCard,
+  Video
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { INDIA_STATES, getIndiaDistricts, getIndiaAssemblies } from '@/src/data/indiaLocations';
@@ -2770,6 +2772,21 @@ export default function AdminDashboard({
             </button>
 
             <button
+              onClick={() => setActiveTab2('video_updates')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'video_updates'
+                  ? "bg-red-600 text-white shadow-md shadow-red-600/10"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Video className={cn("w-4 h-4", activeTab === 'video_updates' ? 'text-white' : 'text-red-500')} />
+                <span>YouTube Video Updates</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => setActiveTab2('district_quota')}
               className={cn(
                 "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
@@ -3052,6 +3069,17 @@ export default function AdminDashboard({
               >
                 <MessageCircle className="w-4 h-4 text-emerald-500" />
                 <span>WhatsApp Groups</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab2('video_updates'); setMobileSidebarOpen(false); }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'video_updates' ? 'bg-red-600 text-white font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Video className="w-4 h-4 text-red-500" />
+                <span>YouTube Videos</span>
               </button>
 
               <button 
@@ -3478,6 +3506,17 @@ export default function AdminDashboard({
           >
             <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
             <span>WhatsApp</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab2('video_updates')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+              activeTab === 'video_updates' ? "bg-red-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+            )}
+          >
+            <Video className="w-3.5 h-3.5 text-red-500" />
+            <span>YouTube Videos</span>
           </button>
 
           <button
@@ -4429,6 +4468,10 @@ export default function AdminDashboard({
 
             {activeTab === 'payment_ops' && (
               <PaymentOperationsManager user={user || null} />
+            )}
+
+            {activeTab === 'video_updates' && (
+              <VideoUpdatesManager />
             )}
 
             {activeTab === 'reports' && (

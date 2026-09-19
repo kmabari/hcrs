@@ -50,6 +50,13 @@ export interface OrgSettings {
   renewalFee?: number;
   razorpayKeyId?: string;
   razorpayStatusNote?: string;
+  // YouTube-hosted public help/update videos. Only URLs and titles are stored.
+  homeVideoUrl?: string;
+  homeVideoTitle?: string;
+  verificationVideoUrl?: string;
+  verificationVideoTitle?: string;
+  janamailVideoUrl?: string;
+  janamailVideoTitle?: string;
 }
 
 export interface GalleryItem {
@@ -129,7 +136,13 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   registrationFee: 200,
   renewalFee: 100,
   razorpayKeyId: 'rzp_live_HCRSKerala9645',
-  razorpayStatusNote: 'Razorpay KYC / Bank verification is currently under review. Enable toggle once approved.'
+  razorpayStatusNote: 'Razorpay KYC / Bank verification is currently under review. Enable toggle once approved.',
+  homeVideoUrl: '',
+  homeVideoTitle: '',
+  verificationVideoUrl: '',
+  verificationVideoTitle: '',
+  janamailVideoUrl: '',
+  janamailVideoTitle: ''
 };
 
 export async function getOrgSettings(): Promise<OrgSettings> {
