@@ -269,8 +269,13 @@ export async function processRazorpayPayment(
   });
 
   if (!orderRes.ok) {
-    const errData = await orderRes.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to initialize payment order with server.');
+    const contentType = orderRes.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const errData = await orderRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Server error (${orderRes.status} ${orderRes.statusText}).`);
+    }
+    const errorText = await orderRes.text().catch(() => '');
+    throw new Error(`Server error (${orderRes.status} ${orderRes.statusText}). ${errorText.slice(0, 200)}`);
   }
 
   const orderData = await orderRes.json();

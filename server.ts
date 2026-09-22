@@ -1699,7 +1699,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
   function getRazorpayCredentials() {
     let rawKeyId = (process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "").trim();
-    let rawKeySecret = (process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "").trim();
+    let rawKeySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 
     // Smart-parsing if user entered "KeyID,KeySecret" together in one variable
     if (rawKeyId.includes(",")) {
