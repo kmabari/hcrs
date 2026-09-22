@@ -29,10 +29,28 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
 import { UserProfile } from '../types';
+import { auth } from '../lib/firebase';
 import { getUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL } from '../lib/upi';
 
 interface PaymentOperationsManagerProps {
   user?: UserProfile | null;
+}
+
+interface VerifiedPaymentRecord {
+  id: string;
+  paymentId: string;
+  orderId: string;
+  paymentType: string;
+  amount: number;
+  memberId: string;
+  membershipId: string;
+  name: string;
+  mobile: string;
+  method: string;
+  status: string;
+  paymentStatus: string;
+  paymentDate: string;
+  paymentTime: string;
 }
 
 export default function PaymentOperationsManager({ user }: PaymentOperationsManagerProps) {
@@ -56,10 +74,37 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   const [renewalFee, setRenewalFee] = useState<number>(100);
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>('rzp_live_HCRSKerala9645');
   const [razorpayStatusNote, setRazorpayStatusNote] = useState<string>('');
+  const [verifiedPayments, setVerifiedPayments] = useState<VerifiedPaymentRecord[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
+    loadVerifiedPayments();
   }, []);
+
+  const loadVerifiedPayments = async () => {
+    setPaymentsLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        setVerifiedPayments([]);
+        return;
+      }
+      const response = await fetch('/api/admin/payments', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        throw new Error('Could not load verified payment records');
+      }
+      const result = await response.json();
+      setVerifiedPayments(Array.isArray(result.payments) ? result.payments : []);
+    } catch (error) {
+      console.warn('Failed to load verified payments:', error);
+      setVerifiedPayments([]);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
 
   const loadSettings = async () => {
     setLoading(true);
@@ -376,6 +421,78 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
           </div>
         </div>
       </div>
+
+      <Card className="border-emerald-200 shadow-sm overflow-hidden">
+        <CardHeader className="bg-emerald-50/70 border-b border-emerald-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-black text-slate-900">
+                Verified Razorpay Payments (വെരിഫൈഡ് പേയ്‌മെന്റുകൾ)
+              </CardTitle>
+              <CardDescription>
+                വിജയകരമായി server verification പൂർത്തിയായ registration, renewal payments.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={loadVerifiedPayments}
+              disabled={paymentsLoading}
+              className="font-bold"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${paymentsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {paymentsLoading ? (
+            <div className="p-8 text-center text-sm font-bold text-slate-500">Loading verified payments...</div>
+          ) : verifiedPayments.length === 0 ? (
+            <div className="p-8 text-center text-sm font-bold text-slate-500">No verified Razorpay payments found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Name / Mobile</th>
+                    <th className="px-4 py-3">Member ID</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Payment ID</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {verifiedPayments.map(payment => (
+                    <tr key={payment.id} className="hover:bg-emerald-50/40">
+                      <td className="px-4 py-3 font-semibold text-slate-700">
+                        {payment.paymentDate || (payment.paymentTime ? new Date(payment.paymentTime).toLocaleDateString() : '—')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-black text-slate-900">{payment.name || 'Member'}</div>
+                        <div className="text-slate-500">{payment.mobile || '—'}</div>
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-slate-700">
+                        {payment.membershipId || payment.memberId || '—'}
+                      </td>
+                      <td className="px-4 py-3 font-bold capitalize">{payment.paymentType || '—'}</td>
+                      <td className="px-4 py-3 font-black text-emerald-700">₹{payment.amount || 0}</td>
+                      <td className="px-4 py-3 font-mono text-[11px]">{payment.paymentId || '—'}</td>
+                      <td className="px-4 py-3">
+                        <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          {payment.paymentStatus || payment.status || 'SUCCESS'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Clear Rules Explanation Banner */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
