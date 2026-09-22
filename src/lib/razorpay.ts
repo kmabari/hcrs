@@ -326,6 +326,8 @@ export async function processRazorpayPayment(
               razorpay_signature: response.razorpay_signature,
               paymentType,
               memberId: memberId || '',
+              name: name || '',
+              mobile: mobile || '',
               registrationData: registrationData || null,
               receiptNumber: orderData.receiptNumber
             })
