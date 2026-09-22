@@ -99,7 +99,10 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
 
       const renewalData = {
-        renewalPending: true,
+        status: 'active',
+        isApproved: true,
+        isPaid: true,
+        renewalPending: false,
         renewalTransactionId: paymentDetails.paymentId,
         renewalDate: now,
         renewalPaymentDate: todayStr,
@@ -110,11 +113,12 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
         transactionId: paymentDetails.paymentId,
         paymentTime: paymentDetails.paymentTime,
         paymentMethod: 'Razorpay',
-        paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
+        paymentStatus: 'RENEWAL_AUTO_APPROVED',
+        expiryDate: new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()),
         receiptNumber: paymentDetails.receiptNumber
       };
 
-      toast.success('Payment verified. Renewal is awaiting admin approval.', { id: loadingToast });
+      toast.success('Payment verified. Renewal approved automatically.', { id: loadingToast });
 
       const updatedMember: UserProfile = {
         ...foundMember,
