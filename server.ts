@@ -1828,6 +1828,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         razorpay_signature,
         paymentType,
         memberId,
+        name,
+        mobile,
         registrationData,
         receiptNumber: clientReceipt
       } = req.body;
@@ -1921,7 +1923,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       const paymentTimeISO = new Date().toISOString();
       const finalReceiptNumber = clientReceipt || `RCP-${paymentType.toUpperCase().slice(0,3)}-${Date.now().toString().slice(-6)}`;
-      const statusResult = paymentType === 'registration' ? 'Pending Approval' : 'Renewal Pending Approval';
+      const statusResult = 'Active';
 
       // 4. Record Verified Payment in Firestore and Activate Member
       let isAlreadyProcessed = false;
@@ -1934,6 +1936,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       {
         try {
+          let resolvedMemberData: any = {};
+          if (memberId) {
+            const memberSnapshot = await dbAdmin.collection('users').doc(memberId).get();
+            if (memberSnapshot.exists) resolvedMemberData = memberSnapshot.data() || {};
+          }
+
           const existingPayDoc = await dbAdmin.collection('payments').doc(razorpay_payment_id).get();
           if (existingPayDoc.exists && existingPayDoc.data()?.status === 'SUCCESS') {
             isAlreadyProcessed = true;
@@ -1945,7 +1953,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               currency: 'INR',
               paymentType,
               memberId: memberId || registrationData?.uid || '',
+              membershipId: resolvedMemberData.membershipId || registrationData?.membershipId || '',
+              name: resolvedMemberData.name || registrationData?.name || name || '',
+              mobile: resolvedMemberData.mobile || registrationData?.mobile || mobile || '',
               status: 'SUCCESS',
+              paymentStatus: 'PAYMENT_VERIFIED',
+              paymentDate: paymentTimeISO.split('T')[0],
+              paymentTime: paymentTimeISO,
               verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
               method: payment?.method || 'Razorpay'
             }, { merge: true });
@@ -1960,8 +1974,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             const now = new Date();
 
             await userRef.set({
-              status: 'pending',
-              isApproved: false,
+              status: 'active',
+              isApproved: true,
               isPaid: true,
               paymentAmount: expectedAmountINR,
               paymentId: razorpay_payment_id,
@@ -1971,6 +1985,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               paymentMethod: 'Razorpay',
               paymentStatus: 'PAYMENT_VERIFIED',
               receiptNumber: finalReceiptNumber,
+              registrationDate: admin.firestore.FieldValue.serverTimestamp(),
+              expiryDate: admin.firestore.Timestamp.fromDate(new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())),
+              renewalPending: false,
               paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
@@ -1996,10 +2013,16 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             if (userDoc.exists) {
               const userData = userDoc.data();
               const now = new Date();
+              const expiry = new Date(now);
+              expiry.setFullYear(expiry.getFullYear() + 1);
               await userRef.update({
-                renewalPending: true,
+                status: 'active',
+                isApproved: true,
+                isPaid: true,
+                renewalPending: false,
                 renewalTransactionId: razorpay_payment_id,
                 renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+                renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
                 renewalPaymentDate: now.toISOString().split('T')[0],
                 paymentAmount: expectedAmountINR,
                 paymentId: razorpay_payment_id,
@@ -2007,7 +2030,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 transactionId: razorpay_payment_id,
                 paymentTime: paymentTimeISO,
                 paymentMethod: 'Razorpay',
-                paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
+                paymentStatus: 'RENEWAL_AUTO_APPROVED',
+                expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+                issueDate: admin.firestore.FieldValue.serverTimestamp(),
                 receiptNumber: finalReceiptNumber
               });
 
@@ -2021,7 +2046,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 transactionId: razorpay_payment_id,
                 paymentTime: paymentTimeISO,
                 paymentMethod: 'Razorpay',
-                paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
+                paymentStatus: 'RENEWAL_AUTO_APPROVED',
                 status: 'Paid',
                 paymentDate: now.toISOString().split('T')[0],
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2058,6 +2083,37 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       return res.status(500).json({
         error: `Payment Verification Failure: ${err.message || 'Signature verification error'}`
       });
+    }
+  });
+
+  app.get(["/api/admin/payments", "/admin/payments"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      const isAllowed = requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin';
+      if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
+      const paymentSnapshot = await dbAdmin.collection('payments').orderBy('verifiedAt', 'desc').limit(200).get();
+      const payments = paymentSnapshot.docs.map(paymentDoc => {
+        const data: any = paymentDoc.data() || {};
+        const verifiedAt = data.verifiedAt?.toDate ? data.verifiedAt.toDate().toISOString() : data.paymentTime || '';
+        return {
+          id: paymentDoc.id, paymentId: data.paymentId || paymentDoc.id, orderId: data.orderId || '',
+          paymentType: data.paymentType || '', amount: Number(data.amount || 0), currency: data.currency || 'INR',
+          memberId: data.memberId || '', membershipId: data.membershipId || '', name: data.name || '', mobile: data.mobile || '',
+          method: data.method || 'Razorpay', status: data.status || '', paymentStatus: data.paymentStatus || '',
+          paymentDate: data.paymentDate || (verifiedAt ? verifiedAt.split('T')[0] : ''), paymentTime: verifiedAt
+        };
+      });
+      return res.json({ success: true, payments });
+    } catch (err: any) {
+      console.error("[Admin Payments API] Error:", err?.message || err);
+      return res.status(500).json({ error: "Failed to load verified payments" });
     }
   });
 
@@ -2745,28 +2801,46 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 const userDoc = await userRef.get();
                 if (userDoc.exists) {
                   const now = new Date();
+                  const userData = userDoc.data() || {};
+                  await dbAdmin.collection('payments').doc(paymentId).set({
+                    membershipId: userData.membershipId || '', name: userData.name || '', mobile: userData.mobile || '',
+                    paymentDate: now.toISOString().split('T')[0], paymentTime: now.toISOString(), paymentStatus: 'PAYMENT_VERIFIED'
+                  }, { merge: true });
                   if (paymentType === 'registration') {
+                    const expiry = new Date(now);
+                    expiry.setFullYear(expiry.getFullYear() + 1);
                     await userRef.update({
-                      status: 'pending',
-                      isApproved: false,
+                      status: 'active',
+                      isApproved: true,
                       isPaid: true,
                       paymentAmount: 200,
                       paymentId,
                       orderId,
                       paymentMethod: 'Razorpay',
                       paymentStatus: 'PAYMENT_VERIFIED',
+                      registrationDate: userData.registrationDate || admin.firestore.FieldValue.serverTimestamp(),
+                      expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+                      renewalPending: false,
                       paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
                     });
                   } else if (paymentType === 'renewal') {
+                    const expiry = new Date(now);
+                    expiry.setFullYear(expiry.getFullYear() + 1);
                     await userRef.update({
-                      renewalPending: true,
+                      status: 'active',
+                      isApproved: true,
+                      isPaid: true,
+                      renewalPending: false,
                       renewalTransactionId: paymentId,
                       renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+                      renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
                       paymentAmount: 100,
                       paymentId,
                       orderId,
                       paymentMethod: 'Razorpay',
-                      paymentStatus: 'RENEWAL_AWAITING_APPROVAL'
+                      paymentStatus: 'RENEWAL_AUTO_APPROVED',
+                      expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+                      issueDate: admin.firestore.FieldValue.serverTimestamp()
                     });
                   }
                 }
