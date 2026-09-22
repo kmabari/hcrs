@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -8,7 +7,7 @@ import { google } from "googleapis";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import admin from "firebase-admin";
-import { db as clientDb } from "./src/lib/firebase";
+import { db as clientDb } from "./src/lib/firebase.js";
 import { collection, getDocs, getDoc, doc, updateDoc, setDoc, query, where, limit, serverTimestamp } from "firebase/firestore";
 
 // In-memory cache for fast members retrieval
@@ -55,14 +54,19 @@ if (process.env.VERCEL) {
 }
 
 // Setup Gemini SDK securely
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
+// Gemini is optional for the API runtime. Do not let a missing AI key crash
+// the whole Vercel function (including Razorpay and Firestore endpoints).
+const geminiApiKey = (process.env.GEMINI_API_KEY || '').trim();
+const ai = geminiApiKey
+  ? new GoogleGenAI({
+      apiKey: geminiApiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    })
+  : null;
 
   // Server-side fallback Malayalam FAQ generator when Gemini API hits sandbox quotas
   function generateServerFallbackResponse(userQuery: string, member: any, orgSettings?: any): string {
@@ -676,7 +680,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const modelsToTry = ["gemini-3.5-flash", "gemini-flash-latest"];
       let lastErr = null;
 
-      for (const modelName of modelsToTry) {
+      if (ai) for (const modelName of modelsToTry) {
         try {
           const geminiResponse = await ai.models.generateContent({
             model: modelName,
@@ -1694,7 +1698,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
   function getRazorpayCredentials() {
     let rawKeyId = (process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "").trim();
-    let rawKeySecret = (process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "").trim();
+    let rawKeySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
 
     // Smart-parsing if user entered "KeyID,KeySecret" together in one variable
     if (rawKeyId.includes(",")) {
@@ -2784,6 +2788,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
