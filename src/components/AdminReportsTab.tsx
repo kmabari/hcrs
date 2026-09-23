@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { UserProfile } from '../types';
+import { auth } from '../lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,21 @@ interface AdminReportsTabProps {
   isSuperAdmin?: boolean;
 }
 
+interface VerifiedPaymentRecord {
+  id: string;
+  paymentId: string;
+  paymentType: string;
+  amount: number;
+  memberId: string;
+  membershipId: string;
+  name: string;
+  mobile: string;
+  paymentStatus: string;
+  status: string;
+  paymentDate: string;
+  paymentTime: string;
+}
+
 export default function AdminReportsTab({
   members,
   claims = [],
@@ -42,6 +58,7 @@ export default function AdminReportsTab({
   const [reportType, setReportType] = useState<'new_memberships' | 'renewals'>('new_memberships');
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('today');
   const [approvingUid, setApprovingUid] = useState<string | null>(null);
+  const [verifiedPayments, setVerifiedPayments] = useState<VerifiedPaymentRecord[]>([]);
   
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -83,6 +100,79 @@ export default function AdminReportsTab({
     return null;
   };
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVerifiedPayments = async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) return;
+        const response = await fetch('/api/admin/payments', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (!cancelled) {
+          setVerifiedPayments(Array.isArray(result.payments) ? result.payments : []);
+        }
+      } catch (error) {
+        console.warn('Failed to load verified payments for reports:', error);
+      }
+    };
+
+    loadVerifiedPayments();
+    return () => { cancelled = true; };
+  }, []);
+
+  const renewalReportMembers = useMemo(() => {
+    const cleanMobile = (value: unknown) => String(value || '').replace(/\D/g, '').slice(-10);
+    const paymentIds = new Set<string>();
+
+    const razorpayRenewals = verifiedPayments
+      .filter(payment => String(payment.paymentType || '').toLowerCase() === 'renewal')
+      .map(payment => {
+        if (payment.paymentId) paymentIds.add(payment.paymentId);
+        const paymentMobile = cleanMobile(payment.mobile);
+        const matchedMember = members.find(member =>
+          (!!payment.memberId && member.uid === payment.memberId) ||
+          (!!payment.membershipId && member.membershipId === payment.membershipId) ||
+          (!!paymentMobile && cleanMobile(member.mobile) === paymentMobile)
+        );
+
+        return {
+          ...(matchedMember || {}),
+          uid: `payment:${payment.id || payment.paymentId}`,
+          name: payment.name || matchedMember?.name || 'Member',
+          mobile: payment.mobile || matchedMember?.mobile || '',
+          membershipId: payment.membershipId || matchedMember?.membershipId || payment.memberId || 'N/A',
+          district: matchedMember?.district || '',
+          districtCode: matchedMember?.districtCode || '',
+          renewalDate: payment.paymentTime || payment.paymentDate,
+          renewalPaymentDate: payment.paymentDate,
+          renewalTransactionId: payment.paymentId,
+          transactionId: payment.paymentId,
+          paymentId: payment.paymentId,
+          paymentAmount: payment.amount || 100,
+          paymentStatus: payment.paymentStatus || payment.status || 'PAYMENT_VERIFIED',
+          expiryDate: matchedMember?.expiryDate,
+          status: matchedMember?.status || 'active',
+          isPaid: true,
+          isApproved: true,
+          isAdmin: false,
+          role: matchedMember?.role || 'member',
+          registrationDate: matchedMember?.registrationDate || payment.paymentTime || payment.paymentDate
+        } as UserProfile;
+      });
+
+    const otherRenewals = members.filter(member => {
+      if (!getMemberRenewalDate(member)) return false;
+      const transactionId = member.renewalTransactionId || member.transactionId || member.paymentId || '';
+      return !transactionId || !paymentIds.has(transactionId);
+    });
+
+    return [...razorpayRenewals, ...otherRenewals];
+  }, [members, verifiedPayments]);
+
   const getStartOfWeek = (d: Date) => {
     const date = new Date(d);
     const day = date.getDay();
@@ -103,12 +193,12 @@ export default function AdminReportsTab({
     return d && d.toISOString().split('T')[0] === yesterdayStr;
   });
 
-  const renewalsToday = members.filter(m => {
+  const renewalsToday = renewalReportMembers.filter(m => {
     const d = getMemberRenewalDate(m);
     return d && d.toISOString().split('T')[0] === todayStr;
   });
 
-  const renewalsYesterday = members.filter(m => {
+  const renewalsYesterday = renewalReportMembers.filter(m => {
     const d = getMemberRenewalDate(m);
     return d && d.toISOString().split('T')[0] === yesterdayStr;
   });
@@ -157,7 +247,7 @@ export default function AdminReportsTab({
     return matchesDateFilter(regD) && matchesDistrict(m) && matchesSearch(m);
   });
 
-  const filteredRenewals = members.filter(m => {
+  const filteredRenewals = renewalReportMembers.filter(m => {
     const renD = getMemberRenewalDate(m);
     return renD && matchesDateFilter(renD) && matchesDistrict(m) && matchesSearch(m);
   });
@@ -184,6 +274,15 @@ export default function AdminReportsTab({
     });
   };
 
+  const getRenewalTransactionId = (m: UserProfile): string =>
+    m.renewalTransactionId || m.transactionId || m.paymentId || 'N/A';
+
+  const getDistrictLabel = (m: UserProfile): string => {
+    const districtValue = m.district || m.districtCode;
+    if (!districtValue) return 'N/A';
+    return DISTRICTS.find(d => d.code === districtValue)?.name || districtValue;
+  };
+
   const exportToCSV = () => {
     let headers: string[] = [];
     let rows: string[][] = [];
@@ -195,7 +294,7 @@ export default function AdminReportsTab({
         m.membershipId || 'N/A',
         `"${(m.name || '').replace(/"/g, '""')}"`,
         m.mobile || 'N/A',
-        m.district || 'N/A',
+        getDistrictLabel(m),
         m.assemblyConstituency || 'N/A',
         '₹200',
         m.paymentStatus || (m.isPaid ? 'PAYMENT_VERIFIED' : 'Pending Verification'),
@@ -212,7 +311,7 @@ export default function AdminReportsTab({
         m.district || 'N/A',
         `"${formatDateTime(getMemberRenewalDate(m))}"`,
         '₹100',
-        m.renewalTransactionId || m.paymentId || 'N/A',
+        getRenewalTransactionId(m),
         m.paymentStatus || 'Renewed',
         `"${formatExpiryDate(m.expiryDate)}"`
       ]);
@@ -695,12 +794,12 @@ export default function AdminReportsTab({
           </div>
         ) : (
           <div>
-            <div className="p-4 bg-amber-100/70 dark:bg-amber-950/30 border-b-2 border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-black uppercase text-amber-950 dark:text-amber-200 tracking-wider flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-amber-700" />
+            <div className="p-4 bg-[#132044] border-b-2 border-[#263765] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-black uppercase text-white tracking-wider flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-amber-300" />
                 Renewals Report ({filteredRenewals.length} records)
               </h3>
-              <Badge className="bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-[11px] font-black">
+              <Badge className="bg-amber-300 text-amber-950 border border-amber-200 text-[11px] font-black">
                 Renewal Fee: ₹100 / member
               </Badge>
             </div>
@@ -719,17 +818,17 @@ export default function AdminReportsTab({
                         <div className="min-w-0">
                           <p className="text-[11px] font-black text-amber-700 break-all">#{index + 1} · {member.membershipId || 'N/A'}</p>
                           <p className="text-sm font-black text-slate-950 dark:text-white break-words">{member.name || 'N/A'}</p>
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{member.mobile || 'N/A'}</p>
+                          <p className="text-xs font-black text-slate-800 dark:text-white">Mobile: {member.mobile || 'N/A'}</p>
                         </div>
                         <Badge className="shrink-0 bg-emerald-100 text-emerald-950 text-[9px] font-black">RENEWED ₹100</Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div className="rounded-lg bg-slate-100 dark:bg-slate-900 p-2"><span className="block text-slate-500">District</span><b>{member.district || 'N/A'}</b></div>
-                        <div className="rounded-lg bg-slate-100 dark:bg-slate-900 p-2"><span className="block text-slate-500">New expiry</span><b>{formatExpiryDate(member.expiryDate)}</b></div>
-                        <div className="col-span-2 rounded-lg bg-slate-100 dark:bg-slate-900 p-2"><span className="block text-slate-500">Renewal payment date</span><b>{formatDateTime(getMemberRenewalDate(member))}</b></div>
-                        <div className="col-span-2 rounded-lg bg-slate-100 dark:bg-slate-900 p-2"><span className="block text-slate-500">Transaction ID</span><b className="break-all">{member.renewalTransactionId || member.paymentId || 'N/A'}</b></div>
+                        <div className="rounded-lg bg-slate-100 dark:bg-[#16213d] p-2 border border-slate-200 dark:border-slate-700"><span className="block text-slate-500 dark:text-slate-300 font-bold">District</span><b className="text-slate-950 dark:text-white">{getDistrictLabel(member)}</b></div>
+                        <div className="rounded-lg bg-slate-100 dark:bg-[#16213d] p-2 border border-slate-200 dark:border-slate-700"><span className="block text-slate-500 dark:text-slate-300 font-bold">New expiry</span><b className="text-slate-950 dark:text-white">{formatExpiryDate(member.expiryDate)}</b></div>
+                        <div className="col-span-2 rounded-lg bg-slate-100 dark:bg-[#16213d] p-2 border border-slate-200 dark:border-slate-700"><span className="block text-slate-500 dark:text-slate-300 font-bold">Renewal payment date</span><b className="text-slate-950 dark:text-white">{formatDateTime(getMemberRenewalDate(member))}</b></div>
+                        <div className="col-span-2 rounded-lg bg-slate-100 dark:bg-[#16213d] p-2 border border-slate-200 dark:border-slate-700"><span className="block text-slate-500 dark:text-slate-300 font-bold">Transaction ID</span><b className="break-all text-slate-950 dark:text-white">{getRenewalTransactionId(member)}</b></div>
                       </div>
-                      <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => onViewDetails(member)}>Details</Button></div>
+                      <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => onViewDetails(member)} className="bg-white text-slate-900 border-slate-300 hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100">Details</Button></div>
                     </div>
                   ))}
                 </div>
@@ -766,7 +865,7 @@ export default function AdminReportsTab({
                           </td>
                           <td className="p-3 font-black text-emerald-700 dark:text-emerald-400 text-sm">₹100</td>
                           <td className="p-3 font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">
-                            {member.renewalTransactionId || member.paymentId || 'N/A'}
+                            {getRenewalTransactionId(member)}
                           </td>
                           <td className="p-3">
                             <Badge className="bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10.5px] font-black">
