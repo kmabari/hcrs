@@ -20,9 +20,10 @@ dotenv.config();
 // Initialize Firebase Admin SDK for server-side verified database writes
 if (!admin.apps.length) {
   try {
-    admin.initializeApp({
-      projectId: "hcrs-membership"
-    });
+   admin.initializeApp({
+  credential: admin.credential.cert(JSON.parse((process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "").replace(/\\n/g, "\\n"))),
+  projectId: "hcrs-membership"
+}); 
     console.log("[Firebase Admin] Initialized successfully for project hcrs-membership");
   } catch (adminInitErr) {
     console.warn("[Firebase Admin] Initialization notice:", adminInitErr);
