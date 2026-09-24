@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { AlertTriangle, CheckCircle2, Download, FileSearch, Loader2, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../types';
 import { db } from '../lib/firebase';
-import { doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -247,6 +247,21 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     setIsApplying(true);
     const toastId = toast.loading('Serial correction നടത്തുന്നു...');
     try {
+      const totalsRef = doc(db, 'system', 'totals');
+
+      // Reserve the complete existing member range before changing any member.
+      // A registration occurring during the migration will therefore receive
+      // eligibleCount + 1 (or higher), never one of the missing slots below it.
+      await runTransaction(db, async transaction => {
+        const totalsSnapshot = await transaction.get(totalsRef);
+        const currentCount = Number(totalsSnapshot.data()?.count || 0);
+        transaction.set(totalsRef, {
+          count: Math.max(currentCount, serialAudit.eligibleCount),
+          serialCorrectionInProgress: true,
+          serialCorrectionStartedAt: serverTimestamp()
+        }, { merge: true });
+      });
+
       type PendingWrite = { path: string[]; data: Record<string, unknown> };
       const writes: PendingWrite[] = [];
       const correctedAt = serverTimestamp();
@@ -284,18 +299,35 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
         await batch.commit();
       }
 
-      const finalSerial = serialAudit.eligibleCount;
-      const counterBatch = writeBatch(db);
-      counterBatch.set(doc(db, 'system', 'totals'), {
-        count: finalSerial,
-        serialCorrectionUpdatedAt: serverTimestamp()
-      }, { merge: true });
-      await counterBatch.commit();
+      // Never lower the counter: a new registration may have incremented it
+      // while the correction batches were running.
+      let finalSerial = serialAudit.eligibleCount;
+      await runTransaction(db, async transaction => {
+        const totalsSnapshot = await transaction.get(totalsRef);
+        const currentCount = Number(totalsSnapshot.data()?.count || 0);
+        finalSerial = Math.max(currentCount, serialAudit.eligibleCount);
+        transaction.set(totalsRef, {
+          count: finalSerial,
+          serialCorrectionInProgress: false,
+          serialCorrectionCompletedAt: serverTimestamp(),
+          serialCorrectionUpdatedAt: serverTimestamp()
+        }, { merge: true });
+      });
 
       toast.success(`${corrections.length} duplicate serial records corrected. അവസാന serial: ${finalSerial}`, { id: toastId });
       setConfirmationText('');
     } catch (error: any) {
       console.error('Duplicate serial correction failed:', error);
+      try {
+        const failureBatch = writeBatch(db);
+        failureBatch.set(doc(db, 'system', 'totals'), {
+          serialCorrectionInProgress: false,
+          serialCorrectionFailedAt: serverTimestamp()
+        }, { merge: true });
+        await failureBatch.commit();
+      } catch (statusError) {
+        console.error('Could not clear serial correction status:', statusError);
+      }
       toast.error(`Serial correction പരാജയപ്പെട്ടു: ${error?.message || 'Unknown error'}`, { id: toastId });
     } finally {
       setIsApplying(false);
