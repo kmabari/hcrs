@@ -28,6 +28,19 @@ const extractSerial = (member: UserProfile): number | null => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+// Login/profile-completion can create an unpaid placeholder in `users` before
+// a membership is actually issued. Those records have no serial or membership
+// ID and must not create artificial "missing serial" corrections.
+const isIssuedOrPaidMember = (member: UserProfile) => {
+  if (member.role === 'admin' || member.role === 'operator') return false;
+  return Boolean(
+    extractSerial(member) ||
+    String(member.membershipId || '').trim() ||
+    member.isPaid ||
+    member.isApproved
+  );
+};
+
 const toDate = (value: any): Date | null => {
   if (!value) return null;
   try {
@@ -84,7 +97,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const [confirmationText, setConfirmationText] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const serialAudit = useMemo(() => {
-    const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
+    const eligibleMembers = members.filter(isIssuedOrPaidMember);
     const serialCounts = new Map<number, number>();
     const invalidMembers: UserProfile[] = [];
 
@@ -134,7 +147,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   }, [members]);
 
   const correctionPlan = useMemo(() => {
-    const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
+    const eligibleMembers = members.filter(isIssuedOrPaidMember);
     const memberCount = eligibleMembers.length;
     const groups = new Map<number, UserProfile[]>();
     const correctionMembers: Array<{ member: UserProfile; reason: 'DUPLICATE' | 'INVALID_OR_OUT_OF_RANGE' }> = [];
@@ -203,7 +216,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
 
   const exportDryRun = () => {
     const eligibleMembers = members
-      .filter(member => member.role !== 'admin' && member.role !== 'operator')
+      .filter(isIssuedOrPaidMember)
       .sort((left, right) => {
         const leftSerial = extractSerial(left) ?? Number.MAX_SAFE_INTEGER;
         const rightSerial = extractSerial(right) ?? Number.MAX_SAFE_INTEGER;
