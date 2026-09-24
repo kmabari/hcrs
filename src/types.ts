@@ -100,6 +100,8 @@ export interface PaymentReceipt {
   year?: number;
   transactionId?: string;
   paymentId?: string;
+  orderId?: string;
+  paymentTime?: string;
   paymentStatus?: string;
   updatedAt?: any;
 }

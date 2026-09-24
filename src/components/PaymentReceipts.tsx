@@ -10,6 +10,7 @@ import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
+import { buildRegistrationReceipt } from '../lib/receiptUtils';
 
 interface PaymentReceiptsProps {
   user: UserProfile;
@@ -39,24 +40,9 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       }
       setLoading(true);
 
-      // Only derive a profile-level receipt when the profile contains real payment
-      // evidence. Never fabricate a paid receipt or default amount from membership data.
-      const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
-      const profileReceiptId = (user as any).receiptNumber || user.paymentId || user.transactionId || '';
-      const profilePaymentAmount = Number(user.paymentAmount || 0);
-      const registrationReceipt: PaymentReceipt | null = profileReceiptId && profilePaymentAmount > 0 ? {
-        id: `reg-${user.uid}`,
-        receiptNo: profileReceiptId,
-        receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
-        receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-        amount: profilePaymentAmount,
-        status: user.isPaid || String(user.paymentStatus || '').toLowerCase().includes('verified') ? 'Paid' : 'Pending Verification',
-        paymentDate: user.paymentDate || regDateStr,
-        createdAt: user.registrationDate,
-        transactionId: user.transactionId,
-        paymentId: user.paymentId,
-        paymentStatus: user.paymentStatus
-      } : null;
+      // Every member keeps the historical registration receipt. Newer payment fields
+      // are included when available; legacy members use joining date + serial number.
+      const registrationReceipt = buildRegistrationReceipt(user);
 
       let dbReceipts: PaymentReceipt[] = [];
       try {
@@ -71,7 +57,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
         console.warn('PaymentReceipts: Could not load extra subcollection receipts, falling back to profile record:', error);
       }
 
-      let combined: PaymentReceipt[] = registrationReceipt ? [registrationReceipt] : [];
+      let combined: PaymentReceipt[] = [registrationReceipt];
 
       if (dbReceipts.length > 0) {
         // Keep genuine registration receipts from Firestore and only de-duplicate the
@@ -91,7 +77,14 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
               (r.transactionId && existing.transactionId === r.transactionId)
             );
             if (!duplicate) {
-              combined.push(r);
+              const legacyIndex = combined.findIndex(existing => existing.id === `reg-${user.uid}`);
+              const legacyReceipt = legacyIndex >= 0 ? combined[legacyIndex] : null;
+              if (legacyReceipt && !legacyReceipt.paymentId && !legacyReceipt.transactionId) {
+                // Prefer a genuine stored registration receipt over the legacy fallback.
+                combined[legacyIndex] = r;
+              } else {
+                combined.push(r);
+              }
             }
           } else {
             nonRegReceipts.push(r);
@@ -472,6 +465,26 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                 <div className="mb-6 bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-700 font-bold leading-relaxed">
                   <span className="font-black text-slate-600 uppercase text-[8px] block mb-0.5">Amount in Words</span>
                   Rupees <span className="font-extrabold text-slate-900">{convertNumberToWords(selectedReceipt.amount)}Only</span>
+                </div>
+
+                {/* Genuine transaction references are shown when the payment source supplied them. */}
+                <div className="mb-6 border border-slate-200 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[9px]">
+                  <div>
+                    <span className="block uppercase font-black text-slate-500">Razorpay Order ID</span>
+                    <b className="block text-slate-900 font-mono break-all mt-0.5">{selectedReceipt.orderId || '-'}</b>
+                  </div>
+                  <div>
+                    <span className="block uppercase font-black text-slate-500">Razorpay Payment ID</span>
+                    <b className="block text-slate-900 font-mono break-all mt-0.5">{selectedReceipt.paymentId || '-'}</b>
+                  </div>
+                  <div>
+                    <span className="block uppercase font-black text-slate-500">Transaction ID</span>
+                    <b className="block text-slate-900 font-mono break-all mt-0.5">{selectedReceipt.transactionId || '-'}</b>
+                  </div>
+                  <div>
+                    <span className="block uppercase font-black text-slate-500">Payment Time</span>
+                    <b className="block text-slate-900 font-mono break-all mt-0.5">{selectedReceipt.paymentTime || '-'}</b>
+                  </div>
                 </div>
 
                 {/* Footer seal and verify signature block */}
