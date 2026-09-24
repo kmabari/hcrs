@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { generateNewMembershipId } from '../constants';
 
 interface DuplicateSerialDryRunReportProps {
   members: UserProfile[];
@@ -43,6 +44,24 @@ const replaceMembershipSuffix = (membershipId: string | undefined, serial: numbe
   const current = String(membershipId || '').trim();
   if (!current) return '';
   return /\d+\s*$/.test(current) ? current.replace(/\d+\s*$/, String(serial)) : current;
+};
+
+const compareMembers = (left: UserProfile, right: UserProfile) => {
+  const leftDate = toDate(left.registrationDate || (left as any).createdAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  const rightDate = toDate(right.registrationDate || (right as any).createdAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  if (leftDate !== rightDate) return leftDate - rightDate;
+  return String(left.uid || '').localeCompare(String(right.uid || ''));
+};
+
+const buildMembershipId = (member: UserProfile, serial: number) => {
+  const replaced = replaceMembershipSuffix(member.membershipId, serial);
+  if (replaced) return replaced;
+  return generateNewMembershipId(
+    member.district || member.districtCode || 'MLP',
+    member.assemblyConstituency || '',
+    serial,
+    member.stateCode || 'KL'
+  );
 };
 
 export default function DuplicateSerialDryRunReport({ members, claims, canApply = false }: DuplicateSerialDryRunReportProps) {
@@ -99,29 +118,39 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     };
   }, [members]);
 
-  const report = useMemo(() => {
+  const correctionPlan = useMemo(() => {
     const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
-    const maximumSerial = eligibleMembers.reduce((maximum, member) => {
+    const memberCount = eligibleMembers.length;
+    const groups = new Map<number, UserProfile[]>();
+    const correctionMembers: Array<{ member: UserProfile; reason: 'DUPLICATE' | 'INVALID_OR_OUT_OF_RANGE' }> = [];
+
+    eligibleMembers.forEach(member => {
       const serial = extractSerial(member);
-      return serial ? Math.max(maximum, serial) : maximum;
-    }, 1000);
-    // The correction sequence must never start below the current member total.
-    // This also protects against a stale system/totals counter (the original cause
-    // of repeated 1001 values).
-    const correctionBase = Math.max(maximumSerial, eligibleMembers.length);
+      if (!serial || serial > memberCount) {
+        correctionMembers.push({ member, reason: 'INVALID_OR_OUT_OF_RANGE' });
+        return;
+      }
+      const group = groups.get(serial) || [];
+      group.push(member);
+      groups.set(serial, group);
+    });
 
-    const serial1001Members = eligibleMembers
-      .filter(member => extractSerial(member) === 1001)
-      .sort((left, right) => {
-        const leftDate = toDate(left.registrationDate || (left as any).createdAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        const rightDate = toDate(right.registrationDate || (right as any).createdAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        if (leftDate !== rightDate) return leftDate - rightDate;
-        return String(left.uid || '').localeCompare(String(right.uid || ''));
-      });
+    groups.forEach(group => {
+      const sorted = [...group].sort(compareMembers);
+      sorted.slice(1).forEach(member => correctionMembers.push({ member, reason: 'DUPLICATE' }));
+    });
 
-    return serial1001Members.map((member, index) => {
-      const keepOriginal = index === 0;
-      const proposedSerial = keepOriginal ? 1001 : correctionBase + index;
+    const occupied = new Set(groups.keys());
+    const missingSerials: number[] = [];
+    for (let serial = 1; serial <= memberCount; serial += 1) {
+      if (!occupied.has(serial)) missingSerials.push(serial);
+    }
+
+    correctionMembers.sort((left, right) => compareMembers(left.member, right.member));
+    const rows = correctionMembers.map((entry, index) => {
+      const member = entry.member;
+      const oldSerial = extractSerial(member);
+      const proposedSerial = missingSerials[index] || 0;
       const memberMobile = cleanMobile(member.mobile);
       const memberId = String(member.membershipId || '').trim().toLowerCase();
       const matchingClaims = claims.filter(claim => {
@@ -136,32 +165,38 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
 
       return {
         member,
-        keepOriginal,
+        reason: entry.reason,
+        oldSerial,
         proposedSerial,
-        proposedMembershipId: keepOriginal
-          ? member.membershipId || ''
-          : replaceMembershipSuffix(member.membershipId, proposedSerial),
+        proposedMembershipId: proposedSerial ? buildMembershipId(member, proposedSerial) : '',
         matchingClaims
       };
     });
+
+    return {
+      rows,
+      missingSerials,
+      isBalanced: rows.length === missingSerials.length
+    };
   }, [members, claims]);
 
   const maximumSerial = useMemo(
     () => members.reduce((maximum, member) => Math.max(maximum, extractSerial(member) || 0), 1000),
     [members]
   );
-  const migrationCount = Math.max(0, report.length - 1);
+  const migrationCount = correctionPlan.rows.length;
 
   const exportDryRun = () => {
-    const rows = report.map((row, index) => ({
+    const rows = correctionPlan.rows.map((row, index) => ({
       'Sl No': index + 1,
       'Firestore UID': row.member.uid || '',
       'Name': row.member.name || '',
       'Mobile': row.member.mobile || '',
       'District': row.member.district || row.member.districtCode || '',
-      'Old Serial': 1001,
+      'Old Serial': row.oldSerial || 'INVALID / NONE',
       'Old Membership ID': row.member.membershipId || '',
-      'Action': row.keepOriginal ? 'KEEP ORIGINAL 1001' : 'PROPOSE NUMBER CHANGE',
+      'Reason': row.reason,
+      'Action': 'PROPOSE NUMBER CHANGE',
       'Proposed Serial': row.proposedSerial,
       'Proposed Membership ID': row.proposedMembershipId,
       'Verification Forms Found': row.matchingClaims.length,
@@ -170,7 +205,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Serial 1001 Dry Run');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Full Correction Mapping');
 
     const rangeAuditRows = Array.from(
       { length: serialAudit.rangeEnd - serialAudit.rangeStart + 1 },
@@ -196,16 +231,16 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     ];
     const overallWorksheet = XLSX.utils.json_to_sheet(overallAuditRows);
     XLSX.utils.book_append_sheet(workbook, overallWorksheet, 'Overall Serial Audit');
-    XLSX.writeFile(workbook, `HCRS_serial_1001_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `HCRS_full_serial_correction_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
     setBackupDownloaded(true);
   };
 
   const applySerialCorrections = async () => {
-    const corrections = report.filter(row => !row.keepOriginal);
-    if (!canApply || corrections.length === 0 || confirmationText !== 'CORRECT 1001' || !backupDownloaded) return;
+    const corrections = correctionPlan.rows;
+    if (!canApply || !correctionPlan.isBalanced || corrections.length === 0 || confirmationText !== 'CORRECT ALL SERIALS' || !backupDownloaded) return;
 
     const confirmed = window.confirm(
-      `${corrections.length} duplicate 1001 member records correction ചെയ്യുകയും ബന്ധപ്പെട്ട verification forms update ചെയ്യുകയും ചെയ്യും. തുടരണമോ?`
+      `${corrections.length} duplicate/invalid member records-ന് 1–${serialAudit.eligibleCount} ഇടയിലെ missing serials നൽകുകയും verification forms update ചെയ്യുകയും ചെയ്യും. തുടരണമോ?`
     );
     if (!confirmed) return;
 
@@ -220,9 +255,9 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
         const oldMembershipId = String(row.member.membershipId || '');
         const memberUpdate: Record<string, unknown> = {
           serialNo: row.proposedSerial,
-          previousSerialNo: 1001,
+          previousSerialNo: row.oldSerial || null,
           serialCorrectedAt: correctedAt,
-          serialCorrectionReason: 'DUPLICATE_1001'
+          serialCorrectionReason: row.reason
         };
         if (row.proposedMembershipId) memberUpdate.membershipId = row.proposedMembershipId;
         writes.push({ path: ['users', row.member.uid], data: memberUpdate });
@@ -231,7 +266,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           if (!claim.id) return;
           const claimUpdate: Record<string, unknown> = {
             serialNo: row.proposedSerial,
-            previousSerialNo: 1001,
+            previousSerialNo: row.oldSerial || null,
             serialCorrectedAt: correctedAt
           };
           if (row.proposedMembershipId) claimUpdate.membershipId = row.proposedMembershipId;
@@ -249,7 +284,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
         await batch.commit();
       }
 
-      const finalSerial = Math.max(...corrections.map(row => row.proposedSerial));
+      const finalSerial = serialAudit.eligibleCount;
       const counterBatch = writeBatch(db);
       counterBatch.set(doc(db, 'system', 'totals'), {
         count: finalSerial,
@@ -274,7 +309,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           <div>
             <div className="flex items-center gap-2">
               <FileSearch className="w-5 h-5 text-amber-700" />
-              <h3 className="text-base font-black text-slate-900">Serial 1001 — Dry-run Report</h3>
+              <h3 className="text-base font-black text-slate-900">Complete Serial Correction — Dry-run</h3>
             </div>
             <p className="text-xs text-slate-600 mt-1">
               ഇത് preview മാത്രം ആണ്. Member, Verification Form അല്ലെങ്കിൽ Firestore data ഒന്നും മാറ്റുന്നില്ല.
@@ -284,7 +319,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
             type="button"
             variant="outline"
             onClick={exportDryRun}
-            disabled={report.length === 0}
+            disabled={migrationCount === 0}
             className="rounded-xl font-bold"
           >
             <Download className="w-4 h-4 mr-2" /> Export Excel
@@ -340,19 +375,19 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[10px] uppercase font-black text-slate-400">1001 Records</p>
-            <p className="text-xl font-black text-slate-900">{report.length}</p>
+            <p className="text-[10px] uppercase font-black text-slate-500">Missing Slots</p>
+            <p className="text-xl font-black text-slate-900">{correctionPlan.missingSerials.length}</p>
           </div>
           <div className="rounded-xl border border-emerald-200 bg-white p-3">
-            <p className="text-[10px] uppercase font-black text-slate-400">Keep Original</p>
-            <p className="text-xl font-black text-emerald-700">{report.length ? 1 : 0}</p>
+            <p className="text-[10px] uppercase font-black text-slate-500">Mapping Balanced</p>
+            <p className="text-xl font-black text-emerald-700">{correctionPlan.isBalanced ? 'YES' : 'NO'}</p>
           </div>
           <div className="rounded-xl border border-amber-200 bg-white p-3">
-            <p className="text-[10px] uppercase font-black text-slate-400">Proposed Changes</p>
+            <p className="text-[10px] uppercase font-black text-slate-500">Proposed Changes</p>
             <p className="text-xl font-black text-amber-700">{migrationCount}</p>
           </div>
           <div className="rounded-xl border border-blue-200 bg-white p-3">
-            <p className="text-[10px] uppercase font-black text-slate-400">Current Max Serial</p>
+            <p className="text-[10px] uppercase font-black text-slate-500">Current Max Serial</p>
             <p className="text-xl font-black text-blue-700">{maximumSerial}</p>
           </div>
         </div>
@@ -364,7 +399,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
               <div>
                 <h4 className="font-black text-red-950">Controlled Serial Correction</h4>
                 <p className="text-xs font-bold text-red-800">
-                  ആദ്യം Excel backup download ചെയ്യുക. തുടർന്ന് confirmation phrase നൽകിയാൽ duplicate 1001 records മാത്രം update ചെയ്യും.
+                  ആദ്യം Excel backup download ചെയ്ത് മുഴുവൻ old → new mapping പരിശോധിക്കുക. എല്ലാ duplicate/invalid records-നും missing serials മാത്രമാണ് നൽകുക.
                 </p>
               </div>
             </div>
@@ -372,14 +407,14 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
               <input
                 value={confirmationText}
                 onChange={event => setConfirmationText(event.target.value)}
-                placeholder="Type: CORRECT 1001"
+                placeholder="Type: CORRECT ALL SERIALS"
                 className="h-11 rounded-xl border-2 border-red-200 bg-white px-3 font-mono font-bold text-slate-950 outline-none focus:border-red-500"
                 disabled={isApplying || !canApply}
               />
               <Button
                 type="button"
                 onClick={applySerialCorrections}
-                disabled={!canApply || !backupDownloaded || confirmationText !== 'CORRECT 1001' || isApplying}
+                disabled={!canApply || !correctionPlan.isBalanced || !backupDownloaded || confirmationText !== 'CORRECT ALL SERIALS' || isApplying}
                 className="h-11 rounded-xl bg-red-700 hover:bg-red-800 font-black"
               >
                 {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldAlert className="w-4 h-4 mr-2" />}
@@ -387,13 +422,14 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
               </Button>
             </div>
             {!canApply && <p className="text-xs font-black text-red-800">Super Admin login-ൽ മാത്രം correction അനുവദിച്ചിരിക്കുന്നു.</p>}
+            {!correctionPlan.isBalanced && <p className="text-xs font-black text-red-800">Mapping count mismatch കണ്ടെത്തി. Correction block ചെയ്തിരിക്കുന്നു.</p>}
             {!backupDownloaded && <p className="text-xs font-bold text-red-700">Correction unlock ചെയ്യാൻ മുകളിലെ Export Excel ആദ്യം അമർത്തണം.</p>}
           </div>
         )}
 
-        {report.length === 0 ? (
+        {migrationCount === 0 ? (
           <div className="rounded-xl border border-emerald-200 bg-white p-5 text-center text-sm font-bold text-emerald-700">
-            <CheckCircle2 className="w-5 h-5 mx-auto mb-2" /> Serial 1001 records കണ്ടെത്തിയില്ല.
+            <CheckCircle2 className="w-5 h-5 mx-auto mb-2" /> Serial sequence പൂർണ്ണമാണ്. Correction ആവശ്യമില്ല.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -409,7 +445,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
                 </tr>
               </thead>
               <tbody>
-                {report.map(row => (
+                {correctionPlan.rows.map(row => (
                   <tr key={row.member.uid || `${row.member.mobile}-${row.proposedSerial}`} className="border-t border-slate-100">
                     <td className="p-3">
                       <p className="font-black text-slate-900">{row.member.name || 'Unknown'}</p>
@@ -418,11 +454,9 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
                     <td className="p-3 font-bold text-slate-700">{row.member.district || row.member.districtCode || 'N/A'}</td>
                     <td className="p-3 font-mono font-bold text-slate-700">{row.member.membershipId || '1001'}</td>
                     <td className="p-3">
-                      {row.keepOriginal ? (
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Keep 1001</Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-200">1001 → {row.proposedSerial}</Badge>
-                      )}
+                      <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+                        {row.oldSerial || 'None'} → {row.proposedSerial}
+                      </Badge>
                     </td>
                     <td className="p-3 font-mono font-bold text-blue-700">{row.proposedMembershipId || row.proposedSerial}</td>
                     <td className="p-3 text-center">
