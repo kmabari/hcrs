@@ -192,8 +192,15 @@ export default function AdminReportsTab({
       .some(value => value.toLowerCase().includes(query));
   }).sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
 
-  const successfulCount = (type: ReportType, day: string) =>
-    rows.filter(row => row.type === type && row.status === 'successful' && row.date && dateKey(row.date) === day).length;
+  const dailySummary = (type: ReportType, day: string) => {
+    const dayRows = rows.filter(row => row.type === type && row.date && dateKey(row.date) === day);
+    const successfulRows = dayRows.filter(row => row.status === 'successful');
+    return {
+      total: dayRows.length,
+      successful: successfulRows.length,
+      successfulAmount: successfulRows.reduce((sum, row) => sum + row.amount, 0)
+    };
+  };
   const statusLabel = (status: PaymentStatus) => ({
     successful: 'Paid / Successful', processing: 'Payment Processing / Verification Pending',
     pending: 'Pending', failed: 'Failed'
@@ -246,24 +253,26 @@ export default function AdminReportsTab({
     printWindow.document.close();
   };
 
-  const Metric = ({ label, count, fee, dark = false }: { label: string; count: number; fee: number; dark?: boolean }) =>
+  const Metric = ({ label, summary, fee, dark = false }: { label: string; summary: ReturnType<typeof dailySummary>; fee: number; dark?: boolean }) =>
     <Card className={dark ? 'bg-[#0b1730] border-2 border-slate-600' : 'bg-white border-2 border-slate-200'}>
       <CardContent className="p-4 min-h-32 flex flex-col justify-between">
         <div className="flex items-start justify-between gap-2">
           <span className={`text-[11px] font-black uppercase ${dark ? 'text-slate-100' : 'text-slate-800'}`}>{label}</span>
           <Badge className={dark ? 'bg-white text-slate-950' : 'bg-slate-900 text-white'}>₹{fee}</Badge>
-        </div><strong className={`text-3xl ${dark ? 'text-white' : 'text-slate-950'}`}>{count}</strong>
-        <span className={`text-xs font-extrabold ${dark ? 'text-slate-200' : 'text-slate-700'}`}>Successful total ₹{count * fee}</span>
+        </div><strong className={`text-3xl ${dark ? 'text-white' : 'text-slate-950'}`}>{summary.total}</strong>
+        <span className={`text-xs font-extrabold ${dark ? 'text-slate-200' : 'text-slate-700'}`}>
+          Successful {summary.successful} · ₹{summary.successfulAmount}
+        </span>
       </CardContent>
     </Card>;
 
   return <div className="space-y-6">
     <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <Metric label="New Reg Today" count={successfulCount('new_memberships', today)} fee={200} />
-      <Metric label="New Reg Yesterday" count={successfulCount('new_memberships', yesterday)} fee={200} dark />
-      <Metric label="Renewals Today" count={successfulCount('renewals', today)} fee={100} />
-      <Metric label="Renewals Yesterday" count={successfulCount('renewals', yesterday)} fee={100} dark />
+      <Metric label="New Reg Today" summary={dailySummary('new_memberships', today)} fee={200} />
+      <Metric label="New Reg Yesterday" summary={dailySummary('new_memberships', yesterday)} fee={200} dark />
+      <Metric label="Renewals Today" summary={dailySummary('renewals', today)} fee={100} />
+      <Metric label="Renewals Yesterday" summary={dailySummary('renewals', yesterday)} fee={100} dark />
     </div>
     <Card className="overflow-hidden border-2 border-slate-300 bg-white text-slate-950 shadow-sm">
       <div className="bg-[#071126] p-4 space-y-4">
