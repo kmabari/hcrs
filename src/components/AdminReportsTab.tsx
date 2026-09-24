@@ -22,6 +22,7 @@ type ReportType = 'new_memberships' | 'renewals';
 type DateFilter = 'today' | 'yesterday' | 'custom_date' | 'date_range';
 type StatusFilter = 'all' | 'successful' | 'processing' | 'pending' | 'failed';
 type PaymentStatus = Exclude<StatusFilter, 'all'>;
+interface AuditRow { uid:string; authEmail:string; authCreatedAt:string; mobile:string; name:string; membershipId:string; classification:string; reason:string; }
 interface ReportRow {
   key: string; member?: UserProfile; source: 'member' | 'payment'; type: ReportType;
   name: string; mobile: string; membershipId: string; district: string; assembly: string;
@@ -44,6 +45,21 @@ export default function AdminReportsTab({
   const [approvingUid, setApprovingUid] = useState<string | null>(null);
   const [district, setDistrict] = useState(userDistrict && !isSuperAdmin ? userDistrict : 'all');
   const [search, setSearch] = useState('');
+  const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
+  const runSecurityAudit = async () => {
+    setAuditLoading(true); setAuditError('');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Admin authentication required');
+      const response = await fetch('/api/admin/security-audit', { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Audit failed');
+      setAuditRows(Array.isArray(body.rows) ? body.rows : []);
+    } catch (e:any) { setAuditError(e?.message || 'Audit failed'); }
+    finally { setAuditLoading(false); }
+  };
 
   const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const now = new Date();
@@ -268,6 +284,13 @@ export default function AdminReportsTab({
 
   return <div className="space-y-6">
     <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
+    <Card className="border-2 border-red-200 bg-white"><CardContent className="p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black text-slate-950">Security Audit — Today</h3><p className="text-xs font-bold text-slate-600">Read-only: Firebase data is not changed or deleted.</p></div>
+      <Button onClick={runSecurityAudit} disabled={auditLoading} className="bg-red-700 text-white hover:bg-red-800"><ShieldAlert className="w-4 h-4 mr-2"/>{auditLoading ? 'Checking…' : 'Check Today'}</Button></div>
+      {auditError && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{auditError}</div>}
+      {auditRows.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Mobile','Name','Member ID','Auth Email','Result','Reason'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{auditRows.map(row=><tr key={row.uid} className="border-t"><td className="p-2">{new Date(row.authCreatedAt).toLocaleString('en-IN')}</td><td className="p-2 font-bold">{row.mobile||'-'}</td><td className="p-2">{row.name||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-mono">{row.authEmail||'-'}</td><td className="p-2"><Badge className={row.classification === 'Likely unauthorized fallback' ? 'bg-red-100 text-red-950' : row.classification.startsWith('Legitimate') ? 'bg-emerald-100 text-emerald-950' : 'bg-amber-100 text-amber-950'}>{row.classification}</Badge></td><td className="p-2">{row.reason}</td></tr>)}</tbody></table></div>}
+      {!auditLoading && !auditError && auditRows.length === 0 && <p className="text-xs font-bold text-slate-500">Press Check Today to run the audit.</p>}
+    </Card>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <Metric label="New Reg Today" summary={dailySummary('new_memberships', today)} fee={200} />
       <Metric label="New Reg Yesterday" summary={dailySummary('new_memberships', yesterday)} fee={200} dark />
