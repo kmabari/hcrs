@@ -441,7 +441,7 @@ export default function AdminReportsTab({
 
   return (
     <div className="space-y-6">
-      <DuplicateSerialDryRunReport members={members} claims={claims} />
+      <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
       <div className="space-y-6">
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
