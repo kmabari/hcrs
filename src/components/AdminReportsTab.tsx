@@ -47,6 +47,7 @@ export default function AdminReportsTab({
   const [district, setDistrict] = useState(userDistrict && !isSuperAdmin ? userDistrict : 'all');
   const [search, setSearch] = useState('');
   const [reconMobile, setReconMobile] = useState('');
+  const [reconMobileInput, setReconMobileInput] = useState<HTMLInputElement | null>(null);
   const [reconDate, setReconDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -55,7 +56,11 @@ export default function AdminReportsTab({
   const [reconLoading, setReconLoading] = useState(false);
   const [reconError, setReconError] = useState('');
   const runPaymentReconciliation = async () => {
-    const clean = reconMobile.replace(/\D/g, '').slice(-10);
+    // Read the visible DOM value as well as React state. Some Android/browser autofill
+    // paths can visually fill an input without synchronously updating controlled state.
+    const visibleValue = reconMobileInput?.value || reconMobile;
+    const clean = visibleValue.replace(/\D/g, '').slice(-10);
+    if (clean !== reconMobile) setReconMobile(clean);
     if (!/^\d{10}$/.test(clean)) { setReconError('Enter a valid 10-digit mobile number.'); return; }
     setReconLoading(true); setReconError('');
     try {
@@ -315,7 +320,7 @@ export default function AdminReportsTab({
     <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
       <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Read-only check. Confirms Razorpay payment status, HCRS payment record and member renewal status.</p></div>
       <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 items-end">
-        <label className="text-xs font-black text-slate-700">Mobile Number<Input inputMode="numeric" value={reconMobile} onChange={e=>setReconMobile(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950" /></label>
+        <label className="text-xs font-black text-slate-700">Mobile Number<Input ref={setReconMobileInput} type="tel" inputMode="numeric" autoComplete="tel" maxLength={10} value={reconMobile} onInput={e=>setReconMobile((e.currentTarget.value || '').replace(/\D/g,'').slice(0,10))} onChange={e=>setReconMobile(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950" /></label>
         <label className="text-xs font-black text-slate-700">Payment Date<Input type="date" value={reconDate} onChange={e=>setReconDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]" /></label>
         <Button onClick={runPaymentReconciliation} disabled={reconLoading || !reconDate} className="bg-blue-700 text-white hover:bg-blue-800"><Search className="w-4 h-4 mr-2"/>{reconLoading ? 'Checking…' : 'Check Payment'}</Button>
       </div>
