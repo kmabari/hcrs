@@ -1841,6 +1841,18 @@ export default function App() {
         }
       }
 
+      // A normal mobile login must resolve to an existing Firestore member.
+      // Never create Firebase Auth/profile records merely because somebody
+      // entered an unregistered number and a PIN. Admin aliases are the only
+      // intentional exception and still require their real Firebase password.
+      if (isMobile && !mappedUserData && !isDirectAdminAlias && !isMainAdminBypass) {
+        const notRegisteredError: any = new Error(
+          'ഈ മൊബൈൽ നമ്പർ രജിസ്റ്റർ ചെയ്ത അംഗത്തിന്റേതല്ല. ആദ്യം പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ പൂർത്തിയാക്കുക. (This mobile number is not registered.)'
+        );
+        notRegisteredError.code = 'auth/user-not-found';
+        throw notRegisteredError;
+      }
+
       setLoadingStatus(`Connecting as ${targetEmail}...`);
       let authResult: any = null;
       
@@ -1868,10 +1880,12 @@ export default function App() {
         trimmedPin === '123456' && (!storedPin || storedPin === '123456')
       );
       const isDbPinMatched = Boolean(
-        isAdminMasterPin || 
-        !storedPin || 
-        isCustomPinMatched || 
-        isDefaultPinMatched
+        mappedUserData && (
+          isAdminMasterPin ||
+          !storedPin ||
+          isCustomPinMatched ||
+          isDefaultPinMatched
+        )
       );
 
       // Reject a default PIN after that member has chosen a custom PIN.
@@ -2074,23 +2088,15 @@ export default function App() {
           } catch (e) {}
         }
 
-        // If user document is completely absent in Firestore, initialize standard member profile
+        // Authentication alone must never manufacture a paid/approved member.
+        // Membership can only originate from the registration/payment workflow.
         if (!mappedUserData) {
-          const fallbackProfile: any = {
-            uid: authResult.user.uid,
-            name: 'Member',
-            mobile: isMobile ? sanitizedMobile : '',
-            email: authResult.user.email || targetEmail,
-            role: 'member',
-            status: 'active',
-            isApproved: true,
-            isPaid: true,
-            createdAt: new Date().toISOString()
-          };
-          mappedUserData = fallbackProfile;
-          try {
-            await setDoc(doc(db, 'users', authResult.user.uid), fallbackProfile, { merge: true });
-          } catch (e) {}
+          await signOut(auth).catch(() => {});
+          const missingProfileError: any = new Error(
+            'ഈ മൊബൈൽ നമ്പർ രജിസ്റ്റർ ചെയ്ത അംഗത്തിന്റേതല്ല. പുതിയ അംഗത്വം എടുത്ത ശേഷം മാത്രം Login ചെയ്യുക. (No registered member profile found.)'
+          );
+          missingProfileError.code = 'auth/user-not-found';
+          throw missingProfileError;
         }
       }
       
