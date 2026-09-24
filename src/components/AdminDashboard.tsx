@@ -109,6 +109,7 @@ import { onSnapshot, collection, query, where, orderBy, serverTimestamp, doc, de
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
+import { buildRegistrationReceipt, printA4Receipts } from '@/src/lib/receiptUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2437,6 +2438,35 @@ export default function AdminDashboard({
     XLSX.writeFile(wb, `HCRS_Members_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const printMemberRegistrationReceipts = (membersToPrint: UserProfile[], label: string) => {
+    if (membersToPrint.length === 0) {
+      toast.error('No members are available for receipt printing.');
+      return;
+    }
+    let printTargets = membersToPrint;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+    if (isMobile && membersToPrint.length > 250) {
+      const requestedStart = window.prompt(
+        `Mobile cannot safely prepare ${membersToPrint.length} A4 pages at once. Enter the starting member number for a 100-receipt batch (1-${membersToPrint.length}):`,
+        '1'
+      );
+      if (requestedStart === null) return;
+      const start = Math.max(1, Math.min(membersToPrint.length, Number.parseInt(requestedStart, 10) || 1));
+      printTargets = membersToPrint.slice(start - 1, start - 1 + 100);
+      label = `${label} (${start}-${start + printTargets.length - 1})`;
+      toast.info(`Preparing ${printTargets.length} receipts. For the next batch, start from ${start + printTargets.length}.`);
+    } else if (membersToPrint.length > 100 && !window.confirm(
+      `${membersToPrint.length} standard A4 receipt pages will be prepared. This can take time and use a large amount of paper. Continue?`
+    )) return;
+
+    const opened = printA4Receipts(
+      printTargets.map(member => ({ member, receipt: buildRegistrationReceipt(member) })),
+      label
+    );
+    if (!opened) toast.error('Please allow pop-ups to open the A4 print window.');
+  };
+
   const exportAllIndividualClaimsToExcel = () => {
     const preferenceLabels: Record<string, string> = {
       settlement: 'Settlement and account closure after balance payment',
@@ -3639,6 +3669,25 @@ export default function AdminDashboard({
                         <Download className="w-4 h-4 mr-1 text-slate-500" />
                         Excel Export
                       </Button>
+                      <Button
+                        onClick={() => printMemberRegistrationReceipts(filteredMembers, 'HCRS Filtered Membership Receipts')}
+                        variant="outline"
+                        size="sm"
+                        className="h-10 rounded-xl font-bold text-xs w-full sm:w-auto flex-1 sm:flex-none"
+                        title="Print one A4 registration receipt for each currently filtered member"
+                      >
+                        <Printer className="w-4 h-4 mr-1 text-brand-blue" />
+                        Print Filtered ({filteredMembers.length})
+                      </Button>
+                      <Button
+                        onClick={() => printMemberRegistrationReceipts(actualMembers, 'HCRS All Membership Receipts')}
+                        size="sm"
+                        className="h-10 rounded-xl font-bold text-xs w-full sm:w-auto flex-1 sm:flex-none bg-slate-900 text-white hover:bg-slate-800"
+                        title="Print one continuous A4 job for all members"
+                      >
+                        <Printer className="w-4 h-4 mr-1" />
+                        Print All ({actualMembers.length})
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -3784,6 +3833,12 @@ export default function AdminDashboard({
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => setSelectedReceiptsMember(m)} className="text-xs font-bold">
                                         <Receipt className="w-3.5 h-3.5 mr-2 text-emerald-600" /> Payment Receipts
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => printMemberRegistrationReceipts([m], `Receipt ${m.membershipId || m.uid}`)}
+                                        className="text-xs font-bold"
+                                      >
+                                        <Printer className="w-3.5 h-3.5 mr-2 text-brand-blue" /> Print ₹200 A4 Receipt
                                       </DropdownMenuItem>
                                       {onResetPin && (
                                         <DropdownMenuItem onClick={() => onResetPin(m.uid)} className="text-xs font-bold">

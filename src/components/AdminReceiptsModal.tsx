@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { X, Receipt, Plus, Calendar, FileText, CheckCircle2 } from 'lucide-react';
+import { X, Receipt, Plus, Calendar, FileText, CheckCircle2, Printer } from 'lucide-react';
+import { buildRegistrationReceipt, printA4Receipts } from '../lib/receiptUtils';
 
 interface AdminReceiptsModalProps {
   member: UserProfile;
@@ -45,24 +46,7 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
     }
     setLoading(true);
 
-    // Only derive a profile-level receipt when the profile contains real payment
-    // evidence. Never fabricate a paid receipt or default amount from membership data.
-    const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];
-    const profileReceiptId = (member as any).receiptNumber || member.paymentId || member.transactionId || '';
-    const profilePaymentAmount = Number(member.paymentAmount || 0);
-    const registrationReceipt: PaymentReceipt | null = profileReceiptId && profilePaymentAmount > 0 ? {
-      id: `reg-${member.uid}`,
-      receiptNo: profileReceiptId,
-      receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
-      receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-      amount: profilePaymentAmount,
-      status: member.isPaid || String(member.paymentStatus || '').toLowerCase().includes('verified') ? 'Paid' : 'Pending Verification',
-      paymentDate: member.paymentDate || regDateStr,
-      createdAt: member.registrationDate,
-      transactionId: member.transactionId,
-      paymentId: member.paymentId,
-      paymentStatus: member.paymentStatus
-    } : null;
+    const registrationReceipt = buildRegistrationReceipt(member);
 
     let dbReceipts: PaymentReceipt[] = [];
     try {
@@ -77,7 +61,7 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
       console.warn('AdminReceiptsModal: Notice while fetching subcollection receipts:', error);
     }
 
-    let combined: PaymentReceipt[] = registrationReceipt ? [registrationReceipt] : [];
+    let combined: PaymentReceipt[] = [registrationReceipt];
 
     if (dbReceipts.length > 0) {
       // Keep genuine registration receipts from Firestore and only de-duplicate the
@@ -97,7 +81,13 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
             (r.transactionId && existing.transactionId === r.transactionId)
           );
           if (!duplicate) {
-            combined.push(r);
+            const legacyIndex = combined.findIndex(existing => existing.id === `reg-${member.uid}`);
+            const legacyReceipt = legacyIndex >= 0 ? combined[legacyIndex] : null;
+            if (legacyReceipt && !legacyReceipt.paymentId && !legacyReceipt.transactionId) {
+              combined[legacyIndex] = r;
+            } else {
+              combined.push(r);
+            }
           }
         } else {
           nonRegReceipts.push(r);
@@ -305,13 +295,27 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <div className="text-right">
                           <p className="text-xs sm:text-sm font-black text-brand-magenta">₹{receipt.amount}</p>
                           <span className="inline-flex items-center gap-0.5 bg-green-50 border border-green-100 text-green-700 text-[8px] font-black px-1 rounded-full uppercase">
                             {receipt.status}
                           </span>
                         </div>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (!printA4Receipts([{ member, receipt }], `Receipt ${receipt.receiptNo}`)) {
+                              toast.error('Please allow pop-ups to print the receipt.');
+                            }
+                          }}
+                          className="h-8 w-8 p-0 rounded-lg"
+                          title="Print A4 receipt"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </Button>
 
                       </div>
                     </div>
