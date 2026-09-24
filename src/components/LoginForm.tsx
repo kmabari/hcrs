@@ -35,6 +35,10 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
+const ADMIN_MOBILE_RESET_ALIASES: Record<string, string> = {
+  '9349711410': 'kmabarikiyafoods@gmail.com'
+};
+
 interface LoginFormProps {
   onLogin: (values: { email: string; pin: string }) => Promise<{ success: boolean; error?: string } | boolean> | void;
   onGoogleLogin: () => void;
@@ -114,6 +118,25 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
     const cleanMobile = rawInput.replace(/\D/g, '').slice(-10);
     if (cleanMobile.length !== 10) {
       toast.error('ദയവായി ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.');
+      return;
+    }
+
+    const adminResetEmail = ADMIN_MOBILE_RESET_ALIASES[cleanMobile];
+    if (adminResetEmail) {
+      const loadingToast = toast.loading('Sending secure admin password reset link...');
+      setIsResettingPin(true);
+      try {
+        await sendPasswordResetEmail(auth, adminResetEmail);
+        toast.success('Admin password reset link email-ലേക്ക് അയച്ചു.', { id: loadingToast });
+        setResetSuccessMessage(
+          'Admin email inbox പരിശോധിച്ച് പുതിയ password set ചെയ്യുക. ശേഷം 9349711410 + പുതിയ password ഉപയോഗിച്ച് Admin Panel-ൽ login ചെയ്യാം.'
+        );
+      } catch (error: any) {
+        console.warn('Admin reset email notice:', error);
+        toast.error(error?.message || 'Admin password reset link അയയ്ക്കാൻ കഴിഞ്ഞില്ല.', { id: loadingToast });
+      } finally {
+        setIsResettingPin(false);
+      }
       return;
     }
 
@@ -577,4 +600,3 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
     </div>
   );
 }
-
