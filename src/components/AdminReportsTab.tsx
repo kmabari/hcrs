@@ -48,12 +48,16 @@ export default function AdminReportsTab({
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
+  const [auditDate, setAuditDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  });
   const runSecurityAudit = async () => {
     setAuditLoading(true); setAuditError('');
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Admin authentication required');
-      const response = await fetch('/api/admin/security-audit', { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`/api/admin/security-audit?date=${encodeURIComponent(auditDate)}`, { headers: { Authorization: `Bearer ${token}` } });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Audit failed');
       setAuditRows(Array.isArray(body.rows) ? body.rows : []);
@@ -285,11 +289,11 @@ export default function AdminReportsTab({
   return <div className="space-y-6">
     <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
     <Card className="border-2 border-red-200 bg-white"><CardContent className="p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black text-slate-950">Security Audit — Today</h3><p className="text-xs font-bold text-slate-600">Read-only: Firebase data is not changed or deleted.</p></div>
-      <Button onClick={runSecurityAudit} disabled={auditLoading} className="bg-red-700 text-white hover:bg-red-800"><ShieldAlert className="w-4 h-4 mr-2"/>{auditLoading ? 'Checking…' : 'Check Today'}</Button></div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-black text-slate-950">Security Audit — Date-wise</h3><p className="text-xs font-bold text-slate-600">Read-only: Firebase data is not changed or deleted.</p></div>
+      <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-black text-slate-700">Select Date<Input type="date" value={auditDate} onChange={e=>setAuditDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]" /></label><Button onClick={runSecurityAudit} disabled={auditLoading || !auditDate} className="bg-red-700 text-white hover:bg-red-800"><ShieldAlert className="w-4 h-4 mr-2"/>{auditLoading ? 'Checking…' : 'Check Selected Date'}</Button></div></div>
       {auditError && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{auditError}</div>}
       {auditRows.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Mobile','Name','Member ID','Auth Email','Result','Reason'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{auditRows.map(row=><tr key={row.uid} className="border-t"><td className="p-2">{new Date(row.authCreatedAt).toLocaleString('en-IN')}</td><td className="p-2 font-bold">{row.mobile||'-'}</td><td className="p-2">{row.name||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-mono">{row.authEmail||'-'}</td><td className="p-2"><Badge className={row.classification === 'Likely unauthorized fallback' ? 'bg-red-100 text-red-950' : row.classification.startsWith('Legitimate') ? 'bg-emerald-100 text-emerald-950' : 'bg-amber-100 text-amber-950'}>{row.classification}</Badge></td><td className="p-2">{row.reason}</td></tr>)}</tbody></table></div>}
-      {!auditLoading && !auditError && auditRows.length === 0 && <p className="text-xs font-bold text-slate-500">Press Check Today to run the audit.</p>}
+      {!auditLoading && !auditError && auditRows.length === 0 && <p className="text-xs font-bold text-slate-500">Select a date and press Check Selected Date to run the audit.</p>}
     </Card>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <Metric label="New Reg Today" summary={dailySummary('new_memberships', today)} fee={200} />
