@@ -294,7 +294,7 @@ export default function AdminReportsTab({
       {auditError && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{auditError}</div>}
       {auditRows.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Mobile','Name','Member ID','Auth Email','Result','Reason'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{auditRows.map(row=><tr key={row.uid} className="border-t"><td className="p-2">{new Date(row.authCreatedAt).toLocaleString('en-IN')}</td><td className="p-2 font-bold">{row.mobile||'-'}</td><td className="p-2">{row.name||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-mono">{row.authEmail||'-'}</td><td className="p-2"><Badge className={row.classification === 'Likely unauthorized fallback' ? 'bg-red-100 text-red-950' : row.classification.startsWith('Legitimate') ? 'bg-emerald-100 text-emerald-950' : 'bg-amber-100 text-amber-950'}>{row.classification}</Badge></td><td className="p-2">{row.reason}</td></tr>)}</tbody></table></div>}
       {!auditLoading && !auditError && auditRows.length === 0 && <p className="text-xs font-bold text-slate-500">Select a date and press Check Selected Date to run the audit.</p>}
-    </Card>
+    </CardContent></Card>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <Metric label="New Reg Today" summary={dailySummary('new_memberships', today)} fee={200} />
       <Metric label="New Reg Yesterday" summary={dailySummary('new_memberships', yesterday)} fee={200} dark />
