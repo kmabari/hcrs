@@ -2159,13 +2159,21 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           const authDoc: any = docs.find(d => d.id === au.uid);
           const m = cleanMobile(authDoc?.mobile) || emailMobile;
           const matches = m ? (byMobile.get(m) || []) : [];
-          const genuine = matches.find(d => d.membershipId && String(d.membershipId).toUpperCase().startsWith('HCRS-') && d.name && String(d.name).trim().toLowerCase() !== 'member');
-          const fallback = matches.find(d => String(d.name || '').trim().toLowerCase() === 'member' && !d.membershipId && d.role === 'member' && d.status === 'active' && d.isApproved === true && d.isPaid === true);
+          // Accept every historical/current HCRS member-ID format. The mobile match is the primary
+          // identity link; a non-placeholder name + any real member ID is genuine membership evidence.
+          const genuine = matches.find(d => {
+            const memberId = String(d.membershipId || d.memberId || '').trim();
+            const memberName = String(d.name || d.fullName || '').trim();
+            return Boolean(memberId && memberName && memberName.toLowerCase() !== 'member');
+          });
+          const fallback = matches.find(d => String(d.name || '').trim().toLowerCase() === 'member' && !String(d.membershipId || d.memberId || '').trim() && d.role === 'member' && d.status === 'active' && d.isApproved === true && d.isPaid === true);
+          const invalidMobile = Boolean(m && !/^\\d{10}$/.test(m));
           let classification = 'Needs review';
           let reason = 'Auth account was created on the selected date; membership evidence is ambiguous.';
-          if (genuine) { classification = 'Legitimate member auth created today'; reason = 'Matching genuine HCRS member record exists for this mobile.'; }
-          else if (fallback || (authDoc && String(authDoc.name || '').trim().toLowerCase() === 'member' && !authDoc.membershipId)) { classification = 'Likely unauthorized fallback'; reason = 'Matches the former fallback profile signature and no genuine membership record was found.'; }
-          rows.push({ uid: au.uid, authEmail: au.email || '', authCreatedAt: au.metadata.creationTime || '', mobile: m, name: authDoc?.name || genuine?.name || '', membershipId: authDoc?.membershipId || genuine?.membershipId || '', classification, reason });
+          if (genuine) { classification = 'Legitimate member auth created today'; reason = 'Matching registered member record with Member ID exists for this mobile.'; }
+          else if (fallback || (authDoc && String(authDoc.name || '').trim().toLowerCase() === 'member' && !String(authDoc.membershipId || authDoc.memberId || '').trim())) { classification = 'Likely unauthorized fallback'; reason = 'Matches the former fallback profile signature and no registered member record with Member ID was found.'; }
+          if (invalidMobile && !genuine) { classification = 'Likely unauthorized fallback'; reason = 'Invalid/non-10-digit mobile identity and no registered member record was found.'; }
+          rows.push({ uid: au.uid, authEmail: au.email || '', authCreatedAt: au.metadata.creationTime || '', mobile: m, name: genuine?.name || genuine?.fullName || authDoc?.name || '', membershipId: genuine?.membershipId || genuine?.memberId || authDoc?.membershipId || authDoc?.memberId || '', classification, reason });
         }
         pageToken = page.pageToken;
       } while (pageToken);
