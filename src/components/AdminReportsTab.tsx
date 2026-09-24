@@ -23,6 +23,7 @@ type DateFilter = 'today' | 'yesterday' | 'custom_date' | 'date_range';
 type StatusFilter = 'all' | 'successful' | 'processing' | 'pending' | 'failed';
 type PaymentStatus = Exclude<StatusFilter, 'all'>;
 interface AuditRow { uid:string; authEmail:string; authCreatedAt:string; mobile:string; name:string; membershipId:string; classification:string; reason:string; }
+interface ReconciliationRow { paymentId:string; orderId:string; amount:number; razorpayStatus:string; method:string; createdAt:string; paymentType:string; hcrsPaymentRecorded:boolean; hcrsPaymentStatus:string; membershipId:string; memberName:string; memberStatus:string; renewalPending:boolean; expiryDate:string; reconciliationStatus:string; }
 interface ReportRow {
   key: string; member?: UserProfile; source: 'member' | 'payment'; type: ReportType;
   name: string; mobile: string; membershipId: string; district: string; assembly: string;
@@ -45,6 +46,29 @@ export default function AdminReportsTab({
   const [approvingUid, setApprovingUid] = useState<string | null>(null);
   const [district, setDistrict] = useState(userDistrict && !isSuperAdmin ? userDistrict : 'all');
   const [search, setSearch] = useState('');
+  const [reconMobile, setReconMobile] = useState('');
+  const [reconDate, setReconDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  });
+  const [reconRows, setReconRows] = useState<ReconciliationRow[]>([]);
+  const [reconLoading, setReconLoading] = useState(false);
+  const [reconError, setReconError] = useState('');
+  const runPaymentReconciliation = async () => {
+    const clean = reconMobile.replace(/\D/g, '').slice(-10);
+    if (!/^\d{10}$/.test(clean)) { setReconError('Enter a valid 10-digit mobile number.'); return; }
+    setReconLoading(true); setReconError('');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Admin authentication required');
+      const response = await fetch(`/api/admin/payment-reconciliation?date=${encodeURIComponent(reconDate)}&mobile=${encodeURIComponent(clean)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Reconciliation failed');
+      setReconRows(Array.isArray(body.rows) ? body.rows : []);
+    } catch (e:any) { setReconError(e?.message || 'Reconciliation failed'); }
+    finally { setReconLoading(false); }
+  };
+
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
@@ -288,6 +312,23 @@ export default function AdminReportsTab({
 
   return <div className="space-y-6">
     <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
+    <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
+      <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Read-only check. Confirms Razorpay payment status, HCRS payment record and member renewal status.</p></div>
+      <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 items-end">
+        <label className="text-xs font-black text-slate-700">Mobile Number<Input inputMode="numeric" value={reconMobile} onChange={e=>setReconMobile(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950" /></label>
+        <label className="text-xs font-black text-slate-700">Payment Date<Input type="date" value={reconDate} onChange={e=>setReconDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]" /></label>
+        <Button onClick={runPaymentReconciliation} disabled={reconLoading || !reconDate} className="bg-blue-700 text-white hover:bg-blue-800"><Search className="w-4 h-4 mr-2"/>{reconLoading ? 'Checking…' : 'Check Payment'}</Button>
+      </div>
+      {reconError && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{reconError}</div>}
+      {!reconLoading && !reconError && reconRows.length === 0 && reconMobile.length === 10 && <p className="text-xs font-bold text-slate-500">Press Check Payment to search Razorpay and HCRS records for this date.</p>}
+      {reconRows.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[1150px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Member','Member ID','Amount','Razorpay','HCRS Record','Member Status','Expiry','Result','Payment ID'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{reconRows.map(row=><tr key={row.paymentId} className="border-t">
+        <td className="p-2">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN') : '-'}</td><td className="p-2 font-bold">{row.memberName||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-black">₹{row.amount}</td>
+        <td className="p-2"><Badge className={row.razorpayStatus==='captured'?'bg-emerald-100 text-emerald-950':'bg-amber-100 text-amber-950'}>{row.razorpayStatus||'-'}</Badge></td>
+        <td className="p-2">{row.hcrsPaymentRecorded ? 'Saved' : 'Missing'}</td><td className="p-2">{row.memberStatus||'-'}{row.renewalPending?' · renewal pending':''}</td><td className="p-2">{row.expiryDate ? new Date(row.expiryDate).toLocaleDateString('en-IN') : '-'}</td>
+        <td className="p-2"><Badge className={row.reconciliationStatus.includes('active')?'bg-emerald-100 text-emerald-950':row.reconciliationStatus.includes('mismatch')||row.reconciliationStatus.includes('missing')?'bg-red-100 text-red-950':'bg-amber-100 text-amber-950'}>{row.reconciliationStatus}</Badge></td><td className="p-2 font-mono break-all">{row.paymentId}</td>
+      </tr>)}</tbody></table></div>}
+    </CardContent></Card>
+
     <Card className="border-2 border-red-200 bg-white"><CardContent className="p-4 space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-black text-slate-950">Security Audit — Date-wise</h3><p className="text-xs font-bold text-slate-600">Read-only: Firebase data is not changed or deleted.</p></div>
       <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-black text-slate-700">Select Date<Input type="date" value={auditDate} onChange={e=>setAuditDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]" /></label><Button onClick={runSecurityAudit} disabled={auditLoading || !auditDate} className="bg-red-700 text-white hover:bg-red-800"><ShieldAlert className="w-4 h-4 mr-2"/>{auditLoading ? 'Checking…' : 'Check Selected Date'}</Button></div></div>
