@@ -64,8 +64,8 @@ export default function AdminReportsTab({
       return Number.isNaN(parsed.getTime()) ? null : parsed;
     } catch { return null; }
   };
+  // A renewal/payment update must never make an old member look newly registered.
   const registrationDate = (member: UserProfile) =>
-    parseDate(member.paymentTimeISO) || parseDate(member.paymentTime) || parseDate(member.paymentDate) ||
     parseDate(member.registrationDate) || parseDate((member as any).createdAt);
   const renewalDate = (member: UserProfile) =>
     parseDate(member.renewalDate) || parseDate(member.renewalPaymentDate);
@@ -92,11 +92,11 @@ export default function AdminReportsTab({
     if (/failed|failure|cancelled|canceled|error|rejected/.test(raw)) return 'failed';
     if (/processing|verification_pending|pending_verification|awaiting_approval|authorized|initiated|created/.test(raw)) return 'processing';
     if (/pending/.test(raw)) return 'pending';
-    const successful = /payment_verified|renewal_auto_approved|success|successful|captured|renewed|paid|active/.test(raw);
-    const completion = Boolean(evidence.paymentId || evidence.transactionId || evidence.isPaid || evidence.approved);
+    const successful = /payment_verified|renewal_auto_approved|success|successful|captured|renewed|paid/.test(raw);
+    const completion = Boolean(evidence.paymentId || evidence.transactionId || evidence.isPaid);
     if (successful && completion) return 'successful';
     if (evidence.orderId && !completion) return 'processing';
-    if (evidence.isPaid && completion) return 'successful';
+    if (evidence.isPaid && (evidence.paymentId || evidence.transactionId)) return 'successful';
     return 'pending';
   };
 
@@ -118,7 +118,7 @@ export default function AdminReportsTab({
       key: `member:${type}:${member.uid}`, member, source: 'member', type,
       name: text(member.name), mobile: text(member.mobile), membershipId: text(member.membershipId),
       district: text(member.district || member.districtCode), assembly: text(member.assemblyConstituency),
-      amount: Number(member.paymentAmount || (type === 'new_memberships' ? 200 : 100)),
+      amount: type === 'new_memberships' ? 200 : 100,
       status: normalizeStatus(rawStatus, { orderId, paymentId, transactionId, isPaid: member.isPaid, approved }),
       rawStatus, orderId, paymentId, transactionId,
       date: type === 'new_memberships' ? registrationDate(member) : renewalDate(member),
@@ -132,13 +132,17 @@ export default function AdminReportsTab({
     const paymentId = text(payment.paymentId);
     const transactionId = text(payment.transactionId || payment.paymentId);
     const approved = Boolean(member && (member.status === 'active' || member.isApproved));
+    const name = text(payment.name || member?.name);
+    const memberMobile = text(payment.mobile || member?.mobile);
+    const membershipId = text(payment.membershipId || member?.membershipId || payment.memberId);
+    const normalizedStatus = normalizeStatus(rawStatus, { orderId, paymentId, transactionId, isPaid: member?.isPaid, approved });
+    const workflowComplete = Boolean(member && name && memberMobile && membershipId);
     return {
       key: `payment:${type}:${payment.id || paymentId || orderId}`, member, source: 'payment', type,
-      name: text(payment.name || member?.name), mobile: text(payment.mobile || member?.mobile),
-      membershipId: text(payment.membershipId || member?.membershipId || payment.memberId),
+      name, mobile: memberMobile, membershipId,
       district: text(member?.district || member?.districtCode), assembly: text(member?.assemblyConstituency),
       amount: Number(payment.amount || (type === 'new_memberships' ? 200 : 100)),
-      status: normalizeStatus(rawStatus, { orderId, paymentId, transactionId, isPaid: member?.isPaid, approved }),
+      status: normalizedStatus === 'successful' && !workflowComplete ? 'processing' : normalizedStatus,
       rawStatus, orderId, paymentId, transactionId,
       date: parseDate(payment.paymentTime) || parseDate(payment.paymentDate),
       expiryDate: member?.expiryDate, approved
@@ -146,8 +150,16 @@ export default function AdminReportsTab({
   };
 
   const rows = useMemo(() => {
-    const paymentRows = payments.map(payment => paymentRow(
-      payment, text(payment.paymentType).toLowerCase().includes('renew') ? 'renewals' : 'new_memberships'));
+    const paymentRows = payments.flatMap(payment => {
+      const rawType = text(payment.paymentType).toLowerCase();
+      const amount = Number(payment.amount || 0);
+      const type: ReportType | null = rawType.includes('renew') || amount === 100
+        ? 'renewals'
+        : /new|registration|membership/.test(rawType) || amount === 200
+          ? 'new_memberships'
+          : null;
+      return type ? [paymentRow(payment, type)] : [];
+    });
     const paymentIds = new Set(paymentRows.flatMap(row => [row.paymentId, row.transactionId, row.orderId].filter(Boolean)));
     const memberRows: ReportRow[] = [];
     members.forEach(member => {
