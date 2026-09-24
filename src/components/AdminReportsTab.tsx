@@ -445,55 +445,55 @@ export default function AdminReportsTab({
       <div className="space-y-6">
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-900 shadow-sm">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 shadow-sm">
           <CardContent className="p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 tracking-wider">New Reg Today</span>
+              <span className="text-[10px] font-black uppercase text-blue-800 tracking-wider">New Reg Today</span>
               <Badge className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5">₹200</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+            <div className="text-2xl sm:text-3xl font-black text-slate-950">
               {newMembersToday.length}
             </div>
-            <span className="text-[10px] text-slate-500 font-bold mt-1">Total ₹{newMembersToday.length * 200}</span>
+            <span className="text-[10px] text-slate-700 font-black mt-1">Total ₹{newMembersToday.length * 200}</span>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-slate-950 border-slate-200 dark:border-slate-800 shadow-sm">
+        <Card className="bg-gradient-to-br from-[#172443] to-[#071126] border-2 border-[#31456f] shadow-sm">
           <CardContent className="p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 tracking-wider">New Reg Yesterday</span>
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5">₹200</Badge>
+              <span className="text-[10px] font-black uppercase text-slate-100 tracking-wider">New Reg Yesterday</span>
+              <Badge className="text-[9px] px-1.5 py-0.5 bg-white text-slate-950 border border-white">₹200</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200">
+            <div className="text-2xl sm:text-3xl font-black text-white">
               {newMembersYesterday.length}
             </div>
-            <span className="text-[10px] text-slate-500 font-bold mt-1">Total ₹{newMembersYesterday.length * 200}</span>
+            <span className="text-[10px] text-slate-200 font-black mt-1">Total ₹{newMembersYesterday.length * 200}</span>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-900 shadow-sm">
+        <Card className="bg-gradient-to-br from-amber-50 to-orange-100 border-2 border-amber-200 shadow-sm">
           <CardContent className="p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">Renewals Today</span>
+              <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider">Renewals Today</span>
               <Badge className="bg-amber-600 text-white text-[9px] px-1.5 py-0.5">₹100</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+            <div className="text-2xl sm:text-3xl font-black text-slate-950">
               {renewalsToday.length}
             </div>
-            <span className="text-[10px] text-slate-500 font-bold mt-1">Total ₹{renewalsToday.length * 100}</span>
+            <span className="text-[10px] text-slate-700 font-black mt-1">Total ₹{renewalsToday.length * 100}</span>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-slate-50 to-amber-50/30 dark:from-slate-900 dark:to-slate-950 border-slate-200 dark:border-slate-800 shadow-sm">
+        <Card className="bg-gradient-to-br from-[#172443] to-[#071126] border-2 border-[#31456f] shadow-sm">
           <CardContent className="p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 tracking-wider">Renewals Yesterday</span>
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5">₹100</Badge>
+              <span className="text-[10px] font-black uppercase text-slate-100 tracking-wider">Renewals Yesterday</span>
+              <Badge className="text-[9px] px-1.5 py-0.5 bg-white text-slate-950 border border-white">₹100</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200">
+            <div className="text-2xl sm:text-3xl font-black text-white">
               {renewalsYesterday.length}
             </div>
-            <span className="text-[10px] text-slate-500 font-bold mt-1">Total ₹{renewalsYesterday.length * 100}</span>
+            <span className="text-[10px] text-slate-200 font-black mt-1">Total ₹{renewalsYesterday.length * 100}</span>
           </CardContent>
         </Card>
       </div>
