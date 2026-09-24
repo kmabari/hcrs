@@ -47,7 +47,6 @@ export default function AdminReportsTab({
   const [district, setDistrict] = useState(userDistrict && !isSuperAdmin ? userDistrict : 'all');
   const [search, setSearch] = useState('');
   const [reconMobile, setReconMobile] = useState('');
-  const [reconMobileInput, setReconMobileInput] = useState<HTMLInputElement | null>(null);
   const [reconDate, setReconDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -56,12 +55,21 @@ export default function AdminReportsTab({
   const [reconLoading, setReconLoading] = useState(false);
   const [reconError, setReconError] = useState('');
   const runPaymentReconciliation = async () => {
-    // Read the visible DOM value as well as React state. Some Android/browser autofill
-    // paths can visually fill an input without synchronously updating controlled state.
-    const visibleValue = reconMobileInput?.value || reconMobile;
-    const clean = visibleValue.replace(/\D/g, '').slice(-10);
+    // Normalize Unicode/locale digits and formatting before validation. This also
+    // handles mobile keyboards/autofill that visually render ASCII digits but emit
+    // localized numeral code points or invisible formatting characters.
+    const normalizeDigits = (value: string) => Array.from(value || '').map(ch => {
+      const cp = ch.codePointAt(0) || 0;
+      if (cp >= 0x30 && cp <= 0x39) return ch;
+      if (cp >= 0x660 && cp <= 0x669) return String(cp - 0x660);
+      if (cp >= 0x6F0 && cp <= 0x6F9) return String(cp - 0x6F0);
+      if (cp >= 0x966 && cp <= 0x96F) return String(cp - 0x966);
+      if (cp >= 0xD66 && cp <= 0xD6F) return String(cp - 0xD66);
+      return '';
+    }).join('');
+    const clean = normalizeDigits(reconMobile).slice(-10);
     if (clean !== reconMobile) setReconMobile(clean);
-    if (!/^\d{10}$/.test(clean)) { setReconError('Enter a valid 10-digit mobile number.'); return; }
+    if (clean.length !== 10) { setReconError(`Mobile value received: ${clean.length} digits. Please clear the field and type all 10 digits again.`); return; }
     setReconLoading(true); setReconError('');
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -320,7 +328,7 @@ export default function AdminReportsTab({
     <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
       <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Read-only check. Confirms Razorpay payment status, HCRS payment record and member renewal status.</p></div>
       <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 items-end">
-        <label className="text-xs font-black text-slate-700">Mobile Number<Input ref={setReconMobileInput} type="tel" inputMode="numeric" autoComplete="tel" maxLength={10} value={reconMobile} onInput={e=>setReconMobile((e.currentTarget.value || '').replace(/\D/g,'').slice(0,10))} onChange={e=>setReconMobile(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950" /></label>
+        <label className="text-xs font-black text-slate-700">Mobile Number<Input type="tel" inputMode="numeric" autoComplete="off" value={reconMobile} onChange={e=>setReconMobile(e.target.value)} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950" /></label>
         <label className="text-xs font-black text-slate-700">Payment Date<Input type="date" value={reconDate} onChange={e=>setReconDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]" /></label>
         <Button onClick={runPaymentReconciliation} disabled={reconLoading || !reconDate} className="bg-blue-700 text-white hover:bg-blue-800"><Search className="w-4 h-4 mr-2"/>{reconLoading ? 'Checking…' : 'Check Payment'}</Button>
       </div>
