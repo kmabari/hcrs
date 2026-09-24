@@ -2443,12 +2443,25 @@ export default function AdminDashboard({
       toast.error('No members are available for receipt printing.');
       return;
     }
-    if (membersToPrint.length > 100 && !window.confirm(
-      `${membersToPrint.length} A4 receipt pages will be prepared. This can take time and use a large amount of paper. Continue?`
+    let printTargets = membersToPrint;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+    if (isMobile && membersToPrint.length > 250) {
+      const requestedStart = window.prompt(
+        `Mobile cannot safely prepare ${membersToPrint.length} A4 pages at once. Enter the starting member number for a 100-receipt batch (1-${membersToPrint.length}):`,
+        '1'
+      );
+      if (requestedStart === null) return;
+      const start = Math.max(1, Math.min(membersToPrint.length, Number.parseInt(requestedStart, 10) || 1));
+      printTargets = membersToPrint.slice(start - 1, start - 1 + 100);
+      label = `${label} (${start}-${start + printTargets.length - 1})`;
+      toast.info(`Preparing ${printTargets.length} receipts. For the next batch, start from ${start + printTargets.length}.`);
+    } else if (membersToPrint.length > 100 && !window.confirm(
+      `${membersToPrint.length} standard A4 receipt pages will be prepared. This can take time and use a large amount of paper. Continue?`
     )) return;
 
     const opened = printA4Receipts(
-      membersToPrint.map(member => ({ member, receipt: buildRegistrationReceipt(member) })),
+      printTargets.map(member => ({ member, receipt: buildRegistrationReceipt(member) })),
       label
     );
     if (!opened) toast.error('Please allow pop-ups to open the A4 print window.');

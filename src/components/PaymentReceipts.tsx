@@ -10,7 +10,7 @@ import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
-import { buildRegistrationReceipt } from '../lib/receiptUtils';
+import { buildRegistrationReceipt, getReceiptMembershipCategory } from '../lib/receiptUtils';
 
 interface PaymentReceiptsProps {
   user: UserProfile;
@@ -430,6 +430,10 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                       {user.district} / {user.assemblyConstituency}
                     </span>
                   </div>
+                  <div>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">Membership Category</span>
+                    <span className="font-black text-brand-blue text-xs">{getReceiptMembershipCategory(user)}</span>
+                  </div>
                 </div>
 
                 {/* Payment Breakdown / Items Table */}
@@ -493,14 +497,12 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                     <ShieldCheck className="w-4 h-4" />
                     <span className="text-[9px] font-black uppercase tracking-wider">Secured & Verified</span>
                   </div>
-                  <div className="text-right">
-                    {/* Fake stamp signature design */}
-                    <div className="relative inline-block mb-1">
-                      <span className="font-black text-[9px] uppercase tracking-wider text-slate-600 block">Accounts Division</span>
-                      <div className="absolute -top-6 right-2 w-14 h-14 border-2 border-green-500/35 rounded-full flex items-center justify-center -rotate-12 pointer-events-none select-none">
-                        <span className="text-[7px] text-green-500 font-black tracking-tighter uppercase leading-none text-center">HCRS<br/>PAID</span>
-                      </div>
-                    </div>
+                  <div className="text-right flex flex-col items-center">
+                    <img
+                      src="/hcrs-official-seal.png"
+                      alt="Official HCRS Seal"
+                      className="w-16 h-16 object-contain mix-blend-multiply mb-1"
+                    />
                     <p className="text-[8px] font-extrabold text-slate-600">Authorized Signatory</p>
                   </div>
                 </div>
