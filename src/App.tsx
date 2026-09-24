@@ -1589,6 +1589,16 @@ export default function App() {
     }
     const isMobile = /^\d{10}$/.test(sanitizedMobile);
 
+    // Security guard: a digits-only login is always treated as a mobile-number
+    // attempt. Reject anything other than a valid 10-digit Indian mobile here
+    // instead of allowing it to fall through to identifier/member-ID lookup.
+    const isDigitsOnlyLogin = /^\d+$/.test(originalInput);
+    if (isDigitsOnlyLogin && !isMobile) {
+      setIsLoggingIn(false);
+      toast.error('10 അക്കമുള്ള സാധുവായ മൊബൈൽ നമ്പർ നൽകുക. (Please enter a valid 10-digit mobile number.)', { id: loadingToast });
+      return false;
+    }
+
     // Securely cache identifier for subsequent dynamic UID healing checks
     if (typeof window !== 'undefined') {
       try {
