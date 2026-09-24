@@ -2120,6 +2120,172 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // READ-ONLY PAYMENT RECONCILIATION: compare Razorpay with HCRS records/member status.
+  // This endpoint never captures/refunds payments and never writes to Firebase.
+  app.get(["/api/admin/payment-reconciliation", "/admin/payment-reconciliation"], async (req, res) => {
+    try {
+      // Reconciliation needs Firebase Admin for HCRS cross-checks. If Admin is not
+      // available on a preview deployment, return a diagnostic instead of implying
+      // that the member/payment itself is missing.
+      if (!dbAdmin) {
+        return res.status(503).json({
+          error: "HCRS server database connection is unavailable in this deployment.",
+          code: "FIREBASE_ADMIN_UNAVAILABLE",
+          firebaseAdminInitialized: admin.apps.length > 0,
+          serviceAccountConfigured: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+          hint: "Check FIREBASE_SERVICE_ACCOUNT_JSON for this Vercel Preview environment."
+        });
+      }
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      const isAllowed = requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin';
+      if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
+
+      const dateParam = String(req.query.date || '').trim();
+      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const queryMobile = String(req.query.mobile || '').replace(/\\D/g, '').slice(-10);
+      if (!/^\\d{10}$/.test(queryMobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
+
+      const [year, month, day] = targetDate.split('-').map(Number);
+      const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
+      const endMs = startMs + 24 * 60 * 60 * 1000;
+      const from = Math.floor(startMs / 1000);
+      const to = Math.floor((endMs - 1) / 1000);
+      const { keyId, keySecret } = getRazorpayCredentials();
+      if (!keyId || !keySecret) return res.status(503).json({ error: "Razorpay credentials are unavailable." });
+      const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+
+      // Find the member by mobile without changing any record.
+      const usersSnap = await dbAdmin.collection('users').get();
+      const cleanMobile = (v: any) => String(v || '').replace(/\\D/g, '').slice(-10);
+      const memberDocs = usersSnap.docs.filter(d => cleanMobile((d.data() || {}).mobile) === queryMobile);
+      const member = memberDocs.find(d => {
+        const x:any = d.data() || {};
+        return Boolean(String(x.membershipId || x.memberId || '').trim() && String(x.name || x.fullName || '').trim().toLowerCase() !== 'member');
+      }) || memberDocs[0];
+      const memberData:any = member?.data() || {};
+
+      const razorpayRows:any[] = [];
+      let skip = 0;
+      while (skip < 1000) {
+        const url = `https://api.razorpay.com/v1/payments?from=${from}&to=${to}&count=100&skip=${skip}`;
+        const rpRes = await fetch(url, { headers: { Authorization: authHeader } });
+        const rpBody:any = await rpRes.json().catch(() => ({}));
+        if (!rpRes.ok) return res.status(rpRes.status || 502).json({ error: rpBody?.error?.description || "Razorpay reconciliation lookup failed." });
+        const items:any[] = Array.isArray(rpBody.items) ? rpBody.items : [];
+        for (const p of items) {
+          if (!p?.order_id || !['captured','authorized'].includes(String(p.status || ''))) continue;
+          let order:any = null;
+          try {
+            const oRes = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(p.order_id)}`, { headers: { Authorization: authHeader } });
+            if (oRes.ok) order = await oRes.json();
+          } catch (_) {}
+          const notes = order?.notes || p?.notes || {};
+          const noteMobile = cleanMobile(notes.mobile);
+          const noteMemberId = String(notes.memberId || '').trim();
+          const memberIdMatches = Boolean(member && (noteMemberId === member.id || noteMemberId === String(memberData.membershipId || memberData.memberId || '')));
+          if (noteMobile !== queryMobile && !memberIdMatches) continue;
+
+          const payDoc = await dbAdmin.collection('payments').doc(String(p.id)).get();
+          const payData:any = payDoc.exists ? payDoc.data() || {} : {};
+          const currentExpiry = memberData.expiryDate?.toDate ? memberData.expiryDate.toDate() : (memberData.expiryDate ? new Date(memberData.expiryDate) : null);
+          const active = String(memberData.status || '').toLowerCase() === 'active' && memberData.renewalPending !== true && currentExpiry instanceof Date && !Number.isNaN(currentExpiry.getTime()) && currentExpiry.getTime() > Date.now();
+          const recorded = payDoc.exists && payData.status === 'SUCCESS';
+          let reconciliationStatus = 'Captured — HCRS record missing';
+          if (recorded && active) reconciliationStatus = 'Captured — Renewal active';
+          else if (recorded && !active) reconciliationStatus = 'Captured — Auto-approval mismatch';
+          razorpayRows.push({
+            paymentId: p.id || '', orderId: p.order_id || '', amount: Number(p.amount || 0) / 100,
+            razorpayStatus: p.status || '', method: p.method || '', createdAt: p.created_at ? new Date(Number(p.created_at) * 1000).toISOString() : '',
+            paymentType: notes.paymentType || (Number(p.amount) === 10000 ? 'renewal' : Number(p.amount) === 20000 ? 'registration' : ''),
+            hcrsPaymentRecorded: recorded, hcrsPaymentStatus: payData.paymentStatus || payData.status || '',
+            memberUid: member?.id || '', membershipId: memberData.membershipId || memberData.memberId || '',
+            memberName: memberData.name || memberData.fullName || '', memberStatus: memberData.status || '',
+            renewalPending: memberData.renewalPending === true, expiryDate: currentExpiry instanceof Date && !Number.isNaN(currentExpiry.getTime()) ? currentExpiry.toISOString() : '',
+            reconciliationStatus
+          });
+        }
+        if (items.length < 100) break;
+        skip += 100;
+      }
+      razorpayRows.sort((a,b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      return res.json({ success:true, readOnly:true, date:targetDate, mobile:queryMobile, memberFound:Boolean(member), rows:razorpayRows });
+    } catch (err:any) {
+      console.error("[Payment Reconciliation] Error:", err?.message || err);
+      return res.status(500).json({ error: "Failed to run read-only payment reconciliation." });
+    }
+  });
+
+  // READ-ONLY SECURITY AUDIT: accounts created today via the former login fallback.
+  // This endpoint never writes to Firebase Auth or Firestore.
+  app.get(["/api/admin/security-audit", "/admin/security-audit"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Audit database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      const isAllowed = requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin';
+      if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
+
+      const dateParam = String(req.query.date || '').trim();
+      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const [year, month, day] = targetDate.split('-').map(Number);
+      const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0); // 00:00 IST
+      const endMs = startMs + 24 * 60 * 60 * 1000;
+
+      const usersSnap = await dbAdmin.collection('users').get();
+      const docs = usersSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) } as any));
+      const byMobile = new Map<string, any[]>();
+      const cleanMobile = (v: any) => String(v || '').replace(/\\D/g, '').slice(-10);
+      for (const d of docs) { const m = cleanMobile(d.mobile); if (m) byMobile.set(m, [...(byMobile.get(m) || []), d]); }
+
+      const rows: any[] = [];
+      let pageToken: string | undefined = undefined;
+      do {
+        const page = await admin.auth().listUsers(1000, pageToken);
+        for (const au of page.users) {
+          const createdMs = Date.parse(au.metadata.creationTime || '');
+          if (!Number.isFinite(createdMs) || createdMs < startMs || createdMs >= endMs) continue;
+          const email = String(au.email || '').toLowerCase();
+          const emailMobile = cleanMobile(email.split('@')[0]?.split('_p')[0]);
+          const authDoc: any = docs.find(d => d.id === au.uid);
+          const m = cleanMobile(authDoc?.mobile) || emailMobile;
+          const matches = m ? (byMobile.get(m) || []) : [];
+          // Accept every historical/current HCRS member-ID format. The mobile match is the primary
+          // identity link; a non-placeholder name + any real member ID is genuine membership evidence.
+          const genuine = matches.find(d => {
+            const memberId = String(d.membershipId || d.memberId || '').trim();
+            const memberName = String(d.name || d.fullName || '').trim();
+            return Boolean(memberId && memberName && memberName.toLowerCase() !== 'member');
+          });
+          const fallback = matches.find(d => String(d.name || '').trim().toLowerCase() === 'member' && !String(d.membershipId || d.memberId || '').trim() && d.role === 'member' && d.status === 'active' && d.isApproved === true && d.isPaid === true);
+          const invalidMobile = Boolean(m && !/^\\d{10}$/.test(m));
+          let classification = 'Needs review';
+          let reason = 'Auth account was created on the selected date; membership evidence is ambiguous.';
+          if (genuine) { classification = 'Legitimate member auth created today'; reason = 'Matching registered member record with Member ID exists for this mobile.'; }
+          else if (fallback || (authDoc && String(authDoc.name || '').trim().toLowerCase() === 'member' && !String(authDoc.membershipId || authDoc.memberId || '').trim())) { classification = 'Likely unauthorized fallback'; reason = 'Matches the former fallback profile signature and no registered member record with Member ID was found.'; }
+          if (invalidMobile && !genuine) { classification = 'Likely unauthorized fallback'; reason = 'Invalid/non-10-digit mobile identity and no registered member record was found.'; }
+          rows.push({ uid: au.uid, authEmail: au.email || '', authCreatedAt: au.metadata.creationTime || '', mobile: m, name: genuine?.name || genuine?.fullName || authDoc?.name || '', membershipId: genuine?.membershipId || genuine?.memberId || authDoc?.membershipId || authDoc?.memberId || '', classification, reason });
+        }
+        pageToken = page.pageToken;
+      } while (pageToken);
+      rows.sort((a,b) => Date.parse(b.authCreatedAt) - Date.parse(a.authCreatedAt));
+      return res.json({ success: true, readOnly: true, date: targetDate, timezone: 'Asia/Kolkata', rows });
+    } catch (err: any) {
+      console.error("[Security Audit API] Error:", err?.message || err);
+      return res.status(500).json({ error: "Failed to run read-only security audit" });
+    }
+  });
+
   // ============================================================================
   // MEMBER PIN / PASSWORD RESET ENDPOINT
   // Allows registered members or operators/admins to reset PIN to default 123456
