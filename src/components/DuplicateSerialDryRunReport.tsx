@@ -1,7 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, CheckCircle2, Download, FileSearch } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, FileSearch, Loader2, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../types';
+import { db } from '../lib/firebase';
+import { doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 interface DuplicateSerialDryRunReportProps {
   members: UserProfile[];
   claims: any[];
+  canApply?: boolean;
 }
 
 const cleanMobile = (value: unknown) => String(value || '').replace(/\D/g, '').slice(-10);
@@ -41,7 +45,10 @@ const replaceMembershipSuffix = (membershipId: string | undefined, serial: numbe
   return /\d+\s*$/.test(current) ? current.replace(/\d+\s*$/, String(serial)) : current;
 };
 
-export default function DuplicateSerialDryRunReport({ members, claims }: DuplicateSerialDryRunReportProps) {
+export default function DuplicateSerialDryRunReport({ members, claims, canApply = false }: DuplicateSerialDryRunReportProps) {
+  const [backupDownloaded, setBackupDownloaded] = useState(false);
+  const [confirmationText, setConfirmationText] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
   const serialAudit = useMemo(() => {
     const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
     const serialCounts = new Map<number, number>();
@@ -98,6 +105,10 @@ export default function DuplicateSerialDryRunReport({ members, claims }: Duplica
       const serial = extractSerial(member);
       return serial ? Math.max(maximum, serial) : maximum;
     }, 1000);
+    // The correction sequence must never start below the current member total.
+    // This also protects against a stale system/totals counter (the original cause
+    // of repeated 1001 values).
+    const correctionBase = Math.max(maximumSerial, eligibleMembers.length);
 
     const serial1001Members = eligibleMembers
       .filter(member => extractSerial(member) === 1001)
@@ -110,16 +121,17 @@ export default function DuplicateSerialDryRunReport({ members, claims }: Duplica
 
     return serial1001Members.map((member, index) => {
       const keepOriginal = index === 0;
-      const proposedSerial = keepOriginal ? 1001 : maximumSerial + index;
+      const proposedSerial = keepOriginal ? 1001 : correctionBase + index;
       const memberMobile = cleanMobile(member.mobile);
       const memberId = String(member.membershipId || '').trim().toLowerCase();
       const matchingClaims = claims.filter(claim => {
-        const uidMatch = Boolean(member.uid && claim.uid && member.uid === claim.uid);
-        const mobileMatch = Boolean(memberMobile && cleanMobile(claim.userMobile || claim.mobile) === memberMobile);
-        const membershipMatch = Boolean(
-          memberId && claim.membershipId && String(claim.membershipId).trim().toLowerCase() === memberId
-        );
-        return uidMatch || mobileMatch || membershipMatch;
+        // Prefer the strongest available identifier. Falling through only when a
+        // claim does not carry that identifier prevents one duplicated old ID
+        // from attaching the same verification form to multiple members.
+        if (claim.uid) return Boolean(member.uid && member.uid === claim.uid);
+        const claimMobile = cleanMobile(claim.userMobile || claim.mobile);
+        if (claimMobile) return Boolean(memberMobile && claimMobile === memberMobile);
+        return Boolean(memberId && claim.membershipId && String(claim.membershipId).trim().toLowerCase() === memberId);
       });
 
       return {
@@ -184,7 +196,75 @@ export default function DuplicateSerialDryRunReport({ members, claims }: Duplica
     ];
     const overallWorksheet = XLSX.utils.json_to_sheet(overallAuditRows);
     XLSX.utils.book_append_sheet(workbook, overallWorksheet, 'Overall Serial Audit');
-    XLSX.writeFile(workbook, `HCRS_serial_1001_dry_run_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `HCRS_serial_1001_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    setBackupDownloaded(true);
+  };
+
+  const applySerialCorrections = async () => {
+    const corrections = report.filter(row => !row.keepOriginal);
+    if (!canApply || corrections.length === 0 || confirmationText !== 'CORRECT 1001' || !backupDownloaded) return;
+
+    const confirmed = window.confirm(
+      `${corrections.length} duplicate 1001 member records correction ചെയ്യുകയും ബന്ധപ്പെട്ട verification forms update ചെയ്യുകയും ചെയ്യും. തുടരണമോ?`
+    );
+    if (!confirmed) return;
+
+    setIsApplying(true);
+    const toastId = toast.loading('Serial correction നടത്തുന്നു...');
+    try {
+      type PendingWrite = { path: string[]; data: Record<string, unknown> };
+      const writes: PendingWrite[] = [];
+      const correctedAt = serverTimestamp();
+
+      corrections.forEach(row => {
+        const oldMembershipId = String(row.member.membershipId || '');
+        const memberUpdate: Record<string, unknown> = {
+          serialNo: row.proposedSerial,
+          previousSerialNo: 1001,
+          serialCorrectedAt: correctedAt,
+          serialCorrectionReason: 'DUPLICATE_1001'
+        };
+        if (row.proposedMembershipId) memberUpdate.membershipId = row.proposedMembershipId;
+        writes.push({ path: ['users', row.member.uid], data: memberUpdate });
+
+        row.matchingClaims.forEach(claim => {
+          if (!claim.id) return;
+          const claimUpdate: Record<string, unknown> = {
+            serialNo: row.proposedSerial,
+            previousSerialNo: 1001,
+            serialCorrectedAt: correctedAt
+          };
+          if (row.proposedMembershipId) claimUpdate.membershipId = row.proposedMembershipId;
+          if (oldMembershipId) claimUpdate.previousMembershipId = oldMembershipId;
+          writes.push({ path: ['claims', claim.id], data: claimUpdate });
+        });
+      });
+
+      // Keep each batch below Firestore's 500-operation limit.
+      for (let offset = 0; offset < writes.length; offset += 450) {
+        const batch = writeBatch(db);
+        writes.slice(offset, offset + 450).forEach(write => {
+          batch.set(doc(db, ...write.path), write.data, { merge: true });
+        });
+        await batch.commit();
+      }
+
+      const finalSerial = Math.max(...corrections.map(row => row.proposedSerial));
+      const counterBatch = writeBatch(db);
+      counterBatch.set(doc(db, 'system', 'totals'), {
+        count: finalSerial,
+        serialCorrectionUpdatedAt: serverTimestamp()
+      }, { merge: true });
+      await counterBatch.commit();
+
+      toast.success(`${corrections.length} duplicate serial records corrected. അവസാന serial: ${finalSerial}`, { id: toastId });
+      setConfirmationText('');
+    } catch (error: any) {
+      console.error('Duplicate serial correction failed:', error);
+      toast.error(`Serial correction പരാജയപ്പെട്ടു: ${error?.message || 'Unknown error'}`, { id: toastId });
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   return (
@@ -276,6 +356,40 @@ export default function DuplicateSerialDryRunReport({ members, claims }: Duplica
             <p className="text-xl font-black text-blue-700">{maximumSerial}</p>
           </div>
         </div>
+
+        {migrationCount > 0 && (
+          <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="w-5 h-5 text-red-700 mt-0.5" />
+              <div>
+                <h4 className="font-black text-red-950">Controlled Serial Correction</h4>
+                <p className="text-xs font-bold text-red-800">
+                  ആദ്യം Excel backup download ചെയ്യുക. തുടർന്ന് confirmation phrase നൽകിയാൽ duplicate 1001 records മാത്രം update ചെയ്യും.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input
+                value={confirmationText}
+                onChange={event => setConfirmationText(event.target.value)}
+                placeholder="Type: CORRECT 1001"
+                className="h-11 rounded-xl border-2 border-red-200 bg-white px-3 font-mono font-bold text-slate-950 outline-none focus:border-red-500"
+                disabled={isApplying || !canApply}
+              />
+              <Button
+                type="button"
+                onClick={applySerialCorrections}
+                disabled={!canApply || !backupDownloaded || confirmationText !== 'CORRECT 1001' || isApplying}
+                className="h-11 rounded-xl bg-red-700 hover:bg-red-800 font-black"
+              >
+                {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldAlert className="w-4 h-4 mr-2" />}
+                Apply {migrationCount} Corrections
+              </Button>
+            </div>
+            {!canApply && <p className="text-xs font-black text-red-800">Super Admin login-ൽ മാത്രം correction അനുവദിച്ചിരിക്കുന്നു.</p>}
+            {!backupDownloaded && <p className="text-xs font-bold text-red-700">Correction unlock ചെയ്യാൻ മുകളിലെ Export Excel ആദ്യം അമർത്തണം.</p>}
+          </div>
+        )}
 
         {report.length === 0 ? (
           <div className="rounded-xl border border-emerald-200 bg-white p-5 text-center text-sm font-bold text-emerald-700">
