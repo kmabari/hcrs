@@ -2120,6 +2120,63 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // READ-ONLY SECURITY AUDIT: accounts created today via the former login fallback.
+  // This endpoint never writes to Firebase Auth or Firestore.
+  app.get(["/api/admin/security-audit", "/admin/security-audit"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Audit database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      const isAllowed = requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin';
+      if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
+
+      const dateParam = String(req.query.date || '').trim();
+      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const [year, month, day] = targetDate.split('-').map(Number);
+      const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0); // 00:00 IST
+      const endMs = startMs + 24 * 60 * 60 * 1000;
+
+      const usersSnap = await dbAdmin.collection('users').get();
+      const docs = usersSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) } as any));
+      const byMobile = new Map<string, any[]>();
+      const cleanMobile = (v: any) => String(v || '').replace(/\\D/g, '').slice(-10);
+      for (const d of docs) { const m = cleanMobile(d.mobile); if (m) byMobile.set(m, [...(byMobile.get(m) || []), d]); }
+
+      const rows: any[] = [];
+      let pageToken: string | undefined = undefined;
+      do {
+        const page = await admin.auth().listUsers(1000, pageToken);
+        for (const au of page.users) {
+          const createdMs = Date.parse(au.metadata.creationTime || '');
+          if (!Number.isFinite(createdMs) || createdMs < startMs || createdMs >= endMs) continue;
+          const email = String(au.email || '').toLowerCase();
+          const emailMobile = cleanMobile(email.split('@')[0]?.split('_p')[0]);
+          const authDoc: any = docs.find(d => d.id === au.uid);
+          const m = cleanMobile(authDoc?.mobile) || emailMobile;
+          const matches = m ? (byMobile.get(m) || []) : [];
+          const genuine = matches.find(d => d.membershipId && String(d.membershipId).toUpperCase().startsWith('HCRS-') && d.name && String(d.name).trim().toLowerCase() !== 'member');
+          const fallback = matches.find(d => String(d.name || '').trim().toLowerCase() === 'member' && !d.membershipId && d.role === 'member' && d.status === 'active' && d.isApproved === true && d.isPaid === true);
+          let classification = 'Needs review';
+          let reason = 'Auth account was created on the selected date; membership evidence is ambiguous.';
+          if (genuine) { classification = 'Legitimate member auth created today'; reason = 'Matching genuine HCRS member record exists for this mobile.'; }
+          else if (fallback || (authDoc && String(authDoc.name || '').trim().toLowerCase() === 'member' && !authDoc.membershipId)) { classification = 'Likely unauthorized fallback'; reason = 'Matches the former fallback profile signature and no genuine membership record was found.'; }
+          rows.push({ uid: au.uid, authEmail: au.email || '', authCreatedAt: au.metadata.creationTime || '', mobile: m, name: authDoc?.name || genuine?.name || '', membershipId: authDoc?.membershipId || genuine?.membershipId || '', classification, reason });
+        }
+        pageToken = page.pageToken;
+      } while (pageToken);
+      rows.sort((a,b) => Date.parse(b.authCreatedAt) - Date.parse(a.authCreatedAt));
+      return res.json({ success: true, readOnly: true, date: targetDate, timezone: 'Asia/Kolkata', rows });
+    } catch (err: any) {
+      console.error("[Security Audit API] Error:", err?.message || err);
+      return res.status(500).json({ error: "Failed to run read-only security audit" });
+    }
+  });
+
   // ============================================================================
   // MEMBER PIN / PASSWORD RESET ENDPOINT
   // Allows registered members or operators/admins to reset PIN to default 123456
