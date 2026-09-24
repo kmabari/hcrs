@@ -2124,7 +2124,18 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // This endpoint never captures/refunds payments and never writes to Firebase.
   app.get(["/api/admin/payment-reconciliation", "/admin/payment-reconciliation"], async (req, res) => {
     try {
-      if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
+      // Reconciliation needs Firebase Admin for HCRS cross-checks. If Admin is not
+      // available on a preview deployment, return a diagnostic instead of implying
+      // that the member/payment itself is missing.
+      if (!dbAdmin) {
+        return res.status(503).json({
+          error: "HCRS server database connection is unavailable in this deployment.",
+          code: "FIREBASE_ADMIN_UNAVAILABLE",
+          firebaseAdminInitialized: admin.apps.length > 0,
+          serviceAccountConfigured: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+          hint: "Check FIREBASE_SERVICE_ACCOUNT_JSON for this Vercel Preview environment."
+        });
+      }
       const authorization = String(req.headers.authorization || '');
       const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
       if (!token) return res.status(401).json({ error: "Admin authentication is required" });
