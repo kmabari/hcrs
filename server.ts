@@ -2099,7 +2099,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const requesterEmail = String(decoded.email || '').toLowerCase();
       const isAllowed = requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin';
       if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
-      const paymentSnapshot = await dbAdmin.collection('payments').orderBy('verifiedAt', 'desc').limit(200).get();
+      const requestedLimit = Number.parseInt(String(req.query.limit || '200'), 10);
+      const paymentLimit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 10000) : 200;
+      const paymentSnapshot = await dbAdmin.collection('payments').orderBy('verifiedAt', 'desc').limit(paymentLimit).get();
       const payments = paymentSnapshot.docs.map(paymentDoc => {
         const data: any = paymentDoc.data() || {};
         const verifiedAt = data.verifiedAt?.toDate ? data.verifiedAt.toDate().toISOString() : data.paymentTime || '';
