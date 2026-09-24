@@ -40,6 +40,21 @@ const toDate = (value: any): Date | null => {
   }
 };
 
+const formatBackupDate = (value: any) => {
+  const date = toDate(value);
+  if (!date) return '';
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+const getMembershipCategory = (member: UserProfile) =>
+  member.membership_type === 'LIFE_MEMBER' || member.membershipType === 'Life'
+    ? 'LIFE MEMBER'
+    : 'ADHOC MEMBER';
+
 const replaceMembershipSuffix = (membershipId: string | undefined, serial: number) => {
   const current = String(membershipId || '').trim();
   if (!current) return '';
@@ -187,6 +202,31 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const migrationCount = correctionPlan.rows.length;
 
   const exportDryRun = () => {
+    const eligibleMembers = members
+      .filter(member => member.role !== 'admin' && member.role !== 'operator')
+      .sort((left, right) => {
+        const leftSerial = extractSerial(left) ?? Number.MAX_SAFE_INTEGER;
+        const rightSerial = extractSerial(right) ?? Number.MAX_SAFE_INTEGER;
+        return leftSerial - rightSerial || compareMembers(left, right);
+      });
+
+    const allMemberRows = eligibleMembers.map((member, index) => ({
+      'Sl No': index + 1,
+      'Firestore UID': member.uid || '',
+      'Name': member.name || '',
+      'Mobile': member.mobile || '',
+      'District': member.district || member.districtCode || '',
+      'Assembly': member.assemblyConstituency || member.constituencyCode || '',
+      'Current Serial': extractSerial(member) || 'INVALID / NONE',
+      'Current Membership ID': member.membershipId || '',
+      'Membership Category': getMembershipCategory(member),
+      'Status': member.status || '',
+      'Paid': member.isPaid ? 'YES' : 'NO',
+      'Approved': member.isApproved ? 'YES' : 'NO',
+      'Joining Date': formatBackupDate(member.registrationDate || (member as any).createdAt),
+      'Expiry Date': formatBackupDate(member.expiryDate)
+    }));
+
     const rows = correctionPlan.rows.map((row, index) => ({
       'Sl No': index + 1,
       'Firestore UID': row.member.uid || '',
@@ -203,8 +243,17 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
       'Verification Form IDs': row.matchingClaims.map(claim => claim.id || '').filter(Boolean).join(', ')
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
+
+    const allMembersWorksheet = XLSX.utils.json_to_sheet(allMemberRows);
+    allMembersWorksheet['!cols'] = [
+      { wch: 8 }, { wch: 30 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
+      { wch: 22 }, { wch: 16 }, { wch: 32 }, { wch: 22 }, { wch: 12 },
+      { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 16 }
+    ];
+    XLSX.utils.book_append_sheet(workbook, allMembersWorksheet, 'All Members Full Backup');
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Full Correction Mapping');
 
     const rangeAuditRows = Array.from(
@@ -231,7 +280,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     ];
     const overallWorksheet = XLSX.utils.json_to_sheet(overallAuditRows);
     XLSX.utils.book_append_sheet(workbook, overallWorksheet, 'Overall Serial Audit');
-    XLSX.writeFile(workbook, `HCRS_full_serial_correction_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `HCRS_all_members_full_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
     setBackupDownloaded(true);
   };
 
@@ -351,10 +400,10 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
             type="button"
             variant="outline"
             onClick={exportDryRun}
-            disabled={migrationCount === 0}
+            disabled={serialAudit.eligibleCount === 0}
             className="rounded-xl font-bold"
           >
-            <Download className="w-4 h-4 mr-2" /> Export Excel
+            <Download className="w-4 h-4 mr-2" /> Export Full Backup Excel
           </Button>
         </div>
 
@@ -431,7 +480,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
               <div>
                 <h4 className="font-black text-red-950">Controlled Serial Correction</h4>
                 <p className="text-xs font-bold text-red-800">
-                  ആദ്യം Excel backup download ചെയ്ത് മുഴുവൻ old → new mapping പരിശോധിക്കുക. എല്ലാ duplicate/invalid records-നും missing serials മാത്രമാണ് നൽകുക.
+                  ആദ്യം full backup Excel download ചെയ്യുക. അതിലെ All Members Full Backup sheet-ൽ എല്ലാ അംഗങ്ങളും, Full Correction Mapping sheet-ൽ മാറ്റേണ്ട records-ഉം പരിശോധിക്കുക.
                 </p>
               </div>
             </div>
@@ -455,7 +504,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
             </div>
             {!canApply && <p className="text-xs font-black text-red-800">Super Admin login-ൽ മാത്രം correction അനുവദിച്ചിരിക്കുന്നു.</p>}
             {!correctionPlan.isBalanced && <p className="text-xs font-black text-red-800">Mapping count mismatch കണ്ടെത്തി. Correction block ചെയ്തിരിക്കുന്നു.</p>}
-            {!backupDownloaded && <p className="text-xs font-bold text-red-700">Correction unlock ചെയ്യാൻ മുകളിലെ Export Excel ആദ്യം അമർത്തണം.</p>}
+            {!backupDownloaded && <p className="text-xs font-bold text-red-700">Correction unlock ചെയ്യാൻ മുകളിലെ Export Full Backup Excel ആദ്യം അമർത്തണം.</p>}
           </div>
         )}
 
