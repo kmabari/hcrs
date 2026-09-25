@@ -2148,8 +2148,17 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       const dateParam = String(req.query.date || '').trim();
       const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      const queryMobile = String(req.query.mobile || '').replace(/\\D/g, '').slice(-10);
-      if (!/^\\d{10}$/.test(queryMobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
+      const normalizeQueryDigits = (value: any) => Array.from(String(value || '')).map((ch: string) => {
+        const cp = ch.codePointAt(0) || 0;
+        if (cp >= 0x30 && cp <= 0x39) return ch;
+        if (cp >= 0x660 && cp <= 0x669) return String(cp - 0x660);
+        if (cp >= 0x6F0 && cp <= 0x6F9) return String(cp - 0x6F0);
+        if (cp >= 0x966 && cp <= 0x96F) return String(cp - 0x966);
+        if (cp >= 0xD66 && cp <= 0xD6F) return String(cp - 0xD66);
+        return '';
+      }).join('');
+      const queryMobile = normalizeQueryDigits(req.query.mobile).slice(-10);
+      if (queryMobile.length !== 10) return res.status(400).json({ error: `Server received ${queryMobile.length} mobile digits. Please re-enter the 10-digit number.` });
 
       const [year, month, day] = targetDate.split('-').map(Number);
       const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
