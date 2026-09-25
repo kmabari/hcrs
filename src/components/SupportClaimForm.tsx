@@ -1001,14 +1001,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   useEffect(() => {
     if (user) {
       if (user.name) {
-        if (!customerName) setCustomerName(user.name);
+        setCustomerName(user.name);
         if (!selfName) setSelfName(user.name);
       }
-      if (user.mobile && !customerMobile) setCustomerMobile(user.mobile);
+      if (user.mobile) setCustomerMobile(user.mobile);
       
       const uAddr = sanitizeMemberAddress((user as any).houseName || (user as any).house || user.address || (user as any).residentialAddress || (user as any).userAddress || '');
       if (uAddr) {
-        if (!customerAddress) setCustomerAddress(uAddr);
+        setCustomerAddress(uAddr);
         if (!spouseAddress) setSpouseAddress(uAddr);
         if (!parentAddress) setParentAddress(uAddr);
         if (!childAddress) setChildAddress(uAddr);
@@ -1039,7 +1039,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uPO = user.postOffice || (user as any).po || '';
       if (uPO) {
-        if (!customerPostOffice) setCustomerPostOffice(uPO);
+        setCustomerPostOffice(uPO);
         if (!spousePostOffice) setSpousePostOffice(uPO);
         if (!parentPostOffice) setParentPostOffice(uPO);
         if (!childPostOffice) setChildPostOffice(uPO);
@@ -1047,7 +1047,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uAutoPlace = (uPO || uDist || (user as any).place || (user as any).location || '').trim();
       if (uAutoPlace) {
-        if (!customerPlace) setCustomerPlace(uAutoPlace);
+        setCustomerPlace(uAutoPlace);
         if (!spousePlace) setSpousePlace(uAutoPlace);
         if (!parentPlace) setParentPlace(uAutoPlace);
         if (!childPlace) setChildPlace(uAutoPlace);
@@ -1055,13 +1055,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uPin = user.pincode || (user as any).pin || (user as any).postalCode || '';
       if (uPin) {
-        if (!customerPincode) setCustomerPincode(uPin);
+        setCustomerPincode(uPin);
         if (!spousePincode) setSpousePincode(uPin);
         if (!parentPincode) setParentPincode(uPin);
         if (!childPincode) setChildPincode(uPin);
       }
       
-      if (((user as any).panNumber || (user as any).pan) && !customerPan) setCustomerPan((user as any).panNumber || (user as any).pan);
+      if ((user as any).panNumber || (user as any).pan) setCustomerPan((user as any).panNumber || (user as any).pan);
       if (user.sponsorName && !selfSponsorName) {
         setSelfSponsorName(user.sponsorName);
         if (!spouseSponsorName) setSpouseSponsorName(user.sponsorName);
