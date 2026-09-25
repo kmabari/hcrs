@@ -82,8 +82,8 @@ const getRotationDocumentId = (conf: JanamailConfig | null | undefined): string 
   return `janamail_rotation_${String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
 };
 
-const getSubmissionDocumentId = (campaignId: string, emailId: string): string =>
-  `janamail_lock_${campaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+const getSubmissionDocumentId = (_campaignId: string, emailId: string): string =>
+  `janamail_email_lock_${emailId.toLowerCase().trim().replace(/[^a-zA-Z0-9_]/g, "_")}`;
 
 interface EmailEditorProps {
   config?: JanamailConfig | null;
@@ -115,10 +115,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       ""
     ).toLowerCase().trim();
 
-    if (userEmail) return userEmail;
-    if (phone.trim()) return `phone_${phone.trim()}`;
-    if (currentUserProfile?.uid || authUser?.uid) return `uid_${currentUserProfile?.uid || authUser?.uid}`;
-    return "anonymous";
+    return userEmail || "anonymous";
   };
 
   // Auto Save status
@@ -883,6 +880,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         templateId: activeComposeMethod === "template" ? (currentSelectedTemplate?.id || null) : null,
         campaignId: currentCampaignId,
         emailId: emailId || null,
+        toRecipients: cleanEmailAddresses(recipients || config?.recipients || "ca.budsact@kerala.gov.in"),
+        ccRecipients: getDeduplicatedCc(recipients || config?.recipients || "ca.budsact@kerala.gov.in", cc || config?.cc || ""),
         status: "Completed",
         submissionStatus: "Completed",
         emailLaunchStatus: emailLaunchStatus,
