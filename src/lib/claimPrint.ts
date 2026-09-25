@@ -734,13 +734,14 @@ export const renderPersonCourtClaimPage = (
   // District & Assembly Constituency
   const ownDist = claim.userDistrict || claim.district;
   const mainDist = userProf?.district || userProf?.userDistrict;
-  const distCode = ownDist || mainDist;
+  // For Self, the current profile is authoritative; family claims retain their own saved location.
+  const distCode = isSelf ? (mainDist || ownDist) : (ownDist || mainDist);
   const districtObj = DISTRICTS.find(d => d.code === distCode);
   const districtName = districtObj?.name || distCode || 'Kerala';
 
   const ownConsti = claim.userConstituency || claim.constituency;
   const mainConsti = userProf?.assemblyConstituency || userProf?.constituency;
-  const asslyName = ownConsti || mainConsti || 'N/A';
+  const asslyName = isSelf ? (mainConsti || ownConsti || 'N/A') : (ownConsti || mainConsti || 'N/A');
 
   // Residential address: must come from claimant address or synced main claimant address only.
   // Never use HCRS text or membership status.
