@@ -2148,17 +2148,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       const dateParam = String(req.query.date || '').trim();
       const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      const normalizeQueryDigits = (value: any) => Array.from(String(value || '')).map((ch: string) => {
-        const cp = ch.codePointAt(0) || 0;
-        if (cp >= 0x30 && cp <= 0x39) return ch;
-        if (cp >= 0x660 && cp <= 0x669) return String(cp - 0x660);
-        if (cp >= 0x6F0 && cp <= 0x6F9) return String(cp - 0x6F0);
-        if (cp >= 0x966 && cp <= 0x96F) return String(cp - 0x966);
-        if (cp >= 0xD66 && cp <= 0xD6F) return String(cp - 0xD66);
-        return '';
-      }).join('');
-      const queryMobile = normalizeQueryDigits(req.query.mobile).slice(-10);
-      if (queryMobile.length !== 10) return res.status(400).json({ error: `Server received ${queryMobile.length} mobile digits. Please re-enter the 10-digit number.` });
+      const queryMobile = String(req.query.mobile || '').replace(/\\D/g, '').slice(-10);
+      if (!/^\\d{10}$/.test(queryMobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
 
       const [year, month, day] = targetDate.split('-').map(Number);
       const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
@@ -2227,6 +2218,150 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err:any) {
       console.error("[Payment Reconciliation] Error:", err?.message || err);
       return res.status(500).json({ error: "Failed to run read-only payment reconciliation." });
+    }
+  });
+
+  // READ-ONLY DAILY PAYMENT EXCEPTIONS: find every captured Razorpay payment whose
+  // HCRS payment record/member activation is missing or inconsistent.
+  app.get(["/api/admin/payment-exceptions", "/admin/payment-exceptions"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      if (!(requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin')) {
+        return res.status(403).json({ error: "Admin access is required" });
+      }
+
+      const dateParam = String(req.query.date || '').trim();
+      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+      const [year, month, day] = targetDate.split('-').map(Number);
+      const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
+      const endMs = startMs + 86400000;
+      const from = Math.floor(startMs / 1000), to = Math.floor((endMs - 1) / 1000);
+      const { keyId, keySecret } = getRazorpayCredentials();
+      if (!keyId || !keySecret) return res.status(503).json({ error:"Razorpay credentials are unavailable." });
+      const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const usersSnap = await dbAdmin.collection('users').get();
+      const cleanMobile = (v:any) => String(v || '').replace(/\\D/g,'').slice(-10);
+      const users = usersSnap.docs.map(d => ({ uid:d.id, ...(d.data() || {}) } as any));
+      const byUid = new Map(users.map((u:any) => [u.uid, u]));
+      const byMembership = new Map(users.filter((u:any)=>u.membershipId || u.memberId).map((u:any)=>[String(u.membershipId || u.memberId),u]));
+      const byMobile = new Map(users.filter((u:any)=>cleanMobile(u.mobile)).map((u:any)=>[cleanMobile(u.mobile),u]));
+      const rows:any[] = [];
+      let skip=0;
+      while(skip<1000){
+        const rpRes=await fetch(`https://api.razorpay.com/v1/payments?from=${from}&to=${to}&count=100&skip=${skip}`,{headers:{Authorization:authHeader}});
+        const body:any=await rpRes.json().catch(()=>({}));
+        if(!rpRes.ok) return res.status(rpRes.status||502).json({error:body?.error?.description||"Razorpay lookup failed"});
+        const items:any[]=Array.isArray(body.items)?body.items:[];
+        for(const p of items){
+          if(String(p.status)!=='captured') continue;
+          let order:any=null;
+          if(p.order_id){ try { const o=await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(p.order_id)}`,{headers:{Authorization:authHeader}}); if(o.ok) order=await o.json(); } catch(_){} }
+          const notes=order?.notes||p.notes||{};
+          const noteUid=String(notes.memberId||'').trim();
+          const noteMobile=cleanMobile(notes.mobile);
+          const member:any=byUid.get(noteUid)||byMembership.get(noteUid)||byMobile.get(noteMobile);
+          const payDoc=await dbAdmin.collection('payments').doc(String(p.id)).get();
+          const payData:any=payDoc.exists?payDoc.data()||{}:{};
+          const recorded=payDoc.exists && payData.status==='SUCCESS';
+          const paymentType=String(notes.paymentType||'') || (Number(p.amount)===10000?'renewal':Number(p.amount)===20000?'registration':'');
+          const expiry=member?.expiryDate?.toDate?member.expiryDate.toDate():(member?.expiryDate?new Date(member.expiryDate):null);
+          const validExpiry=expiry instanceof Date&&!Number.isNaN(expiry.getTime())&&expiry.getTime()>Date.now();
+          const active=Boolean(member)&&String(member.status||'').toLowerCase()==='active'&&member.renewalPending!==true&&validExpiry;
+          let result='OK';
+          if(!member) result='Captured — Member not resolved';
+          else if(!recorded) result='Captured — HCRS record missing';
+          else if(paymentType==='renewal'&&!active) result='Captured — Auto-approval mismatch';
+          else if(paymentType==='registration'&&!active) result='Captured — Registration activation mismatch';
+          if(result!=='OK') rows.push({paymentId:p.id||'',orderId:p.order_id||'',amount:Number(p.amount||0)/100,createdAt:p.created_at?new Date(Number(p.created_at)*1000).toISOString():'',method:p.method||'',paymentType,memberUid:member?.uid||'',membershipId:member?.membershipId||member?.memberId||'',memberName:member?.name||member?.fullName||'',mobile:cleanMobile(member?.mobile)||noteMobile,hcrsPaymentRecorded:recorded,hcrsPaymentStatus:payData.paymentStatus||payData.status||'',memberStatus:member?.status||'',renewalPending:member?.renewalPending===true,expiryDate:expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry.toISOString():'',result});
+        }
+        if(items.length<100) break; skip+=100;
+      }
+      rows.sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
+      return res.json({success:true,readOnly:true,date:targetDate,totalExceptions:rows.length,rows});
+    } catch(err:any){
+      console.error("[Payment Exceptions] Error:",err?.message||err);
+      return res.status(500).json({error:"Failed to run payment exceptions audit"});
+    }
+  });
+
+  // ADMIN PAYMENT RECOVERY: two-step recovery for captured Razorpay payments.
+  // verify mode is read-only. repair mode writes only after a fresh Razorpay captured/amount/member check.
+  app.post(["/api/admin/payment-recovery", "/admin/payment-recovery"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error:"Payment database is unavailable" });
+      const authorization=String(req.headers.authorization||'');
+      const token=authorization.startsWith('Bearer ')?authorization.slice(7):'';
+      if(!token) return res.status(401).json({error:"Admin authentication is required"});
+      const decoded=await admin.auth().verifyIdToken(token);
+      const requester=await dbAdmin.collection('users').doc(decoded.uid).get();
+      const rd:any=requester.exists?requester.data()||{}:{};
+      const email=String(decoded.email||'').toLowerCase();
+      if(!(email==='hcrskerala@gmail.com'||rd.isAdmin===true||rd.role==='admin')) return res.status(403).json({error:"Admin access is required"});
+
+      const paymentId=String(req.body?.paymentId||'').trim();
+      const action=String(req.body?.action||'verify');
+      if(!/^pay_[A-Za-z0-9]+$/.test(paymentId)) return res.status(400).json({error:"Invalid Razorpay payment ID"});
+      if(!['verify','repair'].includes(action)) return res.status(400).json({error:"Invalid recovery action"});
+
+      const {keyId,keySecret}=getRazorpayCredentials();
+      if(!keyId||!keySecret) return res.status(503).json({error:"Razorpay credentials are unavailable"});
+      const authHeader="Basic "+Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const pRes=await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}`,{headers:{Authorization:authHeader}});
+      const payment:any=await pRes.json().catch(()=>({}));
+      if(!pRes.ok) return res.status(pRes.status||502).json({error:payment?.error?.description||"Razorpay payment lookup failed"});
+      if(String(payment.status)!=='captured') return res.status(409).json({error:`Payment is not captured (status: ${payment.status||'unknown'})`});
+      if(!payment.order_id) return res.status(409).json({error:"Captured payment has no Razorpay order ID; manual review required"});
+
+      const oRes=await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(payment.order_id)}`,{headers:{Authorization:authHeader}});
+      const order:any=oRes.ok?await oRes.json():null;
+      if(!order) return res.status(409).json({error:"Razorpay order could not be verified"});
+      const notes=order.notes||payment.notes||{};
+      const amountINR=Number(payment.amount||0)/100;
+      const paymentType=String(notes.paymentType||'')||(Number(payment.amount)===10000?'renewal':Number(payment.amount)===20000?'registration':'');
+      const expectedAmount=paymentType==='renewal'?100:paymentType==='registration'?200:0;
+      if(!expectedAmount||amountINR!==expectedAmount) return res.status(409).json({error:`Payment amount/type cannot be safely resolved (₹${amountINR}, ${paymentType||'unknown'})`});
+
+      const clean=(v:any)=>String(v||'').replace(/\D/g,'').slice(-10);
+      const usersSnap=await dbAdmin.collection('users').get();
+      const users=usersSnap.docs.map(d=>({uid:d.id,...(d.data()||{})} as any));
+      const noteMember=String(notes.memberId||'').trim(), noteMobile=clean(notes.mobile);
+      const member:any=users.find((u:any)=>u.uid===noteMember)||users.find((u:any)=>String(u.membershipId||u.memberId||'')===noteMember)||users.find((u:any)=>noteMobile&&clean(u.mobile)===noteMobile);
+      if(!member) return res.status(409).json({error:"Member could not be safely resolved from Razorpay order notes; manual review required"});
+
+      const payRef=dbAdmin.collection('payments').doc(paymentId);
+      const existing=await payRef.get();
+      const existingData:any=existing.exists?existing.data()||{}:{};
+      const expiry=member.expiryDate?.toDate?member.expiryDate.toDate():(member.expiryDate?new Date(member.expiryDate):null);
+      const details={paymentId,orderId:payment.order_id,amount:amountINR,paymentType,method:payment.method||'',captured:true,memberUid:member.uid,membershipId:member.membershipId||member.memberId||'',memberName:member.name||member.fullName||'',mobile:clean(member.mobile),hcrsPaymentRecorded:existing.exists&&existingData.status==='SUCCESS',memberStatus:member.status||'',renewalPending:member.renewalPending===true,expiryDate:expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry.toISOString():''};
+      if(action==='verify') return res.json({success:true,verified:true,readOnly:true,details});
+
+      // Idempotency: a completed recovery for this payment can be safely retried.
+      if(existing.exists&&existingData.status==='SUCCESS'&&existingData.recoveryCompleted===true) return res.json({success:true,repaired:true,alreadyRecovered:true,details});
+
+      const now=new Date();
+      const newExpiry=new Date(now); newExpiry.setFullYear(newExpiry.getFullYear()+1);
+      const receiptNo=`RCP-REC-${paymentId.slice(-8).toUpperCase()}`;
+      const batch=dbAdmin.batch();
+      batch.set(payRef,{paymentId,orderId:payment.order_id,amount:amountINR,currency:payment.currency||'INR',paymentType,memberId:member.uid,membershipId:member.membershipId||member.memberId||'',name:member.name||member.fullName||'',mobile:clean(member.mobile),status:'SUCCESS',paymentStatus:'PAYMENT_RECOVERED',paymentDate:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString().split('T')[0]:now.toISOString().split('T')[0],paymentTime:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString():now.toISOString(),method:payment.method||'Razorpay',source:'admin-recovery',recoveryCompleted:true,recoveredAt:admin.firestore.FieldValue.serverTimestamp(),recoveredBy:decoded.uid},{merge:true});
+      const userRef=dbAdmin.collection('users').doc(member.uid);
+      const userUpdate:any={status:'active',isApproved:true,isPaid:true,renewalPending:false,paymentAmount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentMethod:'Razorpay',expiryDate:admin.firestore.Timestamp.fromDate(newExpiry),paymentVerifiedAt:admin.firestore.FieldValue.serverTimestamp()};
+      if(paymentType==='renewal') Object.assign(userUpdate,{renewalTransactionId:paymentId,renewalDate:admin.firestore.FieldValue.serverTimestamp(),renewalApprovedAt:admin.firestore.FieldValue.serverTimestamp(),renewalPaymentDate:now.toISOString().split('T')[0],paymentStatus:'RENEWAL_RECOVERED',issueDate:admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
+      else Object.assign(userUpdate,{paymentStatus:'PAYMENT_RECOVERED',registrationDate:member.registrationDate||admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
+      batch.update(userRef,userUpdate);
+      const receiptRef=userRef.collection('receipts').doc(`recovery_${paymentId}`);
+      batch.set(receiptRef,{receiptNo,receiptType:paymentType==='renewal'?'Membership Renewal':'Membership Fee',receiptLabel:paymentType==='renewal'?'Membership Renewal Receipt':'Membership Registration Receipt',amount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentTime:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString():now.toISOString(),paymentMethod:'Razorpay',paymentStatus:paymentType==='renewal'?'RENEWAL_RECOVERED':'PAYMENT_RECOVERED',status:'Paid',paymentDate:now.toISOString().split('T')[0],createdAt:admin.firestore.FieldValue.serverTimestamp(),memberId:member.membershipId||member.memberId||member.uid,source:'admin-recovery'},{merge:true});
+      await batch.commit();
+      return res.json({success:true,repaired:true,alreadyRecovered:false,details:{...details,newExpiryDate:newExpiry.toISOString(),receiptNumber:receiptNo}});
+    } catch(err:any){
+      console.error("[Payment Recovery] Error:",err?.message||err);
+      return res.status(500).json({error:"Failed to verify or repair payment"});
     }
   });
 
@@ -2953,16 +3088,44 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           const paymentId = paymentEntity.id;
           const orderId = paymentEntity.order_id;
           const amountPaise = paymentEntity.amount;
-          const notes = paymentEntity.notes || {};
-          const paymentType = notes.paymentType || (amountPaise === 20000 ? 'registration' : 'renewal');
-          const memberId = notes.memberId;
+          let notes = paymentEntity.notes || {};
+          try {
+            const { keyId, keySecret } = getRazorpayCredentials();
+            const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+            if (orderId) {
+              const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}`, { headers: { Authorization: authHeader } });
+              if (orderRes.ok) {
+                const verifiedOrder:any = await orderRes.json();
+                if (Number(verifiedOrder.amount) !== Number(amountPaise)) return res.status(409).json({ status: "amount_mismatch" });
+                notes = verifiedOrder.notes || notes;
+              }
+            }
+          } catch (orderErr:any) {
+            console.warn("[Razorpay Webhook] Order verification notice:", orderErr?.message || orderErr);
+          }
+          const paymentType = notes.paymentType || (amountPaise === 20000 ? 'registration' : amountPaise === 10000 ? 'renewal' : '');
+          let memberId = String(notes.memberId || '').trim();
+
+          // Older/alternate order notes can contain a membership ID or only mobile.
+          if (dbAdmin && (!memberId || !(await dbAdmin.collection('users').doc(memberId).get()).exists)) {
+            const cleanMobile = (v:any) => String(v || '').replace(/\D/g, '').slice(-10);
+            const noteMobile = cleanMobile(notes.mobile);
+            const allUsers = await dbAdmin.collection('users').get();
+            const matched = allUsers.docs.find(d => String((d.data() || {}).membershipId || (d.data() || {}).memberId || '') === memberId)
+              || allUsers.docs.find(d => noteMobile && cleanMobile((d.data() || {}).mobile) === noteMobile);
+            if (matched) memberId = matched.id;
+          }
 
           console.log(`[Razorpay Webhook] Event: ${event}, PaymentID: ${paymentId}, Type: ${paymentType}, MemberId: ${memberId}`);
 
-          if (dbAdmin && memberId) {
+          if (dbAdmin && memberId && ['registration','renewal'].includes(paymentType) && ((paymentType === 'registration' && amountPaise === 20000) || (paymentType === 'renewal' && amountPaise === 10000))) {
             try {
               const existingPay = await dbAdmin.collection('payments').doc(paymentId).get();
-              if (!existingPay.exists || existingPay.data()?.status !== 'SUCCESS') {
+              const userRef = dbAdmin.collection('users').doc(memberId);
+              const userDoc = await userRef.get();
+              const existingUser:any = userDoc.exists ? userDoc.data() || {} : {};
+              const memberAlreadyProcessed = String(existingUser.paymentId || '') === paymentId || String(existingUser.transactionId || '') === paymentId || String(existingUser.renewalTransactionId || '') === paymentId;
+              if (!existingPay.exists || existingPay.data()?.status !== 'SUCCESS' || !memberAlreadyProcessed) {
                 await dbAdmin.collection('payments').doc(paymentId).set({
                   paymentId,
                   orderId,
@@ -2975,8 +3138,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                   verifiedAt: admin.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                const userRef = dbAdmin.collection('users').doc(memberId);
-                const userDoc = await userRef.get();
                 if (userDoc.exists) {
                   const now = new Date();
                   const userData = userDoc.data() || {};
@@ -2984,6 +3145,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                     membershipId: userData.membershipId || '', name: userData.name || '', mobile: userData.mobile || '',
                     paymentDate: now.toISOString().split('T')[0], paymentTime: now.toISOString(), paymentStatus: 'PAYMENT_VERIFIED'
                   }, { merge: true });
+                  const receiptNo = `RCP-${paymentType === 'renewal' ? 'REN' : 'REG'}-${String(paymentId).slice(-8).toUpperCase()}`;
                   if (paymentType === 'registration') {
                     const expiry = new Date(now);
                     expiry.setFullYear(expiry.getFullYear() + 1);
@@ -2999,7 +3161,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                       registrationDate: userData.registrationDate || admin.firestore.FieldValue.serverTimestamp(),
                       expiryDate: admin.firestore.Timestamp.fromDate(expiry),
                       renewalPending: false,
-                      paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
+                      paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+                      transactionId: paymentId,
+                      receiptNumber: receiptNo
                     });
                   } else if (paymentType === 'renewal') {
                     const expiry = new Date(now);
@@ -3018,9 +3182,26 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                       paymentMethod: 'Razorpay',
                       paymentStatus: 'RENEWAL_AUTO_APPROVED',
                       expiryDate: admin.firestore.Timestamp.fromDate(expiry),
-                      issueDate: admin.firestore.FieldValue.serverTimestamp()
+                      issueDate: admin.firestore.FieldValue.serverTimestamp(),
+                      transactionId: paymentId,
+                      renewalPaymentDate: now.toISOString().split('T')[0],
+                      receiptNumber: receiptNo
                     });
                   }
+                  await userRef.collection('receipts').doc(`razorpay_${paymentId}`).set({
+                    receiptNo,
+                    receiptType: paymentType === 'renewal' ? 'Membership Renewal' : 'Membership Fee',
+                    receiptLabel: paymentType === 'renewal' ? 'Membership Renewal Receipt' : 'Membership Registration Receipt',
+                    amount: amountPaise / 100,
+                    paymentId, orderId, transactionId: paymentId,
+                    paymentTime: paymentEntity.created_at ? new Date(Number(paymentEntity.created_at) * 1000).toISOString() : now.toISOString(),
+                    paymentMethod: 'Razorpay',
+                    paymentStatus: paymentType === 'renewal' ? 'RENEWAL_AUTO_APPROVED' : 'PAYMENT_VERIFIED',
+                    status: 'Paid', paymentDate: now.toISOString().split('T')[0],
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    memberId: userData.membershipId || userData.memberId || memberId,
+                    source: 'webhook'
+                  }, { merge: true });
                 }
               }
             } catch (dbAdminErr: any) {
