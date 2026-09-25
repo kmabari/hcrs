@@ -1129,6 +1129,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
               />
             </div>
 
+          </div>
+
           {/* Recipient Information Display */}
           <div className="pt-3.5 sm:pt-4 border-t border-slate-200/60 space-y-3 sm:space-y-4">
             <div>
