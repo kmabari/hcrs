@@ -2221,6 +2221,76 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // READ-ONLY DAILY PAYMENT EXCEPTIONS: find every captured Razorpay payment whose
+  // HCRS payment record/member activation is missing or inconsistent.
+  app.get(["/api/admin/payment-exceptions", "/admin/payment-exceptions"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      if (!(requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin')) {
+        return res.status(403).json({ error: "Admin access is required" });
+      }
+
+      const dateParam = String(req.query.date || '').trim();
+      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+      const [year, month, day] = targetDate.split('-').map(Number);
+      const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
+      const endMs = startMs + 86400000;
+      const from = Math.floor(startMs / 1000), to = Math.floor((endMs - 1) / 1000);
+      const { keyId, keySecret } = getRazorpayCredentials();
+      if (!keyId || !keySecret) return res.status(503).json({ error:"Razorpay credentials are unavailable." });
+      const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const usersSnap = await dbAdmin.collection('users').get();
+      const cleanMobile = (v:any) => String(v || '').replace(/\\D/g,'').slice(-10);
+      const users = usersSnap.docs.map(d => ({ uid:d.id, ...(d.data() || {}) } as any));
+      const byUid = new Map(users.map((u:any) => [u.uid, u]));
+      const byMembership = new Map(users.filter((u:any)=>u.membershipId || u.memberId).map((u:any)=>[String(u.membershipId || u.memberId),u]));
+      const byMobile = new Map(users.filter((u:any)=>cleanMobile(u.mobile)).map((u:any)=>[cleanMobile(u.mobile),u]));
+      const rows:any[] = [];
+      let skip=0;
+      while(skip<1000){
+        const rpRes=await fetch(`https://api.razorpay.com/v1/payments?from=${from}&to=${to}&count=100&skip=${skip}`,{headers:{Authorization:authHeader}});
+        const body:any=await rpRes.json().catch(()=>({}));
+        if(!rpRes.ok) return res.status(rpRes.status||502).json({error:body?.error?.description||"Razorpay lookup failed"});
+        const items:any[]=Array.isArray(body.items)?body.items:[];
+        for(const p of items){
+          if(String(p.status)!=='captured') continue;
+          let order:any=null;
+          if(p.order_id){ try { const o=await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(p.order_id)}`,{headers:{Authorization:authHeader}}); if(o.ok) order=await o.json(); } catch(_){} }
+          const notes=order?.notes||p.notes||{};
+          const noteUid=String(notes.memberId||'').trim();
+          const noteMobile=cleanMobile(notes.mobile);
+          const member:any=byUid.get(noteUid)||byMembership.get(noteUid)||byMobile.get(noteMobile);
+          const payDoc=await dbAdmin.collection('payments').doc(String(p.id)).get();
+          const payData:any=payDoc.exists?payDoc.data()||{}:{};
+          const recorded=payDoc.exists && payData.status==='SUCCESS';
+          const paymentType=String(notes.paymentType||'') || (Number(p.amount)===10000?'renewal':Number(p.amount)===20000?'registration':'');
+          const expiry=member?.expiryDate?.toDate?member.expiryDate.toDate():(member?.expiryDate?new Date(member.expiryDate):null);
+          const validExpiry=expiry instanceof Date&&!Number.isNaN(expiry.getTime())&&expiry.getTime()>Date.now();
+          const active=Boolean(member)&&String(member.status||'').toLowerCase()==='active'&&member.renewalPending!==true&&validExpiry;
+          let result='OK';
+          if(!member) result='Captured — Member not resolved';
+          else if(!recorded) result='Captured — HCRS record missing';
+          else if(paymentType==='renewal'&&!active) result='Captured — Auto-approval mismatch';
+          else if(paymentType==='registration'&&!active) result='Captured — Registration activation mismatch';
+          if(result!=='OK') rows.push({paymentId:p.id||'',orderId:p.order_id||'',amount:Number(p.amount||0)/100,createdAt:p.created_at?new Date(Number(p.created_at)*1000).toISOString():'',method:p.method||'',paymentType,memberUid:member?.uid||'',membershipId:member?.membershipId||member?.memberId||'',memberName:member?.name||member?.fullName||'',mobile:cleanMobile(member?.mobile)||noteMobile,hcrsPaymentRecorded:recorded,hcrsPaymentStatus:payData.paymentStatus||payData.status||'',memberStatus:member?.status||'',renewalPending:member?.renewalPending===true,expiryDate:expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry.toISOString():'',result});
+        }
+        if(items.length<100) break; skip+=100;
+      }
+      rows.sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
+      return res.json({success:true,readOnly:true,date:targetDate,totalExceptions:rows.length,rows});
+    } catch(err:any){
+      console.error("[Payment Exceptions] Error:",err?.message||err);
+      return res.status(500).json({error:"Failed to run payment exceptions audit"});
+    }
+  });
+
   // READ-ONLY SECURITY AUDIT: accounts created today via the former login fallback.
   // This endpoint never writes to Firebase Auth or Firestore.
   app.get(["/api/admin/security-audit", "/admin/security-audit"], async (req, res) => {
