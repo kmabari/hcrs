@@ -94,13 +94,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [phone, setPhone] = useState(() => localStorage.getItem("janamail_draft_phone") || "");
   const [district, setDistrict] = useState(() => localStorage.getItem("janamail_draft_district") || "");
   const [place, setPlace] = useState(() => localStorage.getItem("janamail_draft_place") || "");
-  const [category, setCategory] = useState(() => {
-    const saved = localStorage.getItem("janamail_draft_category");
-    if (saved === "Highrich Member" || saved === "HCRS / Highrich Member" || saved === "General Public") {
-      return saved;
-    }
-    return "HCRS / Highrich Member";
-  });
+  const category = "Highrich Member";
   const [address, setAddress] = useState(() => localStorage.getItem("janamail_draft_address") || "");
   const [showThankYou, setShowThankYou] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -237,8 +231,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     (name || "").toString().trim() &&
     (phone || "").toString().trim() &&
     (district || "").toString().trim() &&
-    (place || "").toString().trim() &&
-    (category || "").toString().trim()
+    (place || "").toString().trim()
   );
   const canSubmit = isFullyConfirmed && isCampaignActive && isFormValid && !isSubmitting;
 
@@ -382,7 +375,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const merged = getMergedText(cleaned, userName, userPhone, userDistrict, userPlace, userCategory);
     
     // Header format
-    const header = `പേര്: ${userName || "[പേര്]"}\nമൊബൈൽ: ${userPhone || "[മൊബൈൽ]"}\nജില്ല: ${userDistrict || "[ജില്ല]"}\nസ്ഥലം: ${userPlace || "[സ്ഥലം]"}\nവിഭാഗം: ${userCategory || "[വിഭാഗം]"}\n\n`;
+    const header = `പേര്: ${userName || "[പേര്]"}\nമൊബൈൽ: ${userPhone || "[മൊബൈൽ]"}\nജില്ല: ${userDistrict || "[ജില്ല]"}\nസ്ഥലം: ${userPlace || "[സ്ഥലം]"}\nHighrich Member\n\n`;
     
     return header + merged;
   };
@@ -395,7 +388,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const mergedBody = getMergedText(cleanBodyText, uName, uMobile, uDistrict, uPlace, uCategory);
     
     // Re-construct the header
-    const header = `പേര്: ${uName || ""}\nമൊബൈൽ: ${uMobile || ""}\nജില്ല: ${uDistrict || ""}\nസ്ഥലം: ${uPlace || ""}\nവിഭാഗം: ${uCategory || ""}\n\n`;
+    const header = `പേര്: ${uName || ""}\nമൊബൈൽ: ${uMobile || ""}\nജില്ല: ${uDistrict || ""}\nസ്ഥലം: ${uPlace || ""}\nHighrich Member\n\n`;
     
     // Re-construct the signature exactly as requested
     const signature = `\n\nവിശ്വസ്തതയോടെ,\n\n${uName || ""}\n${uPlace || ""}`;
@@ -423,7 +416,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const cleanBodyText = stripHeaderAndSignature(rawBody);
     const mergedBody = getMergedText(cleanBodyText, uName, uMobile, uDistrict, uPlace, uCategory);
     
-    const standardHeader = `പേര്: ${uName || ""}\nമൊബൈൽ: ${uMobile || ""}\nജില്ല: ${uDistrict || ""}\nസ്ഥലം: ${uPlace || ""}\nവിഭാഗം: ${uCategory || ""}\n\n`;
+    const standardHeader = `പേര്: ${uName || ""}\nമൊബൈൽ: ${uMobile || ""}\nജില്ല: ${uDistrict || ""}\nസ്ഥലം: ${uPlace || ""}\nHighrich Member\n\n`;
     const standardSignature = `\n\nവിശ്വസ്തതയോടെ,\n\n${uName || ""}\n${uPlace || ""}`;
     const standardBody = standardHeader + mergedBody + standardSignature;
 
@@ -448,7 +441,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       localStorage.setItem("janamail_draft_phone", phone);
       localStorage.setItem("janamail_draft_district", district);
       localStorage.setItem("janamail_draft_place", place);
-      localStorage.setItem("janamail_draft_category", category);
       localStorage.setItem("janamail_draft_address", address);
       localStorage.setItem("janamail_draft_subject", subject);
       localStorage.setItem("janamail_draft_body", body);
@@ -467,7 +459,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     localStorage.setItem("janamail_draft_phone", phone);
     localStorage.setItem("janamail_draft_district", district);
     localStorage.setItem("janamail_draft_place", place);
-    localStorage.setItem("janamail_draft_category", category);
     localStorage.setItem("janamail_draft_address", address);
     localStorage.setItem("janamail_draft_subject", subject);
     localStorage.setItem("janamail_draft_body", body);
@@ -580,11 +571,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             }
             if (!localStorage.getItem("janamail_draft_address") && uProfile.address) {
               setAddress(uProfile.address);
-            }
-            if (!localStorage.getItem("janamail_draft_category")) {
-              if (uProfile.membership_type === "LIFE_MEMBER" || uProfile.membership_type === "ADHOC_MEMBER" || uProfile.membershipType === "Life") {
-                setCategory("HCRS / Highrich Member");
-              } else {
+            } else {
                 setCategory("Highrich Member");
               }
             }
@@ -762,7 +749,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         if (!(phone || "").toString().trim()) emptyFields.push("മൊബൈൽ നമ്പർ (Mobile Number)");
         if (!(district || "").toString().trim()) emptyFields.push("ജില്ല (District)");
         if (!(place || "").toString().trim()) emptyFields.push("സ്ഥലം (Place)");
-        if (!(category || "").toString().trim()) emptyFields.push("വിഭാഗം (Category)");
         toast.error(`വിവരങ്ങൾ പൂർണ്ണമല്ല. ദയവായി താഴെ പറയുന്നവ നൽകുക: ${emptyFields.join(", ")}`);
       } else if (!isCampaignActive) {
         toast.error("ക്യാമ്പയിൻ നിലവിൽ സജീവമല്ല (Campaign is inactive).");
@@ -1142,38 +1128,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 className="janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all"
                 placeholder="ഉദാ: ആലുവ / e.g. Aluva Post"
               />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
-                വിഭാഗം / Category <span className="text-red-500 font-bold">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  required
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className={`janamail-field w-full px-3.5 sm:px-4 py-2.5 sm:py-3 pr-9 sm:pr-10 text-xs sm:text-sm focus:outline-none transition-all cursor-pointer appearance-none ${
-                    !category ? "!text-slate-400 !font-normal" : "!text-slate-900 !font-medium"
-                  }`}
-                >
-                  <option value="" disabled className="text-slate-400 font-normal">
-                    -- വിഭാഗം തിരഞ്ഞെടുക്കുക / Select Category --
-                  </option>
-                  <option value="HCRS / Highrich Member" className="text-slate-900 font-medium">
-                    HCRS / Highrich Member (ഹൈറിച്ച് & HCRS വരിക്കാരൻ)
-                  </option>
-                  <option value="Highrich Member" className="text-slate-900 font-medium">
-                    Highrich Member (ഹൈറിച്ച് വരിക്കാരൻ)
-                  </option>
-                  <option value="General Public" className="text-slate-900 font-medium">
-                    General Public (പൊതുജനം)
-                  </option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 sm:px-3.5 text-slate-500">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -1835,15 +1789,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           </span>
                           <span className={place.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
                             സ്റ്റെപ്പ് 1: സ്ഥലം നൽകുക (Fill Place / Post)
-                          </span>
-                        </li>
-                        {/* Check category */}
-                        <li className="flex items-center gap-2">
-                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${category.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                            {category.trim() ? "✓" : "✗"}
-                          </span>
-                          <span className={category.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
-                            സ്റ്റെപ്പ് 1: വിഭാഗം തിരഞ്ഞെടുക്കുക (Select Category)
                           </span>
                         </li>
                         {/* Check confirmations */}
