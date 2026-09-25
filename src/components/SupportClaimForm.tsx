@@ -3245,6 +3245,25 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     );
   };
 
+  // View/Print/PDF must always use the latest primary-member profile location.
+  // Historical Self claim snapshots may still contain the old district/constituency.
+  const claimsForStatement = useMemo(() => {
+    const profileDistrict = user?.district || (user as any)?.userDistrict || '';
+    const profileConstituency = user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '';
+    return submittedClaims.map((claim) => {
+      if (String(claim?.relation || '').toLowerCase() !== 'self') return claim;
+      return {
+        ...claim,
+        ...(profileDistrict ? { district: profileDistrict, userDistrict: profileDistrict } : {}),
+        ...(profileConstituency ? {
+          assemblyConstituency: profileConstituency,
+          constituency: profileConstituency,
+          userConstituency: profileConstituency
+        } : {})
+      };
+    });
+  }, [submittedClaims, user?.district, (user as any)?.userDistrict, user?.assemblyConstituency, user?.constituency, (user as any)?.assembly, (user as any)?.mandalam]);
+
   // Render Official Court Statement View
   if (formMode === 'statement' && submittedClaims.length > 0 && !completed) {
     return (
@@ -3302,7 +3321,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               )}
               <Button
                 size="sm"
-                onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
+                onClick={() => printCourtComboReport(combinedUserForPrint, claimsForStatement)}
                 className="h-8 sm:h-9 px-2 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40 w-full sm:w-auto"
               >
                 <Printer className="w-3.5 h-3.5" />
@@ -3310,7 +3329,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               </Button>
               <Button
                 size="sm"
-                onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
+                onClick={() => downloadCourtComboPdf(combinedUserForPrint, claimsForStatement)}
                 className="h-8 sm:h-9 px-2 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40 w-full sm:w-auto"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -3394,8 +3413,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             <iframe
               srcDoc={
                 selectedStatementIdx === -1
-                  ? getCourtComboHtml(combinedUserForPrint, submittedClaims)
-                  : getSingleCourtClaimHtml(combinedUserForPrint, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
+                  ? getCourtComboHtml(combinedUserForPrint, claimsForStatement)
+                  : getSingleCourtClaimHtml(combinedUserForPrint, claimsForStatement[selectedStatementIdx], selectedStatementIdx + 1, claimsForStatement.length)
               }
               title="Consignment Advance Court Statement"
               className="w-full h-full min-h-[520px] sm:min-h-[750px] md:min-h-[850px] border-0 bg-white block"
@@ -3417,14 +3436,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <span>ഫോമിലേക്ക്</span>
               </Button>
               <Button
-                onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
+                onClick={() => printCourtComboReport(combinedUserForPrint, claimsForStatement)}
                 className="h-11 px-3 sm:px-5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>പ്രിന്റ് (A4)</span>
               </Button>
               <Button
-                onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
+                onClick={() => downloadCourtComboPdf(combinedUserForPrint, claimsForStatement)}
                 className="h-11 px-3 sm:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer border border-emerald-500"
               >
                 <Download className="w-4 h-4 text-white" />
