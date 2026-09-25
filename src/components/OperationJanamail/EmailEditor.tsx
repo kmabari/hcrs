@@ -571,9 +571,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             }
             if (!localStorage.getItem("janamail_draft_address") && uProfile.address) {
               setAddress(uProfile.address);
-            } else {
-                setCategory("Highrich Member");
-              }
             }
           } else {
             setCurrentUserProfile(null);
