@@ -1624,6 +1624,10 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   };
 
   useEffect(() => {
+    // Clear the previous member's rendered claim state immediately on account change.
+    // The authoritative claims are repopulated only after ownership verification finishes.
+    setAlreadySubmitted(false);
+    setSubmittedClaims([]);
     checkExistingClaims();
   }, [user]);
 
