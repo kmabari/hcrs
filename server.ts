@@ -7,6 +7,8 @@ import { google } from "googleapis";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import admin from "firebase-admin";
+
+let firebaseAdminInitError = "";
 import { db as clientDb } from "./src/lib/firebase.js";
 import { collection, getDocs, getDoc, doc, updateDoc, setDoc, query, where, limit, serverTimestamp } from "firebase/firestore";
 
@@ -25,8 +27,9 @@ if (!admin.apps.length) {
   projectId: "hcrs-membership"
 }); 
     console.log("[Firebase Admin] Initialized successfully for project hcrs-membership");
-  } catch (adminInitErr) {
-    console.warn("[Firebase Admin] Initialization notice:", adminInitErr);
+  } catch (adminInitErr: any) {
+    firebaseAdminInitError = String(adminInitErr?.message || adminInitErr || "Unknown Firebase Admin initialization error");
+    console.warn("[Firebase Admin] Initialization notice:", firebaseAdminInitError);
   }
 }
 
@@ -2369,7 +2372,15 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // Never writes, deletes, or auto-heals Firestore data.
   app.get(["/api/admin/claim-mismatch-audit", "/admin/claim-mismatch-audit"], async (req, res) => {
     try {
-      if (!dbAdmin) return res.status(503).json({ error: "Audit database is unavailable" });
+      if (!dbAdmin) return res.status(503).json({
+        error: "Audit database is unavailable",
+        code: "FIREBASE_ADMIN_UNAVAILABLE",
+        diagnostics: {
+          firebaseAdminInitialized: admin.apps.length > 0,
+          serviceAccountConfigured: Boolean((process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "").trim()),
+          initializationError: firebaseAdminInitError || "Firebase Admin app was not initialized"
+        }
+      });
       const authorization = String(req.headers.authorization || '');
       const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
       if (!token) return res.status(401).json({ error: "Admin authentication is required" });
