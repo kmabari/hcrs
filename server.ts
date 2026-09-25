@@ -2291,6 +2291,80 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ADMIN PAYMENT RECOVERY: two-step recovery for captured Razorpay payments.
+  // verify mode is read-only. repair mode writes only after a fresh Razorpay captured/amount/member check.
+  app.post(["/api/admin/payment-recovery", "/admin/payment-recovery"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error:"Payment database is unavailable" });
+      const authorization=String(req.headers.authorization||'');
+      const token=authorization.startsWith('Bearer ')?authorization.slice(7):'';
+      if(!token) return res.status(401).json({error:"Admin authentication is required"});
+      const decoded=await admin.auth().verifyIdToken(token);
+      const requester=await dbAdmin.collection('users').doc(decoded.uid).get();
+      const rd:any=requester.exists?requester.data()||{}:{};
+      const email=String(decoded.email||'').toLowerCase();
+      if(!(email==='hcrskerala@gmail.com'||rd.isAdmin===true||rd.role==='admin')) return res.status(403).json({error:"Admin access is required"});
+
+      const paymentId=String(req.body?.paymentId||'').trim();
+      const action=String(req.body?.action||'verify');
+      if(!/^pay_[A-Za-z0-9]+$/.test(paymentId)) return res.status(400).json({error:"Invalid Razorpay payment ID"});
+      if(!['verify','repair'].includes(action)) return res.status(400).json({error:"Invalid recovery action"});
+
+      const {keyId,keySecret}=getRazorpayCredentials();
+      if(!keyId||!keySecret) return res.status(503).json({error:"Razorpay credentials are unavailable"});
+      const authHeader="Basic "+Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const pRes=await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}`,{headers:{Authorization:authHeader}});
+      const payment:any=await pRes.json().catch(()=>({}));
+      if(!pRes.ok) return res.status(pRes.status||502).json({error:payment?.error?.description||"Razorpay payment lookup failed"});
+      if(String(payment.status)!=='captured') return res.status(409).json({error:`Payment is not captured (status: ${payment.status||'unknown'})`});
+      if(!payment.order_id) return res.status(409).json({error:"Captured payment has no Razorpay order ID; manual review required"});
+
+      const oRes=await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(payment.order_id)}`,{headers:{Authorization:authHeader}});
+      const order:any=oRes.ok?await oRes.json():null;
+      if(!order) return res.status(409).json({error:"Razorpay order could not be verified"});
+      const notes=order.notes||payment.notes||{};
+      const amountINR=Number(payment.amount||0)/100;
+      const paymentType=String(notes.paymentType||'')||(Number(payment.amount)===10000?'renewal':Number(payment.amount)===20000?'registration':'');
+      const expectedAmount=paymentType==='renewal'?100:paymentType==='registration'?200:0;
+      if(!expectedAmount||amountINR!==expectedAmount) return res.status(409).json({error:`Payment amount/type cannot be safely resolved (₹${amountINR}, ${paymentType||'unknown'})`});
+
+      const clean=(v:any)=>String(v||'').replace(/\D/g,'').slice(-10);
+      const usersSnap=await dbAdmin.collection('users').get();
+      const users=usersSnap.docs.map(d=>({uid:d.id,...(d.data()||{})} as any));
+      const noteMember=String(notes.memberId||'').trim(), noteMobile=clean(notes.mobile);
+      const member:any=users.find((u:any)=>u.uid===noteMember)||users.find((u:any)=>String(u.membershipId||u.memberId||'')===noteMember)||users.find((u:any)=>noteMobile&&clean(u.mobile)===noteMobile);
+      if(!member) return res.status(409).json({error:"Member could not be safely resolved from Razorpay order notes; manual review required"});
+
+      const payRef=dbAdmin.collection('payments').doc(paymentId);
+      const existing=await payRef.get();
+      const existingData:any=existing.exists?existing.data()||{}:{};
+      const expiry=member.expiryDate?.toDate?member.expiryDate.toDate():(member.expiryDate?new Date(member.expiryDate):null);
+      const details={paymentId,orderId:payment.order_id,amount:amountINR,paymentType,method:payment.method||'',captured:true,memberUid:member.uid,membershipId:member.membershipId||member.memberId||'',memberName:member.name||member.fullName||'',mobile:clean(member.mobile),hcrsPaymentRecorded:existing.exists&&existingData.status==='SUCCESS',memberStatus:member.status||'',renewalPending:member.renewalPending===true,expiryDate:expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry.toISOString():''};
+      if(action==='verify') return res.json({success:true,verified:true,readOnly:true,details});
+
+      // Idempotency: a completed recovery for this payment can be safely retried.
+      if(existing.exists&&existingData.status==='SUCCESS'&&existingData.recoveryCompleted===true) return res.json({success:true,repaired:true,alreadyRecovered:true,details});
+
+      const now=new Date();
+      const newExpiry=new Date(now); newExpiry.setFullYear(newExpiry.getFullYear()+1);
+      const receiptNo=`RCP-REC-${paymentId.slice(-8).toUpperCase()}`;
+      const batch=dbAdmin.batch();
+      batch.set(payRef,{paymentId,orderId:payment.order_id,amount:amountINR,currency:payment.currency||'INR',paymentType,memberId:member.uid,membershipId:member.membershipId||member.memberId||'',name:member.name||member.fullName||'',mobile:clean(member.mobile),status:'SUCCESS',paymentStatus:'PAYMENT_RECOVERED',paymentDate:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString().split('T')[0]:now.toISOString().split('T')[0],paymentTime:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString():now.toISOString(),method:payment.method||'Razorpay',source:'admin-recovery',recoveryCompleted:true,recoveredAt:admin.firestore.FieldValue.serverTimestamp(),recoveredBy:decoded.uid},{merge:true});
+      const userRef=dbAdmin.collection('users').doc(member.uid);
+      const userUpdate:any={status:'active',isApproved:true,isPaid:true,renewalPending:false,paymentAmount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentMethod:'Razorpay',expiryDate:admin.firestore.Timestamp.fromDate(newExpiry),paymentVerifiedAt:admin.firestore.FieldValue.serverTimestamp()};
+      if(paymentType==='renewal') Object.assign(userUpdate,{renewalTransactionId:paymentId,renewalDate:admin.firestore.FieldValue.serverTimestamp(),renewalApprovedAt:admin.firestore.FieldValue.serverTimestamp(),renewalPaymentDate:now.toISOString().split('T')[0],paymentStatus:'RENEWAL_RECOVERED',issueDate:admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
+      else Object.assign(userUpdate,{paymentStatus:'PAYMENT_RECOVERED',registrationDate:member.registrationDate||admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
+      batch.update(userRef,userUpdate);
+      const receiptRef=userRef.collection('receipts').doc(`recovery_${paymentId}`);
+      batch.set(receiptRef,{receiptNo,receiptType:paymentType==='renewal'?'Membership Renewal':'Membership Fee',receiptLabel:paymentType==='renewal'?'Membership Renewal Receipt':'Membership Registration Receipt',amount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentTime:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString():now.toISOString(),paymentMethod:'Razorpay',paymentStatus:paymentType==='renewal'?'RENEWAL_RECOVERED':'PAYMENT_RECOVERED',status:'Paid',paymentDate:now.toISOString().split('T')[0],createdAt:admin.firestore.FieldValue.serverTimestamp(),memberId:member.membershipId||member.memberId||member.uid,source:'admin-recovery'},{merge:true});
+      await batch.commit();
+      return res.json({success:true,repaired:true,alreadyRecovered:false,details:{...details,newExpiryDate:newExpiry.toISOString(),receiptNumber:receiptNo}});
+    } catch(err:any){
+      console.error("[Payment Recovery] Error:",err?.message||err);
+      return res.status(500).json({error:"Failed to verify or repair payment"});
+    }
+  });
+
   // READ-ONLY SECURITY AUDIT: accounts created today via the former login fallback.
   // This endpoint never writes to Firebase Auth or Firestore.
   app.get(["/api/admin/security-audit", "/admin/security-audit"], async (req, res) => {
