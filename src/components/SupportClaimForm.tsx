@@ -1516,8 +1516,30 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         const membershipMatch = !!currentMembershipId && !!claimMembershipId && claimMembershipId === currentMembershipId;
         const mobileMatch = !!cleanMobile && claimMobile === cleanMobile;
 
-        // Strong identifiers win. Mobile-only legacy records are accepted only when
-        // they do not explicitly belong to a different UID or membership ID.
+        // A Self claim carries the account holder's own identity. Reject an explicit
+        // Self-mobile contradiction before trusting a historically contaminated UID.
+        // Family claims are intentionally excluded because their individual mobile can
+        // legitimately differ from the main member.
+        if (String(claim.relation || '').trim().toLowerCase() === 'self' && cleanMobile) {
+          const explicitSelfMobiles = [
+            claim.individualMobile,
+            claim.selfMobile,
+            claim.primaryMobile,
+            claim.mainMemberMobile,
+            claim.applicantMobile,
+            claim.memberMobile,
+            claim.userMobile
+          ]
+            .map(normalizeMobile)
+            .filter((mobile: string) => mobile.length === 10);
+
+          if (explicitSelfMobiles.length > 0 && explicitSelfMobiles.some((mobile: string) => mobile !== cleanMobile)) {
+            return false;
+          }
+        }
+
+        // Strong identifiers win only after contradiction checks. Mobile-only legacy
+        // records are accepted only when they do not explicitly belong elsewhere.
         if (uidMatch || offlineUidMatch || membershipMatch) return true;
         if (!mobileMatch) return false;
         if (claimUid && claimUid !== activeUid && claimUid !== offlineUid) return false;
