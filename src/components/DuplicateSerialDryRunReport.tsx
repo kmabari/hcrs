@@ -526,9 +526,9 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
             <CheckCircle2 className="w-5 h-5 mx-auto mb-2" /> Serial sequence പൂർണ്ണമാണ്. Correction ആവശ്യമില്ല.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full min-w-[980px] text-xs">
-              <thead className="bg-slate-100 text-slate-600">
+              <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600 shadow-sm">
                 <tr>
                   <th className="p-3 text-left">Member</th>
                   <th className="p-3 text-left">District</th>
