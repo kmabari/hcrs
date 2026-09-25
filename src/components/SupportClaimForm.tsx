@@ -1517,26 +1517,31 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         }
       }
 
-      // --- DYNAMIC CLAIM UID AUTO-HEALING (Non-blocking background) ---
-      if (activeUid && !activeUid.startsWith('offline_') && docsList.length > 0) {
-        const unhealed = docsList.filter(c => c.uid !== activeUid);
-        if (unhealed.length > 0) {
-          Promise.all(
-            unhealed.map(async (claim) => {
-              try {
-                await updateDoc(doc(db, 'claims', claim.id), {
-                  uid: activeUid,
-                  userMobile: cleanMobile || claim.userMobile || ''
-                });
-                claim.uid = activeUid;
-                if (cleanMobile) claim.userMobile = cleanMobile;
-              } catch (err) {
-                console.warn("Background auto-heal notice:", err);
-              }
-            })
-          ).catch(() => {});
-        }
-      }
+      // SECURITY: Never auto-reassign a claim to the currently logged-in member.
+      // A historical/shared mobile match must not be allowed to overwrite claim ownership.
+      const normalizeMobile = (v: any) => {
+        const digits = String(v || '').replace(/\D/g, '');
+        return digits.length >= 10 ? digits.slice(-10) : digits;
+      };
+      const currentMembershipId = String(user.membershipId || user.memberId || '').trim();
+      docsList = docsList.filter((claim: any) => {
+        const claimUid = String(claim.uid || '').trim();
+        const claimMobile = normalizeMobile(claim.userMobile || claim.memberMobile || claim.primaryMobile || '');
+        const claimMembershipId = String(claim.membershipId || claim.memberId || claim.hcrsId || '').trim();
+
+        const uidMatch = !!activeUid && claimUid === activeUid;
+        const offlineUidMatch = !!offlineUid && claimUid === offlineUid;
+        const membershipMatch = !!currentMembershipId && !!claimMembershipId && claimMembershipId === currentMembershipId;
+        const mobileMatch = !!cleanMobile && claimMobile === cleanMobile;
+
+        // Strong identifiers win. Mobile-only legacy records are accepted only when
+        // they do not explicitly belong to a different UID or membership ID.
+        if (uidMatch || offlineUidMatch || membershipMatch) return true;
+        if (!mobileMatch) return false;
+        if (claimUid && claimUid !== activeUid && claimUid !== offlineUid) return false;
+        if (claimMembershipId && currentMembershipId && claimMembershipId !== currentMembershipId) return false;
+        return true;
+      });
 
       if (docsList.length > 0) {
         setSubmittedClaims(docsList);
