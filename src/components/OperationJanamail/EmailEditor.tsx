@@ -878,6 +878,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         placePost: place.trim(),
         category: category.trim(),
         selectedSubject: finalSubject,
+        messageBody: finalBody,
         template: templateRef,
         templateId: activeComposeMethod === "template" ? (currentSelectedTemplate?.id || null) : null,
         campaignId: currentCampaignId,
