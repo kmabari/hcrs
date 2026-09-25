@@ -25,6 +25,7 @@ type PaymentStatus = Exclude<StatusFilter, 'all'>;
 interface AuditRow { uid:string; authEmail:string; authCreatedAt:string; mobile:string; name:string; membershipId:string; classification:string; reason:string; }
 interface ReconciliationRow { paymentId:string; orderId:string; amount:number; razorpayStatus:string; method:string; createdAt:string; paymentType:string; hcrsPaymentRecorded:boolean; hcrsPaymentStatus:string; membershipId:string; memberName:string; memberStatus:string; renewalPending:boolean; expiryDate:string; reconciliationStatus:string; }
 interface PaymentExceptionRow { paymentId:string; orderId:string; amount:number; createdAt:string; method:string; paymentType:string; membershipId:string; memberName:string; mobile:string; hcrsPaymentRecorded:boolean; memberStatus:string; renewalPending:boolean; expiryDate:string; result:string; }
+interface ClaimMismatchRow { claimId:string; relation:string; claimName:string; claimMobile:string; claimMemberId:string; claimUid:string; uidOwnerName:string; uidOwnerMobile:string; uidOwnerMemberId:string; problems:string[]; }
 interface ReportRow {
   key: string; member?: UserProfile; source: 'member' | 'payment'; type: ReportType;
   name: string; mobile: string; membershipId: string; district: string; assembly: string;
@@ -104,6 +105,20 @@ export default function AdminReportsTab({
     finally { setReconLoading(false); }
   };
 
+  const [claimMismatchRows,setClaimMismatchRows]=useState<ClaimMismatchRow[]>([]);
+  const [claimMismatchLoading,setClaimMismatchLoading]=useState(false);
+  const [claimMismatchError,setClaimMismatchError]=useState('');
+  const [claimMismatchScanned,setClaimMismatchScanned]=useState(false);
+  const runClaimMismatchAudit=async()=>{
+    setClaimMismatchLoading(true); setClaimMismatchError('');
+    try{
+      const token=await auth.currentUser?.getIdToken(); if(!token)throw new Error('Admin authentication required');
+      const response=await fetch('/api/admin/claim-mismatch-audit',{headers:{Authorization:`Bearer ${token}`}});
+      const body=await response.json(); if(!response.ok)throw new Error(body.error||'Claim mismatch audit failed');
+      setClaimMismatchRows(Array.isArray(body.rows)?body.rows:[]); setClaimMismatchScanned(true);
+    }catch(e:any){setClaimMismatchError(e?.message||'Claim mismatch audit failed');}
+    finally{setClaimMismatchLoading(false);}
+  };
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
@@ -347,6 +362,13 @@ export default function AdminReportsTab({
 
   return <div className="space-y-6">
     <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
+    <Card className="border-2 border-purple-300 bg-white"><CardContent className="p-4 space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-black text-slate-950">Claim Ownership Mismatch Audit — All Members</h3><p className="text-xs font-bold text-slate-600">Read-only. Cross-checks Claim UID, mobile and Member ID. Firebase data is not changed.</p></div><Button onClick={runClaimMismatchAudit} disabled={claimMismatchLoading} className="bg-purple-700 text-white hover:bg-purple-800"><ShieldAlert className="w-4 h-4 mr-2"/>{claimMismatchLoading?'Scanning…':'Find Claim Mismatches'}</Button></div>
+      {claimMismatchError&&<div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{claimMismatchError}</div>}
+      {claimMismatchScanned&&!claimMismatchLoading&&!claimMismatchError&&claimMismatchRows.length===0&&<div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm font-black text-emerald-900">No ownership mismatches found.</div>}
+      {claimMismatchRows.length>0&&<><div className="font-black text-red-800">Problems found: {claimMismatchRows.length}</div><div className="overflow-x-auto"><table className="w-full min-w-[1400px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Claim Name','Claim Mobile','Claim Member ID','Relation','Claim UID','UID Owner','Owner Mobile','Owner Member ID','Problem','Claim ID'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{claimMismatchRows.map(row=><tr key={row.claimId} className="border-t"><td className="p-2 font-bold">{row.claimName||'-'}</td><td className="p-2">{row.claimMobile||'-'}</td><td className="p-2 font-mono">{row.claimMemberId||'-'}</td><td className="p-2">{row.relation||'-'}</td><td className="p-2 font-mono break-all">{row.claimUid||'-'}</td><td className="p-2 font-bold">{row.uidOwnerName||'-'}</td><td className="p-2">{row.uidOwnerMobile||'-'}</td><td className="p-2 font-mono">{row.uidOwnerMemberId||'-'}</td><td className="p-2"><Badge className="bg-red-100 text-red-950 whitespace-normal">{(row.problems||[]).join(' · ')}</Badge></td><td className="p-2 font-mono break-all">{row.claimId}</td></tr>)}</tbody></table></div></>}
+    </CardContent></Card>
+
     <Card className="border-2 border-orange-300 bg-white"><CardContent className="p-4 space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-black text-slate-950">Captured Payment Exceptions — All Members</h3><p className="text-xs font-bold text-slate-600">Read-only: finds captured Razorpay payments with missing HCRS records or failed membership activation.</p></div>
       <div className="flex items-end gap-2"><label className="text-xs font-black text-slate-700">Date<Input type="date" value={exceptionDate} onChange={e=>setExceptionDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]"/></label><Button onClick={runPaymentExceptions} disabled={exceptionLoading} className="bg-orange-600 text-white hover:bg-orange-700">{exceptionLoading?'Checking…':'Find Payment Problems'}</Button></div></div>
