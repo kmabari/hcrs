@@ -2365,6 +2365,54 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // READ-ONLY CLAIM OWNERSHIP AUDIT: finds claims whose stored UID/mobile/member identity conflicts.
+  // Never writes, deletes, or auto-heals Firestore data.
+  app.get(["/api/admin/claim-mismatch-audit", "/admin/claim-mismatch-audit"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Audit database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const rd:any = requester.exists ? requester.data() || {} : {};
+      const email = String(decoded.email || '').toLowerCase();
+      if (!(email === 'hcrskerala@gmail.com' || rd.isAdmin === true || rd.role === 'admin')) return res.status(403).json({ error: "Admin access is required" });
+
+      const clean = (v:any) => { const d=String(v||'').replace(/\D/g,''); return d.length>=10?d.slice(-10):d; };
+      const [usersSnap, claimsSnap] = await Promise.all([dbAdmin.collection('users').get(), dbAdmin.collection('claims').get()]);
+      const users = usersSnap.docs.map(d=>({uid:d.id,...(d.data()||{})} as any));
+      const byUid=new Map(users.map(u=>[u.uid,u]));
+      const byMobile=new Map<string,any[]>();
+      const byMember=new Map<string,any[]>();
+      for(const u of users){
+        const m=clean(u.mobile); if(m){ const a=byMobile.get(m)||[]; a.push(u); byMobile.set(m,a); }
+        const mid=String(u.membershipId||u.memberId||'').trim(); if(mid){ const a=byMember.get(mid)||[]; a.push(u); byMember.set(mid,a); }
+      }
+      const rows:any[]=[];
+      for(const d of claimsSnap.docs){
+        const x:any=d.data()||{}; const uid=String(x.uid||'').trim(); const mobile=clean(x.userMobile||x.memberMobile||x.primaryMobile);
+        const mid=String(x.membershipId||x.memberId||x.hcrsId||'').trim();
+        const uidUser=uid?byUid.get(uid):null; const mobileUsers=mobile?(byMobile.get(mobile)||[]):[]; const memberUsers=mid?(byMember.get(mid)||[]):[];
+        const reasons:string[]=[];
+        if(uid && !uid.startsWith('offline_') && !uidUser) reasons.push('Claim UID has no matching member');
+        if(uidUser && mobile && clean((uidUser as any).mobile) && clean((uidUser as any).mobile)!==mobile) reasons.push('Claim mobile differs from UID owner mobile');
+        if(uidUser && mid){
+          const ownerMid=String((uidUser as any).membershipId||(uidUser as any).memberId||'').trim();
+          if(ownerMid && ownerMid!==mid) reasons.push('Claim member ID differs from UID owner member ID');
+        }
+        if(uidUser && mobileUsers.length && !mobileUsers.some(u=>u.uid===(uidUser as any).uid)) reasons.push('Claim mobile belongs to another member');
+        if(uidUser && memberUsers.length && !memberUsers.some(u=>u.uid===(uidUser as any).uid)) reasons.push('Claim member ID belongs to another member');
+        if(!uidUser && mobileUsers.length>1) reasons.push('Claim mobile matches multiple member profiles');
+        if(reasons.length) rows.push({claimId:d.id,relation:x.relation||'',claimName:x.userName||x.name||'',claimMobile:mobile,claimMemberId:mid,claimUid:uid,uidOwnerName:(uidUser as any)?.name||(uidUser as any)?.fullName||'',uidOwnerMobile:clean((uidUser as any)?.mobile),uidOwnerMemberId:(uidUser as any)?.membershipId||(uidUser as any)?.memberId||'',problems:reasons});
+      }
+      return res.json({success:true,readOnly:true,totalClaims:claimsSnap.size,problemsFound:rows.length,rows});
+    } catch(err:any){
+      console.error("[Claim Mismatch Audit]",err?.message||err);
+      return res.status(500).json({error:"Failed to run claim mismatch audit"});
+    }
+  });
+
   // READ-ONLY SECURITY AUDIT: accounts created today via the former login fallback.
   // This endpoint never writes to Firebase Auth or Firestore.
   app.get(["/api/admin/security-audit", "/admin/security-audit"], async (req, res) => {
