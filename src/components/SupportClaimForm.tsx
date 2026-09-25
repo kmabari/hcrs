@@ -1020,7 +1020,9 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uDist = user.district || (user as any).userDistrict || '';
       if (uDist) {
-        if (!customerDistrict) setCustomerDistrict(uDist);
+        // Profile is authoritative for the primary member. If an old claim/form
+        // still carries a previous district, View Form/PDF must follow the current profile.
+        setCustomerDistrict(uDist);
         if (!spouseDistrict) setSpouseDistrict(uDist);
         if (!parentDistrict) setParentDistrict(uDist);
         if (!childDistrict) setChildDistrict(uDist);
@@ -1028,7 +1030,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const cConsti = user.assemblyConstituency || user.constituency || (user as any).assembly || (user as any).mandalam || '';
       if (cConsti) {
-        if (!customerConstituency) setCustomerConstituency(cConsti);
+        // Same rule for the primary member constituency/mandalam.
+        setCustomerConstituency(cConsti);
         if (!spouseConstituency) setSpouseConstituency(cConsti);
         if (!parentConstituency) setParentConstituency(cConsti);
         if (!childConstituency) setChildConstituency(cConsti);
