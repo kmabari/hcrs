@@ -24,6 +24,7 @@ type StatusFilter = 'all' | 'successful' | 'processing' | 'pending' | 'failed';
 type PaymentStatus = Exclude<StatusFilter, 'all'>;
 interface AuditRow { uid:string; authEmail:string; authCreatedAt:string; mobile:string; name:string; membershipId:string; classification:string; reason:string; }
 interface ReconciliationRow { paymentId:string; orderId:string; amount:number; razorpayStatus:string; method:string; createdAt:string; paymentType:string; hcrsPaymentRecorded:boolean; hcrsPaymentStatus:string; membershipId:string; memberName:string; memberStatus:string; renewalPending:boolean; expiryDate:string; reconciliationStatus:string; }
+interface PaymentExceptionRow { paymentId:string; orderId:string; amount:number; createdAt:string; method:string; paymentType:string; membershipId:string; memberName:string; mobile:string; hcrsPaymentRecorded:boolean; memberStatus:string; renewalPending:boolean; expiryDate:string; result:string; }
 interface ReportRow {
   key: string; member?: UserProfile; source: 'member' | 'payment'; type: ReportType;
   name: string; mobile: string; membershipId: string; district: string; assembly: string;
@@ -46,6 +47,27 @@ export default function AdminReportsTab({
   const [approvingUid, setApprovingUid] = useState<string | null>(null);
   const [district, setDistrict] = useState(userDistrict && !isSuperAdmin ? userDistrict : 'all');
   const [search, setSearch] = useState('');
+  const [exceptionRows,setExceptionRows]=useState<PaymentExceptionRow[]>([]);
+  const [exceptionDate,setExceptionDate]=useState(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
+  const [exceptionLoading,setExceptionLoading]=useState(false);
+  const [exceptionError,setExceptionError]=useState('');
+  const runPaymentExceptions=async()=>{setExceptionLoading(true);setExceptionError('');try{const token=await auth.currentUser?.getIdToken();if(!token)throw new Error('Admin authentication required');const response=await fetch(`/api/admin/payment-exceptions?date=${encodeURIComponent(exceptionDate)}`,{headers:{Authorization:`Bearer ${token}`}});const body=await response.json();if(!response.ok)throw new Error(body.error||'Payment exceptions audit failed');setExceptionRows(Array.isArray(body.rows)?body.rows:[]);}catch(e:any){setExceptionError(e?.message||'Payment exceptions audit failed');}finally{setExceptionLoading(false);}};
+  const [recoveryBusy,setRecoveryBusy]=useState<string|null>(null);
+  const [recoveryVerified,setRecoveryVerified]=useState<Record<string,boolean>>({});
+  const [recoveryMessage,setRecoveryMessage]=useState<Record<string,string>>({});
+  const paymentRecovery=async(row:PaymentExceptionRow,action:'verify'|'repair')=>{
+    setRecoveryBusy(row.paymentId); setRecoveryMessage(x=>({...x,[row.paymentId]:''}));
+    try{
+      const token=await auth.currentUser?.getIdToken(); if(!token)throw new Error('Admin authentication required');
+      if(action==='repair'&&!recoveryVerified[row.paymentId])throw new Error('Verify payment first');
+      if(action==='repair'&&!window.confirm(`Repair this captured payment?\n\n${row.memberName||row.membershipId||row.mobile}\n₹${row.amount}\n${row.paymentId}\n\nThis will update the HCRS payment record and membership status.`)) return;
+      const response=await fetch('/api/admin/payment-recovery',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({paymentId:row.paymentId,action})});
+      const body=await response.json(); if(!response.ok)throw new Error(body.error||'Payment recovery failed');
+      if(action==='verify'){setRecoveryVerified(x=>({...x,[row.paymentId]:true}));setRecoveryMessage(x=>({...x,[row.paymentId]:'Verified with Razorpay — ready to repair'}));}
+      else {setRecoveryMessage(x=>({...x,[row.paymentId]:body.alreadyRecovered?'Already repaired earlier':'Repair completed'})); await runPaymentExceptions();}
+    }catch(e:any){setRecoveryMessage(x=>({...x,[row.paymentId]:e?.message||'Payment recovery failed'}));}
+    finally{setRecoveryBusy(null);}
+  };
   const [reconMobile, setReconMobile] = useState('');
   const [reconDate, setReconDate] = useState(() => {
     const d = new Date();
@@ -325,6 +347,13 @@ export default function AdminReportsTab({
 
   return <div className="space-y-6">
     <DuplicateSerialDryRunReport members={members} claims={claims} canApply={isSuperAdmin} />
+    <Card className="border-2 border-orange-300 bg-white"><CardContent className="p-4 space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-black text-slate-950">Captured Payment Exceptions — All Members</h3><p className="text-xs font-bold text-slate-600">Read-only: finds captured Razorpay payments with missing HCRS records or failed membership activation.</p></div>
+      <div className="flex items-end gap-2"><label className="text-xs font-black text-slate-700">Date<Input type="date" value={exceptionDate} onChange={e=>setExceptionDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]"/></label><Button onClick={runPaymentExceptions} disabled={exceptionLoading} className="bg-orange-600 text-white hover:bg-orange-700">{exceptionLoading?'Checking…':'Find Payment Problems'}</Button></div></div>
+      {exceptionError&&<div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{exceptionError}</div>}
+      {!exceptionLoading&&!exceptionError&&exceptionRows.length===0&&<p className="text-xs font-bold text-slate-500">Select a date and press Find Payment Problems.</p>}
+      {exceptionRows.length>0&&<><div className="font-black text-red-800">Problems found: {exceptionRows.length}</div><div className="overflow-x-auto"><table className="w-full min-w-[1200px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Name','Mobile','Member ID','Amount','Type','HCRS Record','Member Status','Expiry','Problem','Payment ID'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{exceptionRows.map(row=><tr key={row.paymentId} className="border-t"><td className="p-2">{row.createdAt?new Date(row.createdAt).toLocaleString('en-IN'):'-'}</td><td className="p-2 font-bold">{row.memberName||'-'}</td><td className="p-2">{row.mobile||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-black">₹{row.amount}</td><td className="p-2">{row.paymentType||'-'}</td><td className="p-2">{row.hcrsPaymentRecorded?'Saved':'Missing'}</td><td className="p-2">{row.memberStatus||'-'}{row.renewalPending?' · pending':''}</td><td className="p-2">{row.expiryDate?new Date(row.expiryDate).toLocaleDateString('en-IN'):'-'}</td><td className="p-2"><Badge className="bg-red-100 text-red-950">{row.result}</Badge></td><td className="p-2 font-mono break-all"><div>{row.paymentId}</div><div className="mt-2 flex flex-wrap gap-1"><Button size="sm" variant="outline" disabled={recoveryBusy===row.paymentId} onClick={()=>paymentRecovery(row,'verify')}>{recoveryBusy===row.paymentId?'Checking…':'Verify Details'}</Button>{row.result!=='Captured — Member not resolved'&&<Button size="sm" disabled={!recoveryVerified[row.paymentId]||recoveryBusy===row.paymentId} onClick={()=>paymentRecovery(row,'repair')} className="bg-emerald-700 text-white hover:bg-emerald-800">Repair</Button>}</div>{recoveryMessage[row.paymentId]&&<div className={`mt-1 text-[11px] font-bold ${recoveryVerified[row.paymentId]?'text-emerald-800':'text-red-700'}`}>{recoveryMessage[row.paymentId]}</div>}</td></tr>)}</tbody></table></div></>}
+    </CardContent></Card>
     <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
       <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Read-only check. Confirms Razorpay payment status, HCRS payment record and member renewal status.</p></div>
       <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 items-end">
