@@ -539,6 +539,36 @@ export default function App() {
     const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
     const activeUid = user.uid || '';
 
+    const normalizeMobile = (value: any) => {
+      const digits = String(value ?? '').replace(/\D/g, '');
+      return digits.length >= 10 ? digits.slice(-10) : digits;
+    };
+    const currentMembershipId = String(user.membershipId || '').trim().toLowerCase();
+    const claimBelongsToCurrentUser = (claim: any) => {
+      if (!claim || claim.recordType === 'janamail_submission') return false;
+      const relation = String(claim.relation || '').trim().toLowerCase();
+      const claimUid = String(claim.uid || '').trim();
+      const claimMembershipId = String(claim.membershipId || '').trim().toLowerCase();
+      const explicitSelfMobiles = [
+        claim.individualMobile, claim.selfMobile, claim.primaryMobile, claim.mainMemberMobile,
+        claim.applicantMobile, claim.memberMobile, claim.userMobile
+      ].map(normalizeMobile).filter((v: string) => v.length === 10);
+
+      // A Self claim carrying another person's explicit mobile must never appear
+      // in the current member dashboard, even if a historical UID was contaminated.
+      if (relation === 'self' && cleanMobile && explicitSelfMobiles.some((m: string) => m !== cleanMobile)) {
+        return false;
+      }
+
+      const uidMatch = !!activeUid && claimUid === activeUid;
+      const offlineUidMatch = !!offlineUid && claimUid === offlineUid;
+      const membershipMatch = !!currentMembershipId && claimMembershipId === currentMembershipId;
+      const ownerMobile = normalizeMobile(claim.userMobile);
+      const mobileMatch = !!cleanMobile && ownerMobile === cleanMobile;
+      return uidMatch || offlineUidMatch || membershipMatch || mobileMatch;
+    };
+    const filterOwnedClaims = (claims: any[]) => claims.filter(claimBelongsToCurrentUser);
+
     // Fast initial check with getDocs for quick load
     async function checkClaimSubmission() {
       try {
@@ -614,7 +644,7 @@ export default function App() {
           }
         });
 
-        let list = Array.from(claimsMap.values());
+        let list = filterOwnedClaims(Array.from(claimsMap.values()));
         
         // Robust server database API fallback if client Firestore queries returned empty
         if (list.length === 0) {
@@ -623,7 +653,7 @@ export default function App() {
             if (apiRes.ok) {
               const apiJson = await apiRes.json();
               if (apiJson.success && Array.isArray(apiJson.data) && apiJson.data.length > 0) {
-                list = apiJson.data;
+                list = filterOwnedClaims(apiJson.data);
               }
             }
           } catch (apiErr) {
@@ -662,7 +692,7 @@ export default function App() {
               snap.docs.forEach(docSnap => {
                 map.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
               });
-              const list = Array.from(map.values());
+              const list = filterOwnedClaims(Array.from(map.values()));
               setSubmittedClaimsCount(list.length);
               setHasSubmittedClaim(list.length > 0);
               return list;
