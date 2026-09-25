@@ -665,33 +665,15 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
-    if (initialClaims && Array.isArray(initialClaims) && initialClaims.length > 0) {
-      const hasSelfDb = initialClaims.some(c => c.relation === 'Self');
-      const hasParentDb = initialClaims.some(c => ['Mother', 'Father'].includes(c.relation));
-      const hasChildDb = initialClaims.some(c => ['Son', 'Daughter'].includes(c.relation));
-      const hasSpouseDb = initialClaims.some(c => ['Wife', 'Husband'].includes(c.relation));
-      return hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb;
-    }
-    return false;
-  });
-  const [submittedClaims, setSubmittedClaims] = useState<any[]>(() => (initialClaims && Array.isArray(initialClaims)) ? initialClaims : []);
+  // Never render parent-provided claims before ownership verification completes.
+  // This prevents stale/cross-member claim data flashing during account switches.
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
   const [formMode, setFormMode] = useState<'statement' | 'fill'>('fill');
   const [selectedStatementIdx, setSelectedStatementIdx] = useState<number>(-1);
   const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (initialClaims && Array.isArray(initialClaims) && initialClaims.length > 0 && submittedClaims.length === 0) {
-      setSubmittedClaims(initialClaims);
-      const hasSelfDb = initialClaims.some(c => c.relation === 'Self');
-      const hasParentDb = initialClaims.some(c => ['Mother', 'Father'].includes(c.relation));
-      const hasChildDb = initialClaims.some(c => ['Son', 'Daughter'].includes(c.relation));
-      const hasSpouseDb = initialClaims.some(c => ['Wife', 'Husband'].includes(c.relation));
-      if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
-        setAlreadySubmitted(true);
-      }
-    }
-  }, [initialClaims]);
+  // initialClaims can be stale while switching members; verified Firestore lookup below is authoritative.
   
   // Validation error state tracking
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -1534,8 +1516,30 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         const membershipMatch = !!currentMembershipId && !!claimMembershipId && claimMembershipId === currentMembershipId;
         const mobileMatch = !!cleanMobile && claimMobile === cleanMobile;
 
-        // Strong identifiers win. Mobile-only legacy records are accepted only when
-        // they do not explicitly belong to a different UID or membership ID.
+        // A Self claim carries the account holder's own identity. Reject an explicit
+        // Self-mobile contradiction before trusting a historically contaminated UID.
+        // Family claims are intentionally excluded because their individual mobile can
+        // legitimately differ from the main member.
+        if (String(claim.relation || '').trim().toLowerCase() === 'self' && cleanMobile) {
+          const explicitSelfMobiles = [
+            claim.individualMobile,
+            claim.selfMobile,
+            claim.primaryMobile,
+            claim.mainMemberMobile,
+            claim.applicantMobile,
+            claim.memberMobile,
+            claim.userMobile
+          ]
+            .map(normalizeMobile)
+            .filter((mobile: string) => mobile.length === 10);
+
+          if (explicitSelfMobiles.length > 0 && explicitSelfMobiles.some((mobile: string) => mobile !== cleanMobile)) {
+            return false;
+          }
+        }
+
+        // Strong identifiers win only after contradiction checks. Mobile-only legacy
+        // records are accepted only when they do not explicitly belong elsewhere.
         if (uidMatch || offlineUidMatch || membershipMatch) return true;
         if (!mobileMatch) return false;
         if (claimUid && claimUid !== activeUid && claimUid !== offlineUid) return false;
@@ -1642,6 +1646,10 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   };
 
   useEffect(() => {
+    // Clear the previous member's rendered claim state immediately on account change.
+    // The authoritative claims are repopulated only after ownership verification finishes.
+    setAlreadySubmitted(false);
+    setSubmittedClaims([]);
     checkExistingClaims();
   }, [user]);
 
