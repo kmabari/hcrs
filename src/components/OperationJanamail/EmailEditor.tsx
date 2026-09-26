@@ -3,6 +3,7 @@ import { Mail, Check, Copy, RotateCcw, Send, HelpCircle, Share2, QrCode, Chevron
 import { CampaignTemplate, subscribeToCampaignTemplates, JanamailConfig } from "../../lib/cms";
 import { motion } from "motion/react";
 import { auth, db } from "../../lib/firebase";
+import { eledgerDb } from "../../eledger/lib/firebaseEledger";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import QRCode from "qrcode";
@@ -486,7 +487,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   // The pointer is advanced atomically with a successful submission below.
   useEffect(() => {
     if (templates.length === 0) return;
-    const rotationRef = doc(db, "claims", getRotationDocumentId(config));
+    const rotationRef = doc(eledgerDb, "janamail_submissions", getRotationDocumentId(config));
     return onSnapshot(rotationRef, snapshot => {
       const data = snapshot.data();
       const nextIndex = Math.max(0, Number(data?.nextIndex || 0)) % templates.length;
@@ -604,10 +605,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     }
 
-    // Check the existing HCRS Firestore claims collection for the campaign lock.
+    // Check the dedicated eLedger Firestore janamail_submissions collection for the campaign lock.
     let isSubscribed = true;
     const submissionDocId = getSubmissionDocumentId(currentCampaignId, emailId);
-    getDoc(doc(db, "claims", submissionDocId)).then((docSnap) => {
+    getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId)).then((docSnap) => {
       if (!isSubscribed) return;
       if (docSnap.exists() && (docSnap.data()?.status === "Completed" || docSnap.data()?.participated === true)) {
         setHasParticipated(true);
@@ -823,7 +824,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       // Duplicate prevention check directly against HCRS eLedger Firestore for regular participants
       if (config?.restrictOneParticipation !== false) {
         try {
-          const existingDoc = await getDoc(doc(db, "claims", submissionDocId));
+          const existingDoc = await getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId));
           if (existingDoc.exists() && (existingDoc.data()?.status === "Completed" || existingDoc.data()?.participated === true)) {
             localStorage.setItem(lockKey, JSON.stringify({
               campaignId: currentCampaignId,
@@ -869,9 +870,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       // Persist the submission and advance the global Subject + Body pair atomically.
       // A stale browser cannot launch a duplicate default template; it must refresh to
       // the newly assigned pair and ask the participant to confirm again.
-      const submissionRef = doc(db, "claims", submissionDocId);
-      const rotationRef = doc(db, "claims", getRotationDocumentId(config));
-      await runTransaction(db, async transaction => {
+      const submissionRef = doc(eledgerDb, "janamail_submissions", submissionDocId);
+      const rotationRef = doc(eledgerDb, "janamail_submissions", getRotationDocumentId(config));
+      await runTransaction(eledgerDb, async transaction => {
         const existingSubmission = await transaction.get(submissionRef);
         const rotationSnapshot = activeComposeMethod === "template"
           ? await transaction.get(rotationRef)
