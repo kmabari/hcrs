@@ -69,6 +69,21 @@ export default function AdminReportsTab({
     }catch(e:any){setRecoveryMessage(x=>({...x,[row.paymentId]:e?.message||'Payment recovery failed'}));}
     finally{setRecoveryBusy(null);}
   };
+  const [paymentLookup, setPaymentLookup] = useState('');
+  const [paymentLookupRows, setPaymentLookupRows] = useState<any[]>([]);
+  const [paymentLookupLoading, setPaymentLookupLoading] = useState(false);
+  const [paymentLookupError, setPaymentLookupError] = useState('');
+  const runPaymentLookup = async () => {
+    const q = paymentLookup.trim().toLowerCase();
+    if (!q) { setPaymentLookupError('Enter Mobile, Email, Payment ID, Order ID, Member ID or UTR.'); return; }
+    setPaymentLookupLoading(true); setPaymentLookupError('');
+    try {
+      const token = await auth.currentUser?.getIdToken(); if (!token) throw new Error('Admin authentication required');
+      const response = await fetch('/api/admin/payments?limit=10000', { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Payment search failed');
+      setPaymentLookupRows((Array.isArray(body.payments) ? body.payments : []).filter((p:any) => [p.mobile,p.email,p.paymentId,p.orderId,p.memberId,p.membershipId,p.utr,p.name].some(v => String(v || '').toLowerCase().includes(q))));
+    } catch (e:any) { setPaymentLookupError(e?.message || 'Payment search failed'); } finally { setPaymentLookupLoading(false); }
+  };
   const [reconMobile, setReconMobile] = useState('');
   const [reconDate, setReconDate] = useState(() => {
     const d = new Date();
@@ -355,6 +370,13 @@ export default function AdminReportsTab({
       {!exceptionLoading&&!exceptionError&&exceptionRows.length===0&&<p className="text-xs font-bold text-slate-500">Select a date and press Find Payment Problems.</p>}
       {exceptionRows.length>0&&<><div className="font-black text-red-800">Problems found: {exceptionRows.length}</div><div className="overflow-x-auto"><table className="w-full min-w-[1200px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Name','Mobile','Member ID','Amount','Type','HCRS Record','Member Status','Expiry','Problem','Payment ID'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{exceptionRows.map(row=><tr key={row.paymentId} className="border-t"><td className="p-2">{row.createdAt?new Date(row.createdAt).toLocaleString('en-IN'):'-'}</td><td className="p-2 font-bold">{row.memberName||'-'}</td><td className="p-2">{row.mobile||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-black">₹{row.amount}</td><td className="p-2">{row.paymentType||'-'}</td><td className="p-2">{row.hcrsPaymentRecorded?'Saved':'Missing'}</td><td className="p-2">{row.memberStatus||'-'}{row.renewalPending?' · pending':''}</td><td className="p-2">{row.expiryDate?new Date(row.expiryDate).toLocaleDateString('en-IN'):'-'}</td><td className="p-2"><Badge className="bg-red-100 text-red-950">{row.result}</Badge></td><td className="p-2 font-mono break-all"><div>{row.paymentId}</div><div className="mt-2 flex flex-wrap gap-1"><Button size="sm" variant="outline" disabled={recoveryBusy===row.paymentId} onClick={()=>paymentRecovery(row,'verify')}>{recoveryBusy===row.paymentId?'Checking…':'Verify Details'}</Button>{row.result!=='Captured — Member not resolved'&&<Button size="sm" disabled={!recoveryVerified[row.paymentId]||recoveryBusy===row.paymentId} onClick={()=>paymentRecovery(row,'repair')} className="bg-emerald-700 text-white hover:bg-emerald-800">Repair</Button>}</div>{recoveryMessage[row.paymentId]&&<div className={`mt-1 text-[11px] font-bold ${recoveryVerified[row.paymentId]?'text-emerald-800':'text-red-700'}`}>{recoveryMessage[row.paymentId]}</div>}</td></tr>)}</tbody></table></div></>}
     </CardContent></Card>
+    <Card className="border-2 border-indigo-300 bg-white"><CardContent className="p-4 space-y-3">
+      <div><h3 className="font-black text-slate-950">Search Payment</h3><p className="text-xs font-bold text-slate-600">Mobile, Email, Payment ID, Order ID, Member ID or stored UTR/RRN.</p></div>
+      <div className="grid sm:grid-cols-[1fr_auto] gap-2 items-end"><label className="text-xs font-black text-slate-700">Payment Search<Input value={paymentLookup} onChange={e=>setPaymentLookup(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')runPaymentLookup();}} placeholder="Mobile / Email / Payment ID / Order ID / Member ID / UTR" className="mt-1 bg-white text-slate-950" /></label><Button onClick={runPaymentLookup} disabled={paymentLookupLoading||!paymentLookup.trim()} className="bg-indigo-700 text-white hover:bg-indigo-800"><Search className="w-4 h-4 mr-2"/>{paymentLookupLoading?'Searching…':'Search Payment'}</Button></div>
+      {paymentLookupError&&<div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{paymentLookupError}</div>}
+      {!paymentLookupLoading&&!paymentLookupError&&paymentLookup.trim()&&paymentLookupRows.length===0&&<p className="text-xs font-bold text-slate-500">No matching verified payment found.</p>}
+      {paymentLookupRows.length>0&&<><div className="font-black text-indigo-900">Matches: {paymentLookupRows.length}</div><div className="max-h-[360px] overflow-auto rounded-xl border"><table className="w-full min-w-[1050px] text-xs text-left"><thead className="bg-slate-200 sticky top-0"><tr>{['Date / Time','Name','Mobile','Email','Member ID','Amount','Type','Status','Payment ID','Order ID','UTR/RRN'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{paymentLookupRows.map((p:any)=><tr key={p.id||p.paymentId} className="border-t"><td className="p-2 whitespace-nowrap">{p.paymentTime?new Date(p.paymentTime).toLocaleString('en-IN'):p.paymentDate||'-'}</td><td className="p-2 font-bold">{p.name||'-'}</td><td className="p-2">{p.mobile||'-'}</td><td className="p-2 break-all">{p.email||'-'}</td><td className="p-2 font-mono">{p.membershipId||p.memberId||'-'}</td><td className="p-2 font-black">₹{p.amount||0}</td><td className="p-2">{p.paymentType||'-'}</td><td className="p-2">{p.paymentStatus||p.status||'-'}</td><td className="p-2 font-mono break-all">{p.paymentId||'-'}</td><td className="p-2 font-mono break-all">{p.orderId||'-'}</td><td className="p-2 font-mono">{p.utr||'-'}</td></tr>)}</tbody></table></div></>}
+    </CardContent></Card>
     <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
       <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Read-only check. Confirms Razorpay payment status, HCRS payment record and member renewal status.</p></div>
       <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 items-end">
@@ -379,7 +401,7 @@ export default function AdminReportsTab({
       {auditRows.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs text-left"><thead className="bg-slate-200"><tr>{['Time','Mobile','Name','Member ID','Auth Email','Result','Reason'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{auditRows.map(row=><tr key={row.uid} className="border-t"><td className="p-2">{new Date(row.authCreatedAt).toLocaleString('en-IN')}</td><td className="p-2 font-bold">{row.mobile||'-'}</td><td className="p-2">{row.name||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-mono">{row.authEmail||'-'}</td><td className="p-2"><Badge className={row.classification === 'Likely unauthorized fallback' ? 'bg-red-100 text-red-950' : row.classification.startsWith('Legitimate') ? 'bg-emerald-100 text-emerald-950' : 'bg-amber-100 text-amber-950'}>{row.classification}</Badge></td><td className="p-2">{row.reason}</td></tr>)}</tbody></table></div>}
       {!auditLoading && !auditError && auditRows.length === 0 && <p className="text-xs font-bold text-slate-500">Select a date and press Check Selected Date to run the audit.</p>}
     </CardContent></Card>
-    <JanamailAdminReport />
+<JanamailAdminReport />
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <Metric label="New Reg Today" summary={dailySummary('new_memberships', today)} fee={200} />
       <Metric label="New Reg Yesterday" summary={dailySummary('new_memberships', yesterday)} fee={200} dark />
