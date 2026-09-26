@@ -111,19 +111,13 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   // Confirmation Checkbox States (fully dynamic)
   const [checkedIndices, setCheckedIndices] = useState<Record<number, boolean>>({});
 
-  // Guarantee exactly four mandatory checkboxes
-  const rawConfirmations = config?.confirmations?.filter(c => c.trim() !== "") || [];
-  const activeConfirmations = rawConfirmations.length >= 4
-    ? rawConfirmations.slice(0, 4)
-    : [
-        ...rawConfirmations,
-        ...[
-          "ഞാൻ നൽകിയിട്ടുള്ള പേര്, വിലാസം, ഫോൺ നമ്പർ എന്നിവ പൂർണ്ണമായും സത്യസന്ധവും കൃത്യവുമാണ് എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. (I certify that my name, address, and phone number are completely authentic and correct.)",
-          "ഈ പൊതു ക്യാമ്പയിനിൽ ഞാൻ തികച്ചും സ്വമേധയാ ആണ് പങ്കെടുക്കുന്നതെന്നും എന്റെ അറിവോടും പൂർണ്ണ സമ്മതത്തോടും കൂടിയാണെന്നും വ്യക്തമാക്കുന്നു. (I confirm that my participation is fully voluntary and with my complete consent.)",
-          "ഇമെയിലിൽ ഉൾപ്പെടുത്തിയിരിക്കുന്ന കാര്യങ്ങളിൽ വ്യക്തിപരമായ അധിക്ഷേപങ്ങളോ ദുരുദ്ദേശ്യമോ ഇല്ലെന്ന് ഉറപ്പ് നൽകുന്നു. (I guarantee that the petition content is respectful and free from any personal abuse or malice.)",
-          "ഈ ക്യാമ്പയിന്റെ എല്ലാ നിബന്ധനകളും വായിച്ചു മനസ്സിലാക്കി, സന്ദേശത്തിന്റെ പൂർണ്ണ വ്യക്തിപരമായ ഉത്തരവാദിത്തം ഞാൻ ഏറ്റെടുക്കുന്നു. (I accept full individual responsibility for sending this email petition.)"
-        ].slice(rawConfirmations.length)
-      ];
+  // Fixed public declarations. Users may select an approved subject, but cannot author/edit mail content.
+  const activeConfirmations = [
+    "ഞാൻ നൽകിയിട്ടുള്ള പേര്, വിലാസം, ഫോൺ നമ്പർ എന്നിവ പൂർണ്ണമായും സത്യസന്ധവും കൃത്യവുമാണ് എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു.",
+    "ഈ പൊതു ക്യാമ്പയിനിൽ ഞാൻ തികച്ചും സ്വമേധയാ ആണ് പങ്കെടുക്കുന്നതെന്നും എന്റെ അറിവോടും പൂർണ്ണ സമ്മതത്തോടും കൂടിയാണെന്നും വ്യക്തമാക്കുന്നു.",
+    "ഈ കത്തിലെ ഉള്ളടക്കം വായിച്ചു മനസ്സിലാക്കി, എനിക്ക് ബോധ്യപ്പെട്ട വിഷയമാണ് ഞാൻ തിരഞ്ഞെടുത്തത്.",
+    "ഈ ക്യാമ്പയിന്റെ നിബന്ധനകൾ വായിച്ചു മനസ്സിലാക്കി, ഞാൻ തിരഞ്ഞെടുക്കുന്ന അംഗീകൃത കത്ത് അയയ്ക്കുന്നതിന് സമ്മതിക്കുന്നു."
+  ];
 
   const isFullyConfirmed = activeConfirmations.every((_, idx) => checkedIndices[idx]);
   
@@ -166,9 +160,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     "ca.budsact@kerala.gov.in"
   );
   
-  const [isCustomized, setIsCustomized] = useState(() => {
-    return localStorage.getItem("janamail_draft_isCustomized") === "true";
-  });
+  const [isCustomized, setIsCustomized] = useState(false);
 
   const [subject, setSubject] = useState(() => {
     const isCust = localStorage.getItem("janamail_draft_isCustomized") === "true";
@@ -406,10 +398,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     return { subject: finalSubject, body: standardBody, isTruncated: false };
   };
 
-  const [activeComposeMethod, setActiveComposeMethod] = useState<"template" | "custom">(() => {
-    const saved = localStorage.getItem("janamail_draft_method");
-    return (saved === "template" || saved === "custom") ? saved : "template";
-  });
+  const [activeComposeMethod, setActiveComposeMethod] = useState<"template" | "custom">("template");
 
   // Auto Save Effect
   useEffect(() => {
@@ -460,14 +449,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const cleanCcConfig = (config?.cc || "").trim();
     setCc(cleanCcConfig ? cleanCcConfig : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
 
-    if (config) {
-      // Sync active compose method based on emailMode selection if appropriate
-      if (config.emailMode === "custom") {
-        setActiveComposeMethod("custom");
-      } else if (config.emailMode === "templates") {
-        setActiveComposeMethod("template");
-      }
-    }
+    // Security: public Janamail always uses administrator-approved templates.
+    setActiveComposeMethod("template");
+    setIsCustomized(false);
   }, [config]);
 
   // Subscribe to dynamic Campaign Templates from Firestore
@@ -625,32 +609,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   }, [config, subject, body, recipients, cc, currentUserProfile, authUser, phone, checkingAuth]);
 
 
-
-  const handleModeChange = (mode: "template" | "custom") => {
-    setActiveComposeMethod(mode);
-    if (mode === "custom") {
-      setSubject("");
-      setBody("");
-      setIsCustomized(true);
-    } else {
-      setIsCustomized(false);
-      // Reload current or first template
-      const activeTemplate = templates.find(t => t.id === selectedTemplateId) || templates[0];
-      if (activeTemplate) {
-        setSelectedTemplateId(activeTemplate.id || "");
-        setSubject(getMergedText(activeTemplate.subject, name, phone, district, place, category));
-        setBody(getFormattedBody(activeTemplate.body, name, phone, district, place, category));
-      } else {
-        setSubject(getMergedText("ഹൈറിച്ച് തട്ടിപ്പ് കേസ്: അടിയന്തര നടപടികളും ഇരകൾക്ക് നീതിയും ആവശ്യപ്പെട്ട് പൊതുജന ഹർജി", name, phone, district, place, category));
-        setBody(getFormattedBody(getTemplateBodyForFallback(), name, phone, district, place, category));
-      }
-    }
-  };
-
-  const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setBody(e.target.value);
-    setIsCustomized(true);
-  };
 
   const handleResetTemplate = () => {
     setIsCustomized(false);
@@ -1180,86 +1138,14 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             വിഷയം (Email Subject)
           </h3>
 
-          {/* Writing Mode Selector Card Grid */}
-          <div className="space-y-1.5 sm:space-y-2">
-            <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1 sm:mb-2">
-              ഹർജി തയാറാക്കേണ്ട രീതി / Select Writing Mode *
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5">
-              {/* Option 1: Reference Templates */}
-              <div
-                onClick={() => handleModeChange("template")}
-                className={`group relative p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
-                  activeComposeMethod === "template"
-                    ? "bg-blue-50/30 border-blue-600 shadow-2xs ring-1 ring-blue-600/10"
-                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40"
-                }`}
-              >
-                <div className="flex items-start gap-2.5 sm:gap-3.5">
-                  <div className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border shrink-0 transition-all ${
-                    activeComposeMethod === "template"
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/10"
-                      : "bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-slate-100"
-                  }`}>
-                    <FileText className="w-3.5 h-3.5 sm:w-5 sm:h-5 stroke-[2]" />
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                    <h4 className={`font-extrabold text-xs sm:text-sm leading-tight transition-colors ${
-                      activeComposeMethod === "template" ? "text-blue-900" : "text-slate-800 group-hover:text-slate-950"
-                    }`}>
-                      Reference Templates
-                    </h4>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
-                      റെഫറൻസ് ടെംപ്ലേറ്റുകൾ
-                    </p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold leading-relaxed pt-0.5">
-                      മുൻകൂട്ടി തയാറാക്കിയ ഔദ്യോഗിക വിഷയങ്ങളും ഉള്ളടക്കങ്ങളും നേരിട്ട് ഉപയോഗിക്കാം.
-                    </p>
-                  </div>
-                </div>
-                {activeComposeMethod === "template" && (
-                  <div className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 text-blue-600">
-                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                  </div>
-                )}
-              </div>
-
-              {/* Option 2: Write My Own Email */}
-              <div
-                onClick={() => handleModeChange("custom")}
-                className={`group relative p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
-                  activeComposeMethod === "custom"
-                    ? "bg-blue-50/30 border-blue-600 shadow-2xs ring-1 ring-blue-600/10"
-                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40"
-                }`}
-              >
-                <div className="flex items-start gap-2.5 sm:gap-3.5">
-                  <div className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border shrink-0 transition-all ${
-                    activeComposeMethod === "custom"
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/10"
-                      : "bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-slate-100"
-                  }`}>
-                    <PenTool className="w-3.5 h-3.5 sm:w-5 sm:h-5 stroke-[2]" />
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                    <h4 className={`font-extrabold text-xs sm:text-sm leading-tight transition-colors ${
-                      activeComposeMethod === "custom" ? "text-blue-900" : "text-slate-800 group-hover:text-slate-950"
-                    }`}>
-                      Write My Own Email
-                    </h4>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
-                      സ്വന്തമായി എഴുതാം
-                    </p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold leading-relaxed pt-0.5">
-                      നിങ്ങളുടേതായ വിഷയവും കത്തിന്റെ ഉള്ളടക്കവും പൂർണ്ണമായും സ്വന്തമായി തയാറാക്കാം.
-                    </p>
-                  </div>
-                </div>
-                {activeComposeMethod === "custom" && (
-                  <div className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 text-blue-600">
-                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                  </div>
-                )}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 sm:p-4 text-left">
+            <div className="flex items-start gap-2.5">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-700 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs sm:text-sm font-black text-blue-950">അംഗീകൃത വിഷയങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക</p>
+                <p className="text-[10px] sm:text-xs font-semibold text-blue-800 mt-1 leading-relaxed">
+                  താഴെയുള്ള മുൻകൂട്ടി തയ്യാറാക്കിയ വിഷയങ്ങളിൽ നിന്ന് ഒന്ന് തിരഞ്ഞെടുക്കാം. Subject അല്ലെങ്കിൽ കത്തിന്റെ ഉള്ളടക്കം മാറ്റാൻ സാധിക്കില്ല.
+                </p>
               </div>
             </div>
           </div>
@@ -1348,11 +1234,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                 type="text"
                 required
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-                className={`janamail-field w-full px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all ${
-                  activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "!cursor-not-allowed opacity-80 !bg-slate-50/70" : ""
-                }`}
+                readOnly
+                className={`janamail-field w-full px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all !cursor-not-allowed opacity-80 !bg-slate-50/70`}
                 placeholder={activeComposeMethod === "template" ? "Email Subject" : "ഉദാ: ഹർജി വിഷയം / Enter custom subject..."}
               />
             </div>
@@ -1373,15 +1256,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             </h3>
             
             <div className="flex items-center gap-2">
-              {isCustomized && (
-                <button
-                  onClick={handleResetTemplate}
-                  className="text-[11px] sm:text-xs text-red-650 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  Reset
-                </button>
-              )}
               
               <button
                 onClick={copyToClipboard}
@@ -1405,11 +1279,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           <div className="janamail-textarea-container relative min-h-[260px] sm:min-h-[350px] flex flex-col bg-white overflow-hidden rounded-xl sm:rounded-2xl">
             <textarea
               value={body}
-              onChange={handleBodyChange}
-              readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-              className={`w-full flex-1 bg-transparent p-3 sm:p-5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal leading-relaxed focus:outline-none resize-none font-sans min-h-[260px] sm:min-h-[350px] ${
-                activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "cursor-not-allowed select-all opacity-80 bg-slate-50/50" : ""
-              }`}
+              readOnly
+              className={`w-full flex-1 bg-transparent p-3 sm:p-5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal leading-relaxed focus:outline-none resize-none font-sans min-h-[260px] sm:min-h-[350px] cursor-not-allowed select-all opacity-80 bg-slate-50/50`}
               placeholder="കത്തിന്റെ ഉള്ളടക്കം ഇവിടെ തയ്യാറാക്കാം / Type petition content here..."
             />
 
