@@ -2198,7 +2198,7 @@ export default function AdminDashboard({
         id.startsWith('janamail_rotation_');
       return !isJanamailRecord;
     });
-  }, [actualClaims]);
+  }, [claims]);
 
    const filteredClaims = useMemo(() => {
     const term = claimSearchTerm.toLowerCase().trim();
@@ -2221,7 +2221,7 @@ export default function AdminDashboard({
 
       let matchesType = true;
       if (claimTypeFilter === 'combo') {
-        matchesType = isComboClaim(c, claims);
+        matchesType = isComboClaim(c, actualClaims);
       } else if (claimTypeFilter === 'single') {
         matchesType = !isComboClaim(c, claims);
       }
@@ -2310,9 +2310,9 @@ export default function AdminDashboard({
 
     // Include groups with more than 1 claim OR any group containing a claim with non-Self relation / isCombo
     return groups
-      .filter(grp => grp.claims.length > 1 || grp.claims.some(c => isComboClaim(c, claims)))
+      .filter(grp => grp.claims.length > 1 || grp.claims.some(c => isComboClaim(c, actualClaims)))
       .sort((a, b) => b.totalPending - a.totalPending);
-  }, [filteredClaims, members, claims]);
+  }, [filteredClaims, members, actualClaims]);
 
   const allComboIndividualClaims = useMemo(() => {
     const list: any[] = [];
@@ -2337,8 +2337,9 @@ export default function AdminDashboard({
     actualClaims.forEach(c => {
       const paid = Number(c.totalPaid || 0);
       const received = Number(c.totalReceived || 0);
+      const hasStoredPending = c.totalPending !== undefined && c.totalPending !== null && c.totalPending !== '';
       const storedPending = Number(c.totalPending);
-      totalPending += Number.isFinite(storedPending) ? storedPending : (paid - received);
+      totalPending += hasStoredPending && Number.isFinite(storedPending) ? storedPending : (paid - received);
       if (c.isEmergency) emergencyCount++;
       
       if (c.categories) {
