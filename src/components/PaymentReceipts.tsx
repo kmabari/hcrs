@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Receipt, Printer, Download, Eye, X, ShieldCheck, FileDown, Image as ImageIcon } from 'lucide-react';
 import { FALLBACK_LOGO_URL } from '../constants';
 import html2canvas from 'html2canvas';
-import { html2canvasOklchOnClone } from '../lib/imageUtils';
+import { html2canvasOklchOnClone, imageUrlToDataUrl, triggerFileDownload } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
 import { buildRegistrationReceipt, getReceiptMembershipCategory } from '../lib/receiptUtils';
@@ -208,27 +208,67 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
     }
   };
 
-  const downloadReceiptImage = async () => {
+  const renderReceiptCanvas = async () => {
     const cardElement = document.getElementById('printable-receipt-card');
-    if (!cardElement) {
-      toast.error('Receipt element not found');
-      return;
+    if (!cardElement) throw new Error('Receipt element not found');
+
+    const images = Array.from(cardElement.querySelectorAll('img')) as HTMLImageElement[];
+    const originalSources = images.map(image => ({ image, src: image.src }));
+
+    try {
+      // Cross-origin logos can taint a mobile canvas. Inline them before capture;
+      // if an external image cannot be inlined, use the bundled official seal.
+      for (const image of images) {
+        if (!image.src || image.src.startsWith('data:')) continue;
+        const dataUrl = await imageUrlToDataUrl(image.src);
+        image.src = dataUrl.startsWith('data:')
+          ? dataUrl
+          : new URL('/hcrs-official-seal.png', window.location.origin).href;
+        try {
+          await image.decode();
+        } catch {
+          // html2canvas will retry the local fallback during rendering.
+        }
+      }
+
+      const mobile = window.matchMedia('(max-width: 768px)').matches;
+      return await html2canvas(cardElement, {
+        scale: mobile ? 2 : 2.5,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+        imageTimeout: 10000,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        onclone: clonedDoc => {
+          html2canvasOklchOnClone(clonedDoc);
+          const clonedCard = clonedDoc.getElementById('printable-receipt-card');
+          if (clonedCard) {
+            clonedCard.style.contentVisibility = 'visible';
+            clonedCard.style.overflow = 'visible';
+          }
+        }
+      });
+    } finally {
+      originalSources.forEach(({ image, src }) => {
+        image.src = src;
+      });
     }
+  };
+
+  const downloadReceiptImage = async () => {
     const loadingToast = toast.loading('Generating receipt image download...');
     try {
       await new Promise(resolve => setTimeout(resolve, 150));
-      const canvas = await html2canvas(cardElement, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#FFFFFF',
-        onclone: html2canvasOklchOnClone
-      });
+      const canvas = await renderReceiptCanvas();
       
-      const imgData = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.png`;
-      link.href = imgData;
-      link.click();
+      const imageBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image conversion failed')), 'image/png');
+      });
+      if (!triggerFileDownload(imageBlob, `Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.png`)) {
+        throw new Error('Browser blocked the image download');
+      }
       
       toast.success('Receipt image downloaded successfully!', { id: loadingToast });
     } catch (error) {
@@ -238,37 +278,26 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
   };
 
   const downloadReceiptPDF = async () => {
-    const cardElement = document.getElementById('printable-receipt-card');
-    if (!cardElement) {
-      toast.error('Receipt element not found');
-      return;
-    }
     const loadingToast = toast.loading('Generating PDF document...');
     try {
       await new Promise(resolve => setTimeout(resolve, 150));
-      const canvas = await html2canvas(cardElement, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#FFFFFF',
-        onclone: html2canvasOklchOnClone
-      });
-      
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      
-      // Calculate width and height in mm
-      const pdfWidth = 148; // custom portrait size
-      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      const canvas = await renderReceiptCanvas();
       
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({
-        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
-        unit: 'mm',
-        format: [pdfWidth, pdfHeight]
-      });
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdf.save(`Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.pdf`);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const maxWidth = 190;
+      const maxHeight = 277;
+      const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
+      const receiptWidth = canvas.width * ratio;
+      const receiptHeight = canvas.height * ratio;
+      const x = (210 - receiptWidth) / 2;
+      const y = (297 - receiptHeight) / 2;
+
+      pdf.addImage(imgData, 'JPEG', x, y, receiptWidth, receiptHeight, undefined, 'FAST');
+      const pdfBlob = pdf.output('blob');
+      if (!triggerFileDownload(pdfBlob, `Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.pdf`)) {
+        throw new Error('Browser blocked the PDF download');
+      }
       
       toast.success('Receipt PDF downloaded successfully!', { id: loadingToast });
     } catch (error) {
@@ -366,7 +395,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
               <div
                 id="printable-receipt-card"
                 className="bg-white border-2 border-dashed border-slate-300 rounded-3xl p-6 font-sans relative overflow-hidden"
-                style={{ contentVisibility: 'auto' }}
+                style={{ contentVisibility: 'visible' }}
               >
                 {/* Official Stamp Watermark background */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] select-none pointer-events-none">

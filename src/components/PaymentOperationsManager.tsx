@@ -46,6 +46,8 @@ interface VerifiedPaymentRecord {
   membershipId: string;
   name: string;
   mobile: string;
+  email?: string;
+  utr?: string;
   method: string;
   status: string;
   paymentStatus: string;
@@ -76,6 +78,14 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   const [razorpayStatusNote, setRazorpayStatusNote] = useState<string>('');
   const [verifiedPayments, setVerifiedPayments] = useState<VerifiedPaymentRecord[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentSearch, setPaymentSearch] = useState('');
+
+  const filteredVerifiedPayments = verifiedPayments.filter((payment) => {
+    const q = paymentSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [payment.mobile, payment.email, payment.paymentId, payment.orderId, payment.memberId, payment.membershipId, payment.utr, payment.name]
+      .some(value => String(value || '').toLowerCase().includes(q));
+  });
 
   useEffect(() => {
     loadSettings();
@@ -446,6 +456,20 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          <div className="mb-4">
+            <Input
+              value={paymentSearch}
+              onChange={(e) => setPaymentSearch(e.target.value)}
+              placeholder="Search: Mobile / Email / Payment ID / Order ID / Member ID / UTR"
+              className="w-full"
+            />
+            {paymentSearch.trim() && (
+              <div className="mt-2 text-xs font-semibold text-slate-500">
+                {filteredVerifiedPayments.length} matching payment{filteredVerifiedPayments.length === 1 ? '' : 's'}
+              </div>
+            )}
+          </div>
+
           {paymentsLoading ? (
             <div className="p-8 text-center text-sm font-bold text-slate-500">Loading verified payments...</div>
           ) : verifiedPayments.length === 0 ? (
@@ -465,7 +489,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {verifiedPayments.map(payment => (
+                  {filteredVerifiedPayments.map(payment => (
                     <tr key={payment.id} className="hover:bg-emerald-50/40">
                       <td className="px-4 py-3 font-semibold text-slate-700">
                         {payment.paymentDate || (payment.paymentTime ? new Date(payment.paymentTime).toLocaleDateString() : '—')}

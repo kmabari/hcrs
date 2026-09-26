@@ -1001,14 +1001,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   useEffect(() => {
     if (user) {
       if (user.name) {
-        if (!customerName) setCustomerName(user.name);
+        setCustomerName(user.name);
         if (!selfName) setSelfName(user.name);
       }
-      if (user.mobile && !customerMobile) setCustomerMobile(user.mobile);
+      if (user.mobile) setCustomerMobile(user.mobile);
       
       const uAddr = sanitizeMemberAddress((user as any).houseName || (user as any).house || user.address || (user as any).residentialAddress || (user as any).userAddress || '');
       if (uAddr) {
-        if (!customerAddress) setCustomerAddress(uAddr);
+        setCustomerAddress(uAddr);
         if (!spouseAddress) setSpouseAddress(uAddr);
         if (!parentAddress) setParentAddress(uAddr);
         if (!childAddress) setChildAddress(uAddr);
@@ -1020,7 +1020,9 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uDist = user.district || (user as any).userDistrict || '';
       if (uDist) {
-        if (!customerDistrict) setCustomerDistrict(uDist);
+        // Profile is authoritative for the primary member. If an old claim/form
+        // still carries a previous district, View Form/PDF must follow the current profile.
+        setCustomerDistrict(uDist);
         if (!spouseDistrict) setSpouseDistrict(uDist);
         if (!parentDistrict) setParentDistrict(uDist);
         if (!childDistrict) setChildDistrict(uDist);
@@ -1028,7 +1030,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const cConsti = user.assemblyConstituency || user.constituency || (user as any).assembly || (user as any).mandalam || '';
       if (cConsti) {
-        if (!customerConstituency) setCustomerConstituency(cConsti);
+        // Same rule for the primary member constituency/mandalam.
+        setCustomerConstituency(cConsti);
         if (!spouseConstituency) setSpouseConstituency(cConsti);
         if (!parentConstituency) setParentConstituency(cConsti);
         if (!childConstituency) setChildConstituency(cConsti);
@@ -1036,7 +1039,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uPO = user.postOffice || (user as any).po || '';
       if (uPO) {
-        if (!customerPostOffice) setCustomerPostOffice(uPO);
+        setCustomerPostOffice(uPO);
         if (!spousePostOffice) setSpousePostOffice(uPO);
         if (!parentPostOffice) setParentPostOffice(uPO);
         if (!childPostOffice) setChildPostOffice(uPO);
@@ -1044,7 +1047,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uAutoPlace = (uPO || uDist || (user as any).place || (user as any).location || '').trim();
       if (uAutoPlace) {
-        if (!customerPlace) setCustomerPlace(uAutoPlace);
+        setCustomerPlace(uAutoPlace);
         if (!spousePlace) setSpousePlace(uAutoPlace);
         if (!parentPlace) setParentPlace(uAutoPlace);
         if (!childPlace) setChildPlace(uAutoPlace);
@@ -1052,13 +1055,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       
       const uPin = user.pincode || (user as any).pin || (user as any).postalCode || '';
       if (uPin) {
-        if (!customerPincode) setCustomerPincode(uPin);
+        setCustomerPincode(uPin);
         if (!spousePincode) setSpousePincode(uPin);
         if (!parentPincode) setParentPincode(uPin);
         if (!childPincode) setChildPincode(uPin);
       }
       
-      if (((user as any).panNumber || (user as any).pan) && !customerPan) setCustomerPan((user as any).panNumber || (user as any).pan);
+      if ((user as any).panNumber || (user as any).pan) setCustomerPan((user as any).panNumber || (user as any).pan);
       if (user.sponsorName && !selfSponsorName) {
         setSelfSponsorName(user.sponsorName);
         if (!spouseSponsorName) setSpouseSponsorName(user.sponsorName);
@@ -3242,6 +3245,25 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     );
   };
 
+  // View/Print/PDF must always use the latest primary-member profile location.
+  // Historical Self claim snapshots may still contain the old district/constituency.
+  const claimsForStatement = useMemo(() => {
+    const profileDistrict = user?.district || (user as any)?.userDistrict || '';
+    const profileConstituency = user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '';
+    return submittedClaims.map((claim) => {
+      if (String(claim?.relation || '').toLowerCase() !== 'self') return claim;
+      return {
+        ...claim,
+        ...(profileDistrict ? { district: profileDistrict, userDistrict: profileDistrict } : {}),
+        ...(profileConstituency ? {
+          assemblyConstituency: profileConstituency,
+          constituency: profileConstituency,
+          userConstituency: profileConstituency
+        } : {})
+      };
+    });
+  }, [submittedClaims, user?.district, (user as any)?.userDistrict, user?.assemblyConstituency, user?.constituency, (user as any)?.assembly, (user as any)?.mandalam]);
+
   // Render Official Court Statement View
   if (formMode === 'statement' && submittedClaims.length > 0 && !completed) {
     return (
@@ -3299,7 +3321,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               )}
               <Button
                 size="sm"
-                onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
+                onClick={() => printCourtComboReport(combinedUserForPrint, claimsForStatement)}
                 className="h-8 sm:h-9 px-2 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40 w-full sm:w-auto"
               >
                 <Printer className="w-3.5 h-3.5" />
@@ -3307,7 +3329,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               </Button>
               <Button
                 size="sm"
-                onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
+                onClick={() => downloadCourtComboPdf(combinedUserForPrint, claimsForStatement)}
                 className="h-8 sm:h-9 px-2 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40 w-full sm:w-auto"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -3391,8 +3413,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             <iframe
               srcDoc={
                 selectedStatementIdx === -1
-                  ? getCourtComboHtml(combinedUserForPrint, submittedClaims)
-                  : getSingleCourtClaimHtml(combinedUserForPrint, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
+                  ? getCourtComboHtml(combinedUserForPrint, claimsForStatement)
+                  : getSingleCourtClaimHtml(combinedUserForPrint, claimsForStatement[selectedStatementIdx], selectedStatementIdx + 1, claimsForStatement.length)
               }
               title="Consignment Advance Court Statement"
               className="w-full h-full min-h-[520px] sm:min-h-[750px] md:min-h-[850px] border-0 bg-white block"
@@ -3414,14 +3436,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <span>ഫോമിലേക്ക്</span>
               </Button>
               <Button
-                onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
+                onClick={() => printCourtComboReport(combinedUserForPrint, claimsForStatement)}
                 className="h-11 px-3 sm:px-5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>പ്രിന്റ് (A4)</span>
               </Button>
               <Button
-                onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
+                onClick={() => downloadCourtComboPdf(combinedUserForPrint, claimsForStatement)}
                 className="h-11 px-3 sm:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer border border-emerald-500"
               >
                 <Download className="w-4 h-4 text-white" />

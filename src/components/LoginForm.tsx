@@ -35,6 +35,10 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
+const ADMIN_MOBILE_RESET_ALIASES: Record<string, string> = {
+  '9349711410': 'kmabarikiyafoods@gmail.com'
+};
+
 interface LoginFormProps {
   onLogin: (values: { email: string; pin: string }) => Promise<{ success: boolean; error?: string } | boolean> | void;
   onGoogleLogin: () => void;
@@ -50,6 +54,8 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
   const [resetMobileInput, setResetMobileInput] = useState('');
   const [isResettingPin, setIsResettingPin] = useState(false);
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+  const resetMobileDigits = resetMobileInput.replace(/\D/g, '').slice(-10);
+  const isAdminResetAlias = Boolean(ADMIN_MOBILE_RESET_ALIASES[resetMobileDigits]);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -114,6 +120,25 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
     const cleanMobile = rawInput.replace(/\D/g, '').slice(-10);
     if (cleanMobile.length !== 10) {
       toast.error('ദയവായി ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.');
+      return;
+    }
+
+    const adminResetEmail = ADMIN_MOBILE_RESET_ALIASES[cleanMobile];
+    if (adminResetEmail) {
+      const loadingToast = toast.loading('Sending secure admin password reset link...');
+      setIsResettingPin(true);
+      try {
+        await sendPasswordResetEmail(auth, adminResetEmail);
+        toast.success('Admin password reset link email-ലേക്ക് അയച്ചു.', { id: loadingToast });
+        setResetSuccessMessage(
+          'Admin email inbox പരിശോധിച്ച് പുതിയ password set ചെയ്യുക. ശേഷം 9349711410 + പുതിയ password ഉപയോഗിച്ച് Admin Panel-ൽ login ചെയ്യാം.'
+        );
+      } catch (error: any) {
+        console.warn('Admin reset email notice:', error);
+        toast.error(error?.message || 'Admin password reset link അയയ്ക്കാൻ കഴിഞ്ഞില്ല.', { id: loadingToast });
+      } finally {
+        setIsResettingPin(false);
+      }
       return;
     }
 
@@ -507,12 +532,14 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                     type="button"
                     onClick={() => {
                       setShowResetModal(false);
-                      // Trigger login with 123456
-                      form.handleSubmit(onSubmit)();
+                      if (!isAdminResetAlias) {
+                        // Standard member reset keeps the existing 123456 flow.
+                        form.handleSubmit(onSubmit)();
+                      }
                     }}
                     className="w-full h-12 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md"
                   >
-                    123456 നൽകി ഇപ്പോൾ ലോഗിൻ ചെയ്യുക →
+                    {isAdminResetAlias ? 'Email പരിശോധിക്കുക / Close' : '123456 നൽകി ഇപ്പോൾ ലോഗിൻ ചെയ്യുക →'}
                   </Button>
                 </div>
               ) : (
@@ -531,7 +558,11 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                       />
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-semibold ml-1">
-                      മൊബൈൽ നമ്പർ നൽകിയാൽ പാസ്‌വേഡ് നേരിട്ട് <strong className="text-slate-900 font-black">123456</strong> ആയി റീസെറ്റ് ചെയ്യപ്പെടും. ശേഷം പുതിയ പാസ്‌വേഡ് മാറ്റാം.
+                      {isAdminResetAlias ? (
+                        <>ഈ Admin നമ്പറിന് secure reset link <strong className="text-slate-900 font-black">kmabarikiyafoods@gmail.com</strong>-ലേക്ക് അയക്കും. 123456 default reset ബാധകമല്ല.</>
+                      ) : (
+                        <>മൊബൈൽ നമ്പർ നൽകിയാൽ പാസ്‌വേഡ് നേരിട്ട് <strong className="text-slate-900 font-black">123456</strong> ആയി റീസെറ്റ് ചെയ്യപ്പെടും. ശേഷം പുതിയ പാസ്‌വേഡ് മാറ്റാം.</>
+                      )}
                     </p>
                   </div>
 
@@ -547,7 +578,9 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                       ) : (
                         <RefreshCw className="w-4 h-4" />
                       )}
-                      {resetMobileInput.includes('@') ? 'ഇമെയിൽ റീസെറ്റ് ലിങ്ക് അയക്കുക' : 'പാസ്‌വേഡ് 123456 ആക്കുക (Reset PIN)'}
+                      {resetMobileInput.includes('@') || isAdminResetAlias
+                        ? 'Admin Email Reset Link അയക്കുക'
+                        : 'പാസ്‌വേഡ് 123456 ആക്കുക (Reset PIN)'}
                     </Button>
 
                     <div className="relative py-1">
@@ -577,4 +610,3 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
     </div>
   );
 }
-

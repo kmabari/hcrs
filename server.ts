@@ -2102,13 +2102,26 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const requestedLimit = Number.parseInt(String(req.query.limit || '200'), 10);
       const paymentLimit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 10000) : 200;
       const paymentSnapshot = await dbAdmin.collection('payments').orderBy('verifiedAt', 'desc').limit(paymentLimit).get();
+      const usersSnapshot = await dbAdmin.collection('users').get();
+      const usersByUid = new Map(usersSnapshot.docs.map(d => [d.id, d.data() || {}]));
+      const usersByMembershipId = new Map(usersSnapshot.docs.map(d => {
+        const data:any = d.data() || {};
+        return [String(data.membershipId || data.memberId || ''), data];
+      }).filter(([id]) => Boolean(id)));
+      const cleanMobile = (value:any) => String(value || '').replace(/\\D/g, '').slice(-10);
+      const usersByMobile = new Map(usersSnapshot.docs.map(d => {
+        const data:any = d.data() || {};
+        return [cleanMobile(data.mobile), data];
+      }).filter(([mobile]) => Boolean(mobile)));
       const payments = paymentSnapshot.docs.map(paymentDoc => {
         const data: any = paymentDoc.data() || {};
         const verifiedAt = data.verifiedAt?.toDate ? data.verifiedAt.toDate().toISOString() : data.paymentTime || '';
+        const member:any = usersByUid.get(String(data.memberId || '')) || usersByMembershipId.get(String(data.membershipId || data.memberId || '')) || usersByMobile.get(cleanMobile(data.mobile)) || {};
         return {
           id: paymentDoc.id, paymentId: data.paymentId || paymentDoc.id, orderId: data.orderId || '',
           paymentType: data.paymentType || '', amount: Number(data.amount || 0), currency: data.currency || 'INR',
-          memberId: data.memberId || '', membershipId: data.membershipId || '', name: data.name || '', mobile: data.mobile || '',
+          memberId: data.memberId || '', membershipId: data.membershipId || member.membershipId || member.memberId || '', name: data.name || member.name || member.fullName || '', mobile: data.mobile || member.mobile || '',
+          email: data.email || member.email || '', utr: data.utr || data.rrn || data.upiReference || data.upiTransactionId || '',
           method: data.method || 'Razorpay', status: data.status || '', paymentStatus: data.paymentStatus || '',
           paymentDate: data.paymentDate || (verifiedAt ? verifiedAt.split('T')[0] : ''), paymentTime: verifiedAt
         };
