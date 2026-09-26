@@ -52,29 +52,14 @@ export const isSuperAdminEmail = (email?: string | null): boolean => {
 
 export const getCampaignId = (
   conf: JanamailConfig | null,
-  currSubject?: string,
-  currBody?: string,
-  currTo?: string,
-  currCc?: string
+  _currSubject?: string,
+  _currBody?: string,
+  _currTo?: string,
+  _currCc?: string
 ): string => {
+  // Keep campaign identity stable while the globally assigned Subject/Body rotates.
   const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
-  const toStr = (currTo || conf?.recipients || "ca.budsact@kerala.gov.in").trim().toLowerCase();
-  const ccStr = (currCc || conf?.cc || "").trim().toLowerCase();
-  const subStr = (currSubject || "").trim().toLowerCase();
-  const bodyStr = (currBody || "").trim().toLowerCase();
-
-  const fingerprint = `id:${baseId}|to:${toStr}|cc:${ccStr}|sub:${subStr}|bdy:${bodyStr}`;
-
-  let hash = 0;
-  for (let i = 0; i < fingerprint.length; i++) {
-    const char = fingerprint.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  const hashHex = Math.abs(hash).toString(36);
-  const cleanBase = baseId.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-
-  return `${cleanBase}_${hashHex}`;
+  return String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_");
 };
 
 const getRotationDocumentId = (conf: JanamailConfig | null | undefined): string => {
@@ -594,16 +579,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
     const emailId = getEffectiveEmail();
 
-    const isWhitelisted = isSuperAdminEmail(emailId) || 
-                          isSuperAdminEmail(currentUserProfile?.email) || 
-                          isSuperAdminEmail(authUser?.email) || 
-                          isSuperAdminEmail(auth.currentUser?.email);
-
-    if (isWhitelisted) {
-      setHasParticipated(false);
-      setBypassParticipationCheck(true);
-      return;
-    }
+    setBypassParticipationCheck(false);
 
     if (!emailId || emailId === "anonymous") {
       setHasParticipated(false);
@@ -770,13 +746,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     };
 
     const emailId = getEffectiveEmail();
-    const isWhitelisted = isSuperAdminEmail(emailId) || 
-                          isSuperAdminEmail(currentUserProfile?.email) || 
-                          isSuperAdminEmail(authUser?.email) || 
-                          isSuperAdminEmail(auth.currentUser?.email);
+    const isWhitelisted = false;
 
-    // Guard against multiple participation if locked
-    if (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck && !isWhitelisted) {
+    // Guard against multiple participation if locked. The one-person rule applies to every account.
+    if (hasParticipated && config?.restrictOneParticipation !== false) {
       toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കെടുത്തിട്ടുണ്ട്.\nഈ Email ID-യിൽ നിന്ന് വീണ്ടും Mail അയയ്ക്കാൻ സാധിക്കില്ല.", { duration: 8000 });
       return;
     }
@@ -840,9 +813,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
 
     const emailLaunchStatus = `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`;
 
-    const submissionDocId = isWhitelisted
-      ? `${getSubmissionDocumentId(currentCampaignId, emailId)}_${Date.now()}`
-      : getSubmissionDocumentId(currentCampaignId, emailId);
+    const submissionDocId = getSubmissionDocumentId(currentCampaignId, emailId);
 
     const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
@@ -850,7 +821,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const loadingToast = toast.loading("പങ്കാളിത്തം രേഖപ്പെടുത്തുന്നു...");
     try {
       // Duplicate prevention check directly against HCRS eLedger Firestore for regular participants
-      if (!isWhitelisted && config?.restrictOneParticipation !== false && !bypassParticipationCheck) {
+      if (config?.restrictOneParticipation !== false) {
         try {
           const existingDoc = await getDoc(doc(db, "claims", submissionDocId));
           if (existingDoc.exists() && (existingDoc.data()?.status === "Completed" || existingDoc.data()?.participated === true)) {
@@ -906,7 +877,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           ? await transaction.get(rotationRef)
           : null;
 
-        if (!isWhitelisted && config?.restrictOneParticipation !== false && !bypassParticipationCheck &&
+        if (config?.restrictOneParticipation !== false &&
             existingSubmission.exists() &&
             (existingSubmission.data()?.status === "Completed" || existingSubmission.data()?.participated === true)) {
           throw new Error("ALREADY_PARTICIPATED");
@@ -936,8 +907,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         }
       });
 
-      // Record Permanent Campaign Lock ONLY for regular users (not whitelisted super admins)
-      if (!isWhitelisted) {
+      // Record the permanent one-person participation lock before opening the mail app.
         localStorage.setItem(lockKey, JSON.stringify({
           campaignId: currentCampaignId,
           email: emailId,
@@ -946,7 +916,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         }));
         localStorage.setItem("janamail_participated", "true");
         setHasParticipated(true);
-      }
 
       toast.success("പങ്കാളിത്ത വിവരങ്ങൾ വിജയകരമായി രേഖപ്പെടുത്തിയിരിക്കുന്നു!", { id: loadingToast });
       setIsSubmitting(false);
@@ -970,9 +939,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       setApiError(errMsg);
       setIsSubmitting(false);
 
-      if (!isWhitelisted) {
-        return;
-      }
+      return;
     }
 
     // 2. Open Native/Browser mail interface safely
@@ -1701,26 +1668,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   <p className="text-xs md:text-sm text-amber-950 font-extrabold leading-relaxed whitespace-pre-line">
                     {"നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കെടുത്തിട്ടുണ്ട്.\nഈ Email ID-യിൽ നിന്ന് വീണ്ടും Mail അയയ്ക്കാൻ സാധിക്കില്ല."}
                   </p>
-                  {(currentUserProfile?.role === "admin" || currentUserProfile?.isAdmin === true) && (
-                    <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Super Admin Testing Override:</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
-                          const emailId = getEffectiveEmail();
-                          const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
-                          localStorage.removeItem(lockKey);
-                          setHasParticipated(false);
-                          setBypassParticipationCheck(true);
-                          toast.success("Admin Reset: Campaign lock bypassed for testing.");
-                        }}
-                        className="text-[10px] bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold px-2.5 py-1 rounded-lg transition cursor-pointer"
-                      >
-                        Reset Lock (Admin)
-                      </button>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <>
