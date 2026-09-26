@@ -2184,9 +2184,25 @@ export default function AdminDashboard({
     });
   }, [members, searchTerm, districtFilter, sourceFilter]);
 
+  // The shared Firestore "claims" collection also stores Janamail lock/submission
+  // and rotation-state documents. Keep those records out of the Claims UI/stats
+  // without deleting or mutating any Firestore data.
+  const actualClaims = useMemo(() => {
+    return claims.filter((claim: any) => {
+      const id = String(claim?.id || '');
+      const recordType = String(claim?.recordType || '').toLowerCase();
+      const isJanamailRecord =
+        recordType === 'janamail_submission' ||
+        recordType === 'rotation_state' ||
+        id.startsWith('janamail_lock_') ||
+        id.startsWith('janamail_rotation_');
+      return !isJanamailRecord;
+    });
+  }, [actualClaims]);
+
    const filteredClaims = useMemo(() => {
     const term = claimSearchTerm.toLowerCase().trim();
-    return claims.filter(c => {
+    return actualClaims.filter(c => {
       const matchesSearch = !term || 
                            (c.userName && c.userName.toLowerCase().includes(term)) || 
                            (c.userMobile && String(c.userMobile).includes(term)) ||
@@ -2212,7 +2228,7 @@ export default function AdminDashboard({
 
       return matchesSearch && matchesDistrict && matchesPriority && matchesCategory && matchesType;
     });
-  }, [claims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter, claimTypeFilter]);
+  }, [actualClaims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter, claimTypeFilter]);
 
   const comboGroups = useMemo(() => {
     const groups: Array<{
@@ -2318,8 +2334,11 @@ export default function AdminDashboard({
     const projectCounts: Record<string, number> = {};
     const priorityCounts: Record<string, number> = {};
 
-    claims.forEach(c => {
-      totalPending += c.totalPending || 0;
+    actualClaims.forEach(c => {
+      const paid = Number(c.totalPaid || 0);
+      const received = Number(c.totalReceived || 0);
+      const storedPending = Number(c.totalPending);
+      totalPending += Number.isFinite(storedPending) ? storedPending : (paid - received);
       if (c.isEmergency) emergencyCount++;
       
       if (c.categories) {
@@ -2474,7 +2493,7 @@ export default function AdminDashboard({
       continue: 'Continue with company after restart',
       urgent: 'Urgent payment required'
     };
-    const rows = claims.map((claim: any, index: number) => {
+    const rows = actualClaims.map((claim: any, index: number) => {
       const member = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
       const paid = Number(claim.totalPaid || 0);
       const received = Number(claim.totalReceived || 0);
@@ -4069,7 +4088,7 @@ export default function AdminDashboard({
                       )}
                     >
                       <FileText className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
-                      <span>Individual Claims (ഇൻഡിവിജ്വൽ) ({claims.length})</span>
+                      <span>Individual Claims (ഇൻഡിവിജ്വൽ) ({actualClaims.length})</span>
                     </Button>
                     <Button
                       variant={claimsViewMode === 'combo' ? 'default' : 'ghost'}
@@ -4089,12 +4108,12 @@ export default function AdminDashboard({
                     <Button
                       size="sm"
                       onClick={exportAllIndividualClaimsToExcel}
-                      disabled={claims.length === 0}
+                      disabled={actualClaims.length === 0}
                       className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase !bg-blue-700 hover:!bg-blue-800 !text-white shadow-sm disabled:!bg-slate-200 disabled:!text-slate-500"
                       title="Admin Panel-ലുള്ള എല്ലാ Individual Claim records-ഉം Excel file ആയി download ചെയ്യുക"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
-                      <span>Download All Claims Excel ({claims.length})</span>
+                      <span>Download All Claims Excel ({actualClaims.length})</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -4121,7 +4140,7 @@ export default function AdminDashboard({
 
                 {/* Stat Summaries */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatsCard title="Total Claims" value={claims.length} icon={<FileText />} color="brand-blue" />
+                  <StatsCard title="Total Claims" value={actualClaims.length} icon={<FileText />} color="brand-blue" />
                   <StatsCard title="Total Pending" value={claimStats.totalPending} icon={<IndianRupee />} color="brand-magenta" />
                   <StatsCard title="Emergency Cases" value={claimStats.emergencyCount} icon={<AlertCircle />} color="red" />
                   <StatsCard title="Combo Groups" value={comboGroups.length} icon={<Users />} color="green" />
