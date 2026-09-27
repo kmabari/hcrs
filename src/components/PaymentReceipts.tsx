@@ -310,6 +310,12 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       pdf.roundedRect(7, 7, pageWidth - 14, 196, 5, 5, 'S');
       pdf.setLineDashPattern([], 0);
 
+      // HCRS blue/gold identity lines keep the compact receipt visually official.
+      pdf.setFillColor(30, 102, 220);
+      pdf.rect(9, 8, contentWidth * 0.72, 1.6, 'F');
+      pdf.setFillColor(201, 162, 39);
+      pdf.rect(9 + (contentWidth * 0.72), 8, contentWidth * 0.28, 1.6, 'F');
+
       const sealData = await imageUrlToDataUrl(new URL('/hcrs-official-seal.png', window.location.origin).href);
       if (sealData.startsWith('data:')) {
         pdf.addImage(sealData, 'PNG', (pageWidth - 16) / 2, 10, 16, 16, undefined, 'FAST');
@@ -324,7 +330,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       pdf.text('REG. NO: TSR/TC/93/2025  |  WWW.HCRS.IN', pageWidth / 2, 35, { align: 'center' });
       pdf.text('Central Accounts Division, Kerala', pageWidth / 2, 39, { align: 'center' });
 
-      pdf.setFillColor(2, 6, 23);
+      pdf.setFillColor(30, 102, 220);
       pdf.roundedRect(margin, 44, contentWidth, 13, 4, 4, 'F');
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(11);
@@ -364,16 +370,23 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       drawField('Transaction ID', selectedReceipt.transactionId || '-', margin + 3, 175);
       drawField('Payment Time', selectedReceipt.paymentTime || '-', rightColumn, 175);
 
+      pdf.setDrawColor(5, 150, 105);
+      pdf.setFillColor(236, 253, 245);
+      pdf.roundedRect(margin + 2, 187, 48, 10, 5, 5, 'FD');
+      pdf.circle(margin + 8, 192, 3, 'S');
+      pdf.setLineWidth(0.7);
+      pdf.line(margin + 6.7, 192, margin + 7.7, 193);
+      pdf.line(margin + 7.7, 193, margin + 9.6, 190.7);
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(8);
+      pdf.setFontSize(7.5);
       pdf.setTextColor(5, 150, 105);
-      pdf.text('SECURED & VERIFIED', margin + 3, 195);
+      pdf.text('APPROVED & VERIFIED', margin + 13, 193.4);
       if (sealData.startsWith('data:')) {
-        pdf.addImage(sealData, 'PNG', pageWidth - 36, 185, 18, 18, undefined, 'FAST');
+        pdf.addImage(sealData, 'PNG', pageWidth - 36, 178, 18, 18, undefined, 'FAST');
       }
       pdf.setFontSize(6.5);
       pdf.setTextColor(71, 85, 105);
-      pdf.text('Authorized Signatory', pageWidth - 27, 202, { align: 'center' });
+      pdf.text('Authorized Signatory', pageWidth - 27, 198, { align: 'center' });
 
       const pdfBlob = pdf.output('blob');
       if (!triggerFileDownload(pdfBlob, `Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.pdf`)) {
