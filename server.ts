@@ -2318,7 +2318,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
       const usersSnap = await dbAdmin.collection('users').get();
       const cleanMobile = (v:any) => String(v || '').replace(/\D/g,'').slice(-10);
-      const users = usersSnap.docs.map(d => ({ uid:d.id, ...(d.data() || {}) } as any));
+      // Firestore document ID is authoritative. Some legacy profiles contain a
+      // stale `uid` field; never allow it to overwrite the actual document ID.
+      const users = usersSnap.docs.map(d => ({ ...(d.data() || {}), uid:d.id } as any));
       const isGenuineMember = (u:any) => Boolean(u && String(u.membershipId || u.memberId || '').trim() && String(u.name || u.fullName || '').trim().toLowerCase() !== 'member');
       const byUid = new Map(users.map((u:any) => [u.uid, u]));
       const byMembership = new Map(users.filter((u:any)=>u.membershipId || u.memberId).map((u:any)=>[String(u.membershipId || u.memberId),u]));
@@ -2409,7 +2411,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       const clean=(v:any)=>String(v||'').replace(/\D/g,'').slice(-10);
       const usersSnap=await dbAdmin.collection('users').get();
-      const users=usersSnap.docs.map(d=>({uid:d.id,...(d.data()||{})} as any));
+      // Firestore document ID is authoritative for the record we repair.
+      const users=usersSnap.docs.map(d=>({...(d.data()||{}),uid:d.id} as any));
       const noteMember=String(notes.memberId||'').trim(), noteMobile=clean(notes.mobile);
       const isGenuineMember=(u:any)=>Boolean(u&&String(u.membershipId||u.memberId||'').trim()&&String(u.name||u.fullName||'').trim().toLowerCase()!=='member');
       const directMember:any=users.find((u:any)=>u.uid===noteMember)||users.find((u:any)=>String(u.membershipId||u.memberId||'')===noteMember);
