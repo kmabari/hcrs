@@ -5,7 +5,7 @@ import { UserProfile, PaymentReceipt } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Receipt, Printer, Download, Eye, X, ShieldCheck, FileDown, Image as ImageIcon } from 'lucide-react';
-import { FALLBACK_LOGO_URL } from '../constants';
+import { FALLBACK_LOGO_URL, HCRS_OFFICIAL_DETAILS } from '../constants';
 import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone, imageUrlToDataUrl, triggerFileDownload } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
@@ -323,7 +323,8 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
         imageUrlToDataUrl(new URL('/hcrs-official-seal.png', window.location.origin).href)
       ]);
       if (logoData.startsWith('data:')) {
-        pdf.addImage(logoData, 'PNG', (pageWidth - 16) / 2, 10, 16, 16, undefined, 'FAST');
+        const logoSize = 19;
+        pdf.addImage(logoData, 'PNG', (pageWidth - logoSize) / 2, 9, logoSize, logoSize, undefined, 'FAST');
       }
 
       pdf.setFont('helvetica', 'bold');
@@ -332,9 +333,9 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       pdf.text('HIGHRICH COMMUNITY REVIVAL SOCIETY', pageWidth / 2, 31, { align: 'center' });
       pdf.setFontSize(6.5);
       pdf.setTextColor(100, 116, 139);
-      pdf.text('REG. NO: TSR/TC/93/2025  |  WWW.HCRS.IN', pageWidth / 2, 35, { align: 'center' });
-      pdf.text('Central Accounts Division, Near Society Junction', pageWidth / 2, 39, { align: 'center' });
-      pdf.text('Malappuram, Kerala - 676505', pageWidth / 2, 42, { align: 'center' });
+      pdf.text(`REG. NO: ${HCRS_OFFICIAL_DETAILS.registrationNumber}  |  ${HCRS_OFFICIAL_DETAILS.website.toUpperCase()}`, pageWidth / 2, 35, { align: 'center' });
+      pdf.text(HCRS_OFFICIAL_DETAILS.addressLine1, pageWidth / 2, 39, { align: 'center' });
+      pdf.text(HCRS_OFFICIAL_DETAILS.addressLine2, pageWidth / 2, 42, { align: 'center' });
 
       pdf.setFillColor(30, 102, 220);
       pdf.roundedRect(margin, 46, contentWidth, 13, 4, 4, 'F');
@@ -519,10 +520,11 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                     Highrich Community Revival Society
                   </h2>
                   <p className="text-[7px] text-slate-400 font-extrabold uppercase tracking-widest mt-1">
-                    Reg. No: TSR/TC/93/2025 | www.hcrs.in
+                    Reg. No: {HCRS_OFFICIAL_DETAILS.registrationNumber} | {HCRS_OFFICIAL_DETAILS.website}
                   </p>
                   <p className="text-[8px] text-slate-500 font-bold mt-1.5 max-w-xs leading-normal">
-                    Central Accounts Division, Near Society Junction, Malappuram, Kerala - 676505
+                    {HCRS_OFFICIAL_DETAILS.addressLine1}<br />
+                    {HCRS_OFFICIAL_DETAILS.addressLine2}
                   </p>
                 </div>
 

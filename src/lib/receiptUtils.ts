@@ -1,5 +1,5 @@
 import { PaymentReceipt, UserProfile } from '../types';
-import { FALLBACK_LOGO_URL } from '../constants';
+import { FALLBACK_LOGO_URL, HCRS_OFFICIAL_DETAILS } from '../constants';
 
 export const formatReceiptDate = (value: any): string => {
   if (!value) return '-';
@@ -74,8 +74,8 @@ export const printA4Receipts = (
           <header>
             <img class="logo" src="${escapeHtml(FALLBACK_LOGO_URL)}" alt="HCRS Logo" />
             <h1>HIGHRICH COMMUNITY REVIVAL<br/>SOCIETY</h1>
-            <p class="reg">REG. NO: TSR/TC/93/2025 &nbsp;|&nbsp; WWW.HCRS.IN</p>
-            <p class="address">Central Accounts Division, Near Society Junction, Malappuram, Kerala - 676505</p>
+            <p class="reg">REG. NO: ${HCRS_OFFICIAL_DETAILS.registrationNumber} &nbsp;|&nbsp; ${HCRS_OFFICIAL_DETAILS.website.toUpperCase()}</p>
+            <p class="address">${HCRS_OFFICIAL_DETAILS.addressLine1}<br/>${HCRS_OFFICIAL_DETAILS.addressLine2}</p>
           </header>
           <div class="receipt-title">OFFICIAL PAYMENT RECEIPT<br/><small>(പേയ്‌മെന്റ് രസീത്)</small></div>
           <div class="grid member-grid">
@@ -123,9 +123,9 @@ export const printA4Receipts = (
       .receipt-half { min-height: 0; position: relative; overflow: hidden; }
       .receipt-shell { height: 100%; border: 1.5px dashed #b9c7d8; border-top: 3px solid #1e66dc; border-radius: 12px; padding: 4mm 6mm; position: relative; }
       .receipt-shell:before { content: ''; position: absolute; top: -3px; right: 0; width: 28%; height: 3px; background: #c9a227; border-radius: 0 10px 0 0; }
-      header { min-height: 20mm; text-align: left; border-bottom: 1px solid #dbe5f0; padding: 0 0 5px 24mm; position: relative; }
-      .logo { position: absolute; left: 1mm; top: 0; width: 19mm; height: 19mm; object-fit: contain; }
-      h1 { margin: 1mm 0 0; color: #111827; font-size: 14px; line-height: 1.05; }
+      header { min-height: 28mm; text-align: center; border-bottom: 1px solid #dbe5f0; padding: 0 0 5px; position: relative; }
+      .logo { display: block; width: 16mm; height: 16mm; object-fit: contain; margin: 0 auto 1mm; }
+      h1 { margin: 0; color: #111827; font-size: 13px; line-height: 1.05; }
       header p { margin: 2px 0 0; font-weight: 700; }
       .reg { color: #64748b; letter-spacing: .07em; font-size: 7px; }
       .address { color: #64748b; font-size: 8px; }
