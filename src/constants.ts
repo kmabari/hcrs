@@ -40,6 +40,15 @@ export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
 export const MEMBERSHIP_TYPES = ['Annual'];
 
+// Single source of truth for all official receipt headers. Keep these values in
+// code so screen, PDF and print layouts cannot drift between deployments.
+export const HCRS_OFFICIAL_DETAILS = {
+  registrationNumber: 'TSR/TC/93/2025',
+  website: 'www.hcrs.in',
+  addressLine1: 'Room No: 85, Thrissur Dist., Kerala, India',
+  addressLine2: 'PIN: 680312 | PH: 9495465310'
+} as const;
+
 export const ANIMATED_LOGO_URL = 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif';
 export const LOCAL_ANIMATED_LOGO_URL = '/hcrs-animated-logo.gif';
 export const LOGO_URL = 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif';
