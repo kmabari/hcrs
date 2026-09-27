@@ -3,9 +3,8 @@ import { Mail, Check, Copy, RotateCcw, Send, HelpCircle, Share2, QrCode, Chevron
 import { CampaignTemplate, subscribeToCampaignTemplates, JanamailConfig } from "../../lib/cms";
 import { motion } from "motion/react";
 import { auth, db } from "../../lib/firebase";
-import { eledgerDb } from "../../eledger/lib/firebaseEledger";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, runTransaction, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 
@@ -61,6 +60,11 @@ export const getCampaignId = (
   // Keep campaign identity stable while the globally assigned Subject/Body rotates.
   const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
   return String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_");
+};
+
+const getRotationDocumentId = (conf: JanamailConfig | null | undefined): string => {
+  const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
+  return `janamail_rotation_${String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
 };
 
 const getSubmissionDocumentId = (campaignId: string, emailId: string): string =>
@@ -130,6 +134,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
     return localStorage.getItem("janamail_draft_templateId") || "";
   });
+  const [rotationVersion, setRotationVersion] = useState(0);
 
   const currentTemplateIdx = templates.findIndex(t => t.id === selectedTemplateId);
   const currentTemplateDisplayIdx = currentTemplateIdx !== -1 ? currentTemplateIdx : 0;
@@ -477,13 +482,26 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     return () => unsubscribe();
   }, []);
 
-  // Rotation is intentionally disabled: each participant may choose any active template.
-  // Keep the user's selection when valid; otherwise default to the first active template.
+  // Keep every browser on the same globally assigned default template.
+  // The pointer is advanced atomically with a successful submission below.
   useEffect(() => {
-    if (templates.length === 0 || activeComposeMethod !== "template" || isCustomized) return;
-    const selectedStillExists = templates.some(t => t.id === selectedTemplateId);
-    if (!selectedStillExists) setSelectedTemplateId(templates[0].id || "");
-  }, [templates, selectedTemplateId, activeComposeMethod, isCustomized]);
+    if (templates.length === 0) return;
+    const rotationRef = doc(db, "claims", getRotationDocumentId(config));
+    return onSnapshot(rotationRef, snapshot => {
+      const data = snapshot.data();
+      const nextIndex = Math.max(0, Number(data?.nextIndex || 0)) % templates.length;
+      setRotationVersion(Math.max(0, Number(data?.version || 0)));
+      if (activeComposeMethod === "template" && !isCustomized) {
+        setSelectedTemplateId(templates[nextIndex].id || "");
+      }
+    }, error => {
+      console.warn("Janamail rotation state read failed; using the first active template:", error);
+      setRotationVersion(0);
+      if (activeComposeMethod === "template" && !isCustomized) {
+        setSelectedTemplateId(templates[0].id || "");
+      }
+    });
+  }, [templates, config, activeComposeMethod, isCustomized]);
 
   // Dynamically update body if the user hasn't manually customized the body textarea (Reference Templates mode)
   useEffect(() => {
@@ -586,10 +604,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     }
 
-    // Check the dedicated eLedger Firestore janamail_submissions collection for the campaign lock.
+    // Check the existing HCRS Firestore claims collection for the campaign lock.
     let isSubscribed = true;
     const submissionDocId = getSubmissionDocumentId(currentCampaignId, emailId);
-    getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId)).then((docSnap) => {
+    getDoc(doc(db, "claims", submissionDocId)).then((docSnap) => {
       if (!isSubscribed) return;
       if (docSnap.exists() && (docSnap.data()?.status === "Completed" || docSnap.data()?.participated === true)) {
         setHasParticipated(true);
@@ -805,7 +823,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       // Duplicate prevention check directly against HCRS eLedger Firestore for regular participants
       if (config?.restrictOneParticipation !== false) {
         try {
-          const existingDoc = await getDoc(doc(eledgerDb, "janamail_submissions", submissionDocId));
+          const existingDoc = await getDoc(doc(db, "claims", submissionDocId));
           if (existingDoc.exists() && (existingDoc.data()?.status === "Completed" || existingDoc.data()?.participated === true)) {
             localStorage.setItem(lockKey, JSON.stringify({
               campaignId: currentCampaignId,
@@ -848,17 +866,45 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         submittedAt: new Date().toISOString()
       };
 
-      // Persist atomically while preserving the one-person / one-campaign duplicate lock.
-      // Template rotation/version blocking is intentionally disabled.
-      const submissionRef = doc(eledgerDb, "janamail_submissions", submissionDocId);
-      await runTransaction(eledgerDb, async transaction => {
+      // Persist the submission and advance the global Subject + Body pair atomically.
+      // A stale browser cannot launch a duplicate default template; it must refresh to
+      // the newly assigned pair and ask the participant to confirm again.
+      const submissionRef = doc(db, "claims", submissionDocId);
+      const rotationRef = doc(db, "claims", getRotationDocumentId(config));
+      await runTransaction(db, async transaction => {
         const existingSubmission = await transaction.get(submissionRef);
+        const rotationSnapshot = activeComposeMethod === "template"
+          ? await transaction.get(rotationRef)
+          : null;
+
         if (config?.restrictOneParticipation !== false &&
             existingSubmission.exists() &&
             (existingSubmission.data()?.status === "Completed" || existingSubmission.data()?.participated === true)) {
           throw new Error("ALREADY_PARTICIPATED");
         }
+
+        if (activeComposeMethod === "template") {
+          const latestVersion = Math.max(0, Number(rotationSnapshot?.data()?.version || 0));
+          if (latestVersion !== rotationVersion) {
+            throw new Error("ROTATION_CHANGED");
+          }
+        }
+
         transaction.set(submissionRef, submissionData, { merge: true });
+
+        if (activeComposeMethod === "template" && templates.length > 0) {
+          const usedIndex = Math.max(0, templates.findIndex(template => template.id === currentSelectedTemplate?.id));
+          const nextIndex = (usedIndex + 1) % templates.length;
+          transaction.set(rotationRef, {
+            recordType: "rotation_state",
+            campaignId: (config as any)?.campaignId || config?.id || config?.campaignName || "janamail_campaign",
+            lastTemplateId: currentSelectedTemplate?.id || null,
+            nextTemplateId: templates[nextIndex]?.id || null,
+            nextIndex,
+            version: rotationVersion + 1,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
       });
 
       // Record the permanent one-person participation lock before opening the mail app.
@@ -876,6 +922,12 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       setApiError(null);
     } catch (err: any) {
       console.error("Error saving participant details to HCRS Firestore:", err);
+      if (err?.message === "ROTATION_CHANGED") {
+        toast.error("മറ്റൊരു പങ്കാളി ഇപ്പോൾ Mail ആരംഭിച്ചതിനാൽ അടുത്ത Subject തയ്യാറാക്കിയിരിക്കുന്നു. പുതിയ Subject പരിശോധിച്ച് വീണ്ടും Send അമർത്തുക.", { id: loadingToast, duration: 9000 });
+        setApiError("Subject updated. Please review the new Subject and send again.");
+        setIsSubmitting(false);
+        return;
+      }
       if (err?.message === "ALREADY_PARTICIPATED") {
         toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
         setHasParticipated(true);
