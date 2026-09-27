@@ -1,5 +1,5 @@
 import { PaymentReceipt, UserProfile } from '../types';
-import { FALLBACK_LOGO_URL } from '../constants';
+import { FALLBACK_LOGO_URL, HCRS_OFFICIAL_DETAILS } from '../constants';
 
 export const formatReceiptDate = (value: any): string => {
   if (!value) return '-';
@@ -62,20 +62,20 @@ export const printA4Receipts = (
 
   const sealUrl = `${window.location.origin}/hcrs-official-seal.png`;
 
-  const pages = entries.map(({ member, receipt }) => {
+  const receiptCards = entries.map(({ member, receipt }) => {
     const transactionId = receipt.transactionId || '-';
     const paymentId = receipt.paymentId || '-';
     const orderId = receipt.orderId || '-';
     const paymentTime = receipt.paymentTime || '-';
     const category = getReceiptMembershipCategory(member);
     return `
-      <section class="receipt-page">
+      <section class="receipt-half">
         <div class="receipt-shell">
           <header>
             <img class="logo" src="${escapeHtml(FALLBACK_LOGO_URL)}" alt="HCRS Logo" />
             <h1>HIGHRICH COMMUNITY REVIVAL<br/>SOCIETY</h1>
-            <p class="reg">REG. NO: TSR/TC/93/2025 &nbsp;|&nbsp; WWW.HCRS.IN</p>
-            <p class="address">Central Accounts Division, Kerala</p>
+            <p class="reg">REG. NO: ${HCRS_OFFICIAL_DETAILS.registrationNumber} &nbsp;|&nbsp; ${HCRS_OFFICIAL_DETAILS.website.toUpperCase()}</p>
+            <p class="address">${HCRS_OFFICIAL_DETAILS.addressLine1}<br/>${HCRS_OFFICIAL_DETAILS.addressLine2}</p>
           </header>
           <div class="receipt-title">OFFICIAL PAYMENT RECEIPT<br/><small>(പേയ്‌മെന്റ് രസീത്)</small></div>
           <div class="grid member-grid">
@@ -101,47 +101,55 @@ export const printA4Receipts = (
             <div><label>Payment Time</label><span>${escapeHtml(paymentTime)}</span></div>
           </div>
           <footer>
-            <div class="verified">✓ &nbsp; SECURED &amp; VERIFIED</div>
+            <div class="verified"><span class="tick">✓</span> APPROVED &amp; VERIFIED</div>
             <div class="seal-block"><img src="${escapeHtml(sealUrl)}" alt="Official HCRS Seal"/><b>Authorized Signatory</b></div>
           </footer>
         </div>
       </section>`;
-  }).join('');
+  });
+
+  const pages: string[] = [];
+  for (let index = 0; index < receiptCards.length; index += 2) {
+    pages.push(`<section class="receipt-page">${receiptCards.slice(index, index + 2).join('')}</section>`);
+  }
 
   printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
     <style>
-      @page { size: A4 portrait; margin: 12mm; }
+      @page { size: A4 portrait; margin: 7mm; }
       * { box-sizing: border-box; }
       body { margin: 0; font-family: Arial, sans-serif; color: #182238; background: white; }
-      .receipt-page { width: 100%; min-height: 273mm; padding: 6mm; page-break-after: always; break-after: page; position: relative; }
+      .receipt-page { width: 100%; height: 283mm; display: grid; grid-template-rows: 1fr 1fr; gap: 5mm; page-break-after: always; break-after: page; position: relative; }
       .receipt-page:last-child { page-break-after: auto; break-after: auto; }
-      .receipt-shell { min-height: 260mm; border: 2px dashed #cbd5e1; border-radius: 18px; padding: 10mm; position: relative; }
-      header { text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
-      .logo { width: 58px; height: 58px; object-fit: contain; margin-bottom: 6px; }
-      h1 { margin: 0; color: #111827; font-size: 20px; line-height: 1.05; }
-      header p { margin: 6px 0 0; font-weight: 700; }
-      .reg { color: #94a3b8; letter-spacing: .12em; font-size: 9px; }
-      .address { color: #64748b; font-size: 10px; }
-      .receipt-title { margin: 16px 0; padding: 9px; border-radius: 18px; color: white; background: #020617; text-align: center; font-weight: 900; letter-spacing: .05em; font-size: 13px; }
-      .receipt-title small { font-size: 10px; }
-      .grid, .transaction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; }
-      .grid div, .transaction-grid div { padding: 5px 0; min-width: 0; }
-      label { display: block; color: #64748b; font-size: 8px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
-      strong, span { font-size: 11px; overflow-wrap: anywhere; }
+      .receipt-half { min-height: 0; position: relative; overflow: hidden; }
+      .receipt-shell { height: 100%; border: 1.5px dashed #b9c7d8; border-top: 3px solid #1e66dc; border-radius: 12px; padding: 4mm 6mm; position: relative; }
+      .receipt-shell:before { content: ''; position: absolute; top: -3px; right: 0; width: 28%; height: 3px; background: #c9a227; border-radius: 0 10px 0 0; }
+      header { min-height: 28mm; text-align: center; border-bottom: 1px solid #dbe5f0; padding: 0 0 5px; position: relative; }
+      .logo { display: block; width: 16mm; height: 16mm; object-fit: contain; margin: 0 auto 1mm; }
+      h1 { margin: 0; color: #111827; font-size: 13px; line-height: 1.05; }
+      header p { margin: 2px 0 0; font-weight: 700; }
+      .reg { color: #64748b; letter-spacing: .07em; font-size: 7px; }
+      .address { color: #64748b; font-size: 8px; }
+      .receipt-title { margin: 5px 0; padding: 5px; border-radius: 6px; color: white; background: #1e66dc; text-align: center; font-weight: 900; letter-spacing: .05em; font-size: 10px; }
+      .receipt-title small { font-size: 8px; }
+      .grid, .transaction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+      .grid div, .transaction-grid div { padding: 2px 0; min-width: 0; }
+      label { display: block; color: #64748b; font-size: 6.5px; font-weight: 900; text-transform: uppercase; margin-bottom: 1px; }
+      strong, span { font-size: 8.5px; overflow-wrap: anywhere; }
       .category { color: #075985; }
-      .payment-box { margin-top: 14px; border: 1px solid #e2e8f0; border-radius: 14px 14px 0 0; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 20px; }
+      .payment-box { margin-top: 4px; border: 1px solid #dbe5f0; border-radius: 7px 7px 0 0; padding: 4px 7px; display: grid; grid-template-columns: 1fr auto; gap: 12px; }
       .amount { text-align: right; }
-      .amount strong, .total strong { font-size: 14px; color: #b58a15; }
-      .total { border: 1px solid #e2e8f0; border-top: 0; border-radius: 0 0 14px 14px; padding: 9px 12px; display: flex; justify-content: flex-end; gap: 25px; align-items: center; font-size: 10px; font-weight: 900; }
-      h2 { margin: 14px 0 5px; font-size: 10px; color: #334155; text-transform: uppercase; }
-      .transaction-grid { border: 1px solid #e2e8f0; border-radius: 14px; padding: 8px 12px; }
-      footer { position: absolute; left: 10mm; right: 10mm; bottom: 8mm; border-top: 1px solid #e2e8f0; padding-top: 9px; display: flex; justify-content: space-between; align-items: flex-end; }
-      .verified { color: #059669; font-size: 10px; font-weight: 900; }
-      .seal-block { display: flex; flex-direction: column; align-items: center; font-size: 8px; color: #475569; }
-      .seal-block img { width: 62px; height: 62px; object-fit: contain; mix-blend-mode: multiply; margin-bottom: 2px; }
+      .amount strong, .total strong { font-size: 10px; color: #b58a15; }
+      .total { border: 1px solid #dbe5f0; border-top: 0; border-radius: 0 0 7px 7px; padding: 3px 7px; display: flex; justify-content: flex-end; gap: 18px; align-items: center; font-size: 8px; font-weight: 900; }
+      h2 { margin: 4px 0 2px; font-size: 7px; color: #334155; text-transform: uppercase; }
+      .transaction-grid { border: 1px solid #dbe5f0; border-radius: 7px; padding: 3px 7px; }
+      footer { position: absolute; left: 6mm; right: 6mm; bottom: 3mm; border-top: 1px solid #dbe5f0; padding-top: 3px; display: flex; justify-content: space-between; align-items: center; }
+      .verified { color: #059669; background: #ecfdf5; border: 1px solid #10b981; border-radius: 20px; padding: 3px 7px; font-size: 7px; font-weight: 900; }
+      .tick { display: inline-flex; width: 12px; height: 12px; border: 1px solid #10b981; border-radius: 50%; align-items: center; justify-content: center; margin-right: 3px; font-size: 8px; }
+      .seal-block { display: flex; flex-direction: column; align-items: center; font-size: 6px; color: #475569; }
+      .seal-block img { width: 19mm; height: 19mm; object-fit: contain; mix-blend-mode: multiply; margin-bottom: 0; }
       @media screen { body { background: #e2e8f0; } .receipt-page { max-width: 210mm; margin: 12px auto; background: white; } }
       @media print { .receipt-page { background: white; } }
-    </style></head><body>${pages}<script>window.onload=()=>{window.print();};<\/script></body></html>`);
+    </style></head><body>${pages.join('')}<script>window.onload=()=>{window.print();};<\/script></body></html>`);
   printWindow.document.close();
   return true;
 };
