@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Mail, Check, Copy, RotateCcw, Send, HelpCircle, Share2, QrCode, ChevronDown, Shield, AlertCircle, Info, Lock, FileText, PenTool, Sparkles, Save, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Mail, Check, Copy, RotateCcw, Send, HelpCircle, Share2, QrCode, ChevronDown, Shield, AlertCircle, Info, Lock, FileText, Sparkles, Save, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { CampaignTemplate, subscribeToCampaignTemplates, JanamailConfig } from "../../lib/cms";
 import { motion } from "motion/react";
 import { auth, db } from "../../lib/firebase";
 import { eledgerDb } from "../../eledger/lib/firebaseEledger";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 
@@ -62,14 +62,6 @@ export const getCampaignId = (
   const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
   return String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_");
 };
-
-const getRotationDocumentId = (conf: JanamailConfig | null | undefined): string => {
-  const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
-  return `janamail_rotation_${String(baseId).toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
-};
-
-const getSubmissionDocumentId = (campaignId: string, emailId: string): string =>
-  `janamail_lock_${campaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
 
 interface EmailEditorProps {
   config?: JanamailConfig | null;
@@ -135,8 +127,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
     return localStorage.getItem("janamail_draft_templateId") || "";
   });
-  const [rotationVersion, setRotationVersion] = useState(0);
-
   const currentTemplateIdx = templates.findIndex(t => t.id === selectedTemplateId);
   const currentTemplateDisplayIdx = currentTemplateIdx !== -1 ? currentTemplateIdx : 0;
   const currentSelectedTemplate = templates[currentTemplateDisplayIdx] || null;
@@ -169,25 +159,11 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     "ca.budsact@kerala.gov.in"
   );
   
-  const [isCustomized, setIsCustomized] = useState(() => {
-    return localStorage.getItem("janamail_draft_isCustomized") === "true";
-  });
+  const [isCustomized, setIsCustomized] = useState(false);
 
-  const [subject, setSubject] = useState(() => {
-    const isCust = localStorage.getItem("janamail_draft_isCustomized") === "true";
-    if (isCust) {
-      return localStorage.getItem("janamail_draft_subject") || "ഹൈറിച്ച് തട്ടിപ്പ് കേസ്: അടിയന്തര നടപടികളും ഇരകൾക്ക് നീതിയും ആവശ്യപ്പെട്ട് പൊതുജന ഹർജി";
-    }
-    return "ഹൈറിച്ച് തട്ടിപ്പ് കേസ്: അടിയന്തര നടപടികളും ഇരകൾക്ക് നീതിയും ആവശ്യപ്പെട്ട് പൊതുജന ഹർജി";
-  });
+  const [subject, setSubject] = useState("ഹൈറിച്ച് തട്ടിപ്പ് കേസ്: അടിയന്തര നടപടികളും ഇരകൾക്ക് നീതിയും ആവശ്യപ്പെട്ട് പൊതുജന ഹർജി");
 
-  const [body, setBody] = useState(() => {
-    const isCust = localStorage.getItem("janamail_draft_isCustomized") === "true";
-    if (isCust) {
-      return localStorage.getItem("janamail_draft_body") || "";
-    }
-    return "";
-  });
+  const [body, setBody] = useState("");
 
   const [copied, setCopied] = useState(false);
   const [copiedTo, setCopiedTo] = useState(false);
@@ -410,10 +386,15 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     return { subject: finalSubject, body: standardBody, isTruncated: false };
   };
 
-  const [activeComposeMethod, setActiveComposeMethod] = useState<"template" | "custom">(() => {
-    const saved = localStorage.getItem("janamail_draft_method");
-    return (saved === "template" || saved === "custom") ? saved : "template";
-  });
+  const [activeComposeMethod, setActiveComposeMethod] = useState<"template" | "custom">("template");
+
+  // Never restore stale user-authored mail content from older builds.
+  useEffect(() => {
+    localStorage.removeItem("janamail_draft_subject");
+    localStorage.removeItem("janamail_draft_body");
+    localStorage.removeItem("janamail_draft_method");
+    localStorage.removeItem("janamail_draft_isCustomized");
+  }, []);
 
   // Auto Save Effect
   useEffect(() => {
@@ -429,10 +410,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       localStorage.setItem("janamail_draft_district", district);
       localStorage.setItem("janamail_draft_place", place);
       localStorage.setItem("janamail_draft_address", address);
-      localStorage.setItem("janamail_draft_subject", subject);
-      localStorage.setItem("janamail_draft_body", body);
-      localStorage.setItem("janamail_draft_method", activeComposeMethod);
-      localStorage.setItem("janamail_draft_isCustomized", String(isCustomized));
       localStorage.setItem("janamail_draft_templateId", selectedTemplateId);
       setSaveStatus("saved");
     }, 1000);
@@ -447,10 +424,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     localStorage.setItem("janamail_draft_district", district);
     localStorage.setItem("janamail_draft_place", place);
     localStorage.setItem("janamail_draft_address", address);
-    localStorage.setItem("janamail_draft_subject", subject);
-    localStorage.setItem("janamail_draft_body", body);
-    localStorage.setItem("janamail_draft_method", activeComposeMethod);
-    localStorage.setItem("janamail_draft_isCustomized", String(isCustomized));
     localStorage.setItem("janamail_draft_templateId", selectedTemplateId);
     
     setTimeout(() => {
@@ -464,14 +437,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const cleanCcConfig = (config?.cc || "").trim();
     setCc(cleanCcConfig ? cleanCcConfig : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
 
-    if (config) {
-      // Sync active compose method based on emailMode selection if appropriate
-      if (config.emailMode === "custom") {
-        setActiveComposeMethod("custom");
-      } else if (config.emailMode === "templates") {
-        setActiveComposeMethod("template");
-      }
-    }
+    // Public Janamail always uses administrator-approved templates.
+    setActiveComposeMethod("template");
+    setIsCustomized(false);
   }, [config]);
 
   // Subscribe to dynamic Campaign Templates from Firestore
@@ -588,49 +556,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     }
   }, [config, subject, body, recipients, cc, currentUserProfile, authUser, phone, checkingAuth]);
 
-
-  const handleModeChange = (mode: "template" | "custom") => {
-    setActiveComposeMethod(mode);
-    if (mode === "custom") {
-      setSubject("");
-      setBody("");
-      setIsCustomized(true);
-    } else {
-      setIsCustomized(false);
-      // Reload current or first template
-      const activeTemplate = templates.find(t => t.id === selectedTemplateId) || templates[0];
-      if (activeTemplate) {
-        setSelectedTemplateId(activeTemplate.id || "");
-        setSubject(getMergedText(activeTemplate.subject, name, phone, district, place, category));
-        setBody(getFormattedBody(activeTemplate.body, name, phone, district, place, category));
-      } else {
-        setSubject(getMergedText("ഹൈറിച്ച് തട്ടിപ്പ് കേസ്: അടിയന്തര നടപടികളും ഇരകൾക്ക് നീതിയും ആവശ്യപ്പെട്ട് പൊതുജന ഹർജി", name, phone, district, place, category));
-        setBody(getFormattedBody(getTemplateBodyForFallback(), name, phone, district, place, category));
-      }
-    }
-  };
-
-  const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setBody(e.target.value);
-    setIsCustomized(true);
-  };
-
-  const handleResetTemplate = () => {
-    setIsCustomized(false);
-    if (activeComposeMethod === "template") {
-      const activeTemplate = templates.find(t => t.id === selectedTemplateId);
-      if (activeTemplate) {
-        setSubject(getMergedText(activeTemplate.subject, name, phone, district, place, category));
-        setBody(getFormattedBody(activeTemplate.body, name, phone, district, place, category));
-      } else {
-        setSubject(getMergedText("ഹൈറിച്ച് തട്ടിപ്പ് കേസ്: അടിയന്തര നടപടികളും ഇരകൾക്ക് നീതിയും ആവശ്യപ്പെട്ട് പൊതുജന ഹർജി", name, phone, district, place, category));
-        setBody(getFormattedBody(getTemplateBodyForFallback(), name, phone, district, place, category));
-      }
-    } else {
-      setSubject("");
-      setBody("");
-    }
-  };
 
   const handleParticipateNow = async (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>, method: "gmail" | "mailto") => {
     e.preventDefault();
@@ -767,13 +692,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setApiError(null);
 
     const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
-    const templateRef = activeComposeMethod === "template"
-      ? (currentSelectedTemplate?.title || currentSelectedTemplate?.subject || `Template ${currentTemplateDisplayIdx + 1}`)
-      : "Custom";
+    const templateRef = currentSelectedTemplate?.title || currentSelectedTemplate?.subject || `Template ${currentTemplateDisplayIdx + 1}`;
 
     const emailLaunchStatus = `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`;
-
-    const submissionDocId = getSubmissionDocumentId(currentCampaignId, emailId);
 
     const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
@@ -792,7 +713,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         selectedSubject: finalSubject,
         messageBody: finalBody,
         template: templateRef,
-        templateId: activeComposeMethod === "template" ? (currentSelectedTemplate?.id || null) : null,
+        templateId: currentSelectedTemplate?.id || null,
         campaignId: currentCampaignId,
         emailId: emailId || null,
         status: "Completed",
@@ -806,10 +727,9 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         submittedAt: new Date().toISOString()
       };
 
-      // Use a unique document for each successful attempt. This guarantees that the
-      // Firestore operation is CREATE (allowed by eLedger rules), never UPDATE.
-      const uniqueSubmissionId = `janamail_submission_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      await setDoc(doc(eledgerDb, "janamail_submissions", uniqueSubmissionId), submissionData);
+      // addDoc always generates a new unique document, so this is a CREATE-only
+      // operation and never requires public read/update permission.
+      await addDoc(collection(eledgerDb, "janamail_submissions"), submissionData);
 
       // Lock only after the eLedger create succeeds.
       localStorage.setItem(lockKey, JSON.stringify({
@@ -1073,86 +993,14 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             വിഷയം (Email Subject)
           </h3>
 
-          {/* Writing Mode Selector Card Grid */}
-          <div className="space-y-1.5 sm:space-y-2">
-            <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1 sm:mb-2">
-              ഹർജി തയാറാക്കേണ്ട രീതി / Select Writing Mode *
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5">
-              {/* Option 1: Reference Templates */}
-              <div
-                onClick={() => handleModeChange("template")}
-                className={`group relative p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
-                  activeComposeMethod === "template"
-                    ? "bg-blue-50/30 border-blue-600 shadow-2xs ring-1 ring-blue-600/10"
-                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40"
-                }`}
-              >
-                <div className="flex items-start gap-2.5 sm:gap-3.5">
-                  <div className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border shrink-0 transition-all ${
-                    activeComposeMethod === "template"
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/10"
-                      : "bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-slate-100"
-                  }`}>
-                    <FileText className="w-3.5 h-3.5 sm:w-5 sm:h-5 stroke-[2]" />
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                    <h4 className={`font-extrabold text-xs sm:text-sm leading-tight transition-colors ${
-                      activeComposeMethod === "template" ? "text-blue-900" : "text-slate-800 group-hover:text-slate-950"
-                    }`}>
-                      Reference Templates
-                    </h4>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
-                      റെഫറൻസ് ടെംപ്ലേറ്റുകൾ
-                    </p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold leading-relaxed pt-0.5">
-                      മുൻകൂട്ടി തയാറാക്കിയ ഔദ്യോഗിക വിഷയങ്ങളും ഉള്ളടക്കങ്ങളും നേരിട്ട് ഉപയോഗിക്കാം.
-                    </p>
-                  </div>
-                </div>
-                {activeComposeMethod === "template" && (
-                  <div className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 text-blue-600">
-                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                  </div>
-                )}
-              </div>
-
-              {/* Option 2: Write My Own Email */}
-              <div
-                onClick={() => handleModeChange("custom")}
-                className={`group relative p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
-                  activeComposeMethod === "custom"
-                    ? "bg-blue-50/30 border-blue-600 shadow-2xs ring-1 ring-blue-600/10"
-                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40"
-                }`}
-              >
-                <div className="flex items-start gap-2.5 sm:gap-3.5">
-                  <div className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border shrink-0 transition-all ${
-                    activeComposeMethod === "custom"
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/10"
-                      : "bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-slate-100"
-                  }`}>
-                    <PenTool className="w-3.5 h-3.5 sm:w-5 sm:h-5 stroke-[2]" />
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                    <h4 className={`font-extrabold text-xs sm:text-sm leading-tight transition-colors ${
-                      activeComposeMethod === "custom" ? "text-blue-900" : "text-slate-800 group-hover:text-slate-950"
-                    }`}>
-                      Write My Own Email
-                    </h4>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-wider">
-                      സ്വന്തമായി എഴുതാം
-                    </p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold leading-relaxed pt-0.5">
-                      നിങ്ങളുടേതായ വിഷയവും കത്തിന്റെ ഉള്ളടക്കവും പൂർണ്ണമായും സ്വന്തമായി തയാറാക്കാം.
-                    </p>
-                  </div>
-                </div>
-                {activeComposeMethod === "custom" && (
-                  <div className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 text-blue-600">
-                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                  </div>
-                )}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 sm:p-4 text-left">
+            <div className="flex items-start gap-2.5">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-700 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs sm:text-sm font-black text-blue-950">അംഗീകൃത വിഷയങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക</p>
+                <p className="text-[10px] sm:text-xs font-semibold text-blue-800 mt-1 leading-relaxed">
+                  അഡ്മിൻ അംഗീകരിച്ച Subject-ഉം അതുമായി ബന്ധപ്പെട്ട Message Body-യും മാത്രമാണ് ഉപയോഗിക്കുന്നത്. ഇവ തിരുത്താൻ സാധിക്കില്ല.
+                </p>
               </div>
             </div>
           </div>
@@ -1230,23 +1078,14 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             )}
 
             <div>
-              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1 sm:mb-2">
-                {activeComposeMethod === "template" ? (
-                  <>വിഷയം / Subject Line Details</>
-                ) : (
-                  <>വിഷയം / Enter Custom Subject <span className="text-red-500 font-bold">*</span></>
-                )}
-              </label>
+              <label className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wider mb-1 sm:mb-2">വിഷയം / Subject Line Details</label>
               <input
                 type="text"
                 required
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-                className={`janamail-field w-full px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none transition-all ${
-                  activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "!cursor-not-allowed opacity-80 !bg-slate-50/70" : ""
-                }`}
-                placeholder={activeComposeMethod === "template" ? "Email Subject" : "ഉദാ: ഹർജി വിഷയം / Enter custom subject..."}
+                readOnly
+                className="janamail-field w-full px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all !cursor-not-allowed opacity-80 !bg-slate-50/70"
+                placeholder="Email Subject"
               />
             </div>
           </div>
@@ -1266,16 +1105,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             </h3>
             
             <div className="flex items-center gap-2">
-              {isCustomized && (
-                <button
-                  onClick={handleResetTemplate}
-                  className="text-[11px] sm:text-xs text-red-650 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  Reset
-                </button>
-              )}
-              
               <button
                 onClick={copyToClipboard}
                 className="text-[11px] sm:text-xs text-slate-650 hover:text-slate-850 font-bold flex items-center gap-1 cursor-pointer transition-colors"
@@ -1298,11 +1127,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           <div className="janamail-textarea-container relative min-h-[260px] sm:min-h-[350px] flex flex-col bg-white overflow-hidden rounded-xl sm:rounded-2xl">
             <textarea
               value={body}
-              onChange={handleBodyChange}
-              readOnly={activeComposeMethod === "template" && config?.writeMyOwnEnabled === false}
-              className={`w-full flex-1 bg-transparent p-3 sm:p-5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal leading-relaxed focus:outline-none resize-none font-sans min-h-[260px] sm:min-h-[350px] ${
-                activeComposeMethod === "template" && config?.writeMyOwnEnabled === false ? "cursor-not-allowed select-all opacity-80 bg-slate-50/50" : ""
-              }`}
+              readOnly
+              className="w-full flex-1 p-3 sm:p-5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 leading-relaxed focus:outline-none resize-none font-sans min-h-[260px] sm:min-h-[350px] cursor-not-allowed select-all opacity-80 bg-slate-50/50"
               placeholder="കത്തിന്റെ ഉള്ളടക്കം ഇവിടെ തയ്യാറാക്കാം / Type petition content here..."
             />
 
@@ -1323,11 +1149,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
             </div>
 
             <div className="bg-slate-50 border-t border-slate-150 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between text-[9.5px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-              {activeComposeMethod === "custom" || config?.writeMyOwnEnabled !== false ? (
-                <span>📝 നിങ്ങൾക്ക് ആവശ്യമെങ്കിൽ ഈ കത്തിന്റെ ഉള്ളടക്കത്തിൽ മാറ്റങ്ങൾ വരുത്താം.</span>
-              ) : (
-                <span className="text-red-500 font-extrabold">🔒 ഈ ക്യാമ്പയിന്റെ ഇമെയിൽ ഉള്ളടക്കം തിരുത്തുന്നത് അഡ്മിൻ അനുവദിച്ചിട്ടില്ല.</span>
-              )}
+              <span className="text-red-500 font-extrabold">🔒 ഈ ക്യാമ്പയിന്റെ ഇമെയിൽ ഉള്ളടക്കം തിരുത്തുന്നത് അഡ്മിൻ അനുവദിച്ചിട്ടില്ല.</span>
             </div>
           </div>
         </div>
