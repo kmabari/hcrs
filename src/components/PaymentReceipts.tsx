@@ -280,20 +280,101 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
   const downloadReceiptPDF = async () => {
     const loadingToast = toast.loading('Generating PDF document...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      const canvas = await renderReceiptCanvas();
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const maxWidth = 190;
-      const maxHeight = 277;
-      const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
-      const receiptWidth = canvas.width * ratio;
-      const receiptHeight = canvas.height * ratio;
-      const x = (210 - receiptWidth) / 2;
-      const y = (297 - receiptHeight) / 2;
+      if (!selectedReceipt) throw new Error('Receipt not selected');
 
-      pdf.addImage(imgData, 'JPEG', x, y, receiptWidth, receiptHeight, undefined, 'FAST');
+      // Generate a real half-A4 (A5) receipt instead of taking a large mobile
+      // screenshot. This avoids the canvas-memory failures seen on Android while
+      // keeping text and transaction references sharp and selectable.
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5', compress: true });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 10;
+      const contentWidth = pageWidth - (margin * 2);
+      const rightColumn = pageWidth / 2 + 4;
+      const valueWidth = contentWidth / 2 - 7;
+
+      const drawField = (label: string, value: unknown, x: number, y: number, width = valueWidth) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(label.toUpperCase(), x, y);
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(15, 23, 42);
+        const lines = pdf.splitTextToSize(String(value || '-'), width);
+        pdf.text(lines.slice(0, 2), x, y + 4);
+      };
+
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(5, 5, pageWidth - 10, 200, 5, 5, 'F');
+      pdf.setDrawColor(203, 213, 225);
+      pdf.setLineDashPattern([1.5, 1.5], 0);
+      pdf.roundedRect(7, 7, pageWidth - 14, 196, 5, 5, 'S');
+      pdf.setLineDashPattern([], 0);
+
+      const sealData = await imageUrlToDataUrl(new URL('/hcrs-official-seal.png', window.location.origin).href);
+      if (sealData.startsWith('data:')) {
+        pdf.addImage(sealData, 'PNG', (pageWidth - 16) / 2, 10, 16, 16, undefined, 'FAST');
+      }
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFontSize(13);
+      pdf.text('HIGHRICH COMMUNITY REVIVAL SOCIETY', pageWidth / 2, 31, { align: 'center' });
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text('REG. NO: TSR/TC/93/2025  |  WWW.HCRS.IN', pageWidth / 2, 35, { align: 'center' });
+      pdf.text('Central Accounts Division, Kerala', pageWidth / 2, 39, { align: 'center' });
+
+      pdf.setFillColor(2, 6, 23);
+      pdf.roundedRect(margin, 44, contentWidth, 13, 4, 4, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(11);
+      pdf.text('OFFICIAL PAYMENT RECEIPT', pageWidth / 2, 52, { align: 'center' });
+
+      drawField('Receipt Number', selectedReceipt.receiptNo, margin + 3, 65);
+      drawField('Date of Payment', selectedReceipt.paymentDate, rightColumn, 65);
+      drawField('Received From', user.name, margin + 3, 80);
+      drawField('Membership ID', user.membershipId, rightColumn, 80);
+      drawField('Mobile Number', user.mobile, margin + 3, 95);
+      drawField('District / Assembly', `${user.district || '-'} / ${user.assemblyConstituency || '-'}`, rightColumn, 95);
+      drawField('Membership Category', getReceiptMembershipCategory(user), margin + 3, 110);
+      drawField('Payment Status', selectedReceipt.status, rightColumn, 110);
+
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setFillColor(255, 255, 255);
+      pdf.roundedRect(margin, 120, contentWidth, 25, 3, 3, 'FD');
+      drawField('Purpose of Payment', selectedReceipt.receiptLabel, margin + 3, 127, contentWidth - 43);
+      drawField('Amount', `Rs. ${Number(selectedReceipt.amount || 0).toLocaleString('en-IN')}.00`, pageWidth - 42, 127, 29);
+      pdf.setDrawColor(226, 232, 240);
+      pdf.line(margin, 136, pageWidth - margin, 136);
+      pdf.setFontSize(8);
+      pdf.setTextColor(51, 65, 85);
+      pdf.text('AMOUNT IN WORDS', margin + 3, 141);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 23, 42);
+      pdf.text(`Rupees ${convertNumberToWords(Number(selectedReceipt.amount || 0)).trim()} Only`, margin + 33, 141);
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(7);
+      pdf.setTextColor(51, 65, 85);
+      pdf.text('TRANSACTION DETAILS', margin, 153);
+      pdf.setFillColor(255, 255, 255);
+      pdf.roundedRect(margin, 156, contentWidth, 28, 3, 3, 'FD');
+      drawField('Razorpay Order ID', selectedReceipt.orderId || '-', margin + 3, 163);
+      drawField('Razorpay Payment ID', selectedReceipt.paymentId || '-', rightColumn, 163);
+      drawField('Transaction ID', selectedReceipt.transactionId || '-', margin + 3, 175);
+      drawField('Payment Time', selectedReceipt.paymentTime || '-', rightColumn, 175);
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.setTextColor(5, 150, 105);
+      pdf.text('SECURED & VERIFIED', margin + 3, 195);
+      if (sealData.startsWith('data:')) {
+        pdf.addImage(sealData, 'PNG', pageWidth - 36, 185, 18, 18, undefined, 'FAST');
+      }
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text('Authorized Signatory', pageWidth - 27, 202, { align: 'center' });
+
       const pdfBlob = pdf.output('blob');
       if (!triggerFileDownload(pdfBlob, `Receipt_${selectedReceipt?.receiptNo || 'HCRS'}.pdf`)) {
         throw new Error('Browser blocked the PDF download');
