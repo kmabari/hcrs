@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { eledgerDb } from '../eledger/lib/firebaseEledger';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Download, Mail, Printer, Search } from 'lucide-react';
 
-type Row = { id:string; recordType?:string; fullName?:string; mobileNumber?:string; district?:string; placePost?:string; selectedSubject?:string; messageBody?:string; emailId?:string; toRecipients?:string; ccRecipients?:string; submissionStatus?:string; emailLaunchStatus?:string; createdAt?:any; submittedAt?:string; date?:string; time?:string };
+type Row = { id:string; fullName?:string; mobileNumber?:string; district?:string; placePost?:string; selectedSubject?:string; messageBody?:string; emailId?:string; toRecipients?:string; ccRecipients?:string; submissionStatus?:string; emailLaunchStatus?:string; createdAt?:any; submittedAt?:string; date?:string; time?:string };
 type Scope = 'date'|'range'|'all';
 
 const todayKey=()=>{const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -18,7 +18,7 @@ const csv=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;
 export default function JanamailAdminReport(){
  const [scope,setScope]=useState<Scope>('date'); const [date,setDate]=useState(todayKey()); const [from,setFrom]=useState(todayKey()); const [to,setTo]=useState(todayKey());
  const [allRows,setAllRows]=useState<Row[]>([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(''); const [scanned,setScanned]=useState(false); const [search,setSearch]=useState('');
- const run=async()=>{setLoading(true);setError('');try{const snap=await getDocs(collection(eledgerDb,'janamail_submissions'));setAllRows(snap.docs.map(d=>({id:d.id,...d.data()} as Row)).filter(r=>r.recordType==='janamail_submission').sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||''))));setScanned(true);}catch(e:any){setError(e?.message||'Janamail report failed');}finally{setLoading(false);}};
+ const run=async()=>{setLoading(true);setError('');try{const snap=await getDocs(query(collection(db,'claims'),where('recordType','==','janamail_submission')));setAllRows(snap.docs.map(d=>({id:d.id,...d.data()} as Row)).sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||''))));setScanned(true);}catch(e:any){setError(e?.message||'Janamail report failed');}finally{setLoading(false);}};
  const scoped=useMemo(()=>allRows.filter(r=>{const k=localKey(r); if(scope==='all')return true; if(scope==='range')return !!k&&k>=from&&k<=to; return k===date;}),[allRows,scope,date,from,to]);
  const rows=useMemo(()=>{const q=search.trim().toLowerCase(); if(!q)return scoped; return scoped.filter(r=>[r.fullName,r.mobileNumber,r.emailId,r.district,r.placePost,r.selectedSubject,r.toRecipients,r.ccRecipients].some(v=>String(v||'').toLowerCase().includes(q)));},[scoped,search]);
  const downloadAll=()=>{const head=['#','Date','Time','Name','Sender Email','Mobile','District','Place/Post','TO','CC','Subject','Submission','Mail Launch','Record ID'];const lines=[head.map(csv).join(',')];rows.forEach((r,i)=>lines.push([i+1,localKey(r),timeText(r),r.fullName,r.emailId,r.mobileNumber,r.district,r.placePost,r.toRecipients||'Not stored in older record',r.ccRecipients||'Not stored in older record',r.selectedSubject,r.submissionStatus,r.emailLaunchStatus,r.id].map(csv).join(',')));const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`janamail-${scope==='all'?'all':scope==='range'?`${from}-to-${to}`:date}.csv`;a.click();URL.revokeObjectURL(a.href);};
