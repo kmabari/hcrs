@@ -19,6 +19,38 @@ const checks = [
       'max-h-[360px]',
       'overflow-auto'
     ]
+  },
+  {
+    file: 'src/components/JanamailSubmissionsPanel.tsx',
+    required: [
+      "from '../eledger/lib/firebaseEledger'",
+      "collection(eledgerDb, 'janamail_submissions')",
+      "row.recordType === 'janamail_submission'"
+    ],
+    forbidden: [
+      "collection(db, 'claims')",
+      "from '../lib/firebase'"
+    ]
+  },
+  {
+    file: 'server.ts',
+    required: [
+      "replace(/\\D/g, '').slice(-10)",
+      "/^\\d{4}-\\d{2}-\\d{2}$/",
+      "CAPTURED_MEMBER_UNRESOLVED",
+      "paymentStatus: 'VERIFICATION_PENDING'"
+    ],
+    forbidden: [
+      "replace(/\\\\D/g, '').slice(-10)",
+      "/^\\\\d{4}-\\\\d{2}-\\\\d{2}$/"
+    ]
+  },
+  {
+    file: 'src/RenewalForm.tsx',
+    required: [
+      "String(data.membershipId || '').trim()",
+      "genuineMobileMember"
+    ]
   }
 ];
 
@@ -28,6 +60,9 @@ for (const check of checks) {
   const source = readFileSync(check.file, 'utf8');
   for (const marker of check.required) {
     if (!source.includes(marker)) failures.push(`${check.file}: missing ${marker}`);
+  }
+  for (const marker of check.forbidden || []) {
+    if (source.includes(marker)) failures.push(`${check.file}: forbidden ${marker}`);
   }
 }
 
