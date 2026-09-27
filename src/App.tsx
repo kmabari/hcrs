@@ -3112,7 +3112,7 @@ export default function App() {
             const matchesYear = data.year === renewalYear || (data.paymentDate && new Date(data.paymentDate).getFullYear() === renewalYear);
             const matchesTx = targetTxId && (data.transactionId === targetTxId || data.paymentId === targetTxId);
 
-            if (isRenewalType && (matchesYear || matchesTx || data.status === 'Pending Verification')) {
+            if (isRenewalType && (matchesYear || matchesTx)) {
               if (data.status === 'Pending Verification' || data.status === 'Pending') {
                 pendingReceiptDoc = docSnap;
                 break;
@@ -3137,7 +3137,7 @@ export default function App() {
             }, { merge: true });
             console.log(`Updated pending renewal receipt to Paid: ${pendingReceiptDoc.id}`);
           } else if (!alreadyPaidThisYear) {
-            // Only add if no receipt exists for this renewal cycle
+            // Add one receipt for this renewal year. Previous years remain untouched.
             const randomId = Math.floor(1000 + Math.random() * 9000);
             const receiptNo = `HCRS-REN-${serialNoStr}-${randomId}`;
 

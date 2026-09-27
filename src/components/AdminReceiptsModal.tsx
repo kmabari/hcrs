@@ -94,7 +94,8 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
         }
       }
 
-      // Deduplicate renewals strictly in the rendered view; never mutate history.
+      // Keep exactly one renewal receipt for each membership year while preserving
+      // every previous year's receipt in the rendered history.
       const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
 
       for (const r of nonRegReceipts) {

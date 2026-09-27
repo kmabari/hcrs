@@ -26,6 +26,7 @@ type PaymentStatus = Exclude<StatusFilter, 'all'>;
 interface AuditRow { uid:string; authEmail:string; authCreatedAt:string; mobile:string; name:string; membershipId:string; classification:string; reason:string; }
 interface ReconciliationRow { paymentId:string; orderId:string; amount:number; razorpayStatus:string; method:string; createdAt:string; paymentType:string; hcrsPaymentRecorded:boolean; hcrsPaymentStatus:string; membershipId:string; memberName:string; memberStatus:string; renewalPending:boolean; expiryDate:string; reconciliationStatus:string; }
 interface PaymentExceptionRow { paymentId:string; orderId:string; amount:number; createdAt:string; method:string; paymentType:string; membershipId:string; memberName:string; mobile:string; hcrsPaymentRecorded:boolean; memberStatus:string; renewalPending:boolean; expiryDate:string; result:string; }
+type RecoverablePaymentRow = Pick<PaymentExceptionRow, 'paymentId' | 'amount'> & Partial<Pick<PaymentExceptionRow, 'memberName' | 'membershipId' | 'mobile'>>;
 interface ReportRow {
   key: string; member?: UserProfile; source: 'member' | 'payment'; type: ReportType;
   name: string; mobile: string; membershipId: string; district: string; assembly: string;
@@ -56,7 +57,7 @@ export default function AdminReportsTab({
   const [recoveryBusy,setRecoveryBusy]=useState<string|null>(null);
   const [recoveryVerified,setRecoveryVerified]=useState<Record<string,boolean>>({});
   const [recoveryMessage,setRecoveryMessage]=useState<Record<string,string>>({});
-  const paymentRecovery=async(row:PaymentExceptionRow,action:'verify'|'repair')=>{
+  const paymentRecovery=async(row:RecoverablePaymentRow,action:'verify'|'repair')=>{
     setRecoveryBusy(row.paymentId); setRecoveryMessage(x=>({...x,[row.paymentId]:''}));
     try{
       const token=await auth.currentUser?.getIdToken(); if(!token)throw new Error('Admin authentication required');
@@ -65,7 +66,7 @@ export default function AdminReportsTab({
       const response=await fetch('/api/admin/payment-recovery',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({paymentId:row.paymentId,action})});
       const body=await response.json(); if(!response.ok)throw new Error(body.error||'Payment recovery failed');
       if(action==='verify'){setRecoveryVerified(x=>({...x,[row.paymentId]:true}));setRecoveryMessage(x=>({...x,[row.paymentId]:'Verified with Razorpay — ready to repair'}));}
-      else {setRecoveryMessage(x=>({...x,[row.paymentId]:body.alreadyRecovered?'Already repaired earlier':'Repair completed'})); await runPaymentExceptions();}
+      else {setRecoveryMessage(x=>({...x,[row.paymentId]:body.alreadyRecovered?'Already repaired earlier':'Repair completed'})); await runPaymentExceptions(); if(reconMobile.trim()) await runPaymentReconciliation();}
     }catch(e:any){setRecoveryMessage(x=>({...x,[row.paymentId]:e?.message||'Payment recovery failed'}));}
     finally{setRecoveryBusy(null);}
   };
@@ -378,7 +379,7 @@ export default function AdminReportsTab({
       {paymentLookupRows.length>0&&<><div className="font-black text-indigo-900">Matches: {paymentLookupRows.length}</div><div className="max-h-[360px] overflow-auto rounded-xl border"><table className="w-full min-w-[1050px] text-xs text-left"><thead className="bg-slate-200 sticky top-0"><tr>{['Date / Time','Name','Mobile','Email','Member ID','Amount','Type','Status','Payment ID','Order ID','UTR/RRN'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{paymentLookupRows.map((p:any)=><tr key={p.id||p.paymentId} className="border-t"><td className="p-2 whitespace-nowrap">{p.paymentTime?new Date(p.paymentTime).toLocaleString('en-IN'):p.paymentDate||'-'}</td><td className="p-2 font-bold">{p.name||'-'}</td><td className="p-2">{p.mobile||'-'}</td><td className="p-2 break-all">{p.email||'-'}</td><td className="p-2 font-mono">{p.membershipId||p.memberId||'-'}</td><td className="p-2 font-black">₹{p.amount||0}</td><td className="p-2">{p.paymentType||'-'}</td><td className="p-2">{p.paymentStatus||p.status||'-'}</td><td className="p-2 font-mono break-all">{p.paymentId||'-'}</td><td className="p-2 font-mono break-all">{p.orderId||'-'}</td><td className="p-2 font-mono">{p.utr||'-'}</td></tr>)}</tbody></table></div></>}
     </CardContent></Card>
     <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
-      <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Read-only check. Confirms Razorpay payment status, HCRS payment record and member renewal status.</p></div>
+      <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Confirms Razorpay payment status, HCRS payment record and member renewal status. Verified mismatches can be safely repaired.</p></div>
       <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 items-end">
         <label className="text-xs font-black text-slate-700">Mobile Number<Input type="tel" inputMode="numeric" autoComplete="off" value={reconMobile} onChange={e=>setReconMobile(e.target.value)} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950" /></label>
         <label className="text-xs font-black text-slate-700">Payment Date<Input type="date" value={reconDate} onChange={e=>setReconDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]" /></label>
@@ -390,7 +391,7 @@ export default function AdminReportsTab({
         <td className="p-2">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN') : '-'}</td><td className="p-2 font-bold">{row.memberName||'-'}</td><td className="p-2 font-mono">{row.membershipId||'-'}</td><td className="p-2 font-black">₹{row.amount}</td>
         <td className="p-2"><Badge className={row.razorpayStatus==='captured'?'bg-emerald-100 text-emerald-950':'bg-amber-100 text-amber-950'}>{row.razorpayStatus||'-'}</Badge></td>
         <td className="p-2">{row.hcrsPaymentRecorded ? 'Saved' : 'Missing'}</td><td className="p-2">{row.memberStatus||'-'}{row.renewalPending?' · renewal pending':''}</td><td className="p-2">{row.expiryDate ? new Date(row.expiryDate).toLocaleDateString('en-IN') : '-'}</td>
-        <td className="p-2"><Badge className={row.reconciliationStatus.includes('active')?'bg-emerald-100 text-emerald-950':row.reconciliationStatus.includes('mismatch')||row.reconciliationStatus.includes('missing')?'bg-red-100 text-red-950':'bg-amber-100 text-amber-950'}>{row.reconciliationStatus}</Badge></td><td className="p-2 font-mono break-all">{row.paymentId}</td>
+        <td className="p-2"><Badge className={row.reconciliationStatus.includes('active')?'bg-emerald-100 text-emerald-950':row.reconciliationStatus.includes('mismatch')||row.reconciliationStatus.includes('missing')?'bg-red-100 text-red-950':'bg-amber-100 text-amber-950'}>{row.reconciliationStatus}</Badge></td><td className="p-2 font-mono break-all"><div>{row.paymentId}</div>{row.razorpayStatus==='captured'&&!row.reconciliationStatus.includes('active')&&<><div className="mt-2 flex flex-wrap gap-1"><Button size="sm" variant="outline" disabled={recoveryBusy===row.paymentId} onClick={()=>paymentRecovery(row,'verify')}>{recoveryBusy===row.paymentId?'Checking…':'Verify Details'}</Button><Button size="sm" disabled={!recoveryVerified[row.paymentId]||recoveryBusy===row.paymentId} onClick={()=>paymentRecovery(row,'repair')} className="bg-emerald-700 text-white hover:bg-emerald-800">Repair</Button></div>{recoveryMessage[row.paymentId]&&<div className={`mt-1 text-[11px] font-bold ${recoveryVerified[row.paymentId]?'text-emerald-800':'text-red-700'}`}>{recoveryMessage[row.paymentId]}</div>}</>}</td>
       </tr>)}</tbody></table></div>}
     </CardContent></Card>
 
