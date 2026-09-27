@@ -75,7 +75,7 @@ export const printA4Receipts = (
             <img class="logo" src="${escapeHtml(FALLBACK_LOGO_URL)}" alt="HCRS Logo" />
             <h1>HIGHRICH COMMUNITY REVIVAL<br/>SOCIETY</h1>
             <p class="reg">REG. NO: TSR/TC/93/2025 &nbsp;|&nbsp; WWW.HCRS.IN</p>
-            <p class="address">Central Accounts Division, Kerala</p>
+            <p class="address">Central Accounts Division, Near Society Junction, Malappuram, Kerala - 676505</p>
           </header>
           <div class="receipt-title">OFFICIAL PAYMENT RECEIPT<br/><small>(പേയ്‌മെന്റ് രസീത്)</small></div>
           <div class="grid member-grid">
