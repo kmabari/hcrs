@@ -1937,10 +1937,52 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       {
         try {
+          const cleanMemberMobile = (value: any) => String(value || '').replace(/\D/g, '').slice(-10);
+          let resolvedMemberId = String(memberId || registrationData?.uid || '').trim();
           let resolvedMemberData: any = {};
-          if (memberId) {
-            const memberSnapshot = await dbAdmin.collection('users').doc(memberId).get();
+          if (resolvedMemberId) {
+            const memberSnapshot = await dbAdmin.collection('users').doc(resolvedMemberId).get();
             if (memberSnapshot.exists) resolvedMemberData = memberSnapshot.data() || {};
+          }
+
+          // Renewal must resolve to the real registered member, not a login/auth
+          // placeholder document that happens to share the same mobile number.
+          if (paymentType === 'renewal' && !String(resolvedMemberData.membershipId || resolvedMemberData.memberId || '').trim()) {
+            const requestedMemberId = String(memberId || '').trim();
+            const requestedMobile = cleanMemberMobile(mobile || registrationData?.mobile);
+            const usersSnapshot = await dbAdmin.collection('users').get();
+            const candidates: any[] = usersSnapshot.docs.map((d: any) => {
+              const data: any = d.data() || {};
+              return { uid: d.id, ...data };
+            });
+            const resolved = candidates.find(candidate => String(candidate.membershipId || candidate.memberId || '') === requestedMemberId)
+              || candidates.find(candidate => requestedMobile && cleanMemberMobile(candidate.mobile) === requestedMobile && String(candidate.membershipId || candidate.memberId || '').trim());
+            if (resolved) {
+              resolvedMemberId = resolved.uid;
+              resolvedMemberData = resolved;
+            }
+          }
+
+          if (paymentType === 'renewal' && !String(resolvedMemberData.membershipId || resolvedMemberData.memberId || '').trim()) {
+            await dbAdmin.collection('payments').doc(razorpay_payment_id).set({
+              paymentId: razorpay_payment_id,
+              orderId: razorpay_order_id,
+              amount: expectedAmountINR,
+              currency: 'INR',
+              paymentType,
+              memberId: resolvedMemberId,
+              name: name || '',
+              mobile: cleanMemberMobile(mobile),
+              status: 'CAPTURED_MEMBER_UNRESOLVED',
+              paymentStatus: 'VERIFICATION_PENDING',
+              paymentDate: paymentTimeISO.split('T')[0],
+              paymentTime: paymentTimeISO,
+              verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+              method: payment?.method || 'Razorpay'
+            }, { merge: true });
+            return res.status(503).json({
+              error: 'Payment was captured, but the registered member could not be safely resolved. Do not pay again; contact Admin for verification.'
+            });
           }
 
           const existingPayDoc = await dbAdmin.collection('payments').doc(razorpay_payment_id).get();
@@ -1953,7 +1995,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               amount: expectedAmountINR,
               currency: 'INR',
               paymentType,
-              memberId: memberId || registrationData?.uid || '',
+              memberId: resolvedMemberId,
               membershipId: resolvedMemberData.membershipId || registrationData?.membershipId || '',
               name: resolvedMemberData.name || registrationData?.name || name || '',
               mobile: resolvedMemberData.mobile || registrationData?.mobile || mobile || '',
@@ -2008,8 +2050,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               memberId: registrationData.membershipId || userUid
             });
-          } else if (!isAlreadyProcessed && paymentType === 'renewal' && memberId) {
-            const userRef = dbAdmin.collection('users').doc(memberId);
+          } else if (!isAlreadyProcessed && paymentType === 'renewal' && resolvedMemberId) {
+            const userRef = dbAdmin.collection('users').doc(resolvedMemberId);
             const userDoc = await userRef.get();
             if (userDoc.exists) {
               const userData = userDoc.data();
@@ -2051,7 +2093,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 status: 'Paid',
                 paymentDate: now.toISOString().split('T')[0],
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                memberId: userData?.membershipId || memberId
+                memberId: userData?.membershipId || resolvedMemberId
               });
             }
           }
@@ -2076,7 +2118,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           paymentMethod: 'Razorpay',
           paymentStatus: statusResult,
           receiptNumber: finalReceiptNumber,
-          memberId: memberId || registrationData?.uid || ''
+          memberId: paymentType === 'renewal' ? String(memberId || '') : String(memberId || registrationData?.uid || '')
         }
       });
     } catch (err: any) {
@@ -2103,15 +2145,15 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const paymentLimit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 10000) : 200;
       const paymentSnapshot = await dbAdmin.collection('payments').orderBy('verifiedAt', 'desc').limit(paymentLimit).get();
       const usersSnapshot = await dbAdmin.collection('users').get();
-      const usersByUid = new Map(usersSnapshot.docs.map(d => [d.id, d.data() || {}]));
-      const usersByMembershipId = new Map(usersSnapshot.docs.map(d => {
+      const usersByUid = new Map<string, FirebaseFirestore.DocumentData>(usersSnapshot.docs.map(d => [d.id, d.data() || {}] as const));
+      const usersByMembershipId = new Map<string, FirebaseFirestore.DocumentData>(usersSnapshot.docs.map(d => {
         const data:any = d.data() || {};
-        return [String(data.membershipId || data.memberId || ''), data];
+        return [String(data.membershipId || data.memberId || ''), data] as const;
       }).filter(([id]) => Boolean(id)));
-      const cleanMobile = (value:any) => String(value || '').replace(/\\D/g, '').slice(-10);
-      const usersByMobile = new Map(usersSnapshot.docs.map(d => {
+      const cleanMobile = (value:any) => String(value || '').replace(/\D/g, '').slice(-10);
+      const usersByMobile = new Map<string, FirebaseFirestore.DocumentData>(usersSnapshot.docs.map(d => {
         const data:any = d.data() || {};
-        return [cleanMobile(data.mobile), data];
+        return [cleanMobile(data.mobile), data] as const;
       }).filter(([mobile]) => Boolean(mobile)));
       const payments = paymentSnapshot.docs.map(paymentDoc => {
         const data: any = paymentDoc.data() || {};
@@ -2160,9 +2202,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
 
       const dateParam = String(req.query.date || '').trim();
-      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      const queryMobile = String(req.query.mobile || '').replace(/\\D/g, '').slice(-10);
-      if (!/^\\d{10}$/.test(queryMobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
+      const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const queryMobile = String(req.query.mobile || '').replace(/\D/g, '').slice(-10);
+      if (!/^\d{10}$/.test(queryMobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
 
       const [year, month, day] = targetDate.split('-').map(Number);
       const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
@@ -2175,7 +2217,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       // Find the member by mobile without changing any record.
       const usersSnap = await dbAdmin.collection('users').get();
-      const cleanMobile = (v: any) => String(v || '').replace(/\\D/g, '').slice(-10);
+      const cleanMobile = (v: any) => String(v || '').replace(/\D/g, '').slice(-10);
       const memberDocs = usersSnap.docs.filter(d => cleanMobile((d.data() || {}).mobile) === queryMobile);
       const member = memberDocs.find(d => {
         const x:any = d.data() || {};
@@ -2251,7 +2293,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       const dateParam = String(req.query.date || '').trim();
-      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+      const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
       const [year, month, day] = targetDate.split('-').map(Number);
       const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0);
       const endMs = startMs + 86400000;
@@ -2260,7 +2302,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (!keyId || !keySecret) return res.status(503).json({ error:"Razorpay credentials are unavailable." });
       const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
       const usersSnap = await dbAdmin.collection('users').get();
-      const cleanMobile = (v:any) => String(v || '').replace(/\\D/g,'').slice(-10);
+      const cleanMobile = (v:any) => String(v || '').replace(/\D/g,'').slice(-10);
       const users = usersSnap.docs.map(d => ({ uid:d.id, ...(d.data() || {}) } as any));
       const byUid = new Map(users.map((u:any) => [u.uid, u]));
       const byMembership = new Map(users.filter((u:any)=>u.membershipId || u.memberId).map((u:any)=>[String(u.membershipId || u.memberId),u]));
@@ -2394,7 +2436,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (!isAllowed) return res.status(403).json({ error: "Admin access is required" });
 
       const dateParam = String(req.query.date || '').trim();
-      const targetDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
       const [year, month, day] = targetDate.split('-').map(Number);
       const startMs = Date.UTC(year, month - 1, day, -5, -30, 0, 0); // 00:00 IST
       const endMs = startMs + 24 * 60 * 60 * 1000;
@@ -2402,7 +2444,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const usersSnap = await dbAdmin.collection('users').get();
       const docs = usersSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) } as any));
       const byMobile = new Map<string, any[]>();
-      const cleanMobile = (v: any) => String(v || '').replace(/\\D/g, '').slice(-10);
+      const cleanMobile = (v: any) => String(v || '').replace(/\D/g, '').slice(-10);
       for (const d of docs) { const m = cleanMobile(d.mobile); if (m) byMobile.set(m, [...(byMobile.get(m) || []), d]); }
 
       const rows: any[] = [];
@@ -2425,7 +2467,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             return Boolean(memberId && memberName && memberName.toLowerCase() !== 'member');
           });
           const fallback = matches.find(d => String(d.name || '').trim().toLowerCase() === 'member' && !String(d.membershipId || d.memberId || '').trim() && d.role === 'member' && d.status === 'active' && d.isApproved === true && d.isPaid === true);
-          const invalidMobile = Boolean(m && !/^\\d{10}$/.test(m));
+          const invalidMobile = Boolean(m && !/^\d{10}$/.test(m));
           let classification = 'Needs review';
           let reason = 'Auth account was created on the selected date; membership evidence is ambiguous.';
           if (genuine) { classification = 'Legitimate member auth created today'; reason = 'Matching registered member record with Member ID exists for this mobile.'; }

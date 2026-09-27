@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import React, { useMemo, useState } from 'react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, getDocs } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { Download, Mail, RefreshCw, Search } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { eledgerAuth, eledgerDb } from '../eledger/lib/firebaseEledger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ type JanamailSubmission = {
   submittedAt?: string;
   createdAt?: any;
   participated?: boolean;
+  recordType?: string;
 };
 
 const dateValue = (item: JanamailSubmission): number => {
@@ -39,29 +41,34 @@ const dateValue = (item: JanamailSubmission): number => {
 
 export default function JanamailSubmissionsPanel() {
   const [items, setItems] = useState<JanamailSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [password, setPassword] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    const submissionsRef = collection(db, 'claims');
-    const unsubscribe = onSnapshot(submissionsRef, snapshot => {
+  const loadSubmissions = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      if (!eledgerAuth.currentUser) {
+        if (!password) throw new Error('eLedger Admin password is required.');
+        await signInWithEmailAndPassword(eledgerAuth, 'kmabarikiyafoods@gmail.com', password);
+        setPassword('');
+      }
+      const snapshot = await getDocs(collection(eledgerDb, 'janamail_submissions'));
       const rows = snapshot.docs
-        .map(d => ({ id: d.id, ...d.data() } as JanamailSubmission & { recordType?: string }))
-        .filter(row => row.recordType === 'janamail_submission' || (
-          row.id.startsWith('janamail_lock_') &&
-          (row.participated === true || row.status === 'Completed')
-        ));
+        .map(d => ({ id: d.id, ...d.data() } as JanamailSubmission))
+        .filter(row => !row.recordType || row.recordType === 'janamail_submission');
       setItems(rows.sort((a, b) => dateValue(b) - dateValue(a)));
-      setLoading(false);
-      setError('');
-    }, err => {
+      setLoaded(true);
+    } catch (err: any) {
       console.error('Janamail submissions listener failed:', err);
       setError(err.message || 'Janamail submissions വായിക്കാൻ കഴിഞ്ഞില്ല.');
+    } finally {
       setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+    }
+  };
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -104,9 +111,13 @@ export default function JanamailSubmissionsPanel() {
           <CardTitle className="flex items-center gap-2 text-base font-black">
             <Mail className="w-4 h-4 text-brand-magenta" /> Janamail Submissions ({items.length})
           </CardTitle>
-          <p className="text-[11px] text-slate-500 font-semibold mt-1">Firestore: HCRS / claims (Janamail records)</p>
+          <p className="text-[11px] text-slate-500 font-semibold mt-1">Firestore: HCRS eLedger / janamail_submissions</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          {!eledgerAuth.currentUser && <Input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="eLedger Admin password" className="h-10 rounded-xl w-full sm:w-56" />}
+          <Button onClick={loadSubmissions} disabled={loading || (!eledgerAuth.currentUser && !password)} variant="outline" className="h-10 rounded-xl font-black text-xs">
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> {loaded ? 'Refresh' : 'Load Report'}
+          </Button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, mobile, district..." className="pl-9 h-10 rounded-xl w-full sm:w-72" />
@@ -121,6 +132,8 @@ export default function JanamailSubmissionsPanel() {
           <div className="py-14 flex items-center justify-center gap-2 text-xs font-bold text-slate-500"><RefreshCw className="w-4 h-4 animate-spin" /> Loading submissions...</div>
         ) : error ? (
           <div className="p-6 text-xs font-bold text-red-700 bg-red-50">{error}</div>
+        ) : !loaded ? (
+          <div className="py-14 text-center text-xs font-bold text-slate-400">eLedger-ൽ നിന്ന് Janamail report load ചെയ്യുക.</div>
         ) : filtered.length === 0 ? (
           <div className="py-14 text-center text-xs font-bold text-slate-400">Janamail submission records ലഭ്യമല്ല.</div>
         ) : (

@@ -269,9 +269,12 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       const runAutoSearch = async () => {
         setSearching(true);
         try {
-          const qMob = query(collection(db, 'users'), where('mobile', '==', initialMobile), limit(1));
+          const qMob = query(collection(db, 'users'), where('mobile', '==', initialMobile), limit(10));
           const snapMob = await getDocs(qMob);
-          const docSnap = snapMob.docs[0];
+          const docSnap = snapMob.docs.find(candidate => {
+            const data = candidate.data() as UserProfile;
+            return Boolean(String(data.membershipId || '').trim() && String(data.name || '').trim().toLowerCase() !== 'member');
+          }) || snapMob.docs[0];
           if (docSnap) {
             setFoundMember({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
             setStep('confirm');
@@ -296,11 +299,15 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     try {
       // Search by membershipId OR mobile
       const qId = query(collection(db, 'users'), where('membershipId', '==', searchQuery.toUpperCase()), limit(1));
-      const qMob = query(collection(db, 'users'), where('mobile', '==', searchQuery), limit(1));
+      const qMob = query(collection(db, 'users'), where('mobile', '==', searchQuery), limit(10));
       
       const [snapId, snapMob] = await Promise.all([getDocs(qId), getDocs(qMob)]);
       
-      let docSnap = snapId.docs[0] || snapMob.docs[0];
+      const genuineMobileMember = snapMob.docs.find(candidate => {
+        const data = candidate.data() as UserProfile;
+        return Boolean(String(data.membershipId || '').trim() && String(data.name || '').trim().toLowerCase() !== 'member');
+      });
+      let docSnap = snapId.docs[0] || genuineMobileMember || snapMob.docs[0];
       
       if (docSnap) {
         setFoundMember({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
