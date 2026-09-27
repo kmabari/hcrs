@@ -1986,9 +1986,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
 
           const existingPayDoc = await dbAdmin.collection('payments').doc(razorpay_payment_id).get();
-          if (existingPayDoc.exists && existingPayDoc.data()?.status === 'SUCCESS') {
-            isAlreadyProcessed = true;
-          } else {
+          const paymentRecordAlreadySaved = existingPayDoc.exists && existingPayDoc.data()?.status === 'SUCCESS';
+          if (!paymentRecordAlreadySaved) {
             await dbAdmin.collection('payments').doc(razorpay_payment_id).set({
               paymentId: razorpay_payment_id,
               orderId: razorpay_order_id,
@@ -2008,9 +2007,22 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             }, { merge: true });
           }
 
-          // Perform Server-Side Firestore Member Activation
-          // Do not repeat member mutations or create duplicate receipts when a verified
-          // payment callback is retried by the browser or payment provider.
+          // A SUCCESS payment document alone does not prove that the member update
+          // completed. The member transaction marker is the idempotency source of truth.
+          const memberRefForCheck = resolvedMemberId
+            ? dbAdmin.collection('users').doc(resolvedMemberId)
+            : null;
+          const memberForCheck = memberRefForCheck ? await memberRefForCheck.get() : null;
+          const memberForCheckData:any = memberForCheck?.exists ? memberForCheck.data() || {} : {};
+          const memberAlreadyProcessed = [
+            memberForCheckData.paymentId,
+            memberForCheckData.transactionId,
+            memberForCheckData.renewalTransactionId
+          ].some(value => String(value || '') === razorpay_payment_id);
+          isAlreadyProcessed = paymentRecordAlreadySaved && memberAlreadyProcessed;
+
+          // Perform Server-Side Firestore Member Activation. Do not repeat member
+          // mutations or receipts only when both payment and member were completed.
           if (!isAlreadyProcessed && paymentType === 'registration' && registrationData?.uid) {
             const userUid = registrationData.uid;
             const userRef = dbAdmin.collection('users').doc(userUid);
@@ -2055,7 +2067,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             const userDoc = await userRef.get();
             if (userDoc.exists) {
               const userData = userDoc.data();
-              const now = new Date();
+              const paymentCapturedAt = payment?.created_at
+                ? new Date(Number(payment.created_at) * 1000)
+                : new Date();
+              const now = Number.isNaN(paymentCapturedAt.getTime()) ? new Date() : paymentCapturedAt;
               const expiry = new Date(now);
               expiry.setFullYear(expiry.getFullYear() + 1);
               await userRef.update({
@@ -2064,7 +2079,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 isPaid: true,
                 renewalPending: false,
                 renewalTransactionId: razorpay_payment_id,
-                renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+                renewalDate: admin.firestore.Timestamp.fromDate(now),
                 renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
                 renewalPaymentDate: now.toISOString().split('T')[0],
                 paymentAmount: expectedAmountINR,
@@ -2410,21 +2425,34 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const details={paymentId,orderId:payment.order_id,amount:amountINR,paymentType,method:payment.method||'',captured:true,memberUid:member.uid,membershipId:member.membershipId||member.memberId||'',memberName:member.name||member.fullName||'',mobile:clean(member.mobile),hcrsPaymentRecorded:existing.exists&&existingData.status==='SUCCESS',memberStatus:member.status||'',renewalPending:member.renewalPending===true,expiryDate:expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry.toISOString():''};
       if(action==='verify') return res.json({success:true,verified:true,readOnly:true,details});
 
-      // Idempotency: a completed recovery for this payment can be safely retried.
-      if(existing.exists&&existingData.status==='SUCCESS'&&existingData.recoveryCompleted===true) return res.json({success:true,repaired:true,alreadyRecovered:true,details});
+      const capturedAtCandidate=payment.created_at?new Date(Number(payment.created_at)*1000):new Date();
+      const capturedAt=Number.isNaN(capturedAtCandidate.getTime())?new Date():capturedAtCandidate;
+      const newExpiry=new Date(capturedAt); newExpiry.setFullYear(newExpiry.getFullYear()+1);
+      const memberExpiry=expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry:null;
+      const renewalDateValue=member.renewalDate?.toDate?member.renewalDate.toDate():(member.renewalDate?new Date(member.renewalDate):null);
+      const memberTransactionMatches=[member.paymentId,member.transactionId,member.renewalTransactionId].some(v=>String(v||'')===paymentId);
+      const memberRecoveryComplete=String(member.status||'').toLowerCase()==='active'
+        && member.renewalPending!==true
+        && memberTransactionMatches
+        && memberExpiry instanceof Date
+        && memberExpiry.getTime()>=newExpiry.getTime()-60000
+        && (paymentType!=='renewal'||(renewalDateValue instanceof Date&&!Number.isNaN(renewalDateValue.getTime())));
+
+      // A payment recovery marker is not sufficient: only stop when the member
+      // status, transaction, renewal date and expiry date are all actually correct.
+      if(existing.exists&&existingData.status==='SUCCESS'&&existingData.recoveryCompleted===true&&memberRecoveryComplete) return res.json({success:true,repaired:true,alreadyRecovered:true,details});
 
       const now=new Date();
-      const newExpiry=new Date(now); newExpiry.setFullYear(newExpiry.getFullYear()+1);
       const receiptNo=`RCP-REC-${paymentId.slice(-8).toUpperCase()}`;
       const batch=dbAdmin.batch();
       batch.set(payRef,{paymentId,orderId:payment.order_id,amount:amountINR,currency:payment.currency||'INR',paymentType,memberId:member.uid,membershipId:member.membershipId||member.memberId||'',name:member.name||member.fullName||'',mobile:clean(member.mobile),status:'SUCCESS',paymentStatus:'PAYMENT_RECOVERED',paymentDate:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString().split('T')[0]:now.toISOString().split('T')[0],paymentTime:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString():now.toISOString(),method:payment.method||'Razorpay',source:'admin-recovery',recoveryCompleted:true,recoveredAt:admin.firestore.FieldValue.serverTimestamp(),recoveredBy:decoded.uid},{merge:true});
       const userRef=dbAdmin.collection('users').doc(member.uid);
       const userUpdate:any={status:'active',isApproved:true,isPaid:true,renewalPending:false,paymentAmount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentMethod:'Razorpay',expiryDate:admin.firestore.Timestamp.fromDate(newExpiry),paymentVerifiedAt:admin.firestore.FieldValue.serverTimestamp()};
-      if(paymentType==='renewal') Object.assign(userUpdate,{renewalTransactionId:paymentId,renewalDate:admin.firestore.FieldValue.serverTimestamp(),renewalApprovedAt:admin.firestore.FieldValue.serverTimestamp(),renewalPaymentDate:now.toISOString().split('T')[0],paymentStatus:'RENEWAL_RECOVERED',issueDate:admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
+      if(paymentType==='renewal') Object.assign(userUpdate,{renewalTransactionId:paymentId,renewalDate:admin.firestore.Timestamp.fromDate(capturedAt),renewalApprovedAt:admin.firestore.FieldValue.serverTimestamp(),renewalPaymentDate:capturedAt.toISOString().split('T')[0],paymentStatus:'RENEWAL_RECOVERED',issueDate:admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
       else Object.assign(userUpdate,{paymentStatus:'PAYMENT_RECOVERED',registrationDate:member.registrationDate||admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
       batch.update(userRef,userUpdate);
       const receiptRef=userRef.collection('receipts').doc(`recovery_${paymentId}`);
-      batch.set(receiptRef,{receiptNo,receiptType:paymentType==='renewal'?'Membership Renewal':'Membership Fee',receiptLabel:paymentType==='renewal'?'Membership Renewal Receipt':'Membership Registration Receipt',amount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentTime:payment.created_at?new Date(Number(payment.created_at)*1000).toISOString():now.toISOString(),paymentMethod:'Razorpay',paymentStatus:paymentType==='renewal'?'RENEWAL_RECOVERED':'PAYMENT_RECOVERED',status:'Paid',paymentDate:now.toISOString().split('T')[0],createdAt:admin.firestore.FieldValue.serverTimestamp(),memberId:member.membershipId||member.memberId||member.uid,source:'admin-recovery'},{merge:true});
+      batch.set(receiptRef,{receiptNo,receiptType:paymentType==='renewal'?'Membership Renewal':'Membership Fee',receiptLabel:paymentType==='renewal'?'Membership Renewal Receipt':'Membership Registration Receipt',amount:amountINR,paymentId,orderId:payment.order_id,transactionId:paymentId,paymentTime:capturedAt.toISOString(),paymentMethod:'Razorpay',paymentStatus:paymentType==='renewal'?'RENEWAL_RECOVERED':'PAYMENT_RECOVERED',status:'Paid',paymentDate:capturedAt.toISOString().split('T')[0],createdAt:admin.firestore.FieldValue.serverTimestamp(),memberId:member.membershipId||member.memberId||member.uid,source:'admin-recovery'},{merge:true});
       await batch.commit();
       return res.json({success:true,repaired:true,alreadyRecovered:false,details:{...details,newExpiryDate:newExpiry.toISOString(),receiptNumber:receiptNo}});
     } catch(err:any){
@@ -3207,7 +3235,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                 }, { merge: true });
 
                 if (userDoc.exists) {
-                  const now = new Date();
+                  const capturedAtCandidate = paymentEntity.created_at ? new Date(Number(paymentEntity.created_at) * 1000) : new Date();
+                  const now = Number.isNaN(capturedAtCandidate.getTime()) ? new Date() : capturedAtCandidate;
                   const userData = userDoc.data() || {};
                   await dbAdmin.collection('payments').doc(paymentId).set({
                     membershipId: userData.membershipId || '', name: userData.name || '', mobile: userData.mobile || '',
@@ -3242,7 +3271,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                       isPaid: true,
                       renewalPending: false,
                       renewalTransactionId: paymentId,
-                      renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+                      renewalDate: admin.firestore.Timestamp.fromDate(now),
                       renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
                       paymentAmount: 100,
                       paymentId,
