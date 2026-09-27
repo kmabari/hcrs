@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, getDocs } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { Download, Mail, RefreshCw, Search } from 'lucide-react';
@@ -45,15 +45,17 @@ export default function JanamailSubmissionsPanel() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [password, setPassword] = useState('');
+  const [needsPassword, setNeedsPassword] = useState(!eledgerAuth.currentUser);
   const [loaded, setLoaded] = useState(false);
 
   const loadSubmissions = async () => {
     setLoading(true);
     setError('');
     try {
-      if (!eledgerAuth.currentUser) {
+      if (!eledgerAuth.currentUser || needsPassword) {
         if (!password) throw new Error('eLedger Admin password is required.');
         await signInWithEmailAndPassword(eledgerAuth, 'kmabarikiyafoods@gmail.com', password);
+        setNeedsPassword(false);
         setPassword('');
       }
       const snapshot = await getDocs(collection(eledgerDb, 'janamail_submissions'));
@@ -64,7 +66,15 @@ export default function JanamailSubmissionsPanel() {
       setLoaded(true);
     } catch (err: any) {
       console.error('Janamail submissions listener failed:', err);
-      setError(err.message || 'Janamail submissions വായിക്കാൻ കഴിഞ്ഞില്ല.');
+      const permissionDenied = err?.code === 'permission-denied' || String(err?.message || '').toLowerCase().includes('insufficient permissions');
+      if (permissionDenied) {
+        await signOut(eledgerAuth).catch(() => undefined);
+        setNeedsPassword(true);
+        setLoaded(false);
+        setError('eLedger session expired. Enter the eLedger Admin password again.');
+      } else {
+        setError(err.message || 'Janamail submissions വായിക്കാൻ കഴിഞ്ഞില്ല.');
+      }
     } finally {
       setLoading(false);
     }
@@ -114,8 +124,8 @@ export default function JanamailSubmissionsPanel() {
           <p className="text-[11px] text-slate-500 font-semibold mt-1">Firestore: HCRS eLedger / janamail_submissions</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          {!eledgerAuth.currentUser && <Input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="eLedger Admin password" className="h-10 rounded-xl w-full sm:w-56" />}
-          <Button onClick={loadSubmissions} disabled={loading || (!eledgerAuth.currentUser && !password)} variant="outline" className="h-10 rounded-xl font-black text-xs">
+          {needsPassword && <Input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="eLedger Admin password" className="h-10 rounded-xl w-full sm:w-56" />}
+          <Button onClick={loadSubmissions} disabled={loading || (needsPassword && !password)} variant="outline" className="h-10 rounded-xl font-black text-xs">
             <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> {loaded ? 'Refresh' : 'Load Report'}
           </Button>
           <div className="relative">
