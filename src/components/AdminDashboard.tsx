@@ -226,6 +226,50 @@ const getCategoryLabel = (catId: string) => {
   return mapping[catId] || catId;
 };
 
+const parseClaimAmount = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined;
+  const normalized = typeof value === 'string'
+    ? value.replace(/[₹,\s]/g, '')
+    : value;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const resolveClaimAmounts = (claim: any) => {
+  const categoryDetails = claim?.categoryDetails;
+  let categoryPaid = 0;
+  let categoryReceived = 0;
+  let hasCategoryPaid = false;
+  let hasCategoryReceived = false;
+
+  if (categoryDetails && typeof categoryDetails === 'object' && !Array.isArray(categoryDetails)) {
+    Object.values(categoryDetails).forEach((detail: any) => {
+      const paid = parseClaimAmount(detail?.paid);
+      const received = parseClaimAmount(detail?.received);
+      if (paid !== undefined) {
+        categoryPaid += paid;
+        hasCategoryPaid = true;
+      }
+      if (received !== undefined) {
+        categoryReceived += received;
+        hasCategoryReceived = true;
+      }
+    });
+  }
+
+  const storedPaid = parseClaimAmount(claim?.totalPaid);
+  const storedReceived = parseClaimAmount(claim?.totalReceived);
+  const storedPending = parseClaimAmount(claim?.totalPending);
+  const totalPaid = storedPaid ?? (hasCategoryPaid ? categoryPaid : 0);
+  const totalReceived = storedReceived ?? (hasCategoryReceived ? categoryReceived : 0);
+
+  return {
+    totalPaid,
+    totalReceived,
+    totalPending: storedPending ?? (totalPaid - totalReceived)
+  };
+};
+
 
 export default function AdminDashboard({ 
   user,
@@ -2188,16 +2232,21 @@ export default function AdminDashboard({
   // and rotation-state documents. Keep those records out of the Claims UI/stats
   // without deleting or mutating any Firestore data.
   const actualClaims = useMemo(() => {
-    return claims.filter((claim: any) => {
-      const id = String(claim?.id || '');
-      const recordType = String(claim?.recordType || '').toLowerCase();
-      const isJanamailRecord =
-        recordType === 'janamail_submission' ||
-        recordType === 'rotation_state' ||
-        id.startsWith('janamail_lock_') ||
-        id.startsWith('janamail_rotation_');
-      return !isJanamailRecord;
-    });
+    return claims
+      .filter((claim: any) => {
+        const id = String(claim?.id || '');
+        const recordType = String(claim?.recordType || '').toLowerCase();
+        const isJanamailRecord =
+          recordType === 'janamail_submission' ||
+          recordType === 'rotation_state' ||
+          id.startsWith('janamail_lock_') ||
+          id.startsWith('janamail_rotation_');
+        return !isJanamailRecord;
+      })
+      .map((claim: any) => ({
+        ...claim,
+        ...resolveClaimAmounts(claim)
+      }));
   }, [claims]);
 
    const filteredClaims = useMemo(() => {
@@ -2223,7 +2272,7 @@ export default function AdminDashboard({
       if (claimTypeFilter === 'combo') {
         matchesType = isComboClaim(c, actualClaims);
       } else if (claimTypeFilter === 'single') {
-        matchesType = !isComboClaim(c, claims);
+        matchesType = !isComboClaim(c, actualClaims);
       }
 
       return matchesSearch && matchesDistrict && matchesPriority && matchesCategory && matchesType;
@@ -2353,7 +2402,7 @@ export default function AdminDashboard({
     });
 
     return { totalPending, emergencyCount, projectCounts, priorityCounts };
-  }, [claims]);
+  }, [actualClaims]);
 
   const pendingRenewals = useMemo(() => {
     const approvedSet = new Set(approvedRenewalUids);
