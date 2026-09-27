@@ -2304,9 +2304,16 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const usersSnap = await dbAdmin.collection('users').get();
       const cleanMobile = (v:any) => String(v || '').replace(/\D/g,'').slice(-10);
       const users = usersSnap.docs.map(d => ({ uid:d.id, ...(d.data() || {}) } as any));
+      const isGenuineMember = (u:any) => Boolean(u && String(u.membershipId || u.memberId || '').trim() && String(u.name || u.fullName || '').trim().toLowerCase() !== 'member');
       const byUid = new Map(users.map((u:any) => [u.uid, u]));
       const byMembership = new Map(users.filter((u:any)=>u.membershipId || u.memberId).map((u:any)=>[String(u.membershipId || u.memberId),u]));
-      const byMobile = new Map(users.filter((u:any)=>cleanMobile(u.mobile)).map((u:any)=>[cleanMobile(u.mobile),u]));
+      const byMobile = new Map<string, any>();
+      for (const user of users) {
+        const mobile = cleanMobile(user.mobile);
+        if (!mobile) continue;
+        const current = byMobile.get(mobile);
+        if (!current || (!isGenuineMember(current) && isGenuineMember(user))) byMobile.set(mobile, user);
+      }
       const rows:any[] = [];
       let skip=0;
       while(skip<1000){
@@ -2321,7 +2328,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           const notes=order?.notes||p.notes||{};
           const noteUid=String(notes.memberId||'').trim();
           const noteMobile=cleanMobile(notes.mobile);
-          const member:any=byUid.get(noteUid)||byMembership.get(noteUid)||byMobile.get(noteMobile);
+          const directMember:any=byUid.get(noteUid)||byMembership.get(noteUid);
+          const mobileMember:any=byMobile.get(noteMobile);
+          const member:any=isGenuineMember(directMember)?directMember:(isGenuineMember(mobileMember)?mobileMember:(directMember||mobileMember));
           const payDoc=await dbAdmin.collection('payments').doc(String(p.id)).get();
           const payData:any=payDoc.exists?payDoc.data()||{}:{};
           const recorded=payDoc.exists && payData.status==='SUCCESS';
@@ -2387,7 +2396,11 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const usersSnap=await dbAdmin.collection('users').get();
       const users=usersSnap.docs.map(d=>({uid:d.id,...(d.data()||{})} as any));
       const noteMember=String(notes.memberId||'').trim(), noteMobile=clean(notes.mobile);
-      const member:any=users.find((u:any)=>u.uid===noteMember)||users.find((u:any)=>String(u.membershipId||u.memberId||'')===noteMember)||users.find((u:any)=>noteMobile&&clean(u.mobile)===noteMobile);
+      const isGenuineMember=(u:any)=>Boolean(u&&String(u.membershipId||u.memberId||'').trim()&&String(u.name||u.fullName||'').trim().toLowerCase()!=='member');
+      const directMember:any=users.find((u:any)=>u.uid===noteMember)||users.find((u:any)=>String(u.membershipId||u.memberId||'')===noteMember);
+      const mobileMembers=users.filter((u:any)=>noteMobile&&clean(u.mobile)===noteMobile);
+      const mobileMember:any=mobileMembers.find(isGenuineMember)||mobileMembers[0];
+      const member:any=isGenuineMember(directMember)?directMember:(isGenuineMember(mobileMember)?mobileMember:(directMember||mobileMember));
       if(!member) return res.status(409).json({error:"Member could not be safely resolved from Razorpay order notes; manual review required"});
 
       const payRef=dbAdmin.collection('payments').doc(paymentId);
