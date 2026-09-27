@@ -316,9 +316,14 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       pdf.setFillColor(201, 162, 39);
       pdf.rect(9 + (contentWidth * 0.72), 8, contentWidth * 0.28, 1.6, 'F');
 
-      const sealData = await imageUrlToDataUrl(new URL('/hcrs-official-seal.png', window.location.origin).href);
-      if (sealData.startsWith('data:')) {
-        pdf.addImage(sealData, 'PNG', (pageWidth - 16) / 2, 10, 16, 16, undefined, 'FAST');
+      // The organisation logo belongs in the header; the official seal is only
+      // used beside the authorised-signatory block in the footer.
+      const [logoData, sealData] = await Promise.all([
+        imageUrlToDataUrl(FALLBACK_LOGO_URL),
+        imageUrlToDataUrl(new URL('/hcrs-official-seal.png', window.location.origin).href)
+      ]);
+      if (logoData.startsWith('data:')) {
+        pdf.addImage(logoData, 'PNG', (pageWidth - 16) / 2, 10, 16, 16, undefined, 'FAST');
       }
 
       pdf.setFont('helvetica', 'bold');
@@ -328,13 +333,14 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       pdf.setFontSize(6.5);
       pdf.setTextColor(100, 116, 139);
       pdf.text('REG. NO: TSR/TC/93/2025  |  WWW.HCRS.IN', pageWidth / 2, 35, { align: 'center' });
-      pdf.text('Central Accounts Division, Kerala', pageWidth / 2, 39, { align: 'center' });
+      pdf.text('Central Accounts Division, Near Society Junction', pageWidth / 2, 39, { align: 'center' });
+      pdf.text('Malappuram, Kerala - 676505', pageWidth / 2, 42, { align: 'center' });
 
       pdf.setFillColor(30, 102, 220);
-      pdf.roundedRect(margin, 44, contentWidth, 13, 4, 4, 'F');
+      pdf.roundedRect(margin, 46, contentWidth, 13, 4, 4, 'F');
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(11);
-      pdf.text('OFFICIAL PAYMENT RECEIPT', pageWidth / 2, 52, { align: 'center' });
+      pdf.text('OFFICIAL PAYMENT RECEIPT', pageWidth / 2, 54, { align: 'center' });
 
       drawField('Receipt Number', selectedReceipt.receiptNo, margin + 3, 65);
       drawField('Date of Payment', selectedReceipt.paymentDate, rightColumn, 65);
@@ -513,7 +519,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                     Highrich Community Revival Society
                   </h2>
                   <p className="text-[7px] text-slate-400 font-extrabold uppercase tracking-widest mt-1">
-                    Reg. No: KL/MLP/2025 | www.hcrs.in
+                    Reg. No: TSR/TC/93/2025 | www.hcrs.in
                   </p>
                   <p className="text-[8px] text-slate-500 font-bold mt-1.5 max-w-xs leading-normal">
                     Central Accounts Division, Near Society Junction, Malappuram, Kerala - 676505
