@@ -1745,7 +1745,7 @@ export default function AdminDashboard({
         if (cleanMob && cleanMob.length === 10) {
           const mobSnap = await getDocs(query(collection(db, 'users'), where('mobile', '==', cleanMob)));
           if (!mobSnap.empty) {
-            const docsData = mobSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
+            const docsData = mobSnap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
             const better = docsData.find(u => !isPlaceholderName(u.name) || Boolean(u.membershipId));
             if (better) {
               setResolvedRenewalMember(prev => ({

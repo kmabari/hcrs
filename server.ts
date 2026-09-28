@@ -1953,7 +1953,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             const usersSnapshot = await dbAdmin.collection('users').get();
             const candidates: any[] = usersSnapshot.docs.map((d: any) => {
               const data: any = d.data() || {};
-              return { uid: d.id, ...data };
+              // Legacy/admin-imported records may carry a stale uid field.
+              // Firestore's document ID must remain authoritative so a captured
+              // renewal is applied to the member document that was resolved.
+              return { ...data, uid: d.id };
             });
             const resolved = candidates.find(candidate => String(candidate.membershipId || candidate.memberId || '') === requestedMemberId)
               || candidates.find(candidate => requestedMobile && cleanMemberMobile(candidate.mobile) === requestedMobile && String(candidate.membershipId || candidate.memberId || '').trim());
