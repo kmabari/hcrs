@@ -14,9 +14,21 @@ export const formatReceiptDate = (value: any): string => {
 
 export const buildRegistrationReceipt = (member: UserProfile): PaymentReceipt => {
   const isLifeMember = member.membership_type === 'LIFE_MEMBER' || member.membershipType === 'Life';
-  const receiptNo = (member as any).receiptNumber || member.paymentId || member.transactionId ||
+  const legacyMember = member as any;
+  const currentPaymentIsRenewal = Boolean(
+    String(member.paymentStatus || '').toUpperCase().includes('RENEWAL') ||
+    (member.renewalTransactionId && [member.paymentId, member.transactionId]
+      .some(value => String(value || '') === String(member.renewalTransactionId)))
+  );
+  const registrationPaymentId = legacyMember.registrationPaymentId || legacyMember.initialPaymentId || '';
+  const registrationTransactionId = legacyMember.registrationTransactionId || legacyMember.initialTransactionId || '';
+  const registrationOrderId = legacyMember.registrationOrderId || legacyMember.initialOrderId || '';
+  const receiptNo = legacyMember.registrationReceiptNumber || legacyMember.initialReceiptNumber ||
+    (!currentPaymentIsRenewal ? (legacyMember.receiptNumber || member.paymentId || member.transactionId) : '') ||
     `HCRS-REG-${String(member.serialNo || 1000).padStart(4, '0')}`;
-  const amount = Number(member.paymentAmount || (isLifeMember ? 300 : 200));
+  // `paymentAmount` is the latest payment and becomes ₹100 after renewal. The
+  // joining receipt must retain the approved membership tariff independently.
+  const amount = isLifeMember ? 300 : 200;
   const paid = Boolean(
     member.isPaid ||
     member.isApproved ||
@@ -33,11 +45,11 @@ export const buildRegistrationReceipt = (member: UserProfile): PaymentReceipt =>
     status: paid ? 'Paid' : 'Pending Verification',
     paymentDate: formatReceiptDate(member.paymentDate || member.registrationDate),
     createdAt: member.registrationDate,
-    transactionId: member.transactionId || member.paymentId || '',
-    paymentId: member.paymentId || '',
-    orderId: member.orderId || '',
-    paymentTime: member.paymentTime || '',
-    paymentStatus: member.paymentStatus || (paid ? 'Paid' : 'Pending Verification')
+    transactionId: registrationTransactionId || (!currentPaymentIsRenewal ? (member.transactionId || member.paymentId || '') : ''),
+    paymentId: registrationPaymentId || (!currentPaymentIsRenewal ? (member.paymentId || '') : ''),
+    orderId: registrationOrderId || (!currentPaymentIsRenewal ? (member.orderId || '') : ''),
+    paymentTime: legacyMember.registrationPaymentTime || (!currentPaymentIsRenewal ? (member.paymentTime || '') : ''),
+    paymentStatus: legacyMember.registrationPaymentStatus || (paid ? 'Paid' : 'Pending Verification')
   };
 };
 

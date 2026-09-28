@@ -444,7 +444,7 @@ export default function App() {
         try {
           const snapshot = await getDocs(q);
           let list = snapshot.docs
-            .map(docSnap => ({ uid: docSnap.id, ...(docSnap.data() as any) } as UserProfile))
+            .map(docSnap => ({ ...(docSnap.data() as any), uid: docSnap.id } as UserProfile))
             .filter(u => {
               const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
               return !isMainAdmin;
@@ -454,7 +454,7 @@ export default function App() {
           if (list.length === 0 && userNormDist) {
             const allSnap = await getDocs(query(collection(db, 'users')));
             list = allSnap.docs
-              .map(docSnap => ({ uid: docSnap.id, ...(docSnap.data() as any) } as UserProfile))
+              .map(docSnap => ({ ...(docSnap.data() as any), uid: docSnap.id } as UserProfile))
               .filter(u => {
                 const isMainAdmin = MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase());
                 return !isMainAdmin && normalizeDistrictCode(u.district) === userNormDist;
@@ -1043,7 +1043,7 @@ export default function App() {
           const docRef = doc(db, 'users', memberId);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            const memberData = { uid: docSnap.id, ...docSnap.data() } as UserProfile;
+            const memberData = { ...docSnap.data(), uid: docSnap.id } as UserProfile;
             setVerifiedMember(memberData);
             setView('verify');
             toast.success(`മെമ്പർ കാർഡ് വിജയിച്ചു വെരിഫൈ ചെയ്തിട്ടുണ്ട്: ${memberData.name}`);
@@ -1195,7 +1195,9 @@ export default function App() {
         
         if (docSnap.exists()) {
           setLoadingStatus('Finalizing Access...');
-          let freshData = { uid: authUser.uid, ...docSnap.data() } as UserProfile;
+          // Authentication document ID is the canonical profile identity. Do not
+          // allow a stale legacy/imported uid field to break receipts or updates.
+          let freshData = { ...docSnap.data(), uid: authUser.uid } as UserProfile;
           
           if (freshData.status === 'deleted' && !isAdminEmail) {
             console.log("Deactivated/Deleted user logged in. Signing out...");

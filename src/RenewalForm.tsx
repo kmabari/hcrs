@@ -276,7 +276,10 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
             return Boolean(String(data.membershipId || '').trim() && String(data.name || '').trim().toLowerCase() !== 'member');
           }) || snapMob.docs[0];
           if (docSnap) {
-            setFoundMember({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+            // The Firestore document ID is the canonical member identity. Some
+            // legacy/admin imports contain a stale `uid` field in the document;
+            // never let that field redirect a verified renewal to another path.
+            setFoundMember({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
             setStep('confirm');
           }
         } catch (e) {
@@ -310,7 +313,9 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       let docSnap = snapId.docs[0] || genuineMobileMember || snapMob.docs[0];
       
       if (docSnap) {
-        setFoundMember({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+        // Keep the real document ID authoritative for every entry source
+        // (registration, Fast Entry, Admin and district/manual imports).
+        setFoundMember({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
         setStep('confirm');
       } else {
         toast.error('No membership found. Please check details or contact admin.');

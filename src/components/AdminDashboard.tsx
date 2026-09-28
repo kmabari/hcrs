@@ -195,7 +195,10 @@ const SECOND_ADMINS = [
 const hasValidity = (u: any) => {
   if (u.status === 'deleted') return false;
   
-  const isLife = String(u.membership_type || u.membershipType || '').toUpperCase().includes('LIFE');
+  const typeStr = String(u.membership_type || u.membershipType || '').toUpperCase();
+  const membershipId = String(u.membershipId || u.memberId || '').toUpperCase();
+  const isLife = typeStr.includes('LIFE') || membershipId.includes('-LIFE-') ||
+    membershipId.startsWith('HCRS-LIFE') || membershipId.includes('-LM-') || !!u.isLifeMember;
   if (isLife) return true;
 
   if (u.status !== 'active') return false;
@@ -212,6 +215,14 @@ const hasValidity = (u: any) => {
   }
   
   return expDate.getTime() > Date.now();
+};
+
+const getEffectiveMemberStatus = (member: UserProfile): 'active' | 'pending' | 'expired' | 'rejected' | 'offline' => {
+  if (hasValidity(member)) return 'active';
+  if (member.renewalPending || member.status === 'pending') return 'pending';
+  if (member.status === 'active') return 'expired';
+  if (member.status === 'offline') return 'offline';
+  return 'rejected';
 };
 
 const getCategoryLabel = (catId: string) => {
@@ -1745,7 +1756,7 @@ export default function AdminDashboard({
         if (cleanMob && cleanMob.length === 10) {
           const mobSnap = await getDocs(query(collection(db, 'users'), where('mobile', '==', cleanMob)));
           if (!mobSnap.empty) {
-            const docsData = mobSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
+            const docsData = mobSnap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
             const better = docsData.find(u => !isPlaceholderName(u.name) || Boolean(u.membershipId));
             if (better) {
               setResolvedRenewalMember(prev => ({
@@ -1963,7 +1974,7 @@ export default function AdminDashboard({
       total++;
       if (m.status === 'pending' && !isRenewalPending) {
         pending++;
-      } else if (m.status === 'active' || isRenewalPending || isApprovedRenewal) {
+      } else if (hasValidity(m)) {
         active++;
       }
       
@@ -1995,7 +2006,10 @@ export default function AdminDashboard({
                            (normMDist && districtMap.get(normMDist)?.includes(term)) ||
                            (m.district && m.district.toLowerCase().includes(term));
       const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
-      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted') : m.status === statusFilter;
+      const effectiveStatus = getEffectiveMemberStatus(m);
+      const matchesStatus = statusFilter === 'all'
+        ? (m.status !== 'deleted')
+        : effectiveStatus === statusFilter;
       
       let matchesSource = true;
       if (sourceFilter === 'online') {
@@ -2047,8 +2061,8 @@ export default function AdminDashboard({
         result.push(group[0]);
       } else {
         const best = group.sort((a, b) => {
-          const statusA = a.status || '';
-          const statusB = b.status || '';
+          const statusA = getEffectiveMemberStatus(a);
+          const statusB = getEffectiveMemberStatus(b);
           if (statusA === 'active' && statusB !== 'active') return -1;
           if (statusB === 'active' && statusA !== 'active') return 1;
 
@@ -2498,7 +2512,7 @@ export default function AdminDashboard({
       'District': m.district,
       'Assembly': m.assemblyConstituency,
       'Blood Group': m.bloodGroup,
-      'Status': m.status,
+      'Status': getEffectiveMemberStatus(m),
       'Is Paid': m.isPaid ? 'Yes' : 'No',
       'Registration Date': m.registrationDate?.toDate ? m.registrationDate.toDate().toLocaleDateString() : new Date(m.registrationDate).toLocaleDateString()
     })));
@@ -3718,6 +3732,7 @@ export default function AdminDashboard({
                         <SelectContent>
                           <SelectItem value="all">All Status</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="expired">Expired</SelectItem>
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
@@ -3865,12 +3880,12 @@ export default function AdminDashboard({
                                   <Badge 
                                     className={cn(
                                       "text-[9px] font-black uppercase px-2 py-0.5",
-                                      m.status === 'active' ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
-                                      m.status === 'pending' ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                                      getEffectiveMemberStatus(m) === 'active' ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
+                                      getEffectiveMemberStatus(m) === 'pending' ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
                                       "bg-red-500/10 text-red-600 border border-red-500/20"
                                     )}
                                   >
-                                    {m.status}
+                                    {getEffectiveMemberStatus(m)}
                                   </Badge>
                                   {m.isPaid && (
                                     <span className="text-[8px] font-black text-emerald-600">✓ Paid</span>
