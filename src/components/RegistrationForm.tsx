@@ -39,8 +39,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { processRazorpayPayment } from '../lib/razorpay';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
 import { getUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL } from '../lib/upi';
@@ -238,12 +239,57 @@ export default function RegistrationForm({
     setIsProcessingRazorpay(true);
     const formVals = form.getValues();
     try {
+      const valid = await form.trigger();
+      if (!valid) throw new Error('Please complete all required registration details before payment.');
+      const cleanMobile = formVals.mobile.replace(/\D/g, '').slice(-10);
+      const authEmail = formVals.email?.trim().toLowerCase() || `${cleanMobile}@hcrs.society`;
+      let registrationUser = auth.currentUser;
+      if (!registrationUser || registrationUser.email?.toLowerCase() !== authEmail) {
+        if (registrationUser) await signOut(auth);
+        try {
+          registrationUser = (await createUserWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
+        } catch (authError: any) {
+          if (authError?.code !== 'auth/email-already-in-use') throw authError;
+          registrationUser = (await signInWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
+        }
+      }
+      const idToken = await registrationUser.getIdToken();
+      const prepareResponse = await fetch('/api/registration/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ profile: formVals })
+      });
+      const prepared = await prepareResponse.json().catch(() => ({}));
+      if (!prepareResponse.ok || !prepared.success) throw new Error(prepared.error || 'Could not prepare a recoverable registration.');
+
+      // Before opening a new checkout, recover one safely matched captured ₹200
+      // payment for this authenticated profile. This prevents a second charge.
+      const recoveryResponse = await fetch('/api/registration/recover-captured', {
+        method: 'POST', headers: { Authorization: `Bearer ${idToken}` }
+      });
+      const recovery = await recoveryResponse.json().catch(() => ({}));
+      if (!recoveryResponse.ok) throw new Error(recovery.error || 'Captured payment recovery check failed. Do not pay again.');
+      if (recovery.recovered && recovery.paymentDetails) {
+        toast.success('Existing captured ₹200 payment recovered. No second payment was taken.');
+        onSubmit({
+          ...formVals, cleanMobile,
+          transactionId: recovery.paymentDetails.paymentId, paymentId: recovery.paymentDetails.paymentId,
+          orderId: recovery.paymentDetails.orderId, paymentAmount: regFee, paymentMethod: 'Razorpay',
+          paymentStatus: 'PAYMENT_VERIFIED', receiptNumber: recovery.paymentDetails.receiptNumber,
+          paymentDate: recovery.paymentDetails.paymentTime.split('T')[0],
+          paymentTimeISO: recovery.paymentDetails.paymentTime
+        });
+        return;
+      }
+
       const paymentDetails = await processRazorpayPayment({
         paymentType: 'registration',
+        memberId: registrationUser.uid,
         name: formVals.name,
         mobile: formVals.mobile,
         email: formVals.email || `${formVals.mobile}@hcrs.society`,
-        amount: regFee
+        amount: regFee,
+        registrationData: { uid: registrationUser.uid }
       });
 
       const now = new Date();
@@ -252,7 +298,7 @@ export default function RegistrationForm({
 
       const fullValues = {
         ...formVals,
-        cleanMobile: formVals.mobile.replace(/\D/g, '').slice(-10),
+        cleanMobile,
         transactionId: paymentDetails.paymentId,
         paymentId: paymentDetails.paymentId,
         orderId: paymentDetails.orderId,

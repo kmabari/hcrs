@@ -3,7 +3,8 @@ import {
   getPaymentPersistencePlan,
   getRazorpayReceiptDocumentId,
   getReceiptPaymentKey,
-  memberHasAppliedPayment
+  memberHasAppliedPayment,
+  classifyCapturedRegistrationCandidates
 } from '../src/lib/paymentReceiptInvariants';
 
 const complete = getPaymentPersistencePlan({ paymentSaved: true, memberApplied: true, receiptSaved: true });
@@ -26,5 +27,9 @@ assert.notEqual(
 
 assert.equal(memberHasAppliedPayment({ renewalTransactionId: 'pay_1' }, 'pay_1'), true);
 assert.equal(memberHasAppliedPayment({ renewalTransactionId: 'pay_2' }, 'pay_1'), false);
+
+assert.deepEqual(classifyCapturedRegistrationCandidates([]), { status: 'none', candidate: null });
+assert.deepEqual(classifyCapturedRegistrationCandidates(['pay_1']), { status: 'unique', candidate: 'pay_1' });
+assert.deepEqual(classifyCapturedRegistrationCandidates(['pay_1', 'pay_2']), { status: 'ambiguous', candidate: null });
 
 console.log('Payment/receipt invariant tests passed.');

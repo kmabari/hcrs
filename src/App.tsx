@@ -2322,6 +2322,19 @@ export default function App() {
       const mobileQuery = query(usersRef, where('mobile', '==', cleanMobile), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
       const mobileSnap = await getDocs(mobileQuery);
       if (!mobileSnap.empty) {
+        const existingDoc = mobileSnap.docs[0];
+        const existingData: any = existingDoc.data() || {};
+        const submittedPaymentId = String(values.paymentId || values.transactionId || '');
+        const sameRecoveredRegistration = submittedPaymentId && [
+          existingData.paymentId, existingData.transactionId, existingData.registrationPaymentId
+        ].some(value => String(value || '') === submittedPaymentId);
+        if (sameRecoveredRegistration && String(existingData.membershipId || '').trim()) {
+          setUser({ ...existingData, uid: existingDoc.id } as UserProfile);
+          setShowCelebration(true);
+          setView('card');
+          toast.success('Captured payment recovered. Membership is already active.', { id: loadingToast });
+          return;
+        }
         throw new Error('This mobile number is already registered. Please Login. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ലോഗിൻ ചെയ്യുക.)');
       }
 

@@ -27,3 +27,8 @@ export const getReceiptPaymentKey = (receipt: Record<string, any>) => {
 export const memberHasAppliedPayment = (member: Record<string, any>, paymentId: string) =>
   [member.paymentId, member.transactionId, member.renewalTransactionId]
     .some(value => String(value || '') === String(paymentId || ''));
+
+export const classifyCapturedRegistrationCandidates = <T>(candidates: T[]) => ({
+  status: candidates.length === 0 ? 'none' : candidates.length === 1 ? 'unique' : 'ambiguous',
+  candidate: candidates.length === 1 ? candidates[0] : null
+} as const);
