@@ -8,7 +8,8 @@
     "build": "node scripts/check-admin-ui-regressions.mjs && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:payment-receipts": "node --import tsx scripts/test-payment-receipt-invariants.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

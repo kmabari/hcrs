@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { X, Receipt, Plus, Calendar, FileText, CheckCircle2, Printer } from 'lucide-react';
 import { buildRegistrationReceipt, printA4Receipts } from '../lib/receiptUtils';
+import { getReceiptPaymentKey } from '../lib/paymentReceiptInvariants';
 
 interface AdminReceiptsModalProps {
   member: UserProfile;
@@ -94,13 +95,13 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
         }
       }
 
-      // Keep exactly one renewal receipt for each membership year while preserving
-      // every previous year's receipt in the rendered history.
+      // De-duplicate only records representing the same payment. Calendar year is
+      // not an identity: two genuinely captured payments must remain visible.
       const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
 
       for (const r of nonRegReceipts) {
         const year = (r as any).year || (r.paymentDate ? new Date(r.paymentDate).getFullYear() : new Date().getFullYear());
-        const key = `renewal-year-${year}`;
+        const key = getReceiptPaymentKey(r as any);
 
         const isMemberApproved = member.isApproved && !member.renewalPending;
         const cleanReceipt: PaymentReceipt = {
