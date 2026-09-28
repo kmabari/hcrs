@@ -2022,10 +2022,24 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             memberForCheckData.transactionId,
             memberForCheckData.renewalTransactionId
           ].some(value => String(value || '') === razorpay_payment_id);
-          isAlreadyProcessed = paymentRecordAlreadySaved && memberAlreadyProcessed;
+
+          // A member/payment marker is not enough to call the workflow complete.
+          // A previous attempt can update the member successfully and then fail while
+          // writing the receipt. On retry, detect that partial state and repair the
+          // missing receipt instead of incorrectly returning alreadyProcessed=true.
+          let receiptAlreadySaved = false;
+          if (memberRefForCheck) {
+            const receiptSnapshot = await memberRefForCheck
+              .collection('receipts')
+              .where('paymentId', '==', razorpay_payment_id)
+              .limit(1)
+              .get();
+            receiptAlreadySaved = !receiptSnapshot.empty;
+          }
+          isAlreadyProcessed = paymentRecordAlreadySaved && memberAlreadyProcessed && receiptAlreadySaved;
 
           // Perform Server-Side Firestore Member Activation. Do not repeat member
-          // mutations or receipts only when both payment and member were completed.
+          // mutations or receipts only when payment, member update AND receipt completed.
           if (!isAlreadyProcessed && paymentType === 'registration' && registrationData?.uid) {
             const userUid = registrationData.uid;
             const userRef = dbAdmin.collection('users').doc(userUid);
