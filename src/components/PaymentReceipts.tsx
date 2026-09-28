@@ -11,6 +11,7 @@ import { html2canvasOklchOnClone, imageUrlToDataUrl, triggerFileDownload } from 
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
 import { buildRegistrationReceipt, getReceiptMembershipCategory } from '../lib/receiptUtils';
+import { getReceiptPaymentKey } from '../lib/paymentReceiptInvariants';
 
 interface PaymentReceiptsProps {
   user: UserProfile;
@@ -91,13 +92,13 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
           }
         }
 
-        // Keep exactly one renewal receipt for each membership year while preserving
-        // every previous year's receipt in the rendered history.
+        // De-duplicate only records representing the same payment. Calendar year is
+        // not an identity: two genuinely captured payments must remain visible.
         const renewalMap = new Map<string, { primary: PaymentReceipt; docIdsToDelete: string[] }>();
 
         for (const r of nonRegReceipts) {
           const year = (r as any).year || (r.paymentDate ? new Date(r.paymentDate).getFullYear() : new Date().getFullYear());
-          const key = `renewal-year-${year}`;
+          const key = getReceiptPaymentKey(r as any);
 
           const isUserApproved = user.isApproved && !user.renewalPending;
           const cleanReceipt: PaymentReceipt = {
