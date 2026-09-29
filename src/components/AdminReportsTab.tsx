@@ -26,6 +26,7 @@ type PaymentStatus = Exclude<StatusFilter, 'all'>;
 interface AuditRow { uid:string; authEmail:string; authCreatedAt:string; mobile:string; name:string; membershipId:string; classification:string; reason:string; }
 interface ReconciliationRow { paymentId:string; orderId:string; amount:number; razorpayStatus:string; method:string; createdAt:string; paymentType:string; hcrsPaymentRecorded:boolean; hcrsPaymentStatus:string; membershipId:string; memberName:string; memberStatus:string; renewalPending:boolean; expiryDate:string; reconciliationStatus:string; }
 interface PaymentExceptionRow { paymentId:string; orderId:string; amount:number; createdAt:string; method:string; paymentType:string; membershipId:string; memberName:string; mobile:string; hcrsPaymentRecorded:boolean; memberStatus:string; renewalPending:boolean; expiryDate:string; result:string; }
+interface HistoricalPaymentResult { memberFound:boolean; duplicateMobileRecords:number; portalMatch:boolean; dateMatches?:boolean; amountMatches?:boolean; independentBankVerificationRequired:boolean; classification:string; member?:{uid:string;name:string;mobile:string;membershipId:string;status:string;renewalPending:boolean;lastRenewalDate:string;expiryDate:string;storedRenewalTransactionId:string}; matches:any[]; }
 type RecoverablePaymentRow = Pick<PaymentExceptionRow, 'paymentId' | 'amount'> & Partial<Pick<PaymentExceptionRow, 'memberName' | 'membershipId' | 'mobile'>>;
 interface ReportRow {
   key: string; member?: UserProfile; source: 'member' | 'payment'; type: ReportType;
@@ -119,6 +120,28 @@ export default function AdminReportsTab({
       setReconRows(Array.isArray(body.rows) ? body.rows : []);
     } catch (e:any) { setReconError(e?.message || 'Reconciliation failed'); }
     finally { setReconLoading(false); }
+  };
+  const [historicalMobile,setHistoricalMobile]=useState('');
+  const [historicalTransactionId,setHistoricalTransactionId]=useState('');
+  const [historicalDate,setHistoricalDate]=useState('');
+  const [historicalResult,setHistoricalResult]=useState<HistoricalPaymentResult|null>(null);
+  const [historicalLoading,setHistoricalLoading]=useState(false);
+  const [historicalError,setHistoricalError]=useState('');
+  const runHistoricalPaymentReconciliation=async()=>{
+    const cleanMobile=historicalMobile.replace(/\D/g,'').slice(-10);
+    const cleanTransaction=historicalTransactionId.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(cleanMobile.length!==10){setHistoricalError('Enter a valid 10-digit mobile number.');return;}
+    if(cleanTransaction.length<6){setHistoricalError('Enter a valid UPI UTR / Transaction ID.');return;}
+    if(!historicalDate){setHistoricalError('Select the historical payment date.');return;}
+    setHistoricalLoading(true);setHistoricalError('');setHistoricalResult(null);
+    try{
+      const token=await auth.currentUser?.getIdToken();if(!token)throw new Error('Admin authentication required');
+      const params=new URLSearchParams({mobile:cleanMobile,transactionId:cleanTransaction,date:historicalDate,amount:'100'});
+      const response=await fetch(`/api/admin/historical-payment-reconciliation?${params.toString()}`,{headers:{Authorization:`Bearer ${token}`}});
+      const body=await response.json();if(!response.ok)throw new Error(body.error||'Historical payment audit failed');
+      setHistoricalResult(body);
+    }catch(e:any){setHistoricalError(e?.message||'Historical payment audit failed');}
+    finally{setHistoricalLoading(false);}
   };
 
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
@@ -377,6 +400,22 @@ export default function AdminReportsTab({
       {paymentLookupError&&<div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{paymentLookupError}</div>}
       {!paymentLookupLoading&&!paymentLookupError&&paymentLookup.trim()&&paymentLookupRows.length===0&&<p className="text-xs font-bold text-slate-500">No matching verified payment found.</p>}
       {paymentLookupRows.length>0&&<><div className="font-black text-indigo-900">Matches: {paymentLookupRows.length}</div><div className="max-h-[360px] overflow-auto rounded-xl border"><table className="w-full min-w-[1050px] text-xs text-left"><thead className="bg-slate-200 sticky top-0"><tr>{['Date / Time','Name','Mobile','Email','Member ID','Amount','Type','Status','Payment ID','Order ID','UTR/RRN'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{paymentLookupRows.map((p:any)=><tr key={p.id||p.paymentId} className="border-t"><td className="p-2 whitespace-nowrap">{p.paymentTime?new Date(p.paymentTime).toLocaleString('en-IN'):p.paymentDate||'-'}</td><td className="p-2 font-bold">{p.name||'-'}</td><td className="p-2">{p.mobile||'-'}</td><td className="p-2 break-all">{p.email||'-'}</td><td className="p-2 font-mono">{p.membershipId||p.memberId||'-'}</td><td className="p-2 font-black">₹{p.amount||0}</td><td className="p-2">{p.paymentType||'-'}</td><td className="p-2">{p.paymentStatus||p.status||'-'}</td><td className="p-2 font-mono break-all">{p.paymentId||'-'}</td><td className="p-2 font-mono break-all">{p.orderId||'-'}</td><td className="p-2 font-mono">{p.utr||'-'}</td></tr>)}</tbody></table></div></>}
+    </CardContent></Card>
+    <Card className="border-2 border-amber-300 bg-white"><CardContent className="p-4 space-y-3">
+      <div><h3 className="font-black text-slate-950">Historical UPI/QR Reconciliation — Read Only</h3><p className="text-xs font-bold text-slate-600">For payments made through the former direct merchant UPI/QR flow. This does not change the current Razorpay-only system and does not approve or repair data.</p></div>
+      <div className="grid sm:grid-cols-[1fr_1fr_180px_auto] gap-2 items-end">
+        <label className="text-xs font-black text-slate-700">Mobile Number<Input type="tel" inputMode="numeric" value={historicalMobile} onChange={e=>setHistoricalMobile(e.target.value)} placeholder="10-digit mobile" className="mt-1 bg-white text-slate-950"/></label>
+        <label className="text-xs font-black text-slate-700">UPI UTR / Transaction ID<Input value={historicalTransactionId} onChange={e=>setHistoricalTransactionId(e.target.value)} placeholder="Stored UTR" className="mt-1 bg-white text-slate-950"/></label>
+        <label className="text-xs font-black text-slate-700">Payment Date<Input type="date" value={historicalDate} onChange={e=>setHistoricalDate(e.target.value)} className="mt-1 bg-white text-slate-950 [color-scheme:light]"/></label>
+        <Button onClick={runHistoricalPaymentReconciliation} disabled={historicalLoading} className="bg-amber-600 text-white hover:bg-amber-700"><Search className="w-4 h-4 mr-2"/>{historicalLoading?'Checking…':'Check Historical Record'}</Button>
+      </div>
+      {historicalError&&<div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">{historicalError}</div>}
+      {historicalResult&&<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2 text-sm text-slate-900">
+        <div className="font-black">{historicalResult.classification}</div>
+        {historicalResult.memberFound&&historicalResult.member&&<div className="grid sm:grid-cols-2 gap-1 text-xs"><span><b>Member:</b> {historicalResult.member.name||'-'}</span><span><b>Member ID:</b> {historicalResult.member.membershipId||'-'}</span><span><b>Status:</b> {historicalResult.member.status||'-'}{historicalResult.member.renewalPending?' · renewal pending':''}</span><span><b>Expiry:</b> {historicalResult.member.expiryDate?new Date(historicalResult.member.expiryDate).toLocaleDateString('en-IN'):'-'}</span><span><b>Stored UTR:</b> {historicalResult.member.storedRenewalTransactionId||'-'}</span><span><b>Duplicate mobile records:</b> {historicalResult.duplicateMobileRecords}</span></div>}
+        <div className="font-bold text-red-800">Bank statement/merchant account verification is still required before any approval. Screenshot alone is not treated as final verification.</div>
+        {historicalResult.matches?.length>0&&<div className="max-h-52 overflow-auto rounded-lg border bg-white"><table className="w-full min-w-[720px] text-xs text-left"><thead className="sticky top-0 bg-slate-200"><tr>{['Source','Date','Amount','Method','Status','UTR','Receipt'].map(x=><th key={x} className="p-2 font-black">{x}</th>)}</tr></thead><tbody>{historicalResult.matches.map((row:any,index:number)=><tr key={`${row.source}-${row.id||row.field||index}`} className="border-t"><td className="p-2">{row.source}{row.field?` · ${row.field}`:''}</td><td className="p-2">{row.paymentDate||'-'}</td><td className="p-2 font-black">₹{row.amount||0}</td><td className="p-2">{row.paymentMethod||'-'}</td><td className="p-2">{row.status||'-'}</td><td className="p-2 font-mono">{row.transactionId||'-'}</td><td className="p-2 font-mono">{row.receiptNo||'-'}</td></tr>)}</tbody></table></div>}
+      </div>}
     </CardContent></Card>
     <Card className="border-2 border-blue-200 bg-white"><CardContent className="p-4 space-y-3">
       <div><h3 className="font-black text-slate-950">Payment Reconciliation — Razorpay ↔ HCRS</h3><p className="text-xs font-bold text-slate-600">Confirms Razorpay payment status, HCRS payment record and member renewal status. Verified mismatches can be safely repaired.</p></div>

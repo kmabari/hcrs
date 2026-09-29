@@ -2460,6 +2460,137 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // READ-ONLY HISTORICAL UPI/QR RECONCILIATION.
+  // The portal used a direct merchant UPI/QR submission flow before Razorpay-only
+  // payments. Those submissions stored the UTR primarily on the member document
+  // and/or the member receipt subcollection, not necessarily in `payments`.
+  // This endpoint deliberately performs no approval, repair or Firestore write.
+  app.get(["/api/admin/historical-payment-reconciliation", "/admin/historical-payment-reconciliation"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      if (!(requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin')) {
+        return res.status(403).json({ error: "Admin access is required" });
+      }
+
+      const cleanMobile = (value: unknown) => String(value || '').replace(/\D/g, '').slice(-10);
+      const cleanReference = (value: unknown) => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const mobile = cleanMobile(req.query.mobile);
+      const transactionId = cleanReference(req.query.transactionId);
+      const paymentDate = String(req.query.date || '').trim();
+      const amount = Number(req.query.amount || 100);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
+      if (transactionId.length < 6) return res.status(400).json({ error: "A valid UPI UTR / transaction ID is required." });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) return res.status(400).json({ error: "A valid payment date is required." });
+      if (amount !== 100) return res.status(400).json({ error: "Historical renewal reconciliation is restricted to the ₹100 renewal fee." });
+
+      const usersSnapshot = await dbAdmin.collection('users').get();
+      const candidates = usersSnapshot.docs.filter(doc => cleanMobile((doc.data() || {}).mobile) === mobile);
+      const genuineCandidates = candidates.filter(doc => {
+        const data: any = doc.data() || {};
+        return Boolean(String(data.membershipId || data.memberId || '').trim() && String(data.name || data.fullName || '').trim().toLowerCase() !== 'member');
+      });
+      const initialMemberDoc = genuineCandidates[0] || candidates[0];
+      if (!initialMemberDoc) {
+        return res.json({
+          success: true, readOnly: true, memberFound: false, duplicateMobileRecords: 0,
+          portalMatch: false, independentBankVerificationRequired: true,
+          classification: 'Member not found for this mobile', matches: []
+        });
+      }
+
+      const toIso = (value: any) => {
+        try {
+          const date = value?.toDate ? value.toDate() : value?.seconds ? new Date(value.seconds * 1000) : value ? new Date(value) : null;
+          return date && !Number.isNaN(date.getTime()) ? date.toISOString() : '';
+        } catch (_) { return ''; }
+      };
+      const storedDate = (value: any) => {
+        const iso = toIso(value);
+        return iso ? iso.slice(0, 10) : String(value || '').slice(0, 10);
+      };
+      const valueMatchesReference = (value: unknown) => cleanReference(value) === transactionId;
+      const matches: any[] = [];
+      const memberFields = ['renewalTransactionId', 'transactionId', 'paymentId', 'upiTransactionId', 'utr', 'rrn'];
+      let matchedMemberDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+      const orderedCandidates = [...genuineCandidates, ...candidates.filter(doc => !genuineCandidates.some(genuine => genuine.id === doc.id))];
+      for (const candidate of orderedCandidates) {
+        const candidateData: any = candidate.data() || {};
+        let candidateMatched = false;
+        for (const field of memberFields) {
+          if (valueMatchesReference(candidateData[field])) {
+            candidateMatched = true;
+            matches.push({ source: 'member', memberUid: candidate.id, field, transactionId: candidateData[field], amount: Number(candidateData.paymentAmount || 0), paymentDate: storedDate(candidateData.renewalPaymentDate || candidateData.paymentDate), status: String(candidateData.paymentStatus || ''), paymentMethod: String(candidateData.paymentMethod || '') });
+          }
+        }
+        const candidateReceipts = await candidate.ref.collection('receipts').get();
+        for (const receiptDoc of candidateReceipts.docs) {
+          const data: any = receiptDoc.data() || {};
+          if ([data.transactionId, data.paymentId, data.utr, data.rrn, data.upiTransactionId].some(valueMatchesReference)) {
+            candidateMatched = true;
+            matches.push({ source: 'receipt', memberUid: candidate.id, id: receiptDoc.id, transactionId: data.transactionId || data.paymentId || data.utr || data.rrn || '', amount: Number(data.amount || 0), paymentDate: storedDate(data.paymentDate || data.createdAt), status: String(data.paymentStatus || data.status || ''), paymentMethod: String(data.paymentMethod || ''), receiptNo: String(data.receiptNo || '') });
+          }
+        }
+        if (candidateMatched && !matchedMemberDoc) matchedMemberDoc = candidate;
+      }
+
+      const paymentsSnapshot = await dbAdmin.collection('payments').limit(10000).get();
+      for (const paymentDoc of paymentsSnapshot.docs) {
+        const data: any = paymentDoc.data() || {};
+        const paymentMobile = cleanMobile(data.mobile);
+        const referenceMatches = [paymentDoc.id, data.transactionId, data.paymentId, data.utr, data.rrn, data.upiReference, data.upiTransactionId].some(valueMatchesReference);
+        if (referenceMatches && (!paymentMobile || paymentMobile === mobile)) {
+          matches.push({ source: 'payment', id: paymentDoc.id, transactionId: data.transactionId || data.paymentId || data.utr || data.rrn || paymentDoc.id, amount: Number(data.amount || 0), paymentDate: storedDate(data.paymentDate || data.paymentTime || data.verifiedAt), status: String(data.paymentStatus || data.status || ''), paymentMethod: String(data.paymentMethod || data.method || '') });
+        }
+      }
+
+      const memberDoc = matchedMemberDoc || initialMemberDoc;
+      const memberData: any = memberDoc.data() || {};
+
+      const dateMatches = matches.some(match => String(match.paymentDate || '').slice(0, 10) === paymentDate);
+      const amountMatches = matches.some(match => Number(match.amount || 0) === amount);
+      const portalMatch = matches.length > 0;
+      const duplicateMobileRecords = candidates.length;
+      let classification = 'No submitted legacy UTR found in HCRS records';
+      if (duplicateMobileRecords > 1) classification = 'Multiple member records use this mobile — manual identity review required';
+      else if (portalMatch && dateMatches && amountMatches) classification = 'Matching historical portal record found — bank verification still required';
+      else if (portalMatch) classification = 'UTR found, but date or amount differs — manual review required';
+
+      return res.json({
+        success: true,
+        readOnly: true,
+        memberFound: true,
+        duplicateMobileRecords,
+        portalMatch,
+        dateMatches,
+        amountMatches,
+        independentBankVerificationRequired: true,
+        classification,
+        member: {
+          uid: memberDoc.id,
+          name: memberData.name || memberData.fullName || '',
+          mobile: cleanMobile(memberData.mobile),
+          membershipId: memberData.membershipId || memberData.memberId || '',
+          status: memberData.status || '',
+          renewalPending: memberData.renewalPending === true,
+          lastRenewalDate: toIso(memberData.renewalDate || memberData.lastRenewalDate),
+          expiryDate: toIso(memberData.expiryDate),
+          storedRenewalTransactionId: memberData.renewalTransactionId || ''
+        },
+        matches
+      });
+    } catch (err: any) {
+      console.error('[Historical Payment Reconciliation] Error:', err?.message || err);
+      return res.status(500).json({ error: 'Failed to run historical payment reconciliation.' });
+    }
+  });
+
   // READ-ONLY PAYMENT RECONCILIATION: compare Razorpay with HCRS records/member status.
   // This endpoint never captures/refunds payments and never writes to Firebase.
   app.get(["/api/admin/payment-reconciliation", "/admin/payment-reconciliation"], async (req, res) => {
