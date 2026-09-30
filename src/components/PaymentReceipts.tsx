@@ -10,7 +10,7 @@ import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone, imageUrlToDataUrl, triggerFileDownload } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
-import { buildRegistrationReceipt, getReceiptMembershipCategory } from '../lib/receiptUtils';
+import { buildRegistrationReceipt, buildProfileRenewalReceipt, getReceiptMembershipCategory } from '../lib/receiptUtils';
 import { getReceiptPaymentKey } from '../lib/paymentReceiptInvariants';
 
 interface PaymentReceiptsProps {
@@ -59,6 +59,19 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       }
 
       let combined: PaymentReceipt[] = [registrationReceipt];
+
+      // Some verified legacy renewals updated the member profile successfully but
+      // pre-date the deterministic receipt write. Recover that latest legitimate
+      // renewal for display from its persisted transaction marker; never infer a
+      // financial receipt from expiry/renewal dates alone.
+      const profileRenewalReceipt = buildProfileRenewalReceipt(user);
+      if (profileRenewalReceipt) {
+        const profilePaymentKey = getReceiptPaymentKey(profileRenewalReceipt as any);
+        const alreadyStored = dbReceipts.some(receipt =>
+          getReceiptPaymentKey(receipt as any) === profilePaymentKey
+        );
+        if (!alreadyStored) combined.push(profileRenewalReceipt);
+      }
 
       if (dbReceipts.length > 0) {
         // Keep genuine registration receipts from Firestore and only de-duplicate the

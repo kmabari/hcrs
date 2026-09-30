@@ -53,6 +53,38 @@ export const buildRegistrationReceipt = (member: UserProfile): PaymentReceipt =>
   };
 };
 
+export const buildProfileRenewalReceipt = (member: UserProfile): PaymentReceipt | null => {
+  const legacyMember = member as any;
+  const transactionId = String(member.renewalTransactionId || '').trim();
+
+  // A date/expiry change is not payment evidence. Only recover a receipt when the
+  // member record carries the transaction marker written by an approved renewal.
+  if (!transactionId) return null;
+
+  const paymentDate = formatReceiptDate(
+    legacyMember.renewalPaymentDate || legacyMember.renewalDate || legacyMember.renewalApprovedAt
+  );
+  const year = paymentDate !== '-' ? new Date(paymentDate).getFullYear() : new Date().getFullYear();
+  const serial = String(member.serialNo || '').trim();
+  const storedReceiptNo = String(legacyMember.renewalReceiptNumber || legacyMember.receiptNumber || '').trim();
+
+  return {
+    id: `profile-renewal-${transactionId}`,
+    receiptNo: storedReceiptNo || `HCRS-REN-${serial || 'MEMBER'}-${year}`,
+    receiptType: 'Annual Renewal',
+    receiptLabel: 'Annual Renewal Receipt',
+    amount: Number(legacyMember.renewalAmount || legacyMember.paymentAmount || 100) === 100 ? 100 : 100,
+    status: member.isApproved && !member.renewalPending ? 'Paid' : 'Pending Verification',
+    paymentDate,
+    createdAt: legacyMember.renewalApprovedAt || legacyMember.renewalDate,
+    transactionId,
+    paymentId: String(member.paymentId || '') === transactionId ? String(member.paymentId) : transactionId,
+    orderId: String(member.paymentId || '') === transactionId ? String(member.orderId || '') : '',
+    paymentTime: String(legacyMember.renewalPaymentTime || member.paymentTime || ''),
+    paymentStatus: String(member.paymentStatus || (member.isApproved && !member.renewalPending ? 'Paid' : 'Pending Verification'))
+  };
+};
+
 export const getReceiptMembershipCategory = (member: UserProfile): 'LIFE MEMBER' | 'ADHOC MEMBER' =>
   member.membership_type === 'LIFE_MEMBER' || member.membershipType === 'Life'
     ? 'LIFE MEMBER'
