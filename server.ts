@@ -2767,8 +2767,21 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           const expiry=member?.expiryDate?.toDate?member.expiryDate.toDate():(member?.expiryDate?new Date(member.expiryDate):null);
           const validExpiry=expiry instanceof Date&&!Number.isNaN(expiry.getTime())&&expiry.getTime()>Date.now();
           const active=Boolean(member)&&String(member.status||'').toLowerCase()==='active'&&member.renewalPending!==true&&validExpiry;
+          const capturedAt=p.created_at?new Date(Number(p.created_at)*1000):null;
+          const expectedExpiry=capturedAt instanceof Date&&!Number.isNaN(capturedAt.getTime())?new Date(capturedAt):null;
+          if(expectedExpiry) expectedExpiry.setFullYear(expectedExpiry.getFullYear()+1);
+          const renewalDate=member?.renewalDate?.toDate?member.renewalDate.toDate():(member?.renewalDate?new Date(member.renewalDate):null);
+          const transactionMatches=Boolean(member)&&[member.paymentId,member.transactionId,member.renewalTransactionId].some(v=>String(v||'')===String(p.id||''));
+          const renewalApplied=paymentType!=='renewal'||Boolean(
+            active&&transactionMatches&&
+            renewalDate instanceof Date&&!Number.isNaN(renewalDate.getTime())&&
+            capturedAt instanceof Date&&!Number.isNaN(capturedAt.getTime())&&
+            Math.abs(renewalDate.getTime()-capturedAt.getTime())<=24*60*60*1000&&
+            expectedExpiry&&expiry instanceof Date&&!Number.isNaN(expiry.getTime())&&
+            expiry.getTime()>=expectedExpiry.getTime()-60000
+          );
           let receiptSaved=false;
-          if(member?.uid&&recorded&&active){
+          if(member?.uid&&recorded){
             const receiptsRef=dbAdmin.collection('users').doc(member.uid).collection('receipts');
             const [deterministicReceipt,paymentReceipt,transactionReceipt]=await Promise.all([
               receiptsRef.doc(getRazorpayReceiptDocumentId(String(p.id||''))).get(),
@@ -2780,7 +2793,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           let result='OK';
           if(!member) result='Captured — Member not resolved';
           else if(!recorded) result='Captured — HCRS record missing';
-          else if(paymentType==='renewal'&&!active) result='Captured — Auto-approval mismatch';
+          else if(paymentType==='renewal'&&!renewalApplied) result='Captured — Renewal needs repair';
           else if(paymentType==='registration'&&!active) result='Captured — Registration activation mismatch';
           else if(!receiptSaved) result='Captured — Receipt missing';
           if(result!=='OK') rows.push({paymentId:p.id||'',orderId:p.order_id||'',amount:Number(p.amount||0)/100,createdAt:p.created_at?new Date(Number(p.created_at)*1000).toISOString():'',method:p.method||'',paymentType,memberUid:member?.uid||'',membershipId:member?.membershipId||member?.memberId||'',memberName:member?.name||member?.fullName||'',mobile:cleanMobile(member?.mobile)||noteMobile,hcrsPaymentRecorded:recorded,hcrsPaymentStatus:payData.paymentStatus||payData.status||'',memberStatus:member?.status||'',renewalPending:member?.renewalPending===true,expiryDate:expiry instanceof Date&&!Number.isNaN(expiry.getTime())?expiry.toISOString():'',result});
