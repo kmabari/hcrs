@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { AlertTriangle, CheckCircle2, Download, FileSearch, Loader2, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../types';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { doc, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,8 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const [confirmationText, setConfirmationText] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const [deepSearchTerm, setDeepSearchTerm] = useState('');
+  const [deepPayments, setDeepPayments] = useState<any[]>([]);
+  const [deepPaymentsLoading, setDeepPaymentsLoading] = useState(false);
   const deepSearchResults = useMemo(() => {
     const raw = deepSearchTerm.trim();
     const digits = cleanMobile(raw);
@@ -98,6 +100,44 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
 
     return { members: memberMatches, claims: claimMatches };
   }, [members, claims, deepSearchTerm]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const raw = deepSearchTerm.trim();
+      const digits = cleanMobile(raw);
+      if (!raw || (digits && digits.length < 4)) {
+        setDeepPayments([]);
+        return;
+      }
+      setDeepPaymentsLoading(true);
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          if (!cancelled) setDeepPayments([]);
+          return;
+        }
+        const response = await fetch('/api/admin/payments?limit=10000', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Payment audit unavailable');
+        const json = await response.json();
+        const q = raw.toLowerCase();
+        const rows = (Array.isArray(json.payments) ? json.payments : []).filter((payment: any) => {
+          if (digits && cleanMobile(payment.mobile) === digits) return true;
+          return [payment.name, payment.mobile, payment.paymentId, payment.orderId, payment.memberId, payment.membershipId, payment.utr]
+            .some(value => String(value || '').toLowerCase().includes(q));
+        });
+        if (!cancelled) setDeepPayments(rows);
+      } catch {
+        if (!cancelled) setDeepPayments([]);
+      } finally {
+        if (!cancelled) setDeepPaymentsLoading(false);
+      }
+    };
+    const timer = window.setTimeout(run, 350);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [deepSearchTerm]);
 
   const serialAudit = useMemo(() => {
     const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
@@ -405,9 +445,9 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           {deepSearchTerm.trim() && (
             <div className="space-y-2">
               <p className="text-xs font-black text-slate-700">
-                User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length}
+                User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length} • Payments: {deepPaymentsLoading ? 'Checking…' : deepPayments.length}
               </p>
-              {deepSearchResults.members.length === 0 && deepSearchResults.claims.length === 0 ? (
+              {deepSearchResults.members.length === 0 && deepSearchResults.claims.length === 0 && deepPayments.length === 0 && !deepPaymentsLoading ? (
                 <div className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-bold text-amber-800">
                   ഈ loaded database snapshot-ലും Verification Forms-ലും match കണ്ടെത്തിയില്ല. പുതിയ membership create ചെയ്യുന്നതിന് മുമ്പ് payment/import records കൂടി പരിശോധിക്കുക.
                 </div>
@@ -427,6 +467,18 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
                       <p className="font-black text-blue-900">Verification Form match</p>
                       <p className="mt-1 break-all text-slate-600">
                         Name: {claim.name || claim.userName || claim.memberName || 'N/A'} • Mobile: {claim.userMobile || claim.mobile || claim.phone || claim.phoneNumber || 'N/A'} • Member ID: {claim.membershipId || 'N/A'} • UID: {claim.uid || 'N/A'}
+                      </p>
+                    </div>
+                  ))}
+                  {deepPayments.map((payment, index) => (
+                    <div key={payment.id || payment.paymentId || `payment-${index}`} className="border-b border-slate-100 p-3 text-xs last:border-b-0">
+                      <p className="font-black text-emerald-900">Payment record — {payment.method || 'Stored payment'}</p>
+                      <p className="mt-1 break-all text-slate-600">
+                        {payment.paymentType || 'payment'} • ₹{Number(payment.amount || 0)} • {payment.paymentStatus || payment.status || 'N/A'} • Mobile: {payment.mobile || 'N/A'} • Payment ID/UTR: {payment.paymentId || payment.utr || 'N/A'}
+                      </p>
+                      <p className="mt-1 font-bold text-slate-700">
+                        Diagnosis: {String(payment.method || '').toLowerCase().includes('razor') ? 'Razorpay verified/stored record' : 'Historical/manual payment record'}.
+                        {payment.memberId || payment.membershipId ? ' Member link is present.' : ' Member link missing — review before repair.'}
                       </p>
                     </div>
                   ))}
