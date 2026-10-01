@@ -68,6 +68,37 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const [backupDownloaded, setBackupDownloaded] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
   const [isApplying, setIsApplying] = useState(false);
+  const [deepSearchTerm, setDeepSearchTerm] = useState('');
+  const deepSearchResults = useMemo(() => {
+    const raw = deepSearchTerm.trim();
+    const digits = cleanMobile(raw);
+    if (!raw || (digits && digits.length < 4)) return { members: [] as UserProfile[], claims: [] as any[] };
+
+    const normalizedText = raw.toLowerCase();
+    const memberMatches = members.filter(member => {
+      const mobile = cleanMobile(member.mobile);
+      const altMobiles = [
+        (member as any).phone,
+        (member as any).phoneNumber,
+        (member as any).mobileNumber,
+        (member as any).whatsappNumber
+      ].map(cleanMobile).filter(Boolean);
+      if (digits && (mobile === digits || altMobiles.includes(digits))) return true;
+      return [member.name, member.membershipId, (member as any).memberId, member.email, member.uid]
+        .some(value => String(value || '').toLowerCase().includes(normalizedText));
+    });
+
+    const claimMatches = claims.filter(claim => {
+      const claimMobiles = [claim.userMobile, claim.mobile, claim.phone, claim.phoneNumber, claim.mobileNumber]
+        .map(cleanMobile).filter(Boolean);
+      if (digits && claimMobiles.includes(digits)) return true;
+      return [claim.name, claim.userName, claim.memberName, claim.membershipId, claim.uid]
+        .some(value => String(value || '').toLowerCase().includes(normalizedText));
+    });
+
+    return { members: memberMatches, claims: claimMatches };
+  }, [members, claims, deepSearchTerm]);
+
   const serialAudit = useMemo(() => {
     const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
     const serialCounts = new Map<number, number>();
@@ -356,6 +387,53 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           >
             <Download className="w-4 h-4 mr-2" /> Export Excel
           </Button>
+        </div>
+
+        <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+          <div>
+            <h4 className="font-black text-slate-950">Member Deep Search — Read Only</h4>
+            <p className="text-xs font-bold text-slate-700">
+              സാധാരണ Member list-ൽ മറഞ്ഞ duplicate/deleted record ഉൾപ്പെടെ loaded Users + Verification Forms-ൽ mobile/name/Member ID/UID ഉപയോഗിച്ച് പരിശോധിക്കുന്നു. Data ഒന്നും മാറ്റുന്നില്ല.
+            </p>
+          </div>
+          <input
+            value={deepSearchTerm}
+            onChange={event => setDeepSearchTerm(event.target.value)}
+            placeholder="Mobile / Name / Member ID / UID"
+            className="h-11 w-full rounded-xl border-2 border-emerald-200 bg-white px-3 font-bold text-slate-950 outline-none focus:border-emerald-500"
+          />
+          {deepSearchTerm.trim() && (
+            <div className="space-y-2">
+              <p className="text-xs font-black text-slate-700">
+                User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length}
+              </p>
+              {deepSearchResults.members.length === 0 && deepSearchResults.claims.length === 0 ? (
+                <div className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-bold text-amber-800">
+                  ഈ loaded database snapshot-ലും Verification Forms-ലും match കണ്ടെത്തിയില്ല. പുതിയ membership create ചെയ്യുന്നതിന് മുമ്പ് payment/import records കൂടി പരിശോധിക്കുക.
+                </div>
+              ) : (
+                <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200 bg-white">
+                  {deepSearchResults.members.map((member, index) => (
+                    <div key={member.uid || `member-${index}`} className="border-b border-slate-100 p-3 text-xs last:border-b-0">
+                      <p className="font-black text-slate-950">{member.name || 'Unknown Member'} — {member.mobile || 'No mobile'}</p>
+                      <p className="mt-1 break-all text-slate-600">
+                        UID: {member.uid || 'N/A'} • Member ID: {member.membershipId || 'N/A'} • Serial: {extractSerial(member) || 'None'} • District: {member.district || member.districtCode || 'N/A'} • Status: {member.status || 'N/A'}
+                      </p>
+                      {(member.status === 'deleted') && <Badge className="mt-2 bg-red-100 text-red-800 border-red-200">Hidden: deleted record</Badge>}
+                    </div>
+                  ))}
+                  {deepSearchResults.claims.map((claim, index) => (
+                    <div key={claim.id || claim.uid || `claim-${index}`} className="border-b border-slate-100 p-3 text-xs last:border-b-0">
+                      <p className="font-black text-blue-900">Verification Form match</p>
+                      <p className="mt-1 break-all text-slate-600">
+                        Name: {claim.name || claim.userName || claim.memberName || 'N/A'} • Mobile: {claim.userMobile || claim.mobile || claim.phone || claim.phoneNumber || 'N/A'} • Member ID: {claim.membershipId || 'N/A'} • UID: {claim.uid || 'N/A'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4 space-y-3">
