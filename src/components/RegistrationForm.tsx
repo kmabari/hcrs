@@ -242,7 +242,7 @@ export default function RegistrationForm({
       const valid = await form.trigger();
       if (!valid) throw new Error('Please complete all required registration details before payment.');
       const cleanMobile = formVals.mobile.replace(/\D/g, '').slice(-10);
-      const authEmail = formVals.email?.trim().toLowerCase() || `${cleanMobile}@hcrs.society`;
+      const authEmail = `${cleanMobile}@hcrs.society`; // Auth identity is mobile-based; contact email remains profile data.
       let registrationUser = auth.currentUser;
       if (!registrationUser || registrationUser.email?.toLowerCase() !== authEmail) {
         if (registrationUser) await signOut(auth);
