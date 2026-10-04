@@ -139,6 +139,33 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [deepSearchTerm]);
 
+  const duplicateDiagnosis = useMemo(() => {
+    if (deepSearchResults.members.length < 2) return null;
+    const paymentKeys = new Set<string>();
+    deepPayments.forEach((p: any) => {
+      [p.memberId, p.membershipId, p.uid, p.userId].forEach(v => {
+        const key = String(v || '').trim().toLowerCase();
+        if (key) paymentKeys.add(key);
+      });
+    });
+    const scored = deepSearchResults.members.map((member: any) => {
+      const keys = [member.uid, member.membershipId, member.memberId].map(v => String(v || '').trim().toLowerCase()).filter(Boolean);
+      const linkedPayments = deepPayments.filter((p: any) => [p.memberId, p.membershipId, p.uid, p.userId]
+        .some(v => keys.includes(String(v || '').trim().toLowerCase())));
+      const serial = extractSerial(member);
+      const statusScore = member.status === 'active' ? 30 : member.status === 'pending' ? 10 : member.status === 'deleted' ? -50 : 0;
+      const paymentScore = linkedPayments.length * 100;
+      const lifeScore = String(member.membership_type || member.membershipType || member.membershipId || '').toUpperCase().includes('LIFE') ? 20 : 0;
+      const dateValue = toDate(member.registrationDate || member.createdAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      return { member, linkedPayments, serial, score: statusScore + paymentScore + lifeScore, dateValue };
+    }).sort((a, b) => b.score - a.score || a.dateValue - b.dateValue || (a.serial || 999999999) - (b.serial || 999999999));
+    const best = scored[0];
+    const second = scored[1];
+    const decisive = best.linkedPayments.length > second.linkedPayments.length ||
+      (best.score > second.score && (best.linkedPayments.length > 0 || best.member.status === 'active') && second.member.status !== 'active');
+    return { scored, best, decisive };
+  }, [deepSearchResults.members, deepPayments]);
+
   const serialAudit = useMemo(() => {
     const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
     const serialCounts = new Map<number, number>();
@@ -447,6 +474,31 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
               <p className="text-xs font-black text-slate-700">
                 User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length} • Payments: {deepPaymentsLoading ? 'Checking…' : deepPayments.length}
               </p>
+              {duplicateDiagnosis && (
+                <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-xs">
+                  <p className="font-black text-amber-950">Duplicate Diagnosis — Read Only</p>
+                  <p className="mt-1 font-bold text-slate-700">
+                    Payment/member evidence ഉപയോഗിച്ച് ഏത് record നിലനിർത്തണം എന്ന് പരിശോധിക്കുന്നു. ഈ screen ഒന്നും delete ചെയ്യുന്നില്ല.
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {duplicateDiagnosis.scored.map((item: any, index: number) => {
+                      const isBest = item.member.uid === duplicateDiagnosis.best.member.uid;
+                      const label = isBest && duplicateDiagnosis.decisive ? 'KEEP CANDIDATE' : (isBest ? 'REVIEW — POSSIBLE ORIGINAL' : 'REVIEW — POSSIBLE DUPLICATE');
+                      return (
+                        <div key={item.member.uid || index} className="rounded-lg border border-amber-200 bg-white p-2">
+                          <p className="font-black text-slate-950">{label}: {item.member.membershipId || item.member.uid || 'Unknown record'}</p>
+                          <p className="mt-1 break-all text-slate-600">UID: {item.member.uid || 'N/A'} • Serial: {item.serial || 'None'} • Status: {item.member.status || 'N/A'} • Linked payments found: {item.linkedPayments.length}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 font-black text-red-800">
+                    {duplicateDiagnosis.decisive
+                      ? 'Recommendation only: linked evidence supports the KEEP candidate. Verify receipts/registration history before any removal.'
+                      : 'No safe automatic winner yet. Do NOT delete either record until payment/receipt/registration evidence identifies the canonical member.'}
+                  </p>
+                </div>
+              )}
               {deepSearchResults.members.length === 0 && deepSearchResults.claims.length === 0 && deepPayments.length === 0 && !deepPaymentsLoading ? (
                 <div className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-bold text-amber-800">
                   ഈ loaded database snapshot-ലും Verification Forms-ലും match കണ്ടെത്തിയില്ല. പുതിയ membership create ചെയ്യുന്നതിന് മുമ്പ് payment/import records കൂടി പരിശോധിക്കുക.
