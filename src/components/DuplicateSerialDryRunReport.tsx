@@ -71,6 +71,8 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const [deepSearchTerm, setDeepSearchTerm] = useState('');
   const [deepPayments, setDeepPayments] = useState<any[]>([]);
   const [deepPaymentsLoading, setDeepPaymentsLoading] = useState(false);
+  const [deepInvestigation, setDeepInvestigation] = useState<any>(null);
+  const [deepInvestigationLoading, setDeepInvestigationLoading] = useState(false);
   const deepSearchResults = useMemo(() => {
     const raw = deepSearchTerm.trim();
     const digits = cleanMobile(raw);
@@ -136,6 +138,34 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
       }
     };
     const timer = window.setTimeout(run, 350);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [deepSearchTerm]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const mobile = cleanMobile(deepSearchTerm);
+      if (mobile.length !== 10) {
+        setDeepInvestigation(null);
+        return;
+      }
+      setDeepInvestigationLoading(true);
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Admin authentication unavailable');
+        const response = await fetch(`/api/admin/duplicate-member-investigation?mobile=${encodeURIComponent(mobile)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error || 'Investigation unavailable');
+        if (!cancelled) setDeepInvestigation(json);
+      } catch (error:any) {
+        if (!cancelled) setDeepInvestigation({ error: error?.message || 'Investigation unavailable' });
+      } finally {
+        if (!cancelled) setDeepInvestigationLoading(false);
+      }
+    };
+    const timer = window.setTimeout(run, 450);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [deepSearchTerm]);
 
@@ -545,6 +575,37 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
               <p className="text-xs font-black text-slate-700">
                 User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length} • Payments: {deepPaymentsLoading ? 'Checking…' : deepPayments.length}
               </p>
+              {cleanMobile(deepSearchTerm).length === 10 && (
+                <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3 text-xs">
+                  <p className="font-black text-indigo-950">Full Duplicate Investigation Report</p>
+                  {deepInvestigationLoading ? (
+                    <p className="mt-2 font-bold text-slate-700">Receipts, renewals and payment links പരിശോധിക്കുന്നു…</p>
+                  ) : deepInvestigation?.error ? (
+                    <p className="mt-2 font-black text-red-700">{deepInvestigation.error}</p>
+                  ) : deepInvestigation?.records?.length ? (
+                    <div className="mt-2 space-y-2">
+                      <p className="font-black text-slate-800">
+                        Decision: {deepInvestigation.recommendation === 'KEEP_AND_REVIEW_MERGE'
+                          ? `KEEP ${deepInvestigation.keepMembershipId || deepInvestigation.keepUid} → verify history → merge others → archive duplicates`
+                          : deepInvestigation.recommendation === 'MANUAL_REVIEW' ? 'MANUAL REVIEW — no automatic removal' : 'No duplicate'}
+                      </p>
+                      {deepInvestigation.records.map((record:any, index:number) => {
+                        const keep = deepInvestigation.keepUid && record.uid === deepInvestigation.keepUid;
+                        return (
+                          <div key={record.uid || index} className={`rounded-lg border p-2 ${keep ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                            <p className="font-black text-slate-950">{keep ? 'KEEP / CANONICAL CANDIDATE' : 'MERGE / REVIEW CANDIDATE'} — {record.membershipId || record.uid}</p>
+                            <p className="mt-1 break-all text-slate-600">UID: {record.uid} • Status: {record.status || 'N/A'} • Registration: {record.registrationDate || 'N/A'} • Renewal: {record.renewalDate || 'N/A'} • Expiry: {record.expiryDate || 'N/A'}</p>
+                            <p className="mt-1 font-bold text-slate-700">Joining receipts: {record.joiningReceiptCount || 0} • Renewal receipts: {record.renewalReceiptCount || 0} • Directly linked payments: {record.directlyLinkedPaymentCount || 0} • Total receipts: {record.receipts?.length || 0}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="font-black text-red-800">No data changed. Merge/remove is blocked until this evidence report identifies and verifies the canonical record.</p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 font-bold text-slate-700">Investigation result ലഭ്യമല്ല.</p>
+                  )}
+                </div>
+              )}
               {duplicateDiagnosis && (
                 <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-xs">
                   <p className="font-black text-amber-950">Duplicate Diagnosis — Read Only</p>
