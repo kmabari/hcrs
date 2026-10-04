@@ -2669,6 +2669,29 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ATOMIC MOBILE RESERVATION: creation flows can claim one canonical mobile before creating a member.
+  app.post(["/api/member/mobile-reservation", "/member/mobile-reservation"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error:"Database unavailable" });
+      const cleanMobile=(v:any)=>String(v||'').replace(/\D/g,'').slice(-10);
+      const mobile=cleanMobile(req.body?.mobile);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error:"Valid mobile required" });
+      const ref=dbAdmin.collection('member_mobile_index').doc(mobile);
+      await dbAdmin.runTransaction(async tx => {
+        const existing=await tx.get(ref);
+        if (existing.exists) throw new Error("MOBILE_ALREADY_REGISTERED");
+        const usersSnap=await dbAdmin.collection('users').get();
+        const found=usersSnap.docs.find(d=>cleanMobile((d.data()||{}).mobile||(d.data()||{}).phone||(d.data()||{}).phoneNumber||(d.data()||{}).mobileNumber)===mobile);
+        if(found) throw new Error("MOBILE_ALREADY_REGISTERED");
+        tx.create(ref,{ mobile, reservedAt:admin.firestore.FieldValue.serverTimestamp(), status:'reserved' });
+      });
+      return res.json({ success:true, mobile });
+    } catch(err:any) {
+      if(String(err?.message||'').includes('MOBILE_ALREADY_REGISTERED')) return res.status(409).json({ error:"This mobile number is already registered." });
+      return res.status(500).json({ error:"Mobile duplicate check failed." });
+    }
+  });
+
   // ADMIN DUPLICATE MEMBER MERGE.
   // Preserves an audit snapshot and receipts, then removes redundant user documents.
   app.post(["/api/admin/duplicate-member-merge", "/admin/duplicate-member-merge"], async (req, res) => {
