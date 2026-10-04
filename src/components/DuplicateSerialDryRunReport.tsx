@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { AlertTriangle, CheckCircle2, Download, FileSearch, Loader2, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../types';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { doc, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,10 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const [confirmationText, setConfirmationText] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const [deepSearchTerm, setDeepSearchTerm] = useState('');
+  const [deepPayments, setDeepPayments] = useState<any[]>([]);
+  const [deepPaymentsLoading, setDeepPaymentsLoading] = useState(false);
+  const [deepInvestigation, setDeepInvestigation] = useState<any>(null);
+  const [deepInvestigationLoading, setDeepInvestigationLoading] = useState(false);
   const deepSearchResults = useMemo(() => {
     const raw = deepSearchTerm.trim();
     const digits = cleanMobile(raw);
@@ -98,6 +102,135 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
 
     return { members: memberMatches, claims: claimMatches };
   }, [members, claims, deepSearchTerm]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const raw = deepSearchTerm.trim();
+      const digits = cleanMobile(raw);
+      if (!raw || (digits && digits.length < 4)) {
+        setDeepPayments([]);
+        return;
+      }
+      setDeepPaymentsLoading(true);
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          if (!cancelled) setDeepPayments([]);
+          return;
+        }
+        const response = await fetch('/api/admin/payments?limit=10000', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Payment audit unavailable');
+        const json = await response.json();
+        const q = raw.toLowerCase();
+        const rows = (Array.isArray(json.payments) ? json.payments : []).filter((payment: any) => {
+          if (digits && cleanMobile(payment.mobile) === digits) return true;
+          return [payment.name, payment.mobile, payment.paymentId, payment.orderId, payment.memberId, payment.membershipId, payment.utr]
+            .some(value => String(value || '').toLowerCase().includes(q));
+        });
+        if (!cancelled) setDeepPayments(rows);
+      } catch {
+        if (!cancelled) setDeepPayments([]);
+      } finally {
+        if (!cancelled) setDeepPaymentsLoading(false);
+      }
+    };
+    const timer = window.setTimeout(run, 350);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [deepSearchTerm]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const mobile = cleanMobile(deepSearchTerm);
+      if (mobile.length !== 10) {
+        setDeepInvestigation(null);
+        return;
+      }
+      setDeepInvestigationLoading(true);
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Admin authentication unavailable');
+        const response = await fetch(`/api/admin/duplicate-member-investigation?mobile=${encodeURIComponent(mobile)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error || 'Investigation unavailable');
+        if (!cancelled) setDeepInvestigation(json);
+      } catch (error:any) {
+        if (!cancelled) setDeepInvestigation({ error: error?.message || 'Investigation unavailable' });
+      } finally {
+        if (!cancelled) setDeepInvestigationLoading(false);
+      }
+    };
+    const timer = window.setTimeout(run, 450);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [deepSearchTerm]);
+
+  const duplicateMobileAudit = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    members.forEach((member: any) => {
+      if (member.role === 'admin' || member.role === 'operator') return;
+      const mobile = cleanMobile(member.mobile || member.phone || member.phoneNumber || member.mobileNumber);
+      if (mobile.length !== 10) return;
+      const list = groups.get(mobile) || [];
+      list.push(member);
+      groups.set(mobile, list);
+    });
+    const duplicateGroups = Array.from(groups.entries())
+      .filter(([, list]) => list.length > 1)
+      .map(([mobile, list]) => {
+        const ranked = [...list].map((member: any) => {
+          const renewalEvidence = Boolean(member.renewalDate || member.renewalTransactionId || member.renewalPaymentId || member.lastRenewalDate);
+          const lifeEvidence = String(member.membership_type || member.membershipType || member.membershipId || '').toUpperCase().includes('LIFE');
+          const activeEvidence = member.status === 'active';
+          const paymentEvidence = Boolean(member.paymentId || member.transactionId || member.registrationPaymentId);
+          const dateValue = toDate(member.registrationDate || member.createdAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+          const score = (renewalEvidence ? 100 : 0) + (lifeEvidence ? 40 : 0) + (activeEvidence ? 20 : 0) + (paymentEvidence ? 10 : 0);
+          return { member, renewalEvidence, lifeEvidence, activeEvidence, paymentEvidence, dateValue, score };
+        }).sort((a, b) => b.score - a.score || a.dateValue - b.dateValue || (extractSerial(a.member) || 999999999) - (extractSerial(b.member) || 999999999));
+        const best = ranked[0];
+        const tied = ranked.length > 1 && ranked[1].score === best.score;
+        return { mobile, ranked, best, safeRecommendation: !tied && (best.renewalEvidence || best.lifeEvidence || best.paymentEvidence) };
+      })
+      .sort((a, b) => b.ranked.length - a.ranked.length || a.mobile.localeCompare(b.mobile));
+    return {
+      groups: duplicateGroups,
+      duplicateMobileCount: duplicateGroups.length,
+      affectedRecords: duplicateGroups.reduce((sum, group) => sum + group.ranked.length, 0),
+      extraRecords: duplicateGroups.reduce((sum, group) => sum + Math.max(0, group.ranked.length - 1), 0),
+      reviewCount: duplicateGroups.filter(group => !group.safeRecommendation).length
+    };
+  }, [members]);
+
+  const duplicateDiagnosis = useMemo(() => {
+    if (deepSearchResults.members.length < 2) return null;
+    const paymentKeys = new Set<string>();
+    deepPayments.forEach((p: any) => {
+      [p.memberId, p.membershipId, p.uid, p.userId].forEach(v => {
+        const key = String(v || '').trim().toLowerCase();
+        if (key) paymentKeys.add(key);
+      });
+    });
+    const scored = deepSearchResults.members.map((member: any) => {
+      const keys = [member.uid, member.membershipId, member.memberId].map(v => String(v || '').trim().toLowerCase()).filter(Boolean);
+      const linkedPayments = deepPayments.filter((p: any) => [p.memberId, p.membershipId, p.uid, p.userId]
+        .some(v => keys.includes(String(v || '').trim().toLowerCase())));
+      const serial = extractSerial(member);
+      const statusScore = member.status === 'active' ? 30 : member.status === 'pending' ? 10 : member.status === 'deleted' ? -50 : 0;
+      const paymentScore = linkedPayments.length * 100;
+      const lifeScore = String(member.membership_type || member.membershipType || member.membershipId || '').toUpperCase().includes('LIFE') ? 20 : 0;
+      const dateValue = toDate(member.registrationDate || member.createdAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      return { member, linkedPayments, serial, score: statusScore + paymentScore + lifeScore, dateValue };
+    }).sort((a, b) => b.score - a.score || a.dateValue - b.dateValue || (a.serial || 999999999) - (b.serial || 999999999));
+    const best = scored[0];
+    const second = scored[1];
+    const decisive = best.linkedPayments.length > second.linkedPayments.length ||
+      (best.score > second.score && (best.linkedPayments.length > 0 || best.member.status === 'active') && second.member.status !== 'active');
+    return { scored, best, decisive };
+  }, [deepSearchResults.members, deepPayments]);
 
   const serialAudit = useMemo(() => {
     const eligibleMembers = members.filter(member => member.role !== 'admin' && member.role !== 'operator');
@@ -389,6 +522,41 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           </Button>
         </div>
 
+        <div className="rounded-2xl border-2 border-violet-200 bg-violet-50/70 p-4 space-y-3">
+          <div>
+            <h4 className="font-black text-slate-950">Duplicate Mobile Audit — Read Only</h4>
+            <p className="text-xs font-bold text-slate-700">
+              മുഴുവൻ loaded member records-ലും ഒരേ 10-digit mobile ഉള്ള records കണ്ടെത്തുന്നു. Renewal/Life/payment/status evidence ഉപയോഗിച്ച് KEEP/REVIEW recommendation മാത്രം നൽകുന്നു; ഒന്നും delete/merge ചെയ്യുന്നില്ല.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="rounded-xl bg-white border border-violet-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Duplicate Mobiles</p><p className="text-xl font-black text-violet-800">{duplicateMobileAudit.duplicateMobileCount}</p></div>
+            <div className="rounded-xl bg-white border border-violet-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Affected Records</p><p className="text-xl font-black text-slate-950">{duplicateMobileAudit.affectedRecords}</p></div>
+            <div className="rounded-xl bg-white border border-red-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Extra Records</p><p className="text-xl font-black text-red-700">{duplicateMobileAudit.extraRecords}</p></div>
+            <div className="rounded-xl bg-white border border-amber-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Manual Review</p><p className="text-xl font-black text-amber-800">{duplicateMobileAudit.reviewCount}</p></div>
+          </div>
+          <div className="max-h-[420px] overflow-auto rounded-xl border border-violet-200 bg-white">
+            {duplicateMobileAudit.groups.length === 0 ? (
+              <p className="p-3 text-xs font-bold text-emerald-800">Duplicate mobile records കണ്ടെത്തിയില്ല.</p>
+            ) : duplicateMobileAudit.groups.map((group: any) => (
+              <div key={group.mobile} className="border-b border-slate-200 p-3 last:border-b-0">
+                <p className="text-sm font-black text-slate-950">{group.mobile} — {group.ranked.length} records</p>
+                {group.ranked.map((item: any, index: number) => {
+                  const keep = item.member.uid === group.best.member.uid;
+                  const label = keep && group.safeRecommendation ? 'KEEP CANDIDATE' : keep ? 'MANUAL REVIEW — POSSIBLE KEEP' : 'POSSIBLE DUPLICATE';
+                  return (
+                    <div key={item.member.uid || index} className="mt-2 rounded-lg border border-slate-200 p-2 text-xs">
+                      <p className="font-black text-slate-900">{label} — {item.member.name || 'Unknown'} — {item.member.membershipId || 'No Member ID'}</p>
+                      <p className="mt-1 break-all text-slate-600">UID: {item.member.uid || 'N/A'} • Serial: {extractSerial(item.member) || 'None'} • Status: {item.member.status || 'N/A'} • Renewal: {item.renewalEvidence ? 'Yes' : 'No'} • Life: {item.lifeEvidence ? 'Yes' : 'No'} • Stored payment: {item.paymentEvidence ? 'Yes' : 'No'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs font-black text-red-800">Safety: ഈ audit automatic delete ചെയ്യുന്നില്ല. Renewal/receipt/payment history canonical record-ലേക്ക് ഉറപ്പാക്കിയ ശേഷമേ removal അനുവദിക്കാവൂ.</p>
+        </div>
+
         <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
           <div>
             <h4 className="font-black text-slate-950">Member Deep Search — Read Only</h4>
@@ -405,9 +573,65 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           {deepSearchTerm.trim() && (
             <div className="space-y-2">
               <p className="text-xs font-black text-slate-700">
-                User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length}
+                User records: {deepSearchResults.members.length} • Verification Forms: {deepSearchResults.claims.length} • Payments: {deepPaymentsLoading ? 'Checking…' : deepPayments.length}
               </p>
-              {deepSearchResults.members.length === 0 && deepSearchResults.claims.length === 0 ? (
+              {cleanMobile(deepSearchTerm).length === 10 && (
+                <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3 text-xs">
+                  <p className="font-black text-indigo-950">Full Duplicate Investigation Report</p>
+                  {deepInvestigationLoading ? (
+                    <p className="mt-2 font-bold text-slate-700">Receipts, renewals and payment links പരിശോധിക്കുന്നു…</p>
+                  ) : deepInvestigation?.error ? (
+                    <p className="mt-2 font-black text-red-700">{deepInvestigation.error}</p>
+                  ) : deepInvestigation?.records?.length ? (
+                    <div className="mt-2 space-y-2">
+                      <p className="font-black text-slate-800">
+                        Decision: {deepInvestigation.recommendation === 'KEEP_AND_REVIEW_MERGE'
+                          ? `KEEP ${deepInvestigation.keepMembershipId || deepInvestigation.keepUid} → verify history → merge others → archive duplicates`
+                          : deepInvestigation.recommendation === 'MANUAL_REVIEW' ? 'MANUAL REVIEW — no automatic removal' : 'No duplicate'}
+                      </p>
+                      {deepInvestigation.records.map((record:any, index:number) => {
+                        const keep = deepInvestigation.keepUid && record.uid === deepInvestigation.keepUid;
+                        return (
+                          <div key={record.uid || index} className={`rounded-lg border p-2 ${keep ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                            <p className="font-black text-slate-950">{keep ? 'KEEP / CANONICAL CANDIDATE' : 'MERGE / REVIEW CANDIDATE'} — {record.membershipId || record.uid}</p>
+                            <p className="mt-1 break-all text-slate-600">UID: {record.uid} • Status: {record.status || 'N/A'} • Registration: {record.registrationDate || 'N/A'} • Renewal: {record.renewalDate || 'N/A'} • Expiry: {record.expiryDate || 'N/A'}</p>
+                            <p className="mt-1 font-bold text-slate-700">Joining receipts: {record.joiningReceiptCount || 0} • Renewal receipts: {record.renewalReceiptCount || 0} • Directly linked payments: {record.directlyLinkedPaymentCount || 0} • Total receipts: {record.receipts?.length || 0}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="font-black text-red-800">No data changed. Merge/remove is blocked until this evidence report identifies and verifies the canonical record.</p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 font-bold text-slate-700">Investigation result ലഭ്യമല്ല.</p>
+                  )}
+                </div>
+              )}
+              {duplicateDiagnosis && (
+                <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-xs">
+                  <p className="font-black text-amber-950">Duplicate Diagnosis — Read Only</p>
+                  <p className="mt-1 font-bold text-slate-700">
+                    Payment/member evidence ഉപയോഗിച്ച് ഏത് record നിലനിർത്തണം എന്ന് പരിശോധിക്കുന്നു. ഈ screen ഒന്നും delete ചെയ്യുന്നില്ല.
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {duplicateDiagnosis.scored.map((item: any, index: number) => {
+                      const isBest = item.member.uid === duplicateDiagnosis.best.member.uid;
+                      const label = isBest && duplicateDiagnosis.decisive ? 'KEEP CANDIDATE' : (isBest ? 'REVIEW — POSSIBLE ORIGINAL' : 'REVIEW — POSSIBLE DUPLICATE');
+                      return (
+                        <div key={item.member.uid || index} className="rounded-lg border border-amber-200 bg-white p-2">
+                          <p className="font-black text-slate-950">{label}: {item.member.membershipId || item.member.uid || 'Unknown record'}</p>
+                          <p className="mt-1 break-all text-slate-600">UID: {item.member.uid || 'N/A'} • Serial: {item.serial || 'None'} • Status: {item.member.status || 'N/A'} • Linked payments found: {item.linkedPayments.length}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 font-black text-red-800">
+                    {duplicateDiagnosis.decisive
+                      ? 'Recommendation only: linked evidence supports the KEEP candidate. Verify receipts/registration history before any removal.'
+                      : 'No safe automatic winner yet. Do NOT delete either record until payment/receipt/registration evidence identifies the canonical member.'}
+                  </p>
+                </div>
+              )}
+              {deepSearchResults.members.length === 0 && deepSearchResults.claims.length === 0 && deepPayments.length === 0 && !deepPaymentsLoading ? (
                 <div className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-bold text-amber-800">
                   ഈ loaded database snapshot-ലും Verification Forms-ലും match കണ്ടെത്തിയില്ല. പുതിയ membership create ചെയ്യുന്നതിന് മുമ്പ് payment/import records കൂടി പരിശോധിക്കുക.
                 </div>
@@ -427,6 +651,18 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
                       <p className="font-black text-blue-900">Verification Form match</p>
                       <p className="mt-1 break-all text-slate-600">
                         Name: {claim.name || claim.userName || claim.memberName || 'N/A'} • Mobile: {claim.userMobile || claim.mobile || claim.phone || claim.phoneNumber || 'N/A'} • Member ID: {claim.membershipId || 'N/A'} • UID: {claim.uid || 'N/A'}
+                      </p>
+                    </div>
+                  ))}
+                  {deepPayments.map((payment, index) => (
+                    <div key={payment.id || payment.paymentId || `payment-${index}`} className="border-b border-slate-100 p-3 text-xs last:border-b-0">
+                      <p className="font-black text-emerald-900">Payment record — {payment.method || 'Stored payment'}</p>
+                      <p className="mt-1 break-all text-slate-600">
+                        {payment.paymentType || 'payment'} • ₹{Number(payment.amount || 0)} • {payment.paymentStatus || payment.status || 'N/A'} • Mobile: {payment.mobile || 'N/A'} • Payment ID/UTR: {payment.paymentId || payment.utr || 'N/A'}
+                      </p>
+                      <p className="mt-1 font-bold text-slate-700">
+                        Diagnosis: {String(payment.method || '').toLowerCase().includes('razor') ? 'Razorpay verified/stored record' : 'Historical/manual payment record'}.
+                        {payment.memberId || payment.membershipId ? ' Member link is present.' : ' Member link missing — review before repair.'}
                       </p>
                     </div>
                   ))}
