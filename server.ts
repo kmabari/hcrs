@@ -2669,6 +2669,102 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ATOMIC MOBILE RESERVATION: creation flows can claim one canonical mobile before creating a member.
+  app.post(["/api/member/mobile-reservation", "/member/mobile-reservation"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error:"Database unavailable" });
+      const cleanMobile=(v:any)=>String(v||'').replace(/\D/g,'').slice(-10);
+      const mobile=cleanMobile(req.body?.mobile);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error:"Valid mobile required" });
+      const ref=dbAdmin.collection('member_mobile_index').doc(mobile);
+      await dbAdmin.runTransaction(async tx => {
+        const existing=await tx.get(ref);
+        if (existing.exists) throw new Error("MOBILE_ALREADY_REGISTERED");
+        const usersSnap=await dbAdmin.collection('users').get();
+        const found=usersSnap.docs.find(d=>cleanMobile((d.data()||{}).mobile||(d.data()||{}).phone||(d.data()||{}).phoneNumber||(d.data()||{}).mobileNumber)===mobile);
+        if(found) throw new Error("MOBILE_ALREADY_REGISTERED");
+        tx.create(ref,{ mobile, reservedAt:admin.firestore.FieldValue.serverTimestamp(), status:'reserved' });
+      });
+      return res.json({ success:true, mobile });
+    } catch(err:any) {
+      if(String(err?.message||'').includes('MOBILE_ALREADY_REGISTERED')) return res.status(409).json({ error:"This mobile number is already registered." });
+      return res.status(500).json({ error:"Mobile duplicate check failed." });
+    }
+  });
+
+  // ADMIN DUPLICATE MEMBER MERGE.
+  // Preserves an audit snapshot and receipts, then removes redundant user documents.
+  app.post(["/api/admin/duplicate-member-merge", "/admin/duplicate-member-merge"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "HCRS server database connection is unavailable." });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData:any = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      if (!(requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin')) {
+        return res.status(403).json({ error: "Admin access is required" });
+      }
+      const cleanMobile = (v:any) => String(v || '').replace(/\D/g, '').slice(-10);
+      const mobile = cleanMobile(req.body?.mobile);
+      const keepUid = String(req.body?.keepUid || '').trim();
+      if (!/^\d{10}$/.test(mobile) || !keepUid) return res.status(400).json({ error: "Mobile and KEEP UID are required." });
+
+      const usersSnap = await dbAdmin.collection('users').get();
+      const candidates = usersSnap.docs.filter(d => cleanMobile((d.data() || {}).mobile || (d.data() || {}).phone || (d.data() || {}).phoneNumber || (d.data() || {}).mobileNumber) === mobile);
+      if (candidates.length < 2) return res.status(409).json({ error: "No duplicate member records remain for this mobile." });
+      const keepDoc = candidates.find(d => d.id === keepUid);
+      if (!keepDoc) return res.status(400).json({ error: "Selected KEEP record does not belong to this mobile." });
+
+      const keepData:any = keepDoc.data() || {};
+      const duplicates = candidates.filter(d => d.id !== keepUid);
+      const merged:any = { ...keepData, mobile, duplicateCleanupAt: admin.firestore.FieldValue.serverTimestamp(), duplicateCleanupBy: decoded.uid };
+      const fillFields = ['name','fullName','membershipId','memberId','serialNumber','serial','district','districtCode','address','post','pin','email','membership_type','membershipType'];
+      const dateMs = (v:any) => { try { const d=v?.toDate?v.toDate():v?.seconds?new Date(v.seconds*1000):v?new Date(v):null; return d&&!Number.isNaN(d.getTime())?d.getTime():0; } catch(_){ return 0; } };
+      for (const dup of duplicates) {
+        const x:any = dup.data() || {};
+        for (const key of fillFields) if (!String(merged[key] || '').trim() && String(x[key] || '').trim()) merged[key] = x[key];
+        for (const key of ['renewalDate','lastRenewalDate','expiryDate']) if (dateMs(x[key]) > dateMs(merged[key])) merged[key] = x[key];
+        if (!merged.renewalTransactionId && x.renewalTransactionId) merged.renewalTransactionId = x.renewalTransactionId;
+        if (!merged.renewalPaymentId && x.renewalPaymentId) merged.renewalPaymentId = x.renewalPaymentId;
+      }
+
+      const archiveRef = dbAdmin.collection('duplicate_member_merge_audit').doc();
+      await archiveRef.set({
+        mobile, keepUid, removedUids: duplicates.map(d => d.id), mergedAt: admin.firestore.FieldValue.serverTimestamp(),
+        mergedBy: decoded.uid, keepBefore: keepData,
+        duplicatesBefore: duplicates.map(d => ({ uid:d.id, data:d.data() || {} }))
+      });
+      await keepDoc.ref.set(merged, { merge:true });
+
+      let receiptsMoved = 0;
+      for (const dup of duplicates) {
+        const receipts = await dup.ref.collection('receipts').get();
+        for (const receipt of receipts.docs) {
+          const targetId = `merged_${dup.id}_${receipt.id}`;
+          await keepDoc.ref.collection('receipts').doc(targetId).set({ ...(receipt.data() || {}), mergedFromUid:dup.id, mergedAt:admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+          receiptsMoved++;
+        }
+      }
+
+      const verify = await keepDoc.ref.get();
+      if (!verify.exists) throw new Error("KEEP record verification failed; duplicates were not removed.");
+      for (const dup of duplicates) {
+        const receipts = await dup.ref.collection('receipts').get();
+        const batch = dbAdmin.batch();
+        receipts.docs.forEach(r => batch.delete(r.ref));
+        batch.delete(dup.ref);
+        await batch.commit();
+      }
+      return res.json({ success:true, mobile, keepUid, removedUids:duplicates.map(d=>d.id), receiptsMoved, auditId:archiveRef.id });
+    } catch (err:any) {
+      console.error("[Duplicate Member Merge] Error:", err?.message || err);
+      return res.status(500).json({ error: err?.message || "Duplicate member merge failed." });
+    }
+  });
+
   // READ-ONLY PAYMENT RECONCILIATION: compare Razorpay with HCRS records/member status.
   // This endpoint never captures/refunds payments and never writes to Firebase.
   app.get(["/api/admin/payment-reconciliation", "/admin/payment-reconciliation"], async (req, res) => {
