@@ -73,6 +73,8 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
   const [deepPaymentsLoading, setDeepPaymentsLoading] = useState(false);
   const [deepInvestigation, setDeepInvestigation] = useState<any>(null);
   const [deepInvestigationLoading, setDeepInvestigationLoading] = useState(false);
+  const [mergeKeepUid, setMergeKeepUid] = useState('');
+  const [mergeBusy, setMergeBusy] = useState(false);
   const deepSearchResults = useMemo(() => {
     const raw = deepSearchTerm.trim();
     const digits = cleanMobile(raw);
@@ -158,7 +160,7 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
         });
         const json = await response.json();
         if (!response.ok) throw new Error(json.error || 'Investigation unavailable');
-        if (!cancelled) setDeepInvestigation(json);
+        if (!cancelled) { setDeepInvestigation(json); setMergeKeepUid(json.keepUid || ''); }
       } catch (error:any) {
         if (!cancelled) setDeepInvestigation({ error: error?.message || 'Investigation unavailable' });
       } finally {
@@ -168,6 +170,31 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     const timer = window.setTimeout(run, 450);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [deepSearchTerm]);
+
+  const mergeDuplicateMembers = async () => {
+    const mobile = cleanMobile(deepSearchTerm);
+    if (mobile.length !== 10 || !mergeKeepUid || !deepInvestigation?.records?.some((r:any) => r.uid === mergeKeepUid)) return;
+    const keep = deepInvestigation.records.find((r:any) => r.uid === mergeKeepUid);
+    const ok = window.confirm(`MERGE ${deepInvestigation.records.length} records for ${mobile}? KEEP: ${keep?.membershipId || mergeKeepUid}. Other duplicate member records will be removed after backup/merge verification.`);
+    if (!ok) return;
+    setMergeBusy(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Admin authentication unavailable');
+      const response = await fetch('/api/admin/duplicate-member-merge', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body:JSON.stringify({ mobile, keepUid:mergeKeepUid })
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Merge failed');
+      alert(`Merge complete. KEEP: ${keep?.membershipId || mergeKeepUid}. Removed duplicates: ${json.removedUids?.length || 0}. Receipts preserved: ${json.receiptsMoved || 0}.`);
+      setDeepInvestigation(null);
+      setDeepSearchTerm('');
+      setMergeKeepUid('');
+    } catch (error:any) {
+      alert(error?.message || 'Merge failed');
+    } finally { setMergeBusy(false); }
+  };
 
   const duplicateMobileAudit = useMemo(() => {
     const groups = new Map<string, any[]>();
@@ -596,10 +623,12 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
                             <p className="font-black text-slate-950">{keep ? 'KEEP / CANONICAL CANDIDATE' : 'MERGE / REVIEW CANDIDATE'} — {record.membershipId || record.uid}</p>
                             <p className="mt-1 break-all text-slate-600">UID: {record.uid} • Status: {record.status || 'N/A'} • Registration: {record.registrationDate || 'N/A'} • Renewal: {record.renewalDate || 'N/A'} • Expiry: {record.expiryDate || 'N/A'}</p>
                             <p className="mt-1 font-bold text-slate-700">Joining receipts: {record.joiningReceiptCount || 0} • Renewal receipts: {record.renewalReceiptCount || 0} • Directly linked payments: {record.directlyLinkedPaymentCount || 0} • Total receipts: {record.receipts?.length || 0}</p>
+                            <label className="mt-2 flex items-center gap-2 font-black text-indigo-900"><input type="radio" name="mergeKeepUid" checked={mergeKeepUid === record.uid} onChange={() => setMergeKeepUid(record.uid)} /> KEEP this record</label>
                           </div>
                         );
                       })}
-                      <p className="font-black text-red-800">No data changed. Merge/remove is blocked until this evidence report identifies and verifies the canonical record.</p>
+                      <button type="button" disabled={!mergeKeepUid || mergeBusy || deepInvestigation.records.length < 2} onClick={mergeDuplicateMembers} className="w-full rounded-xl bg-indigo-700 px-4 py-3 font-black text-white disabled:opacity-50">{mergeBusy ? 'Merging & verifying…' : 'MERGE → Keep selected record only'}</button>
+                      <p className="font-black text-red-800">Merge creates an audit backup, preserves receipts/latest renewal-expiry data, verifies KEEP, then removes redundant member records.</p>
                     </div>
                   ) : (
                     <p className="mt-2 font-bold text-slate-700">Investigation result ലഭ്യമല്ല.</p>
