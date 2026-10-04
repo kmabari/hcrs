@@ -2591,6 +2591,84 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // READ-ONLY DUPLICATE MEMBER INVESTIGATION.
+  // Collects every same-mobile user record plus receipts and stored payment links.
+  // It deliberately performs no merge/delete; destructive cleanup must only follow
+  // an explicit reviewed plan so payment and renewal history cannot be lost.
+  app.get(["/api/admin/duplicate-member-investigation", "/admin/duplicate-member-investigation"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "HCRS server database connection is unavailable." });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Admin authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requester = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requesterData:any = requester.exists ? requester.data() || {} : {};
+      const requesterEmail = String(decoded.email || '').toLowerCase();
+      if (!(requesterEmail === 'hcrskerala@gmail.com' || requesterData.isAdmin === true || requesterData.role === 'admin')) {
+        return res.status(403).json({ error: "Admin access is required" });
+      }
+      const cleanMobile = (v:any) => String(v || '').replace(/\D/g, '').slice(-10);
+      const mobile = cleanMobile(req.query.mobile);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: "A valid 10-digit mobile number is required." });
+      const toIso = (value:any) => {
+        try {
+          const d = value?.toDate ? value.toDate() : value?.seconds ? new Date(value.seconds * 1000) : value ? new Date(value) : null;
+          return d && !Number.isNaN(d.getTime()) ? d.toISOString() : '';
+        } catch (_) { return ''; }
+      };
+      const usersSnap = await dbAdmin.collection('users').get();
+      const candidates = usersSnap.docs.filter(d => cleanMobile((d.data() || {}).mobile || (d.data() || {}).phone || (d.data() || {}).phoneNumber || (d.data() || {}).mobileNumber) === mobile);
+      const paymentsSnap = await dbAdmin.collection('payments').limit(10000).get();
+      const rows:any[] = [];
+      for (const d of candidates) {
+        const x:any = d.data() || {};
+        const membershipId = String(x.membershipId || x.memberId || '');
+        const receiptsSnap = await dbAdmin.collection('users').doc(d.id).collection('receipts').get();
+        const receipts = receiptsSnap.docs.map(r => {
+          const y:any = r.data() || {};
+          return { id:r.id, amount:Number(y.amount || 0), type:y.type || y.paymentType || y.purpose || '', paymentId:y.paymentId || '', transactionId:y.transactionId || y.utr || '', date:toIso(y.date || y.paymentDate || y.createdAt || y.issuedAt) };
+        });
+        const payments = paymentsSnap.docs.filter(p => {
+          const y:any = p.data() || {};
+          return String(y.memberId || '') === d.id || String(y.memberId || '') === membershipId || String(y.membershipId || '') === membershipId || cleanMobile(y.mobile) === mobile;
+        }).map(p => {
+          const y:any = p.data() || {};
+          return { id:p.id, paymentId:y.paymentId || p.id, amount:Number(y.amount || 0), type:y.paymentType || '', status:y.paymentStatus || y.status || '', method:y.method || '', date:toIso(y.verifiedAt || y.paymentTime || y.paymentDate) };
+        });
+        const renewalReceipts = receipts.filter(r => Number(r.amount) === 100 || String(r.type).toLowerCase().includes('renew'));
+        const joiningReceipts = receipts.filter(r => Number(r.amount) === 200 || String(r.type).toLowerCase().includes('join') || String(r.type).toLowerCase().includes('registration'));
+        const directlyLinkedPayments = payments.filter(p => {
+          const raw:any = paymentsSnap.docs.find(pd => pd.id === p.id)?.data() || {};
+          return String(raw.memberId || '') === d.id || String(raw.memberId || '') === membershipId || String(raw.membershipId || '') === membershipId;
+        });
+        const score = renewalReceipts.length * 100 + directlyLinkedPayments.length * 80 + joiningReceipts.length * 40 +
+          (String(x.membership_type || x.membershipType || membershipId).toUpperCase().includes('LIFE') ? 30 : 0) +
+          (String(x.status || '').toLowerCase() === 'active' ? 10 : 0);
+        rows.push({
+          uid:d.id, name:x.name || x.fullName || '', mobile, membershipId, serial:x.serialNumber || x.serial || '',
+          status:x.status || '', registrationDate:toIso(x.registrationDate || x.createdAt), expiryDate:toIso(x.expiryDate),
+          renewalDate:toIso(x.renewalDate || x.lastRenewalDate), renewalPending:x.renewalPending === true,
+          receipts, payments, renewalReceiptCount:renewalReceipts.length, joiningReceiptCount:joiningReceipts.length,
+          directlyLinkedPaymentCount:directlyLinkedPayments.length, score
+        });
+      }
+      rows.sort((a,b) => b.score - a.score || Date.parse(a.registrationDate || '9999-12-31') - Date.parse(b.registrationDate || '9999-12-31'));
+      const top = rows[0];
+      const second = rows[1];
+      const decisive = Boolean(top && rows.length > 1 && (top.score > (second?.score || 0) || ((Number(top.serial || 0) > 0) && (Number(second?.serial || 0) > 0) && Number(top.serial) < Number(second.serial))));
+      return res.json({
+        success:true, readOnly:true, mobile, duplicate:Boolean(rows.length > 1), records:rows,
+        recommendation: rows.length < 2 ? 'NO_DUPLICATE' : decisive ? 'SYSTEM_RECOMMENDS_KEEP' : 'MANUAL_REVIEW',
+        keepUid: decisive ? top.uid : '', keepMembershipId: decisive ? top.membershipId : '',
+        safety: 'No record was merged, deleted, archived, or modified.'
+      });
+    } catch (err:any) {
+      console.error("[Duplicate Member Investigation] Error:", err?.message || err);
+      return res.status(500).json({ error: "Failed to investigate duplicate member records." });
+    }
+  });
+
   // READ-ONLY PAYMENT RECONCILIATION: compare Razorpay with HCRS records/member status.
   // This endpoint never captures/refunds payments and never writes to Firebase.
   app.get(["/api/admin/payment-reconciliation", "/admin/payment-reconciliation"], async (req, res) => {
