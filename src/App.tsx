@@ -2723,12 +2723,19 @@ export default function App() {
         throw new Error('Valid 10-digit mobile number is required. (മൊബൈൽ നമ്പർ ശരിയല്ല.)');
       }
 
-      // 0.1 Check if mobile number is already registered in 'users' collection to prevent double entry
-      const usersRef = collection(db, 'users');
-      const mobileQuery = query(usersRef, where('mobile', '==', cleanMobile), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
-      const mobileSnap = await getDocs(mobileQuery);
-      if (!mobileSnap.empty) {
-        throw new Error('This mobile number is already registered. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ദയവായി ലോഗിൻ ചെയ്യുക.)');
+      // 0.1 Atomic server-side mobile reservation. This closes the race where two
+      // district admins submit the same mobile at nearly the same time.
+      const reserveResponse = await fetch('/api/member/mobile-reservation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: cleanMobile })
+      });
+      if (!reserveResponse.ok) {
+        const reserveJson = await reserveResponse.json().catch(() => ({}));
+        if (reserveResponse.status === 409) {
+          throw new Error('This mobile number is already registered. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. Duplicate entry അനുവദിക്കില്ല.)');
+        }
+        throw new Error(reserveJson.error || 'Secure duplicate-mobile check unavailable. Member was not created.');
       }
 
       // Sanitize email/username
