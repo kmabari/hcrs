@@ -139,6 +139,42 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [deepSearchTerm]);
 
+  const duplicateMobileAudit = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    members.forEach((member: any) => {
+      if (member.role === 'admin' || member.role === 'operator') return;
+      const mobile = cleanMobile(member.mobile || member.phone || member.phoneNumber || member.mobileNumber);
+      if (mobile.length !== 10) return;
+      const list = groups.get(mobile) || [];
+      list.push(member);
+      groups.set(mobile, list);
+    });
+    const duplicateGroups = Array.from(groups.entries())
+      .filter(([, list]) => list.length > 1)
+      .map(([mobile, list]) => {
+        const ranked = [...list].map((member: any) => {
+          const renewalEvidence = Boolean(member.renewalDate || member.renewalTransactionId || member.renewalPaymentId || member.lastRenewalDate);
+          const lifeEvidence = String(member.membership_type || member.membershipType || member.membershipId || '').toUpperCase().includes('LIFE');
+          const activeEvidence = member.status === 'active';
+          const paymentEvidence = Boolean(member.paymentId || member.transactionId || member.registrationPaymentId);
+          const dateValue = toDate(member.registrationDate || member.createdAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+          const score = (renewalEvidence ? 100 : 0) + (lifeEvidence ? 40 : 0) + (activeEvidence ? 20 : 0) + (paymentEvidence ? 10 : 0);
+          return { member, renewalEvidence, lifeEvidence, activeEvidence, paymentEvidence, dateValue, score };
+        }).sort((a, b) => b.score - a.score || a.dateValue - b.dateValue || (extractSerial(a.member) || 999999999) - (extractSerial(b.member) || 999999999));
+        const best = ranked[0];
+        const tied = ranked.length > 1 && ranked[1].score === best.score;
+        return { mobile, ranked, best, safeRecommendation: !tied && (best.renewalEvidence || best.lifeEvidence || best.paymentEvidence) };
+      })
+      .sort((a, b) => b.ranked.length - a.ranked.length || a.mobile.localeCompare(b.mobile));
+    return {
+      groups: duplicateGroups,
+      duplicateMobileCount: duplicateGroups.length,
+      affectedRecords: duplicateGroups.reduce((sum, group) => sum + group.ranked.length, 0),
+      extraRecords: duplicateGroups.reduce((sum, group) => sum + Math.max(0, group.ranked.length - 1), 0),
+      reviewCount: duplicateGroups.filter(group => !group.safeRecommendation).length
+    };
+  }, [members]);
+
   const duplicateDiagnosis = useMemo(() => {
     if (deepSearchResults.members.length < 2) return null;
     const paymentKeys = new Set<string>();
@@ -454,6 +490,41 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
           >
             <Download className="w-4 h-4 mr-2" /> Export Excel
           </Button>
+        </div>
+
+        <div className="rounded-2xl border-2 border-violet-200 bg-violet-50/70 p-4 space-y-3">
+          <div>
+            <h4 className="font-black text-slate-950">Duplicate Mobile Audit — Read Only</h4>
+            <p className="text-xs font-bold text-slate-700">
+              മുഴുവൻ loaded member records-ലും ഒരേ 10-digit mobile ഉള്ള records കണ്ടെത്തുന്നു. Renewal/Life/payment/status evidence ഉപയോഗിച്ച് KEEP/REVIEW recommendation മാത്രം നൽകുന്നു; ഒന്നും delete/merge ചെയ്യുന്നില്ല.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="rounded-xl bg-white border border-violet-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Duplicate Mobiles</p><p className="text-xl font-black text-violet-800">{duplicateMobileAudit.duplicateMobileCount}</p></div>
+            <div className="rounded-xl bg-white border border-violet-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Affected Records</p><p className="text-xl font-black text-slate-950">{duplicateMobileAudit.affectedRecords}</p></div>
+            <div className="rounded-xl bg-white border border-red-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Extra Records</p><p className="text-xl font-black text-red-700">{duplicateMobileAudit.extraRecords}</p></div>
+            <div className="rounded-xl bg-white border border-amber-200 p-3"><p className="text-[10px] uppercase font-black text-slate-600">Manual Review</p><p className="text-xl font-black text-amber-800">{duplicateMobileAudit.reviewCount}</p></div>
+          </div>
+          <div className="max-h-[420px] overflow-auto rounded-xl border border-violet-200 bg-white">
+            {duplicateMobileAudit.groups.length === 0 ? (
+              <p className="p-3 text-xs font-bold text-emerald-800">Duplicate mobile records കണ്ടെത്തിയില്ല.</p>
+            ) : duplicateMobileAudit.groups.map((group: any) => (
+              <div key={group.mobile} className="border-b border-slate-200 p-3 last:border-b-0">
+                <p className="text-sm font-black text-slate-950">{group.mobile} — {group.ranked.length} records</p>
+                {group.ranked.map((item: any, index: number) => {
+                  const keep = item.member.uid === group.best.member.uid;
+                  const label = keep && group.safeRecommendation ? 'KEEP CANDIDATE' : keep ? 'MANUAL REVIEW — POSSIBLE KEEP' : 'POSSIBLE DUPLICATE';
+                  return (
+                    <div key={item.member.uid || index} className="mt-2 rounded-lg border border-slate-200 p-2 text-xs">
+                      <p className="font-black text-slate-900">{label} — {item.member.name || 'Unknown'} — {item.member.membershipId || 'No Member ID'}</p>
+                      <p className="mt-1 break-all text-slate-600">UID: {item.member.uid || 'N/A'} • Serial: {extractSerial(item.member) || 'None'} • Status: {item.member.status || 'N/A'} • Renewal: {item.renewalEvidence ? 'Yes' : 'No'} • Life: {item.lifeEvidence ? 'Yes' : 'No'} • Stored payment: {item.paymentEvidence ? 'Yes' : 'No'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs font-black text-red-800">Safety: ഈ audit automatic delete ചെയ്യുന്നില്ല. Renewal/receipt/payment history canonical record-ലേക്ക് ഉറപ്പാക്കിയ ശേഷമേ removal അനുവദിക്കാവൂ.</p>
         </div>
 
         <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
