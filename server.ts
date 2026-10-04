@@ -2656,10 +2656,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       rows.sort((a,b) => b.score - a.score || Date.parse(a.registrationDate || '9999-12-31') - Date.parse(b.registrationDate || '9999-12-31'));
       const top = rows[0];
       const second = rows[1];
-      const decisive = Boolean(top && rows.length > 1 && top.score > (second?.score || 0) && (top.renewalReceiptCount || top.directlyLinkedPaymentCount || top.joiningReceiptCount));
+      const decisive = Boolean(top && rows.length > 1 && (top.score > (second?.score || 0) || ((Number(top.serial || 0) > 0) && (Number(second?.serial || 0) > 0) && Number(top.serial) < Number(second.serial))));
       return res.json({
         success:true, readOnly:true, mobile, duplicate:Boolean(rows.length > 1), records:rows,
-        recommendation: rows.length < 2 ? 'NO_DUPLICATE' : decisive ? 'KEEP_AND_REVIEW_MERGE' : 'MANUAL_REVIEW',
+        recommendation: rows.length < 2 ? 'NO_DUPLICATE' : decisive ? 'SYSTEM_RECOMMENDS_KEEP' : 'MANUAL_REVIEW',
         keepUid: decisive ? top.uid : '', keepMembershipId: decisive ? top.membershipId : '',
         safety: 'No record was merged, deleted, archived, or modified.'
       });
