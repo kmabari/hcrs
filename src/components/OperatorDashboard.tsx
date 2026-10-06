@@ -161,7 +161,7 @@ export default function OperatorDashboard({
       address: '',
       details: '',
       entryBy: user?.name || 'Operator', // Added as requested
-      transactionId: 'CASH/OFFLINE',
+      transactionId: '',
       email: '',
       pin: '123456',
     };
@@ -378,7 +378,7 @@ export default function OperatorDashboard({
           bloodGroup: BLOOD_GROUPS[0],
           details: '',
           entryBy: user.name || 'Operator',
-          transactionId: 'CASH/OFFLINE',
+          transactionId: '',
           pin: '123456',
         });
         localStorage.removeItem('hcrs_operator_form_draft');
@@ -398,8 +398,19 @@ export default function OperatorDashboard({
       toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
       return;
     }
-    const updatedMember = { ...editingMember, mobile: cleanMobile };
-    onUpdate(updatedMember.uid, updatedMember);
+    // District-admin edits are intentionally whitelisted. Membership identity,
+    // serial, joining/renewal/expiry dates and payment/approval fields are never
+    // sent from this screen.
+    const editableProfile: Partial<UserProfile> = {
+      name: editingMember.name,
+      mobile: cleanMobile,
+      address: editingMember.address,
+      postOffice: editingMember.postOffice,
+      pincode: editingMember.pincode,
+      bloodGroup: editingMember.bloodGroup,
+      assemblyConstituency: editingMember.assemblyConstituency,
+    };
+    onUpdate(editingMember.uid, editableProfile);
     setEditingMember(null);
   };
 
