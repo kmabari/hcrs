@@ -59,5 +59,8 @@
   },
   "devDependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }
