@@ -220,9 +220,15 @@ export const selectBestUserDocument = (docs: any[], originalInput?: string) => {
 export default function App() {
   const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify' | 'janamail' | 'eledger' | 'change-password' | 'complete-profile'>(() => {
     if (typeof window !== 'undefined') {
+      const startupParams = new URLSearchParams(window.location.search);
+      // District-admin links must always win over the current page path. A link
+      // shared while the admin is on /janamail must never reopen Janamail.
+      if (startupParams.has('distLogin')) {
+        return 'login';
+      }
       const isJanamailPath = window.location.pathname.startsWith('/janamail') || 
                             window.location.pathname.endsWith('/janamail') || 
-                            new URLSearchParams(window.location.search).get('view') === 'janamail';
+                            startupParams.get('view') === 'janamail';
       if (isJanamailPath) {
         return 'janamail';
       }
@@ -1033,7 +1039,7 @@ export default function App() {
         });
       
       // Clean up the URL so the distLogin query param doesn't stay in the address bar
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, '/');
     }
 
     if (memberId) {
