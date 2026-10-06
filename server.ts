@@ -2414,6 +2414,105 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+
+  // District Admin payment exception intake. This never activates or renews a member.
+  // Main Admin must review it after a fresh Razorpay verification.
+  app.post(["/api/payment-exceptions", "/payment-exceptions"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: "Authentication is required" });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const requesterSnap = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const requester: any = requesterSnap.exists ? requesterSnap.data() || {} : {};
+      if (!(requester.role === 'operator' || requester.role === 'admin' || requester.isAdmin === true)) return res.status(403).json({ error: "District admin access is required" });
+      const mobile = String(req.body?.mobile || '').replace(/\\D/g, '').slice(-10);
+      const paymentId = String(req.body?.paymentId || '').trim();
+      const paymentType = String(req.body?.paymentType || '').toLowerCase();
+      const reason = String(req.body?.reason || '').trim();
+      if (!/^\\d{10}$/.test(mobile)) return res.status(400).json({ error: "Valid 10-digit mobile is required" });
+      if (!/^pay_[A-Za-z0-9]+$/.test(paymentId)) return res.status(400).json({ error: "Valid Razorpay Payment ID is required" });
+      if (!['registration','renewal'].includes(paymentType)) return res.status(400).json({ error: "Invalid payment type" });
+      if (reason.length < 3) return res.status(400).json({ error: "Reason is required" });
+      const prior = await dbAdmin.collection('paymentExceptions').where('paymentId','==',paymentId).limit(1).get();
+      if (!prior.empty) return res.status(409).json({ error: "This payment already has an exception request" });
+      const { keyId, keySecret } = getRazorpayCredentials();
+      if (!keyId || !keySecret) return res.status(503).json({ error: "Razorpay verification is unavailable" });
+      const razorpay = new Razorpay({ key_id:keyId, key_secret:keySecret });
+      const payment:any = await razorpay.payments.fetch(paymentId);
+      const expected = paymentType === 'registration' ? 20000 : 10000;
+      if (!payment || payment.status !== 'captured' || Number(payment.amount) !== expected) return res.status(400).json({ error: "Captured Razorpay payment/amount could not be verified" });
+      const capturedAt = payment.created_at ? new Date(Number(payment.created_at) * 1000) : new Date();
+      const users = await dbAdmin.collection('users').where('mobile','==',mobile).limit(10).get();
+      const ref = dbAdmin.collection('paymentExceptions').doc();
+      await ref.set({
+        id:ref.id,status:'PENDING_MAIN_ADMIN',paymentId,orderId:payment.order_id || '',paymentType,
+        amount:Number(payment.amount)/100,currency:payment.currency || 'INR',paymentMethod:payment.method || 'Razorpay',
+        paymentDate:capturedAt.toISOString().split('T')[0],paymentTime:capturedAt.toISOString(),mobile,reason,
+        district:requester.district || '',submittedByUid:decoded.uid,submittedByName:requester.name || decoded.email || 'District Admin',
+        submittedByEmail:decoded.email || requester.email || '',memberMatchCount:users.size,
+        memberCandidates:users.docs.map(d=>{const m:any=d.data()||{};return {uid:d.id,membershipId:m.membershipId||'',name:m.name||'',district:m.district||'',status:m.status||''};}),
+        createdAt:admin.firestore.FieldValue.serverTimestamp(),updatedAt:admin.firestore.FieldValue.serverTimestamp()
+      });
+      return res.json({success:true,requestId:ref.id,status:'PENDING_MAIN_ADMIN',paymentDate:capturedAt.toISOString().split('T')[0],paymentTime:capturedAt.toISOString(),amount:Number(payment.amount)/100});
+    } catch(err:any) {
+      return res.status(500).json({error:err?.error?.description || err?.message || "Payment exception submission failed"});
+    }
+  });
+
+  app.get(["/api/admin/payment-exceptions", "/admin/payment-exceptions"], async (req,res) => {
+    try {
+      if(!dbAdmin) return res.status(503).json({error:"Payment database is unavailable"});
+      const authorization=String(req.headers.authorization||''); const token=authorization.startsWith('Bearer ')?authorization.slice(7):'';
+      if(!token) return res.status(401).json({error:"Main admin authentication is required"});
+      const decoded=await admin.auth().verifyIdToken(token); const requesterSnap=await dbAdmin.collection('users').doc(decoded.uid).get(); const requester:any=requesterSnap.exists?requesterSnap.data()||{}:{};
+      const email=String(decoded.email||'').toLowerCase(); const main=email==='hcrskerala@gmail.com'||(requester.role==='admin'&&!requester.district)||(requester.isAdmin===true&&!requester.district);
+      if(!main) return res.status(403).json({error:"Main admin access is required"});
+      const snap=await dbAdmin.collection('paymentExceptions').orderBy('createdAt','desc').limit(300).get();
+      const requests=snap.docs.map(d=>{const x:any=d.data()||{}; const iso=(v:any)=>v?.toDate?v.toDate().toISOString():v||''; return {...x,id:d.id,createdAt:iso(x.createdAt),reviewedAt:iso(x.reviewedAt)};});
+      return res.json({success:true,requests});
+    } catch(err:any){return res.status(500).json({error:err?.message||"Failed to load requests"});}
+  });
+
+  app.post(["/api/admin/payment-exceptions/:id/review", "/admin/payment-exceptions/:id/review"], async (req,res) => {
+    try {
+      if(!dbAdmin) return res.status(503).json({error:"Payment database is unavailable"});
+      const authorization=String(req.headers.authorization||''); const token=authorization.startsWith('Bearer ')?authorization.slice(7):'';
+      if(!token) return res.status(401).json({error:"Main admin authentication is required"});
+      const decoded=await admin.auth().verifyIdToken(token); const requesterSnap=await dbAdmin.collection('users').doc(decoded.uid).get(); const requester:any=requesterSnap.exists?requesterSnap.data()||{}:{};
+      const email=String(decoded.email||'').toLowerCase(); const main=email==='hcrskerala@gmail.com'||(requester.role==='admin'&&!requester.district)||(requester.isAdmin===true&&!requester.district);
+      if(!main) return res.status(403).json({error:"Main admin access is required"});
+      const action=String(req.body?.action||'').toUpperCase(); const reviewReason=String(req.body?.reason||'').trim();
+      if(!['APPROVE','REJECT'].includes(action)) return res.status(400).json({error:"Invalid review action"});
+      if(action==='REJECT'&&reviewReason.length<3) return res.status(400).json({error:"Rejection reason is required"});
+      const ref=dbAdmin.collection('paymentExceptions').doc(String(req.params.id||'')); const snap=await ref.get(); if(!snap.exists)return res.status(404).json({error:"Request not found"});
+      const request:any=snap.data()||{}; if(request.status!=='PENDING_MAIN_ADMIN')return res.status(409).json({error:"Request already reviewed"});
+      if(action==='REJECT'){await ref.update({status:'REJECTED',reviewReason,reviewedByUid:decoded.uid,reviewedByEmail:decoded.email||'',reviewedAt:admin.firestore.FieldValue.serverTimestamp()});return res.json({success:true,status:'REJECTED'});}
+      const {keyId,keySecret}=getRazorpayCredentials(); if(!keyId||!keySecret)return res.status(503).json({error:"Razorpay verification unavailable"});
+      const razorpay=new Razorpay({key_id:keyId,key_secret:keySecret}); const payment:any=await razorpay.payments.fetch(String(request.paymentId)); const expected=request.paymentType==='registration'?20000:10000;
+      if(!payment||payment.status!=='captured'||Number(payment.amount)!==expected)return res.status(409).json({error:"Fresh Razorpay verification failed"});
+      const mobile=String(request.mobile||'').replace(/\\D/g,'').slice(-10); const users=await dbAdmin.collection('users').where('mobile','==',mobile).limit(10).get(); const candidates=users.docs.filter(d=>String((d.data()||{}).status||'')!=='deleted');
+      if(candidates.length!==1)return res.status(409).json({error:"Exactly one live member record is required; resolve duplicate/missing member first"});
+      const memberDoc=candidates[0]; const member:any=memberDoc.data()||{}; const used=await dbAdmin.collection('payments').doc(String(request.paymentId)).get();
+      if(used.exists&&(used.data()||{}).status==='SUCCESS'&&(used.data()||{}).memberId)return res.status(409).json({error:"Payment already applied"});
+      const capturedAt=payment.created_at?new Date(Number(payment.created_at)*1000):new Date(); const receiptNo='RCP-'+(request.paymentType==='registration'?'REG':'REN')+'-'+String(request.paymentId).slice(-8).toUpperCase();
+      if(request.paymentType==='registration'){
+        await finalizeVerifiedRegistrationPayment({uid:memberDoc.id,paymentId:String(request.paymentId),orderId:String(payment.order_id||request.orderId||''),capturedAt,receiptNo,method:payment.method||'Razorpay',source:'main-admin-payment-exception'});
+      } else {
+        if(!String(member.membershipId||member.memberId||'').trim())return res.status(409).json({error:"Renewal member has no membership ID"});
+        const expiry=new Date(capturedAt); expiry.setFullYear(expiry.getFullYear()+1); const paymentRef=dbAdmin.collection('payments').doc(String(request.paymentId)); const receiptRef=memberDoc.ref.collection('receipts').doc(getRazorpayReceiptDocumentId(String(request.paymentId)));
+        await dbAdmin.runTransaction(async tx=>{const [fm,fp,fr]=await Promise.all([tx.get(memberDoc.ref),tx.get(paymentRef),tx.get(receiptRef)]);if(!fm.exists)throw new Error("Member missing");const pd:any=fp.exists?fp.data()||{}:{};if(pd.status==='SUCCESS'&&pd.memberId&&pd.memberId!==memberDoc.id)throw new Error("Payment belongs to another member");
+          tx.set(paymentRef,{paymentId:request.paymentId,orderId:payment.order_id||request.orderId||'',amount:100,currency:'INR',paymentType:'renewal',memberId:memberDoc.id,membershipId:member.membershipId||member.memberId||'',mobile,status:'SUCCESS',paymentStatus:'PAYMENT_VERIFIED',paymentDate:capturedAt.toISOString().split('T')[0],paymentTime:capturedAt.toISOString(),verifiedAt:admin.firestore.FieldValue.serverTimestamp(),method:payment.method||'Razorpay',source:'main-admin-payment-exception'},{merge:true});
+          tx.update(memberDoc.ref,{status:'active',isApproved:true,isPaid:true,renewalPending:false,renewalTransactionId:request.paymentId,renewalDate:admin.firestore.Timestamp.fromDate(capturedAt),renewalApprovedAt:admin.firestore.FieldValue.serverTimestamp(),renewalPaymentDate:capturedAt.toISOString().split('T')[0],paymentAmount:100,paymentId:request.paymentId,orderId:payment.order_id||request.orderId||'',transactionId:request.paymentId,paymentTime:capturedAt.toISOString(),paymentMethod:'Razorpay',paymentStatus:'RENEWAL_ADMIN_APPROVED',expiryDate:admin.firestore.Timestamp.fromDate(expiry),issueDate:admin.firestore.FieldValue.serverTimestamp(),receiptNumber:receiptNo});
+          if(!fr.exists)tx.set(receiptRef,{receiptNo,receiptType:'Membership Renewal',receiptLabel:'Membership Renewal Receipt',amount:100,paymentId:request.paymentId,orderId:payment.order_id||request.orderId||'',transactionId:request.paymentId,paymentTime:capturedAt.toISOString(),paymentMethod:'Razorpay',paymentStatus:'RENEWAL_ADMIN_APPROVED',status:'Paid',paymentDate:capturedAt.toISOString().split('T')[0],createdAt:admin.firestore.FieldValue.serverTimestamp(),memberId:member.membershipId||member.memberId||memberDoc.id,source:'main-admin-payment-exception'});
+        });
+      }
+      await ref.update({status:'APPROVED',reviewReason,reviewedByUid:decoded.uid,reviewedByEmail:decoded.email||'',reviewedAt:admin.firestore.FieldValue.serverTimestamp(),appliedMemberUid:memberDoc.id});
+      return res.json({success:true,status:'APPROVED',memberUid:memberDoc.id});
+    } catch(err:any){return res.status(500).json({error:err?.error?.description||err?.message||"Review failed"});}
+  });
+
   app.get(["/api/admin/payments", "/admin/payments"], async (req, res) => {
     try {
       if (!dbAdmin) return res.status(503).json({ error: "Payment database is unavailable" });
