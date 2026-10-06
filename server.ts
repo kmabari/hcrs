@@ -2427,11 +2427,11 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const requesterSnap = await dbAdmin.collection('users').doc(decoded.uid).get();
       const requester: any = requesterSnap.exists ? requesterSnap.data() || {} : {};
       if (!(requester.role === 'operator' || requester.role === 'admin' || requester.isAdmin === true)) return res.status(403).json({ error: "District admin access is required" });
-      const mobile = String(req.body?.mobile || '').replace(/\\D/g, '').slice(-10);
+      const mobile = String(req.body?.mobile || '').replace(/\D/g, '').slice(-10);
       const paymentId = String(req.body?.paymentId || '').trim();
       const paymentType = String(req.body?.paymentType || '').toLowerCase();
       const reason = String(req.body?.reason || '').trim();
-      if (!/^\\d{10}$/.test(mobile)) return res.status(400).json({ error: "Valid 10-digit mobile is required" });
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: "Valid 10-digit mobile is required" });
       if (!/^pay_[A-Za-z0-9]+$/.test(paymentId)) return res.status(400).json({ error: "Valid Razorpay Payment ID is required" });
       if (!['registration','renewal'].includes(paymentType)) return res.status(400).json({ error: "Invalid payment type" });
       if (reason.length < 3) return res.status(400).json({ error: "Reason is required" });
@@ -2492,13 +2492,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const {keyId,keySecret}=getRazorpayCredentials(); if(!keyId||!keySecret)return res.status(503).json({error:"Razorpay verification unavailable"});
       const razorpay=new Razorpay({key_id:keyId,key_secret:keySecret}); const payment:any=await razorpay.payments.fetch(String(request.paymentId)); const expected=request.paymentType==='registration'?20000:10000;
       if(!payment||payment.status!=='captured'||Number(payment.amount)!==expected)return res.status(409).json({error:"Fresh Razorpay verification failed"});
-      const mobile=String(request.mobile||'').replace(/\\D/g,'').slice(-10); const users=await dbAdmin.collection('users').where('mobile','==',mobile).limit(10).get(); const candidates=users.docs.filter(d=>String((d.data()||{}).status||'')!=='deleted');
+      const mobile=String(request.mobile||'').replace(/\D/g,'').slice(-10); const users=await dbAdmin.collection('users').where('mobile','==',mobile).limit(10).get(); const candidates=users.docs.filter(d=>String((d.data()||{}).status||'')!=='deleted');
       if(candidates.length!==1)return res.status(409).json({error:"Exactly one live member record is required; resolve duplicate/missing member first"});
       const memberDoc=candidates[0]; const member:any=memberDoc.data()||{}; const used=await dbAdmin.collection('payments').doc(String(request.paymentId)).get();
       if(used.exists&&(used.data()||{}).status==='SUCCESS'&&(used.data()||{}).memberId)return res.status(409).json({error:"Payment already applied"});
       const capturedAt=payment.created_at?new Date(Number(payment.created_at)*1000):new Date(); const receiptNo='RCP-'+(request.paymentType==='registration'?'REG':'REN')+'-'+String(request.paymentId).slice(-8).toUpperCase();
       if(request.paymentType==='registration'){
-        await finalizeVerifiedRegistrationPayment({uid:memberDoc.id,paymentId:String(request.paymentId),orderId:String(payment.order_id||request.orderId||''),capturedAt,receiptNo,method:payment.method||'Razorpay',source:'main-admin-payment-exception'});
+        await finalizePreparedRegistration({uid:memberDoc.id,paymentId:String(request.paymentId),orderId:String(payment.order_id||request.orderId||''),capturedAt,receiptNo,method:payment.method||'Razorpay',source:'main-admin-payment-exception'});
       } else {
         if(!String(member.membershipId||member.memberId||'').trim())return res.status(409).json({error:"Renewal member has no membership ID"});
         const expiry=new Date(capturedAt); expiry.setFullYear(expiry.getFullYear()+1); const paymentRef=dbAdmin.collection('payments').doc(String(request.paymentId)); const receiptRef=memberDoc.ref.collection('receipts').doc(getRazorpayReceiptDocumentId(String(request.paymentId)));
