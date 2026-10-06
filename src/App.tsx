@@ -2968,7 +2968,21 @@ export default function App() {
     const loadingToast = toast.loading('Updating details...');
     try {
       const existingMember = members.find(m => m.uid === uid);
-      const finalData = { ...data };
+      const currentEmail = (user?.email || '').toLowerCase().trim();
+      const isMainAdminEditor = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) ||
+        (user?.role === 'admin' && !user?.district) || user?.mobile === '9645934571';
+      // Defense in depth: district/operator accounts can update profile/contact
+      // fields only. They cannot alter membership identity, serial sequence,
+      // joining/renewal/expiry dates, payment state or approval state.
+      const districtEditableKeys = new Set([
+        'name','mobile','address','postOffice','pincode','bloodGroup','assemblyConstituency'
+      ]);
+      const finalData: Partial<UserProfile> = {};
+      Object.entries(data || {}).forEach(([key, value]) => {
+        if (isMainAdminEditor || districtEditableKeys.has(key)) {
+          (finalData as any)[key] = value;
+        }
+      });
 
       // If we are explicitly setting isApproved to true in an update, 
       // ensure status is active and issueDate is set (Request #3)
