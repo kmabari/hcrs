@@ -3095,9 +3095,10 @@ export default function App() {
         if (apiData.expiryDate instanceof Date) apiData.expiryDate = apiData.expiryDate.toISOString();
         if (apiData.registrationDate instanceof Date) apiData.registrationDate = apiData.registrationDate.toISOString();
 
+        const idToken = await auth.currentUser?.getIdToken();
         const res = await fetch('/api/admin/update-member', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
           body: JSON.stringify({ uid, data: apiData, mobile: targetMobile })
         });
         const json = await res.json().catch(() => null);
