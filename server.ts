@@ -3564,16 +3564,31 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   app.post(["/api/update-profile", "/update-profile", "/api/admin/update-member", "/admin/update-member"], async (req, res) => {
     try {
       const { uid, data, mobile } = req.body || {};
+      const isAdminMemberUpdate = req.path.includes('/admin/update-member');
+      let requesterData: any = {};
+      let requesterEmail = '';
+      if (isAdminMemberUpdate) {
+        const authorization = String(req.headers.authorization || '');
+        const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+        if (!token) return res.status(401).json({ error: "Authenticated admin is required" });
+        const decoded = await admin.auth().verifyIdToken(token);
+        requesterEmail = String(decoded.email || '').toLowerCase();
+        const requesterSnap = dbAdmin ? await dbAdmin.collection('users').doc(decoded.uid).get() : null;
+        requesterData = requesterSnap?.exists ? requesterSnap.data() || {} : {};
+        const allowedAdmin = requesterData.role === 'operator' || requesterData.role === 'admin' || requesterData.isAdmin === true || requesterEmail === 'hcrskerala@gmail.com';
+        if (!allowedAdmin) return res.status(403).json({ error: "Admin access is required" });
+      }
       if (!uid && !mobile) {
         return res.status(400).json({ error: "UID or mobile is required" });
       }
 
       const cleanData: any = {};
+      const mainAdminUpdate = !isAdminMemberUpdate || requesterEmail === 'hcrskerala@gmail.com' ||
+        (requesterData.role === 'admin' && !requesterData.district) || (requesterData.isAdmin === true && !requesterData.district);
+      const districtEditableKeys = new Set(['name','mobile','address','postOffice','pincode','bloodGroup','assemblyConstituency']);
       if (data && typeof data === 'object') {
         for (const [k, v] of Object.entries(data)) {
-          if (v !== undefined) {
-            cleanData[k] = v;
-          }
+          if (v !== undefined && (mainAdminUpdate || districtEditableKeys.has(k))) cleanData[k] = v;
         }
       }
 
