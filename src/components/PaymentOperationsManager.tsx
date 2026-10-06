@@ -79,6 +79,9 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   const [verifiedPayments, setVerifiedPayments] = useState<VerifiedPaymentRecord[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentSearch, setPaymentSearch] = useState('');
+  const [exceptionRequests, setExceptionRequests] = useState<any[]>([]);
+  const [exceptionLoading, setExceptionLoading] = useState(false);
+  const [reviewingException, setReviewingException] = useState<string | null>(null);
 
   const filteredVerifiedPayments = verifiedPayments.filter((payment) => {
     const q = paymentSearch.trim().toLowerCase();
@@ -90,7 +93,38 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   useEffect(() => {
     loadSettings();
     loadVerifiedPayments();
+    loadPaymentExceptions();
   }, []);
+
+  const loadPaymentExceptions = async () => {
+    setExceptionLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return setExceptionRequests([]);
+      const response = await fetch('/api/admin/payment-exceptions', { headers:{Authorization:`Bearer ${token}`} });
+      const result = await response.json().catch(()=>({}));
+      if (!response.ok) throw new Error(result.error || 'Could not load payment exception requests');
+      setExceptionRequests(Array.isArray(result.requests) ? result.requests : []);
+    } catch (error:any) {
+      console.warn('Payment exception list:', error?.message || error);
+      setExceptionRequests([]);
+    } finally { setExceptionLoading(false); }
+  };
+
+  const reviewPaymentException = async (id:string, action:'APPROVE'|'REJECT') => {
+    const reason = action === 'REJECT' ? (window.prompt('Reject reason (required):') || '').trim() : '';
+    if (action === 'REJECT' && !reason) return;
+    if (action === 'APPROVE' && !window.confirm('Fresh Razorpay verification നടത്തി ഈ payment membership/renewal-ലേക്ക് apply ചെയ്യണോ?')) return;
+    setReviewingException(id);
+    try {
+      const token=await auth.currentUser?.getIdToken(); if(!token) throw new Error('Admin login required');
+      const response=await fetch(`/api/admin/payment-exceptions/${encodeURIComponent(id)}/review`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action,reason})});
+      const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result.error||'Review failed');
+      toast.success(action==='APPROVE'?'Payment verified & approved':'Request rejected');
+      await Promise.all([loadPaymentExceptions(),loadVerifiedPayments()]);
+    } catch(error:any){toast.error(error?.message||'Review failed');}
+    finally{setReviewingException(null);}
+  };
 
   const loadVerifiedPayments = async () => {
     setPaymentsLoading(true);
@@ -431,6 +465,19 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
           </div>
         </div>
       </div>
+
+      <Card className="border-amber-200 shadow-sm overflow-hidden">
+        <CardHeader className="bg-amber-50 border-b border-amber-100">
+          <CardTitle className="text-base font-black">Payment Exception Approvals</CardTitle>
+          <CardDescription>District Admin submitted Razorpay payments that did not finish membership / renewal. Approval re-verifies Razorpay before any membership change.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {exceptionLoading ? <div className="p-6 text-sm font-bold">Loading...</div> : exceptionRequests.length===0 ? <div className="p-6 text-sm font-bold text-slate-500">No payment exception requests.</div> :
+          <div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-xs"><thead className="bg-slate-50"><tr><th className="p-3 text-left">Payment Date / Time</th><th className="p-3 text-left">Mobile</th><th className="p-3 text-left">Type / Amount</th><th className="p-3 text-left">Payment ID</th><th className="p-3 text-left">District Admin</th><th className="p-3 text-left">Reason</th><th className="p-3 text-left">Status / Action</th></tr></thead><tbody>
+          {exceptionRequests.map((r:any)=><tr key={r.id} className="border-t"><td className="p-3 font-semibold">{r.paymentDate || '—'}<div className="text-slate-500">{r.paymentTime ? new Date(r.paymentTime).toLocaleTimeString() : '—'}</div></td><td className="p-3 font-mono font-bold">{r.mobile}</td><td className="p-3 font-bold">{r.paymentType} • ₹{r.amount}</td><td className="p-3 font-mono">{r.paymentId}</td><td className="p-3">{r.submittedByName}<div className="text-slate-500">{r.district || '—'}</div></td><td className="p-3">{r.reason}</td><td className="p-3"><Badge>{r.status}</Badge>{r.status==='PENDING_MAIN_ADMIN'&&<div className="flex gap-2 mt-2"><Button size="sm" disabled={reviewingException===r.id} onClick={()=>reviewPaymentException(r.id,'APPROVE')} className="bg-emerald-600">Approve</Button><Button size="sm" variant="destructive" disabled={reviewingException===r.id} onClick={()=>reviewPaymentException(r.id,'REJECT')}>Reject</Button></div>}</td></tr>)}
+          </tbody></table></div>}
+        </CardContent>
+      </Card>
 
       <Card className="border-emerald-200 shadow-sm overflow-hidden">
         <CardHeader className="bg-emerald-50/70 border-b border-emerald-100">
