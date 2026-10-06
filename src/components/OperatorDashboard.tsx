@@ -71,6 +71,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserProfile } from '../types';
+import { auth } from '../lib/firebase';
 import Logo from '../Logo';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, SHARED_URL } from '../constants';
 import { toast } from 'sonner';
@@ -284,6 +285,35 @@ export default function OperatorDashboard({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDirectManual, setShowDirectManual] = useState(isDirectManual);
+  const [paymentException, setPaymentException] = useState({ mobile: '', paymentId: '', paymentType: 'registration', reason: '' });
+  const [paymentExceptionSubmitting, setPaymentExceptionSubmitting] = useState(false);
+
+  const submitPaymentException = async (e: FormEvent) => {
+    e.preventDefault();
+    const mobile = paymentException.mobile.replace(/\D/g, '').slice(-10);
+    if (mobile.length !== 10 || !paymentException.paymentId.trim() || !paymentException.reason.trim()) {
+      toast.error('Mobile, Razorpay Payment ID, reason എന്നിവ നിർബന്ധമാണ്.');
+      return;
+    }
+    setPaymentExceptionSubmitting(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Login session unavailable');
+      const response = await fetch('/api/payment-exceptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...paymentException, mobile })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not submit payment exception');
+      toast.success('Main Admin approval-ലേക്ക് അയച്ചു. Membership ഇപ്പോൾ മാറ്റിയിട്ടില്ല.');
+      setPaymentException({ mobile: '', paymentId: '', paymentType: 'registration', reason: '' });
+    } catch (err:any) {
+      toast.error(err?.message || 'Payment exception submission failed');
+    } finally {
+      setPaymentExceptionSubmitting(false);
+    }
+  };
 
   const handleRegisterSubmit = async (e: any) => {
     e.preventDefault();
@@ -474,6 +504,28 @@ export default function OperatorDashboard({
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border border-amber-200 bg-amber-50/40 rounded-3xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base font-black text-slate-900">Payment Exception → Main Admin Approval</CardTitle>
+              <CardDescription>Razorpay payment completed, പക്ഷേ membership / renewal പൂർത്തിയാകാത്ത കേസുകൾ മാത്രം. Submit ചെയ്താൽ membership മാറില്ല.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submitPaymentException} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <Input value={paymentException.mobile} onChange={e=>setPaymentException({...paymentException,mobile:e.target.value.replace(/\D/g,'').slice(0,10)})} placeholder="Member Mobile" maxLength={10} />
+                <Input value={paymentException.paymentId} onChange={e=>setPaymentException({...paymentException,paymentId:e.target.value.trim()})} placeholder="Razorpay pay_..." />
+                <Select value={paymentException.paymentType} onValueChange={v=>setPaymentException({...paymentException,paymentType:v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="registration">New Membership ₹200</SelectItem><SelectItem value="renewal">Renewal ₹100</SelectItem></SelectContent>
+                </Select>
+                <Input value={paymentException.reason} onChange={e=>setPaymentException({...paymentException,reason:e.target.value})} placeholder="Why manual review?" />
+                <Button type="submit" disabled={paymentExceptionSubmitting} className="font-black">
+                  {paymentExceptionSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                  Send for Approval
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start font-sans">
             {/* Left/Top: Fast Member Entry Form */}
