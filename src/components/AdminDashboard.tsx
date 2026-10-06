@@ -1,3 +1,6 @@
+import DistrictAdminLinks from './DistrictAdminLinks';
+import { isMainAdminAccount } from '../lib/adminAccess';
+import { authenticatedFetch } from '../lib/authenticatedFetch';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { motion } from 'motion/react';
@@ -106,7 +109,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { onSnapshot, collection, query, where, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
 import { buildRegistrationReceipt, printA4Receipts } from '@/src/lib/receiptUtils';
@@ -615,7 +618,7 @@ export default function AdminDashboard({
 
   const isSuperAdmin = useMemo(() => {
     const email = (user?.email || '').toLowerCase().trim();
-    return MAIN_ADMINS.some(e => e.toLowerCase() === email) || user?.role === 'admin' || user?.isAdmin === true;
+    return isMainAdminAccount(auth.currentUser?.email, user);
   }, [user]);
   
   const countOf2026Members = useMemo(() => {
@@ -1166,7 +1169,7 @@ export default function AdminDashboard({
         }, { merge: true });
         
         // Also call server API endpoint to sync
-        fetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
+        authenticatedFetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
 
         toast.success('ക്ലെയിം കൗണ്ടർ വിജയകരമായി 0-ലേക്ക് റീസെറ്റ് ചെയ്തു! ഇനി വരുന്ന ക്ലെയിമുകൾ 1 മുതൽ ആരംഭിക്കും.', { id: tId });
       } else {
@@ -1178,7 +1181,7 @@ export default function AdminDashboard({
         }, { merge: true });
 
         // Also call server API endpoint to sync
-        fetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
+        authenticatedFetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
 
         toast.success(`കൗണ്ടർ സിങ്ക് ചെയ്തു (ആകെ ക്ലെയിമുകൾ: ${claimsSnap.size}, അവസാന നമ്പർ: ${maxSerial}). അടുത്ത ക്ലെയിം ${maxSerial + 1} ആയിരിക്കും.`, { id: tId });
       }
@@ -1186,7 +1189,7 @@ export default function AdminDashboard({
       console.error("Error syncing claims counter:", err);
       // Fallback via server API
       try {
-        const sRes = await fetch('/api/admin/reset-claims-counter', { method: 'POST' });
+        const sRes = await authenticatedFetch('/api/admin/reset-claims-counter', { method: 'POST' });
         const sData = await sRes.json();
         if (sData?.success) {
           toast.success(`കൗണ്ടർ വിജയകരമായി സിങ്ക് ചെയ്തു! (Next starting: ${sData.nextStartingNumber})`, { id: tId });
@@ -1635,7 +1638,7 @@ export default function AdminDashboard({
 
     try {
       try {
-        const srvRes = await fetch('/api/admin/approve-renewal', {
+        const srvRes = await authenticatedFetch('/api/admin/approve-renewal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: member.uid, mobile: cleanMob })
@@ -4614,6 +4617,8 @@ export default function AdminDashboard({
             )}
 
             {activeTab === 'reports' && (
+              <>
+              <DistrictAdminLinks />
               <AdminReportsTab 
                 members={members} 
                 onApprove={onApprove} 
@@ -4621,6 +4626,7 @@ export default function AdminDashboard({
                 DISTRICTS={DISTRICTS} 
                 isSuperAdmin={isSuperAdmin} 
               />
+              </>
             )}
 
             {activeTab === 'life_members' && (

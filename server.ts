@@ -1,3 +1,6 @@
+import { createMainAdminGuard } from './src/lib/adminRequestGuard.js';
+import { isMainAdminAccount, getDistrictAdminDistrict } from './src/lib/adminAccess.js';
+import { isDistrictMatch } from './src/lib/districtUtils.js';
 import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -174,6 +177,16 @@ if (process.env.VERCEL) {
     next();
   });
 }
+
+// Main-console APIs require a verified main-admin identity, never a URL or cached flag.
+app.use(createMainAdminGuard({
+  available: () => Boolean(dbAdmin),
+  verifyToken: token => admin.auth().verifyIdToken(token),
+  loadProfile: async uid => {
+    const profile = await dbAdmin!.collection('users').doc(uid).get();
+    return profile.exists ? profile.data() || null : null;
+  }
+}));
 
 // Setup Gemini SDK securely
 // Gemini is optional for the API runtime. Do not let a missing AI key crash
@@ -3575,7 +3588,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         requesterEmail = String(decoded.email || '').toLowerCase();
         const requesterSnap = dbAdmin ? await dbAdmin.collection('users').doc(decoded.uid).get() : null;
         requesterData = requesterSnap?.exists ? requesterSnap.data() || {} : {};
-        const allowedAdmin = requesterData.role === 'operator' || requesterData.role === 'admin' || requesterData.isAdmin === true || requesterEmail === 'hcrskerala@gmail.com';
+        const allowedAdmin = requesterData.role === 'operator' || requesterData.role === 'admin' || requesterData.isAdmin === true || isMainAdminAccount(requesterEmail);
         if (!allowedAdmin) return res.status(403).json({ error: "Admin access is required" });
       }
       if (!uid && !mobile) {
@@ -3583,8 +3596,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       const cleanData: any = {};
-      const mainAdminUpdate = !isAdminMemberUpdate || requesterEmail === 'hcrskerala@gmail.com' ||
-        (requesterData.role === 'admin' && !requesterData.district) || (requesterData.isAdmin === true && !requesterData.district);
+      const mainAdminUpdate = !isAdminMemberUpdate || isMainAdminAccount(requesterEmail, requesterData);
       const districtEditableKeys = new Set(['name','mobile','address','postOffice','pincode','bloodGroup','assemblyConstituency']);
       if (data && typeof data === 'object') {
         for (const [k, v] of Object.entries(data)) {
@@ -3615,6 +3627,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         // Try dbAdmin first if initialized and credentialed
         if (dbAdmin) {
           try {
+            if (isAdminMemberUpdate && !mainAdminUpdate) {
+              const district = getDistrictAdminDistrict(requesterEmail) || requesterData.district;
+              const target = await dbAdmin.collection('users').doc(targetUid).get();
+              if (!district || !target.exists || !isDistrictMatch(district, target.data()?.district)) {
+                return res.status(403).json({ error: 'Member is outside your assigned district' });
+              }
+            }
             await dbAdmin.collection('users').doc(targetUid).set(cleanData, { merge: true });
             writeSuccess = true;
           } catch (dbErr: any) {

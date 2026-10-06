@@ -1,3 +1,5 @@
+import { isMainAdminAccount, getDistrictAdminDistrict } from './lib/adminAccess';
+import { authenticatedFetch } from './lib/authenticatedFetch';
 import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import RegistrationForm from './components/RegistrationForm';
@@ -36,7 +38,7 @@ import { ELedgerModule } from "./eledger";
 import { InfinityBorderCard } from './components/InfinityBorderCard';
 import { InfinityBorderButton } from './components/InfinityBorderButton';
 import { idbGet, idbSet } from './lib/idbCache';
-import { normalizeDistrictCode, isDistrictMatch } from './lib/districtUtils';
+import { normalizeDistrictCode, isDistrictMatch, resolveDistrictFromSlugOrCode, getDistrictName } from './lib/districtUtils';
 const MAIN_ADMINS = [
   'kmabarikiyafoods@gmail.com',
   'hcrsindia@gmail.com',
@@ -85,31 +87,7 @@ const SECOND_ADMINS = [
   'hcrstvm@hcrs.society'
 ];
 
-const getStrictDistrictFromEmail = (email: string): string | null => {
-  const cleanEmail = email.toLowerCase().trim();
-  const username = cleanEmail.split('@')[0];
-  if (!username.startsWith('hcrs')) return null;
-  
-  const suffix = username.substring(4); // remove 'hcrs'
-  if (!suffix) return null;
-  
-  if (suffix === 'kasaragod' || suffix === 'kasargod' || suffix === 'ksd') return 'KSD';
-  if (suffix === 'kannur' || suffix === 'knr') return 'KNR';
-  if (suffix === 'wayanad' || suffix === 'wyd') return 'WYD';
-  if (suffix === 'kozhikode' || suffix === 'kozicode' || suffix === 'kozikhode' || suffix === 'koz') return 'KOZ';
-  if (suffix === 'malappuram' || suffix === 'malapuram' || suffix === 'mlp' || suffix === 'mpm') return 'MLP';
-  if (suffix === 'palakkad' || suffix === 'palakad' || suffix === 'pkd') return 'PKD';
-  if (suffix === 'thrissur' || suffix === 'trichur' || suffix === 'tcr') return 'TCR';
-  if (suffix === 'ernakulam' || suffix === 'cochin' || suffix === 'ekm') return 'EKM';
-  if (suffix === 'idukki' || suffix === 'idk') return 'IDK';
-  if (suffix === 'kottayam' || suffix === 'ktm') return 'KTM';
-  if (suffix === 'alappuzha' || suffix === 'alapuzha' || suffix === 'alp') return 'ALP';
-  if (suffix === 'pathanamthitta' || suffix === 'pathanamthita' || suffix === 'pta') return 'PTA';
-  if (suffix === 'kollam' || suffix === 'quilon' || suffix === 'klm') return 'KLM';
-  if (suffix === 'thiruvananthapuram' || suffix === 'trivandrum' || suffix === 'tvm') return 'TVM';
-  
-  return null;
-};
+const getStrictDistrictFromEmail = getDistrictAdminDistrict;
 
 // Resilient server-first Firestore fetchers with timeout safeguards to guarantee responsive UI
 // while fetching fresh live data from Firestore backend.
@@ -251,6 +229,15 @@ export default function App() {
   }, [view]);
 
   const [user, setUser] = useState<UserProfile | null>(null);
+  useEffect(() => {
+    if (!user || view !== 'admin') return;
+    const mainAccount = isMainAdminAccount(auth.currentUser?.email);
+    const entry = resolveDistrictFromSlugOrCode(sessionStorage.getItem('hcrs_district_intent'));
+    if (mainAccount && !entry) return;
+    const assignedDistrict = getDistrictAdminDistrict(auth.currentUser?.email) || user.district || (mainAccount ? entry : null);
+    setView(assignedDistrict || user.role === 'operator' ? 'operator' : 'card');
+  }, [user, view]);
+
   const [verifiedMember, setVerifiedMember] = useState<UserProfile | null>(null);
   const [members, setMembers] = useState<UserProfile[]>(() => {
     try {
@@ -398,15 +385,18 @@ export default function App() {
     try {
       const existingIdb = await idbGet<UserProfile[]>('hcrs_cached_members_list');
       if (existingIdb && Array.isArray(existingIdb) && existingIdb.length > 0) {
-        setMembers(prev => prev.length === 0 ? existingIdb : prev);
+        const entryDistrict = resolveDistrictFromSlugOrCode(sessionStorage.getItem('hcrs_district_intent'));
+        const district = getDistrictAdminDistrict(auth.currentUser?.email) || (isMainAdminAccount(auth.currentUser?.email) ? entryDistrict : null) || activeUser.district;
+        const scopedCache = isMainAdminAccount(auth.currentUser?.email, activeUser) && !entryDistrict ? existingIdb : existingIdb.filter(member => district && isDistrictMatch(member.district, district));
+        setMembers(prev => prev.length === 0 ? scopedCache : prev);
       }
     } catch {}
 
     try {
       const currentEmail = (activeUser.email || '').toLowerCase().trim();
       const isSuperAdminEmail = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail);
-      const isMasterAdmin = isAdmin || isSuperAdminEmail || activeUser.role === 'admin' || activeUser.isAdmin === true || currentViewRef.current === 'admin';
-      const userNormDist = normalizeDistrictCode(activeUser.district);
+      const isMasterAdmin = isMainAdminAccount(auth.currentUser?.email, activeUser) && !sessionStorage.getItem('hcrs_district_intent');
+      const userNormDist = getDistrictAdminDistrict(auth.currentUser?.email) || (isMainAdminAccount(auth.currentUser?.email) ? resolveDistrictFromSlugOrCode(sessionStorage.getItem('hcrs_district_intent')) : null) || normalizeDistrictCode(activeUser.district);
 
       let cleanList: UserProfile[] = [];
       let fetchSuccess = false;
@@ -1021,7 +1011,9 @@ export default function App() {
     if (distLogin) {
       console.log("District login intent detected:", distLogin);
       // Store the intent to guide the user to the correct dashboard after login
-      sessionStorage.setItem('hcrs_district_intent', distLogin);
+      const districtIntent = resolveDistrictFromSlugOrCode(distLogin);
+      if (!districtIntent) { setView('login'); return; }
+      sessionStorage.setItem('hcrs_district_intent', districtIntent);
       sessionStorage.setItem('hcrs_direct_manual', 'true');
       setIsDirectManual(true);
       
@@ -1124,13 +1116,7 @@ export default function App() {
         lastAuthUserUidRef.current = authUser.uid;
       }
       const currentEmail = (authUser.email || '').toLowerCase().trim();
-      const isSuperAdminEmail = MAIN_ADMINS.some(email => email.toLowerCase() === currentEmail) || 
-        currentEmail.startsWith('admin_') || 
-        currentEmail.startsWith('adm_') || 
-        currentEmail.includes('admin@') || 
-        currentEmail.includes('9645934571') || 
-        currentEmail.includes('kmabarikiyafoods') ||
-        authUser.uid === 'offline_admin';
+      const isSuperAdminEmail = MAIN_ADMINS.includes(currentEmail);
       const isSecondAdminEmail = SECOND_ADMINS.some(email => email.toLowerCase() === currentEmail);
       const isAdminEmail = isSuperAdminEmail || isSecondAdminEmail;
 
@@ -1171,7 +1157,7 @@ export default function App() {
           const cachedData = JSON.parse(cached) as UserProfile;
           setUser(cachedData);
           if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal' && currentViewRef.current !== 'janamail') {
-            const isAdm = cachedData.role === 'admin' || cachedData.isAdmin || isSuperAdminEmail;
+            const isAdm = isMainAdminAccount(currentEmail, cachedData);
             const isOp = (cachedData.role === 'operator' || isSecondAdminEmail) && !isAdm;
             const isMustChange = false;
             const isMustComplete = !isAdm && !isOp && !isMustChange && (
@@ -1222,6 +1208,8 @@ export default function App() {
           
           const strictDistrict = getStrictDistrictFromEmail(currentEmail);
           if (isSecondAdminEmail && strictDistrict) {
+            freshData.role = 'operator';
+            freshData.isAdmin = false;
             freshData.district = strictDistrict;
           }
           
@@ -1430,7 +1418,7 @@ export default function App() {
 
         if (userData) {
           // Force restrict second admin emails to their strict district
-          const checkEmail = (userData.email || '').toLowerCase().trim();
+          const checkEmail = currentEmail;
           const checkSecond = SECOND_ADMINS.some(email => email.toLowerCase() === checkEmail);
           const strictDistrict = getStrictDistrictFromEmail(checkEmail);
 
@@ -1452,7 +1440,7 @@ export default function App() {
             console.error("Failed to cache user profile:", e);
           }
           
-          const isAdmin = userData.role === 'admin' || userData.isAdmin === true || isSuperAdminEmail;
+          const isAdmin = isMainAdminAccount(currentEmail, userData);
           const isOperator = (userData.role === 'operator' || isSecondAdminEmail) && !isAdmin;
           
           const isMustChange = false;
@@ -2174,7 +2162,7 @@ export default function App() {
 
       // INSTANT VIEW TRANSITION: Immediately switch from login screen to dashboard/card
       if (finalUser) {
-        const isAdm = finalUser.role === 'admin' || finalUser.isAdmin === true || isSuperAdmin;
+        const isAdm = isMainAdminAccount(auth.currentUser?.email, finalUser);
         const isOp = (finalUser.role === 'operator' || isSecondAdmin) && !isAdm;
         const isMustChange = false;
         const isMustComplete = !isAdm && !isOp && !isMustChange && (
@@ -2630,7 +2618,7 @@ export default function App() {
     try {
       let serverSuccess = false;
       try {
-        const resp = await fetch('/api/admin/approve-member', {
+        const resp = await authenticatedFetch('/api/admin/approve-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2969,8 +2957,7 @@ export default function App() {
     try {
       const existingMember = members.find(m => m.uid === uid);
       const currentEmail = (user?.email || '').toLowerCase().trim();
-      const isMainAdminEditor = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) ||
-        (user?.role === 'admin' && !user?.district) || user?.mobile === '9645934571';
+      const isMainAdminEditor = isMainAdminAccount(auth.currentUser?.email, user);
       // Defense in depth: district/operator accounts can update profile/contact
       // fields only. They cannot alter membership identity, serial sequence,
       // joining/renewal/expiry dates, payment state or approval state.
@@ -2986,7 +2973,7 @@ export default function App() {
 
       // If we are explicitly setting isApproved to true in an update, 
       // ensure status is active and issueDate is set (Request #3)
-      if (data.isApproved === true) {
+      if (isMainAdminEditor && data.isApproved === true) {
         finalData.status = 'active';
         finalData.issueDate = serverTimestamp();
         finalData.renewalPending = false;
@@ -3005,7 +2992,7 @@ export default function App() {
         const hasNewDistrict = data.district !== undefined && data.district !== existingMember.district;
         const hasNewAssembly = data.assemblyConstituency !== undefined && data.assemblyConstituency !== existingMember.assemblyConstituency;
 
-        if (hasNewDistrict || hasNewAssembly || (isNaInId && data.assemblyConstituency && data.assemblyConstituency !== 'NA' && data.assemblyConstituency !== '')) {
+        if (isMainAdminEditor && (hasNewDistrict || hasNewAssembly || (isNaInId && data.assemblyConstituency && data.assemblyConstituency !== 'NA' && data.assemblyConstituency !== ''))) {
           const rawDistrict = data.district !== undefined ? data.district : existingMember.district;
           const rawAssembly = data.assemblyConstituency !== undefined ? data.assemblyConstituency : existingMember.assemblyConstituency;
 
@@ -3096,7 +3083,7 @@ export default function App() {
         if (apiData.registrationDate instanceof Date) apiData.registrationDate = apiData.registrationDate.toISOString();
 
         const idToken = await auth.currentUser?.getIdToken();
-        const res = await fetch('/api/admin/update-member', {
+        const res = await authenticatedFetch('/api/admin/update-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
           body: JSON.stringify({ uid, data: apiData, mobile: targetMobile })
@@ -3869,6 +3856,12 @@ export default function App() {
   }
 
   const maintenanceMode = orgSettings?.maintenanceMode;
+  const districtEntry = resolveDistrictFromSlugOrCode(sessionStorage.getItem('hcrs_district_intent'));
+  const mainAccount = isMainAdminAccount(auth.currentUser?.email);
+  const canOpenMainAdmin = mainAccount && !districtEntry;
+  const authenticatedDistrict = getDistrictAdminDistrict(auth.currentUser?.email) || (mainAccount ? districtEntry : null);
+  const districtConsoleUser: UserProfile | null = user ? { ...user, district: authenticatedDistrict || user.district } : null;
+  const showDistrictConsole = Boolean(districtConsoleUser && (districtConsoleUser.role === 'operator' || authenticatedDistrict || (districtConsoleUser.district && (districtConsoleUser.role === 'admin' || districtConsoleUser.isAdmin))));
 
   return (
     <div className="min-h-screen bg-[#FAF9FC] w-full max-w-full overflow-x-hidden min-w-0">
@@ -3977,6 +3970,7 @@ export default function App() {
 
       {view === 'login' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+           {sessionStorage.getItem('hcrs_district_intent') && <p className="text-center font-bold p-4">District Admin — {getDistrictName(sessionStorage.getItem('hcrs_district_intent'))} — Login with your assigned account</p>}
            <LoginForm 
             onLogin={handleLogin} 
             onGoogleLogin={handleGoogleLogin} 
@@ -5465,7 +5459,7 @@ export default function App() {
         </div>
       )}
 
-      {view === 'admin' && (
+      {view === 'admin' && user && canOpenMainAdmin && (
         <div className="animate-in fade-in duration-700">
             <AdminDashboard 
               user={user}
@@ -5489,10 +5483,10 @@ export default function App() {
         </div>
       )}
 
-      {view === 'operator' && user && (
+      {(view === 'operator' || (view === 'admin' && !canOpenMainAdmin)) && districtConsoleUser && showDistrictConsole && (
         <div className="animate-in fade-in duration-700">
           <OperatorDashboard 
-            user={user}
+            user={districtConsoleUser}
             members={members} 
             onAddMember={handleAddOffline} 
             onUpdate={handleUpdateMember}

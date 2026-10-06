@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authenticatedFetch';
 import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, query, addDoc, deleteDoc, serverTimestamp, orderBy, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 import { handleFirestoreError, OperationType } from './firebase';
@@ -200,7 +201,7 @@ export async function saveOrgSettings(settings: Partial<OrgSettings>): Promise<O
 
   // 1. High-reliability Server API write (with master admin privileges)
   try {
-    const res = await fetch('/api/admin/save-settings', {
+    const res = await authenticatedFetch('/api/admin/save-settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ settings })

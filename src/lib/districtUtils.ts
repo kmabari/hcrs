@@ -223,3 +223,10 @@ export function isDistrictMatch(distA: string | undefined | null, distB: string 
   const normB = normalizeDistrictCode(distB);
   return normA === normB;
 }
+
+/** District login intent only; permissions come from authenticated identity. */
+export function getDistrictAdminUrl(input: string, origin = 'https://www.hcrs.in'): string {
+  const code = resolveDistrictFromSlugOrCode(input);
+  if (!code) throw new Error('Unknown district');
+  return `${origin}/?distLogin=${DISTRICT_SLUGS[code]}`;
+}

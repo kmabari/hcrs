@@ -1,3 +1,4 @@
+import { isMainAdminAccount } from '../lib/adminAccess';
 import { useState, useMemo, useEffect, useRef, FormEvent } from 'react';
 import { 
   Users, 
@@ -115,14 +116,7 @@ export default function OperatorDashboard({
   isSyncingMembers = false,
   onUpdatePhoto
 }: OperatorDashboardProps) {
-  const isMainAdmin = !!(user?.email && [
-    'kmabarikiyafoods@gmail.com',
-    'hcrsindia@gmail.com',
-    'admin@hcrs.society',
-    '9645934571@hcrs.society',
-    'mabarikiyafoods@gmail.com',
-    'hcrskerala@gmail.com'
-  ].some(email => email.toLowerCase() === user.email.toLowerCase()));
+  const isMainAdmin = !isDirectManual && isMainAdminAccount(auth.currentUser?.email);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -442,10 +436,10 @@ export default function OperatorDashboard({
                 <Logo size="sm" className="h-10 w-auto" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-brand-magenta uppercase leading-none tracking-tight">Fast Member Panel</h1>
+                <h1 className="text-2xl font-black text-brand-magenta uppercase leading-none tracking-tight">District Admin Console</h1>
                 <p className="text-brand-blue mt-2 text-[10.5px] font-black tracking-widest uppercase flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  {districtName} District Second Admin
+                  {districtName} District Admin
                 </p>
               </div>
             </div>
