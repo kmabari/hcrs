@@ -1,3 +1,4 @@
+import { isMainAdminAccount } from '../lib/adminAccess';
 import { useState, useMemo, useEffect, useRef, FormEvent } from 'react';
 import { 
   Users, 
@@ -71,6 +72,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserProfile } from '../types';
+import { auth } from '../lib/firebase';
 import Logo from '../Logo';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, SHARED_URL } from '../constants';
 import { toast } from 'sonner';
@@ -114,14 +116,7 @@ export default function OperatorDashboard({
   isSyncingMembers = false,
   onUpdatePhoto
 }: OperatorDashboardProps) {
-  const isMainAdmin = !!(user?.email && [
-    'kmabarikiyafoods@gmail.com',
-    'hcrsindia@gmail.com',
-    'admin@hcrs.society',
-    '9645934571@hcrs.society',
-    'mabarikiyafoods@gmail.com',
-    'hcrskerala@gmail.com'
-  ].some(email => email.toLowerCase() === user.email.toLowerCase()));
+  const isMainAdmin = !isDirectManual && isMainAdminAccount(auth.currentUser?.email);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -160,7 +155,7 @@ export default function OperatorDashboard({
       address: '',
       details: '',
       entryBy: user?.name || 'Operator', // Added as requested
-      transactionId: 'CASH/OFFLINE',
+      transactionId: '',
       email: '',
       pin: '123456',
     };
@@ -284,6 +279,35 @@ export default function OperatorDashboard({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDirectManual, setShowDirectManual] = useState(isDirectManual);
+  const [paymentException, setPaymentException] = useState({ mobile: '', paymentId: '', paymentType: 'registration', reason: '' });
+  const [paymentExceptionSubmitting, setPaymentExceptionSubmitting] = useState(false);
+
+  const submitPaymentException = async (e: FormEvent) => {
+    e.preventDefault();
+    const mobile = paymentException.mobile.replace(/\D/g, '').slice(-10);
+    if (mobile.length !== 10 || !paymentException.paymentId.trim() || !paymentException.reason.trim()) {
+      toast.error('Mobile, Razorpay Payment ID, reason എന്നിവ നിർബന്ധമാണ്.');
+      return;
+    }
+    setPaymentExceptionSubmitting(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Login session unavailable');
+      const response = await fetch('/api/payment-exceptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...paymentException, mobile })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not submit payment exception');
+      toast.success('Main Admin approval-ലേക്ക് അയച്ചു. Membership ഇപ്പോൾ മാറ്റിയിട്ടില്ല.');
+      setPaymentException({ mobile: '', paymentId: '', paymentType: 'registration', reason: '' });
+    } catch (err:any) {
+      toast.error(err?.message || 'Payment exception submission failed');
+    } finally {
+      setPaymentExceptionSubmitting(false);
+    }
+  };
 
   const handleRegisterSubmit = async (e: any) => {
     e.preventDefault();
@@ -348,7 +372,7 @@ export default function OperatorDashboard({
           bloodGroup: BLOOD_GROUPS[0],
           details: '',
           entryBy: user.name || 'Operator',
-          transactionId: 'CASH/OFFLINE',
+          transactionId: '',
           pin: '123456',
         });
         localStorage.removeItem('hcrs_operator_form_draft');
@@ -368,8 +392,19 @@ export default function OperatorDashboard({
       toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
       return;
     }
-    const updatedMember = { ...editingMember, mobile: cleanMobile };
-    onUpdate(updatedMember.uid, updatedMember);
+    // District-admin edits are intentionally whitelisted. Membership identity,
+    // serial, joining/renewal/expiry dates and payment/approval fields are never
+    // sent from this screen.
+    const editableProfile: Partial<UserProfile> = {
+      name: editingMember.name,
+      mobile: cleanMobile,
+      address: editingMember.address,
+      postOffice: editingMember.postOffice,
+      pincode: editingMember.pincode,
+      bloodGroup: editingMember.bloodGroup,
+      assemblyConstituency: editingMember.assemblyConstituency,
+    };
+    onUpdate(editingMember.uid, editableProfile);
     setEditingMember(null);
   };
 
@@ -401,10 +436,10 @@ export default function OperatorDashboard({
                 <Logo size="sm" className="h-10 w-auto" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-brand-magenta uppercase leading-none tracking-tight">Fast Member Panel</h1>
+                <h1 className="text-2xl font-black text-brand-magenta uppercase leading-none tracking-tight">District Admin Console</h1>
                 <p className="text-brand-blue mt-2 text-[10.5px] font-black tracking-widest uppercase flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  {districtName} District Second Admin
+                  {districtName} District Admin
                 </p>
               </div>
             </div>
@@ -474,6 +509,28 @@ export default function OperatorDashboard({
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border border-amber-200 bg-amber-50/40 rounded-3xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base font-black text-slate-900">Payment Exception → Main Admin Approval</CardTitle>
+              <CardDescription>Razorpay payment completed, പക്ഷേ membership / renewal പൂർത്തിയാകാത്ത കേസുകൾ മാത്രം. Submit ചെയ്താൽ membership മാറില്ല.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submitPaymentException} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <Input value={paymentException.mobile} onChange={e=>setPaymentException({...paymentException,mobile:e.target.value.replace(/\D/g,'').slice(0,10)})} placeholder="Member Mobile" maxLength={10} />
+                <Input value={paymentException.paymentId} onChange={e=>setPaymentException({...paymentException,paymentId:e.target.value.trim()})} placeholder="Razorpay pay_..." />
+                <Select value={paymentException.paymentType} onValueChange={v=>setPaymentException({...paymentException,paymentType:v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="registration">New Membership ₹200</SelectItem><SelectItem value="renewal">Renewal ₹100</SelectItem></SelectContent>
+                </Select>
+                <Input value={paymentException.reason} onChange={e=>setPaymentException({...paymentException,reason:e.target.value})} placeholder="Why manual review?" />
+                <Button type="submit" disabled={paymentExceptionSubmitting} className="font-black">
+                  {paymentExceptionSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                  Send for Approval
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start font-sans">
             {/* Left/Top: Fast Member Entry Form */}
