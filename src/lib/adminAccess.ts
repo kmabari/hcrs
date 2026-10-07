@@ -1,4 +1,4 @@
-import { resolveDistrictFromSlugOrCode } from './districtUtils';
+import { resolveDistrictFromSlugOrCode } from './districtUtils.js';
 
 export const MAIN_ADMIN_EMAILS = [
   'kmabarikiyafoods@gmail.com', 'hcrsindia@gmail.com', 'admin@hcrs.society',

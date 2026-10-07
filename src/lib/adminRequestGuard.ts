@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { isMainAdminAccount } from './adminAccess';
+import { isMainAdminAccount } from './adminAccess.js';
 
 type GuardDependencies = {
   available: () => boolean;
