@@ -250,7 +250,20 @@ export default function RegistrationForm({
           registrationUser = (await createUserWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
         } catch (authError: any) {
           if (authError?.code !== 'auth/email-already-in-use') throw authError;
-          registrationUser = (await signInWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
+          try {
+            registrationUser = (await signInWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
+          } catch (existingAccountError: any) {
+            // Never bypass Firebase Authentication or create a duplicate identity.
+            // A synthetic mobile email has no inbox for password-reset emails, so
+            // give a clear next step instead of exposing Firebase's generic error.
+            if (existingAccountError?.code === 'auth/invalid-credential' ||
+                existingAccountError?.code === 'auth/wrong-password') {
+              throw new Error(
+                'ഈ മൊബൈൽ നമ്പറിന് Firebase അക്കൗണ്ട് നേരത്തേ ഉണ്ട്, പക്ഷേ നൽകിയ PIN പൊരുത്തപ്പെടുന്നില്ല. മുമ്പ് ഉപയോഗിച്ച PIN ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക. PIN ഓർമ്മയില്ലെങ്കിൽ HCRS അഡ്മിനുമായി ബന്ധപ്പെടുക. ഈ പിശക് ഘട്ടത്തിൽ പേയ്‌മെന്റ് ആരംഭിച്ചിട്ടില്ല.'
+              );
+            }
+            throw existingAccountError;
+          }
         }
       }
       const idToken = await registrationUser.getIdToken();
