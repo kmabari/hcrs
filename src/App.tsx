@@ -2377,13 +2377,23 @@ export default function App() {
       toast.loading('Creating secure account...', { id: loadingToast });
       let authResult;
       
+      const mobileAuthEmail = `${cleanMobile}@hcrs.society`;
       const authEmail = cleanEmail && cleanEmail.includes('@')
         ? cleanEmail
-        : `${cleanMobile}@hcrs.society`;
+        : mobileAuthEmail;
 
-      // CHECK IF ALREADY SIGNED IN (from a previous partial registration)
-      if (auth.currentUser && (auth.currentUser.email === authEmail || auth.currentUser.email === cleanEmail)) {
-        console.log("Using existing auth session for recovery");
+      // Razorpay registration authenticates the member with the mobile-based
+      // Firebase identity before checkout. Reuse that exact UID after payment,
+      // even when the member supplied a separate contact email; otherwise a
+      // second Firebase account could be created and the payment UID would not
+      // match the membership record.
+      const currentAuthEmail = (auth.currentUser?.email || '').toLowerCase();
+      if (auth.currentUser && (
+        currentAuthEmail === authEmail.toLowerCase() ||
+        currentAuthEmail === (cleanEmail || '').toLowerCase() ||
+        currentAuthEmail === mobileAuthEmail.toLowerCase()
+      )) {
+        console.log("Using existing auth session for recovery/registration");
         authResult = { user: auth.currentUser };
       } else {
         try {
