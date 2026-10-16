@@ -69,7 +69,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface RegistrationFormProps {
-  onSubmit: (values: any) => void;
+  onSubmit: (values: any) => void | Promise<void>;
   districtQuotas?: Record<string, number>;
   districtQuotasUsed?: Record<string, number>;
   initialMobile?: string;
@@ -301,7 +301,7 @@ export default function RegistrationForm({
         setPaymentProgress('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...');
         toast.loading('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...', { id: progressToast });
         submittedToApp = true;
-        onSubmit({
+        await onSubmit({
           ...formVals, cleanMobile,
           transactionId: recovery.paymentDetails.paymentId, paymentId: recovery.paymentDetails.paymentId,
           orderId: recovery.paymentDetails.orderId, paymentAmount: regFee, paymentMethod: 'Razorpay',
@@ -346,7 +346,7 @@ export default function RegistrationForm({
       setPaymentProgress('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...');
       toast.loading('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...', { id: progressToast });
       submittedToApp = true;
-      onSubmit(fullValues);
+      await onSubmit(fullValues);
     } catch (err: any) {
       if (!submittedToApp) sessionStorage.removeItem('hcrs_registration_in_progress');
       console.error('Razorpay Registration Error:', err);
