@@ -1379,7 +1379,11 @@ export default function App() {
             console.error("Error healing UID mismatch:", healErr);
           }
 
-          if (!userData && !isAdminEmail) {
+          // A new registration creates the Firebase Auth identity before payment,
+          // but its complete member profile is written only after payment succeeds.
+          // Do not create a blank legacy profile during that window; it can trigger
+          // Mandatory Profile Completion and leave an incomplete user record if checkout is cancelled.
+          if (!userData && !isAdminEmail && currentViewRef.current !== 'register') {
             console.log("Auto-initializing member profile for Google auth user:", authUser.uid, authUser.email);
             const newUserDoc: UserProfile = {
               uid: authUser.uid,
