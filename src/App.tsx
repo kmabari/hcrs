@@ -1383,7 +1383,9 @@ export default function App() {
           // the complete member profile is saved only after payment succeeds.
           // Avoid creating a blank legacy profile during this window, which can
           // incorrectly trigger Mandatory Profile Completion.
-          if (!userData && !isAdminEmail && currentViewRef.current !== 'register') {
+          const registrationInProgress = typeof window !== 'undefined' &&
+            sessionStorage.getItem('hcrs_registration_in_progress') === 'true';
+          if (!userData && !isAdminEmail && currentViewRef.current !== 'register' && !registrationInProgress) {
             console.log("Auto-initializing member profile for Google auth user:", authUser.uid, authUser.email);
             const newUserDoc: UserProfile = {
               uid: authUser.uid,
@@ -1453,7 +1455,11 @@ export default function App() {
             (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup))
           );
 
-          if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
+          // Registration creates Auth before the paid member document is saved.
+          // Keep the registration screen active until handleRegistration finishes.
+          const registrationStillInProgress = typeof window !== 'undefined' &&
+            sessionStorage.getItem('hcrs_registration_in_progress') === 'true';
+          if (!registrationStillInProgress && currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
             if (isAdmin) {
                setView('admin');
             } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
@@ -2551,6 +2557,7 @@ export default function App() {
       toast.error(error.message || 'Registration failed.', { id: loadingToast, duration: 8000 });
       setView('register');
     } finally {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_registration_in_progress');
       setIsRegistering(false);
     }
   };
