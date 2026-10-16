@@ -1449,7 +1449,13 @@ export default function App() {
             (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup))
           );
 
-          if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
+          // While a new member is registering, Firebase Auth can fire immediately
+          // when the registration flow creates its account before payment. Do not
+          // let the legacy login/profile-completion router hijack that registration
+          // screen; the registration flow will route after payment is resolved.
+          if (currentViewRef.current !== 'janamail' &&
+              currentViewRef.current !== 'eledger' &&
+              currentViewRef.current !== 'register') {
             if (isAdmin) {
                setView('admin');
             } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
