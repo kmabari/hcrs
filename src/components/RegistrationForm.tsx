@@ -69,7 +69,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface RegistrationFormProps {
-  onSubmit: (values: any) => void;
+  onSubmit: (values: any) => void | Promise<void>;
   districtQuotas?: Record<string, number>;
   districtQuotasUsed?: Record<string, number>;
   initialMobile?: string;
@@ -88,6 +88,7 @@ export default function RegistrationForm({
   const [step, setStep] = React.useState<'details' | 'payment'>('details');
   const [agreeAdhoc, setAgreeAdhoc] = React.useState(false);
   const [isProcessingRazorpay, setIsProcessingRazorpay] = React.useState(false);
+  const [paymentProgress, setPaymentProgress] = React.useState('');
   const [isSubmittingQr, setIsSubmittingQr] = React.useState(false);
   
   // Settings & Payment State
@@ -236,11 +237,22 @@ export default function RegistrationForm({
   };
 
   const handleRazorpayRegistration = async () => {
+    if (isProcessingRazorpay) return;
     setIsProcessingRazorpay(true);
+    setPaymentProgress('രജിസ്ട്രേഷൻ വിവരങ്ങൾ പരിശോധിക്കുന്നു...');
+    const progressToast = toast.loading('രജിസ്ട്രേഷൻ വിവരങ്ങൾ പരിശോധിക്കുന്നു...');
+    let submittedToApp = false;
+    let paymentFailed = false;
     const formVals = form.getValues();
     try {
       const valid = await form.trigger();
       if (!valid) throw new Error('Please complete all required registration details before payment.');
+      // Firebase Auth may emit an auth-state event before payment and the full
+      // member record exist. Keep legacy profile routing paused until the App
+      // finishes saving this registration.
+      sessionStorage.setItem('hcrs_registration_in_progress', 'true');
+      setPaymentProgress('അക്കൗണ്ട് സുരക്ഷിതമായി പരിശോധിക്കുന്നു...');
+      toast.loading('അക്കൗണ്ട് സുരക്ഷിതമായി പരിശോധിക്കുന്നു...', { id: progressToast });
       const cleanMobile = formVals.mobile.replace(/\D/g, '').slice(-10);
       const authEmail = `${cleanMobile}@hcrs.society`; // Auth identity is mobile-based; contact email remains profile data.
       let registrationUser = auth.currentUser;
@@ -266,6 +278,8 @@ export default function RegistrationForm({
         }
       }
       const idToken = await registrationUser.getIdToken();
+      setPaymentProgress('രജിസ്ട്രേഷൻ സുരക്ഷിതമായി തയ്യാറാക്കുന്നു...');
+      toast.loading('രജിസ്ട്രേഷൻ സുരക്ഷിതമായി തയ്യാറാക്കുന്നു...', { id: progressToast });
       const prepareResponse = await fetch('/api/registration/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
@@ -276,6 +290,8 @@ export default function RegistrationForm({
 
       // Before opening a new checkout, recover one safely matched captured ₹200
       // payment for this authenticated profile. This prevents a second charge.
+      setPaymentProgress('പേയ്‌മെന്റ് നടപടികൾ സുരക്ഷിതമായി തയ്യാറാക്കുന്നു...');
+      toast.loading('പേയ്‌മെന്റ് നടപടികൾ സുരക്ഷിതമായി തയ്യാറാക്കുന്നു...', { id: progressToast });
       const recoveryResponse = await fetch('/api/registration/recover-captured', {
         method: 'POST', headers: { Authorization: `Bearer ${idToken}` }
       });
@@ -283,7 +299,10 @@ export default function RegistrationForm({
       if (!recoveryResponse.ok) throw new Error(recovery.error || 'Captured payment recovery check failed. Do not pay again.');
       if (recovery.recovered && recovery.paymentDetails) {
         toast.success('Existing captured ₹200 payment recovered. No second payment was taken.');
-        onSubmit({
+        setPaymentProgress('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...');
+        toast.loading('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...', { id: progressToast });
+        submittedToApp = true;
+        await onSubmit({
           ...formVals, cleanMobile,
           transactionId: recovery.paymentDetails.paymentId, paymentId: recovery.paymentDetails.paymentId,
           orderId: recovery.paymentDetails.orderId, paymentAmount: regFee, paymentMethod: 'Razorpay',
@@ -294,6 +313,8 @@ export default function RegistrationForm({
         return;
       }
 
+      setPaymentProgress('Razorpay പേയ്‌മെന്റ് തുറക്കുന്നു...');
+      toast.loading('Razorpay പേയ്‌മെന്റ് തുറക്കുന്നു...', { id: progressToast });
       const paymentDetails = await processRazorpayPayment({
         paymentType: 'registration',
         memberId: registrationUser.uid,
@@ -323,13 +344,19 @@ export default function RegistrationForm({
         paymentTimeISO: paymentDetails.paymentTime,
       };
 
-      toast.success('Razorpay Payment Verified! Completing Registration...');
-      onSubmit(fullValues);
+      setPaymentProgress('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...');
+      toast.loading('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു. അംഗത്വം സേവ് ചെയ്യുന്നു...', { id: progressToast });
+      submittedToApp = true;
+      await onSubmit(fullValues);
     } catch (err: any) {
+      paymentFailed = true;
+      if (!submittedToApp) sessionStorage.removeItem('hcrs_registration_in_progress');
       console.error('Razorpay Registration Error:', err);
-      toast.error(err.message || 'Payment failed or cancelled.');
+      toast.error(err.message || 'Payment failed or cancelled.', { id: progressToast, duration: 8000 });
     } finally {
+      if (!paymentFailed) toast.dismiss(progressToast);
       setIsProcessingRazorpay(false);
+      setPaymentProgress('');
     }
   };
 
@@ -1010,9 +1037,22 @@ export default function RegistrationForm({
                       disabled={isProcessingRazorpay}
                       className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
                     >
-                      <ShieldCheck className="w-5 h-5" />
-                      <span>{isProcessingRazorpay ? 'Processing Payment...' : `Pay ₹${regFee} via Razorpay (₹${regFee} ഓൺലൈൻ അടയ്ക്കുക)`}</span>
+                      {isProcessingRazorpay ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+                      <span>{isProcessingRazorpay ? 'Processing... / പ്രോസസ്സ് ചെയ്യുന്നു...' : `Pay ₹${regFee} via Razorpay (₹${regFee} ഓൺലൈൻ അടയ്ക്കുക)`}</span>
                     </Button>
+                    {isProcessingRazorpay && paymentProgress && (
+                      <>
+                        {paymentProgress.startsWith('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു') && (
+                          <p role="note" className="rounded-xl border border-amber-300/50 bg-amber-500/10 px-3.5 py-3 text-center text-xs sm:text-sm font-bold leading-relaxed text-amber-100">
+                            ശ്രദ്ധിക്കുക: പേയ്‌മെന്റ് ലഭിച്ചു. താങ്കളുടെ രജിസ്ട്രേഷൻ പൂർത്തിയായ വിവരം ലഭിക്കുന്നത് വരെ Back ബട്ടൺ അമർത്തുകയോ ഈ പേജ് അടയ്ക്കുകയോ ചെയ്യരുത്. ദയവായി കാത്തിരിക്കുക.
+                          </p>
+                        )}
+                        <p role="status" aria-live="polite" className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 py-3 text-center text-xs sm:text-sm font-bold text-emerald-100">
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                          <span>{paymentProgress}</span>
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -1163,6 +1203,7 @@ export default function RegistrationForm({
                     type="button" 
                     variant="outline" 
                     onClick={() => setStep('details')}
+                    disabled={isProcessingRazorpay}
                     className="w-full h-12 rounded-2xl text-slate-800 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4 text-slate-800" /> {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
