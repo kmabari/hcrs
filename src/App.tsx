@@ -1379,7 +1379,11 @@ export default function App() {
             console.error("Error healing UID mismatch:", healErr);
           }
 
-          if (!userData && !isAdminEmail) {
+          // During new registration, Firebase Auth is created before payment and
+          // the complete member profile is saved only after payment succeeds.
+          // Avoid creating a blank legacy profile during this window, which can
+          // incorrectly trigger Mandatory Profile Completion.
+          if (!userData && !isAdminEmail && currentViewRef.current !== 'register') {
             console.log("Auto-initializing member profile for Google auth user:", authUser.uid, authUser.email);
             const newUserDoc: UserProfile = {
               uid: authUser.uid,
@@ -2484,6 +2488,10 @@ export default function App() {
             constituencyCode: assemblyCode.toUpperCase(),
             membership_type: 'ADHOC_MEMBER',
             isQuotaCounted: false,
+            // RegistrationForm validates required fields before payment.
+            // Mark the new member complete so legacy profile enforcement is not applied.
+            mustCompleteProfile: false,
+            profileCompleted: true,
             paymentAmount: values.paymentAmount || 200,
             paymentId: values.paymentId || values.transactionId || '',
             orderId: values.orderId || '',
