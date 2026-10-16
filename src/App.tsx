@@ -1450,9 +1450,9 @@ export default function App() {
           const isOperator = (userData.role === 'operator' || isSecondAdminEmail) && !isAdmin;
           
           const isMustChange = false;
-          const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
+          const isMustComplete = !isAdmin && !isOperator && !isMustChange && userData.profileCompleted !== true && (
             userData.mustCompleteProfile === true ||
-            (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup))
+            (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup)
           );
 
           // Registration creates Auth before the paid member document is saved.
@@ -2175,9 +2175,9 @@ export default function App() {
         const isAdm = isMainAdminAccount(auth.currentUser?.email, finalUser);
         const isOp = (finalUser.role === 'operator' || isSecondAdmin) && !isAdm;
         const isMustChange = false;
-        const isMustComplete = !isAdm && !isOp && !isMustChange && (
+        const isMustComplete = !isAdm && !isOp && !isMustChange && finalUser.profileCompleted !== true && (
           finalUser.mustCompleteProfile === true ||
-          (finalUser.profileCompleted !== true && (!finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup))
+          (!finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup)
         );
 
         if (isAdm) {
