@@ -1031,10 +1031,6 @@ export default function RegistrationForm({
                       പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ ഫീസ് <span className="text-emerald-400 font-extrabold">₹{regFee}</span> ആയി സിസ്റ്റം നേരിട്ട് ക്രമീകരിച്ചിരിക്കുന്നു. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് Razorpay വഴി നേരിട്ട് തുക അടയ്ക്കാം.
                     </p>
 
-                    <div role="note" className="rounded-xl border border-amber-300/50 bg-amber-500/10 px-3.5 py-3 text-xs sm:text-sm font-bold leading-relaxed text-amber-100">
-                      ശ്രദ്ധിക്കുക: പേയ്‌മെന്റിന്റെ ഓരോ ഘട്ടവും പൂർത്തിയാകുന്നതുവരെ Back / Go Back അമർത്തുകയോ ഈ പേജ് അടയ്ക്കുകയോ ചെയ്യരുത്. പേയ്‌മെന്റ് സ്ഥിരീകരിച്ച് അംഗത്വം സേവ് ചെയ്യുന്ന സന്ദേശം വരുന്നതുവരെ ദയവായി കാത്തിരിക്കുക.
-                    </div>
-
                     <Button
                       type="button"
                       onClick={handleRazorpayRegistration}
@@ -1045,10 +1041,17 @@ export default function RegistrationForm({
                       <span>{isProcessingRazorpay ? 'Processing... / പ്രോസസ്സ് ചെയ്യുന്നു...' : `Pay ₹${regFee} via Razorpay (₹${regFee} ഓൺലൈൻ അടയ്ക്കുക)`}</span>
                     </Button>
                     {isProcessingRazorpay && paymentProgress && (
-                      <p role="status" aria-live="polite" className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 py-3 text-center text-xs sm:text-sm font-bold text-emerald-100">
-                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                        <span>{paymentProgress}</span>
-                      </p>
+                      <>
+                        {paymentProgress.startsWith('പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു') && (
+                          <p role="note" className="rounded-xl border border-amber-300/50 bg-amber-500/10 px-3.5 py-3 text-center text-xs sm:text-sm font-bold leading-relaxed text-amber-100">
+                            ശ്രദ്ധിക്കുക: പേയ്‌മെന്റ് ലഭിച്ചു. താങ്കളുടെ രജിസ്ട്രേഷൻ പൂർത്തിയായ വിവരം ലഭിക്കുന്നത് വരെ Back ബട്ടൺ അമർത്തുകയോ ഈ പേജ് അടയ്ക്കുകയോ ചെയ്യരുത്. ദയവായി കാത്തിരിക്കുക.
+                          </p>
+                        )}
+                        <p role="status" aria-live="polite" className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 py-3 text-center text-xs sm:text-sm font-bold text-emerald-100">
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                          <span>{paymentProgress}</span>
+                        </p>
+                      </>
                     )}
                   </div>
                 )}
