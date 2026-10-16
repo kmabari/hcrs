@@ -2484,6 +2484,11 @@ export default function App() {
             constituencyCode: assemblyCode.toUpperCase(),
             membership_type: 'ADHOC_MEMBER',
             isQuotaCounted: false,
+            // RegistrationForm already validates the required profile fields before
+            // allowing payment. Do not send newly registered members through the
+            // legacy mandatory profile-completion screen on their first login.
+            mustCompleteProfile: false,
+            profileCompleted: true,
             paymentAmount: values.paymentAmount || 200,
             paymentId: values.paymentId || values.transactionId || '',
             orderId: values.orderId || '',
