@@ -242,6 +242,7 @@ export default function RegistrationForm({
     setPaymentProgress('രജിസ്ട്രേഷൻ വിവരങ്ങൾ പരിശോധിക്കുന്നു...');
     const progressToast = toast.loading('രജിസ്ട്രേഷൻ വിവരങ്ങൾ പരിശോധിക്കുന്നു...');
     let submittedToApp = false;
+    let paymentFailed = false;
     const formVals = form.getValues();
     try {
       const valid = await form.trigger();
@@ -348,11 +349,12 @@ export default function RegistrationForm({
       submittedToApp = true;
       await onSubmit(fullValues);
     } catch (err: any) {
+      paymentFailed = true;
       if (!submittedToApp) sessionStorage.removeItem('hcrs_registration_in_progress');
       console.error('Razorpay Registration Error:', err);
       toast.error(err.message || 'Payment failed or cancelled.', { id: progressToast, duration: 8000 });
     } finally {
-      toast.dismiss(progressToast);
+      if (!paymentFailed) toast.dismiss(progressToast);
       setIsProcessingRazorpay(false);
       setPaymentProgress('');
     }
