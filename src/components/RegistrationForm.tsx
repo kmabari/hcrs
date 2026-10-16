@@ -290,7 +290,7 @@ export default function RegistrationForm({
 
       // Before opening a new checkout, recover one safely matched captured ₹200
       // payment for this authenticated profile. This prevents a second charge.
-      setPaymentProgress('മുമ്പ് നടന്ന പേയ്‌മെന്റ് പരിശോധിക്കുന്നു...');
+      setPaymentProgress('സ്ഥിരീകരണം ലഭിക്കാതെ കിടക്കുന്ന പേയ്‌മെന്റ് ഉണ്ടോ എന്ന് പരിശോധിക്കുന്നു...');
       toast.loading('മുമ്പ് നടന്ന പേയ്‌മെന്റ് പരിശോധിക്കുന്നു...', { id: progressToast });
       const recoveryResponse = await fetch('/api/registration/recover-captured', {
         method: 'POST', headers: { Authorization: `Bearer ${idToken}` }
@@ -1031,6 +1031,10 @@ export default function RegistrationForm({
                       പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ ഫീസ് <span className="text-emerald-400 font-extrabold">₹{regFee}</span> ആയി സിസ്റ്റം നേരിട്ട് ക്രമീകരിച്ചിരിക്കുന്നു. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് Razorpay വഴി നേരിട്ട് തുക അടയ്ക്കാം.
                     </p>
 
+                    <div role="note" className="rounded-xl border border-amber-300/50 bg-amber-500/10 px-3.5 py-3 text-xs sm:text-sm font-bold leading-relaxed text-amber-100">
+                      ശ്രദ്ധിക്കുക: പേയ്‌മെന്റിന്റെ ഓരോ ഘട്ടവും പൂർത്തിയാകുന്നതുവരെ Back / Go Back അമർത്തുകയോ ഈ പേജ് അടയ്ക്കുകയോ ചെയ്യരുത്. പേയ്‌മെന്റ് സ്ഥിരീകരിച്ച് അംഗത്വം സേവ് ചെയ്യുന്ന സന്ദേശം വരുന്നതുവരെ ദയവായി കാത്തിരിക്കുക.
+                    </div>
+
                     <Button
                       type="button"
                       onClick={handleRazorpayRegistration}
@@ -1196,6 +1200,7 @@ export default function RegistrationForm({
                     type="button" 
                     variant="outline" 
                     onClick={() => setStep('details')}
+                    disabled={isProcessingRazorpay}
                     className="w-full h-12 rounded-2xl text-slate-800 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4 text-slate-800" /> {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
