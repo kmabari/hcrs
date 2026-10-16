@@ -290,8 +290,8 @@ export default function RegistrationForm({
 
       // Before opening a new checkout, recover one safely matched captured ₹200
       // payment for this authenticated profile. This prevents a second charge.
-      setPaymentProgress('സ്ഥിരീകരണം ലഭിക്കാതെ കിടക്കുന്ന പേയ്‌മെന്റ് ഉണ്ടോ എന്ന് പരിശോധിക്കുന്നു...');
-      toast.loading('മുമ്പ് നടന്ന പേയ്‌മെന്റ് പരിശോധിക്കുന്നു...', { id: progressToast });
+      setPaymentProgress('പേയ്‌മെന്റ് നടപടികൾ സുരക്ഷിതമായി തയ്യാറാക്കുന്നു...');
+      toast.loading('പേയ്‌മെന്റ് നടപടികൾ സുരക്ഷിതമായി തയ്യാറാക്കുന്നു...', { id: progressToast });
       const recoveryResponse = await fetch('/api/registration/recover-captured', {
         method: 'POST', headers: { Authorization: `Bearer ${idToken}` }
       });
