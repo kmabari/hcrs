@@ -25,18 +25,33 @@ const getFirebaseConfig = () => {
   const envDatabaseId = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_DATABASE_ID : undefined;
 
   const apiKey = cleanStr(envApiKey) || cleanStr((firebaseConfig as any).apiKey);
-  const projectId = cleanStr(envProjectId) || cleanStr((firebaseConfig as any).projectId) || 'hcrs-membership';
-  
-  // Intelligent authDomain resolution:
-  // 1. env.VITE_FIREBASE_AUTH_DOMAIN
-  // 2. firebaseConfig.authDomain
-  // 3. Derived from projectId: `${projectId}.firebaseapp.com`
-  let authDomain = cleanStr(envAuthDomain) || cleanStr((firebaseConfig as any).authDomain);
-  // Strip http:// or https:// and any trailing slashes if accidentally provided in Vercel env settings
-  authDomain = authDomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
-  if (!authDomain && projectId) {
-    authDomain = `${projectId}.firebaseapp.com`;
+  const rawProjectId = cleanStr(envProjectId) || cleanStr((firebaseConfig as any).projectId) || 'hcrs-membership';
+  const projectId = /^[a-z0-9-]+$/i.test(rawProjectId) ? rawProjectId : 'hcrs-membership';
+
+  // Strict authDomain resolution & validation:
+  // Never allow a misconfigured URL (e.g. docs.google.com/videos/... or workspace.google.com/...)
+  // or a path-containing value in VITE_FIREBASE_AUTH_DOMAIN to hijack Firebase OAuth handlers.
+  const defaultAuthDomain = cleanStr((firebaseConfig as any).authDomain) || `${projectId}.firebaseapp.com`;
+  let candidateAuthDomain = cleanStr(envAuthDomain) || defaultAuthDomain;
+  candidateAuthDomain = candidateAuthDomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+
+  const allowedAuthDomains = new Set([
+    `${projectId}.firebaseapp.com`,
+    `${projectId}.web.app`,
+    'hcrs-membership.firebaseapp.com',
+    'hcrs-membership.web.app',
+  ]);
+  const isValidAuthDomain =
+    /^[a-z0-9.-]+$/i.test(candidateAuthDomain) &&
+    !candidateAuthDomain.includes('/') &&
+    allowedAuthDomains.has(candidateAuthDomain.toLowerCase());
+
+  if (!isValidAuthDomain && candidateAuthDomain && typeof window !== 'undefined') {
+    console.warn(
+      `[Firebase Auth Init] Ignoring invalid or external VITE_FIREBASE_AUTH_DOMAIN "${candidateAuthDomain}". Using "${defaultAuthDomain}".`
+    );
   }
+  const authDomain = isValidAuthDomain ? candidateAuthDomain : defaultAuthDomain;
 
   let storageBucket = cleanStr(envStorageBucket) || cleanStr((firebaseConfig as any).storageBucket);
   storageBucket = storageBucket.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();

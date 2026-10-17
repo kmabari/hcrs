@@ -805,8 +805,52 @@ export default function App() {
       });
   }, []);
 
+  // Reset transient Google login lock if page is restored from browser Back-Forward Cache (bfcache)
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setIsGoogleLoggingIn(false);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pageshow', handlePageShow);
+      return () => window.removeEventListener('pageshow', handlePageShow);
+    }
+  }, []);
+
+  const routeAuthenticatedGoogleUser = useCallback((firebaseUser: { uid: string; email?: string | null; displayName?: string | null }): boolean => {
+    const email = (firebaseUser.email || '').toLowerCase().trim();
+    if (!email) return false;
+    const districtEntry = resolveDistrictFromSlugOrCode(
+      typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null
+    );
+    const isMainAdm = isMainAdminAccount(email, user);
+    const strictDistrict = getDistrictAdminDistrict(email);
+    const isSecondAdm = SECOND_ADMINS.some(e => e.toLowerCase() === email);
+
+    if (isMainAdm && !districtEntry) {
+      setView('admin');
+      return true;
+    }
+    if (strictDistrict || isSecondAdm || (isMainAdm && districtEntry)) {
+      setView('operator');
+      return true;
+    }
+    return false;
+  }, [user]);
+
   const handleGoogleLogin = async () => {
     if (isGoogleLoggingIn) return;
+
+    // If an authorized admin session is already active on the landing page, enter directly
+    // instead of opening a redundant popup or triggering a page redirect.
+    if (currentViewRef.current === 'landing' && auth.currentUser?.email) {
+      if (routeAuthenticatedGoogleUser(auth.currentUser)) {
+        toast.success(`Signed in as ${auth.currentUser.email}`);
+        return;
+      }
+    }
+
     setIsGoogleLoggingIn(true);
     const loadingToast = toast.loading('Connecting to Google Sign-In...');
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -826,6 +870,16 @@ export default function App() {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("[Google Auth] Popup authentication successful:", result.user.email);
       toast.success(`Signed in with Google as ${result.user.email || 'User'}!`, { id: loadingToast });
+      // Ensure immediate view transition even if auth.currentUser already had the same UID
+      if (!routeAuthenticatedGoogleUser(result.user)) {
+        if (currentViewRef.current === 'login' || currentViewRef.current === 'landing') {
+          if (user && (user.role === 'operator' || getDistrictAdminDistrict(result.user.email))) {
+            setView('operator');
+          } else if (user) {
+            setView('card');
+          }
+        }
+      }
     } catch (error: any) {
       console.error("[Google Auth Error Details]:", {
         code: error?.code,
@@ -838,7 +892,14 @@ export default function App() {
         error
       });
 
-      if (error?.code === 'auth/popup-closed-by-user' || error?.message?.includes('closed-by-user')) {
+      if (
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.message?.includes('closed-by-user') ||
+        error?.code === 'auth/cancelled-popup-request' ||
+        error?.message?.includes('cancelled-popup-request')
+      ) {
+        // Never trigger signInWithRedirect on a cancelled or duplicate popup request,
+        // as that navigates the main HCRS tab away while a popup is active.
         toast.info('Google sign-in was closed or cancelled.', { id: loadingToast });
       } else if (error?.code === 'auth/unauthorized-domain' || error?.message?.includes('unauthorized-domain')) {
         toast.error(
@@ -851,18 +912,21 @@ export default function App() {
         );
       } else if (
         error?.code === 'auth/popup-blocked' || 
-        error?.message?.includes('popup-blocked') || 
-        error?.code === 'auth/cancelled-popup-request' ||
-        error?.code === 'auth/operation-not-supported-in-this-environment'
+        error?.message?.includes('popup-blocked')
       ) {
+        toast.error(
+          'Browser popup was blocked. Please allow popups for www.hcrs.in and try again, or sign in with Mobile Number & Password.',
+          { id: loadingToast, duration: 8000 }
+        );
+      } else if (error?.code === 'auth/operation-not-supported-in-this-environment') {
         try {
-          console.log("[Google Auth] Popup was blocked or restricted. Initiating signInWithRedirect fallback...");
+          console.log("[Google Auth] Popup not supported in this environment. Initiating signInWithRedirect fallback...");
           toast.loading('Redirecting to Google Login...', { id: loadingToast });
           await signInWithRedirect(auth, googleProvider);
           return;
         } catch (redirErr: any) {
           console.error("[Google Auth Redirect Fallback Error]:", redirErr?.code, redirErr?.message, redirErr);
-          toast.error(`Browser Popup was blocked (${redirErr?.code || 'Error'}). Please use Mobile Number & Password.`, { id: loadingToast, duration: 8000 });
+          toast.error(`Google Sign-In unavailable (${redirErr?.code || 'Error'}). Please use Mobile Number & Password.`, { id: loadingToast, duration: 8000 });
         }
       } else {
         const errorMsg = error?.message || 'Google sign-in failed.';
@@ -1379,11 +1443,13 @@ export default function App() {
             console.error("Error healing UID mismatch:", healErr);
           }
 
-          // A new registration creates the Firebase Auth identity before payment,
-          // but its complete member profile is written only after payment succeeds.
-          // Do not create a blank legacy profile during that window; it can trigger
-          // Mandatory Profile Completion and leave an incomplete user record if checkout is cancelled.
-          if (!userData && !isAdminEmail && currentViewRef.current !== 'register') {
+          // During new registration, Firebase Auth is created before payment and
+          // the complete member profile is saved only after payment succeeds.
+          // Avoid creating a blank legacy profile during this window, which can
+          // incorrectly trigger Mandatory Profile Completion.
+          const registrationInProgress = typeof window !== 'undefined' &&
+            sessionStorage.getItem('hcrs_registration_in_progress') === 'true';
+          if (!userData && !isAdminEmail && currentViewRef.current !== 'register' && !registrationInProgress) {
             console.log("Auto-initializing member profile for Google auth user:", authUser.uid, authUser.email);
             const newUserDoc: UserProfile = {
               uid: authUser.uid,
@@ -1448,12 +1514,16 @@ export default function App() {
           const isOperator = (userData.role === 'operator' || isSecondAdminEmail) && !isAdmin;
           
           const isMustChange = false;
-          const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
+          const isMustComplete = !isAdmin && !isOperator && !isMustChange && userData.profileCompleted !== true && (
             userData.mustCompleteProfile === true ||
-            (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup))
+            (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup)
           );
 
-          if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
+          // Registration creates Auth before the paid member document is saved.
+          // Keep the registration screen active until handleRegistration finishes.
+          const registrationStillInProgress = typeof window !== 'undefined' &&
+            sessionStorage.getItem('hcrs_registration_in_progress') === 'true';
+          if (!registrationStillInProgress && currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
             if (isAdmin) {
                setView('admin');
             } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
@@ -2169,9 +2239,9 @@ export default function App() {
         const isAdm = isMainAdminAccount(auth.currentUser?.email, finalUser);
         const isOp = (finalUser.role === 'operator' || isSecondAdmin) && !isAdm;
         const isMustChange = false;
-        const isMustComplete = !isAdm && !isOp && !isMustChange && (
+        const isMustComplete = !isAdm && !isOp && !isMustChange && finalUser.profileCompleted !== true && (
           finalUser.mustCompleteProfile === true ||
-          (finalUser.profileCompleted !== true && (!finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup))
+          (!finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup)
         );
 
         if (isAdm) {
@@ -2371,13 +2441,23 @@ export default function App() {
       toast.loading('Creating secure account...', { id: loadingToast });
       let authResult;
       
+      const mobileAuthEmail = `${cleanMobile}@hcrs.society`;
       const authEmail = cleanEmail && cleanEmail.includes('@')
         ? cleanEmail
-        : `${cleanMobile}@hcrs.society`;
+        : mobileAuthEmail;
 
-      // CHECK IF ALREADY SIGNED IN (from a previous partial registration)
-      if (auth.currentUser && (auth.currentUser.email === authEmail || auth.currentUser.email === cleanEmail)) {
-        console.log("Using existing auth session for recovery");
+      // Razorpay registration authenticates the member with the mobile-based
+      // Firebase identity before checkout. Reuse that exact UID after payment,
+      // even when the member supplied a separate contact email; otherwise a
+      // second Firebase account could be created and the payment UID would not
+      // match the membership record.
+      const currentAuthEmail = (auth.currentUser?.email || '').toLowerCase();
+      if (auth.currentUser && (
+        currentAuthEmail === authEmail.toLowerCase() ||
+        currentAuthEmail === (cleanEmail || '').toLowerCase() ||
+        currentAuthEmail === mobileAuthEmail.toLowerCase()
+      )) {
+        console.log("Using existing auth session for recovery/registration");
         authResult = { user: auth.currentUser };
       } else {
         try {
@@ -2488,9 +2568,8 @@ export default function App() {
             constituencyCode: assemblyCode.toUpperCase(),
             membership_type: 'ADHOC_MEMBER',
             isQuotaCounted: false,
-            // RegistrationForm already validates the required profile fields before
-            // allowing payment. Do not send newly registered members through the
-            // legacy mandatory profile-completion screen on their first login.
+            // RegistrationForm validates required fields before payment.
+            // Mark the new member complete so legacy profile enforcement is not applied.
             mustCompleteProfile: false,
             profileCompleted: true,
             paymentAmount: values.paymentAmount || 200,
@@ -2552,6 +2631,7 @@ export default function App() {
       toast.error(error.message || 'Registration failed.', { id: loadingToast, duration: 8000 });
       setView('register');
     } finally {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_registration_in_progress');
       setIsRegistering(false);
     }
   };
@@ -3988,7 +4068,7 @@ export default function App() {
               if (mob) setPrefilledMobile(mob.replace(/\D/g, '').slice(-10));
               setView('register');
             }}
-            isLoading={isLoggingIn}
+            isLoading={isLoggingIn || isGoogleLoggingIn}
           />
         </div>
       )}
