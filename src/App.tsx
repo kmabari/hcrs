@@ -2821,10 +2821,10 @@ export default function App() {
         throw new Error(reserveJson.error || 'Secure duplicate-mobile check unavailable. Member was not created.');
       }
 
-      // Sanitize email/username
-      const finalEmail = values.email && values.email.includes('@') 
-        ? values.email.toLowerCase().trim()
-        : `${cleanMobile}@hcrs.society`;
+      // Firebase identity must be unique per member mobile, never the contact email.
+      // Contact email is profile data only; reusing it as Auth identity blocks unrelated
+      // new members when families/admins share one email address.
+      const finalEmail = `${cleanMobile}@hcrs.society`;
 
       // Use the admin's district for quota if they are an operator/second admin
       const currentEmail = (user?.email || '').toLowerCase().trim();
