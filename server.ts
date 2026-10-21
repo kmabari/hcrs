@@ -2730,7 +2730,32 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         } catch (_) { return ''; }
       };
       const usersSnap = await dbAdmin.collection('users').get();
-      const candidates = usersSnap.docs.filter(d => cleanMobile((d.data() || {}).mobile || (d.data() || {}).phone || (d.data() || {}).phoneNumber || (d.data() || {}).mobileNumber) === mobile);
+      const candidates = usersSnap.docs.filter(d => {
+        const x:any = d.data() || {};
+        return cleanMobile(x.mobile || x.phone || x.phoneNumber || x.mobileNumber) === mobile;
+      });
+      // Read-only identity cross-check: Auth users can exist even when registration
+      // failed before a Firestore profile was created. Never modify Auth or Firestore here.
+      const expectedAuthEmail = `${mobile}@hcrs.society`;
+      let authAccount:any = { found:false, email:expectedAuthEmail, uid:'', disabled:null, createdAt:'', lastSignInAt:'' };
+      try {
+        const authUser = await admin.auth().getUserByEmail(expectedAuthEmail);
+        authAccount = {
+          found:true, email:authUser.email || expectedAuthEmail, uid:authUser.uid,
+          disabled:Boolean(authUser.disabled),
+          createdAt:authUser.metadata?.creationTime || '',
+          lastSignInAt:authUser.metadata?.lastSignInTime || ''
+        };
+      } catch (authLookupError:any) {
+        if (authLookupError?.code !== 'auth/user-not-found') throw authLookupError;
+      }
+      const authUidProfile = authAccount.found
+        ? usersSnap.docs.find(d => d.id === authAccount.uid) || null
+        : null;
+      const emailProfileMatches = usersSnap.docs.filter(d => {
+        const x:any = d.data() || {};
+        return String(x.email || '').trim().toLowerCase() === expectedAuthEmail.toLowerCase();
+      });
       const paymentsSnap = await dbAdmin.collection('payments').limit(10000).get();
       const rows:any[] = [];
       for (const d of candidates) {
@@ -2769,11 +2794,26 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const top = rows[0];
       const second = rows[1];
       const decisive = Boolean(top && rows.length > 1 && (top.score > (second?.score || 0) || ((Number(top.serial || 0) > 0) && (Number(second?.serial || 0) > 0) && Number(top.serial) < Number(second.serial))));
+      const authLinkedProfile = authUidProfile ? {
+        uid:authUidProfile.id,
+        name:(authUidProfile.data() as any)?.name || (authUidProfile.data() as any)?.fullName || '',
+        mobile:cleanMobile((authUidProfile.data() as any)?.mobile || (authUidProfile.data() as any)?.phone || (authUidProfile.data() as any)?.phoneNumber || (authUidProfile.data() as any)?.mobileNumber),
+        membershipId:(authUidProfile.data() as any)?.membershipId || (authUidProfile.data() as any)?.memberId || '',
+        status:(authUidProfile.data() as any)?.status || ''
+      } : null;
       return res.json({
         success:true, readOnly:true, mobile, duplicate:Boolean(rows.length > 1), records:rows,
-        recommendation: rows.length < 2 ? 'NO_DUPLICATE' : decisive ? 'SYSTEM_RECOMMENDS_KEEP' : 'MANUAL_REVIEW',
+        authAccount,
+        authUidProfile:authLinkedProfile,
+        authEmailProfileMatchCount:emailProfileMatches.length,
+        authEmailProfileMatches:emailProfileMatches.map(d => ({
+          uid:d.id, name:(d.data() as any)?.name || (d.data() as any)?.fullName || '',
+          membershipId:(d.data() as any)?.membershipId || (d.data() as any)?.memberId || ''
+        })),
+        paymentsScanned:paymentsSnap.size,
+        recommendation: rows.length < 2 ? (authAccount.found ? 'AUTH_ACCOUNT_REQUIRES_REVIEW' : 'NO_DUPLICATE') : decisive ? 'SYSTEM_RECOMMENDS_KEEP' : 'MANUAL_REVIEW',
         keepUid: decisive ? top.uid : '', keepMembershipId: decisive ? top.membershipId : '',
-        safety: 'No record was merged, deleted, archived, or modified.'
+        safety: 'Read-only audit only. No record was merged, deleted, archived, or modified.'
       });
     } catch (err:any) {
       console.error("[Duplicate Member Investigation] Error:", err?.message || err);
