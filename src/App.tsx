@@ -2882,8 +2882,27 @@ export default function App() {
             const existingCredential = await signInWithEmailAndPassword(secondaryAuth, finalEmail, values.pin);
             uid = existingCredential.user.uid;
             await signOut(secondaryAuth);
-          } catch {
-            throw new Error('ഈ email/mobile-ന് Firebase Auth account നിലവിലുണ്ട്. നൽകിയ PIN ഉപയോഗിച്ച് തിരിച്ചറിയാൻ കഴിഞ്ഞില്ല; duplicate offline profile സൃഷ്ടിച്ചിട്ടില്ല.');
+          } catch (signInError: any) {
+            // Main Admin can recover an orphan Auth identity only when the server
+            // confirms there is no member profile for this mobile. Never reset an
+            // existing member's password or create a second Auth identity.
+            try {
+              const adminToken = await auth.currentUser?.getIdToken();
+              if (!adminToken) throw new Error("Admin session is missing. Please sign in again.");
+              const recoveryResponse = await fetch('/api/admin/resolve-auth-only-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+                body: JSON.stringify({ mobile: cleanMobile, pin: values.pin })
+              });
+              const recoveryBody = await recoveryResponse.json().catch(() => ({}));
+              if (!recoveryResponse.ok || !recoveryBody.uid) {
+                throw new Error(recoveryBody.error || "Existing Auth account could not be safely resolved.");
+              }
+              uid = String(recoveryBody.uid);
+              toast.success("പൂർത്തിയാകാത്ത പഴയ അക്കൗണ്ട് സുരക്ഷിതമായി തിരിച്ചുപിടിച്ചു. പുതിയ പ്രൊഫൈൽ തുടരുന്നു.");
+            } catch (recoveryError: any) {
+              throw new Error(`ഈ മൊബൈൽ നമ്പറിന് Firebase Auth അക്കൗണ്ട് നിലവിലുണ്ട്. അംഗത്വ പ്രൊഫൈൽ കണ്ടെത്തിയില്ലെങ്കിലും അക്കൗണ്ട് സുരക്ഷിതമായി തിരിച്ചുപിടിക്കാൻ കഴിഞ്ഞില്ല: ${recoveryError?.message || 'Main Admin പരിശോധന ആവശ്യമാണ്.'}`);
+            }
           }
         } else {
            throw authError; // Re-throw if it's a different error
