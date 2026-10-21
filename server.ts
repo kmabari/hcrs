@@ -2791,16 +2791,66 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const ref=dbAdmin.collection('member_mobile_index').doc(mobile);
       await dbAdmin.runTransaction(async tx => {
         const existing=await tx.get(ref);
-        if (existing.exists) throw new Error("MOBILE_ALREADY_REGISTERED");
         const usersSnap=await dbAdmin.collection('users').get();
         const found=usersSnap.docs.find(d=>cleanMobile((d.data()||{}).mobile||(d.data()||{}).phone||(d.data()||{}).phoneNumber||(d.data()||{}).mobileNumber)===mobile);
         if(found) throw new Error("MOBILE_ALREADY_REGISTERED");
+        if (existing.exists) {
+          const existingData:any = existing.data() || {};
+          // A prior attempt can fail after creating the reservation but before saving
+          // the member profile. Reuse that reservation only when no profile exists.
+          if (existingData.status === "reserved") {
+            tx.set(ref,{ mobile, reservedAt:admin.firestore.FieldValue.serverTimestamp(), status:"reserved", resumedAt:admin.firestore.FieldValue.serverTimestamp() },{merge:true});
+            return;
+          }
+          throw new Error("MOBILE_ALREADY_REGISTERED");
+        }
         tx.create(ref,{ mobile, reservedAt:admin.firestore.FieldValue.serverTimestamp(), status:'reserved' });
       });
       return res.json({ success:true, mobile });
     } catch(err:any) {
       if(String(err?.message||'').includes('MOBILE_ALREADY_REGISTERED')) return res.status(409).json({ error:"This mobile number is already registered." });
       return res.status(500).json({ error:"Mobile duplicate check failed." });
+    }
+  });
+
+  // ADMIN-ONLY recovery for Auth identities left behind by an interrupted registration.
+  // It never deletes/resets Auth accounts and refuses to attach an identity that already has a member profile.
+  app.post(["/api/admin/resolve-auth-only-member", "/admin/resolve-auth-only-member"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Database unavailable" });
+      const authorization = String(req.headers.authorization || "");
+      const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+      if (!token) return res.status(401).json({ error: "Admin authentication is required." });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const adminDoc = await dbAdmin.collection("users").doc(decoded.uid).get();
+      const adminData: any = adminDoc.exists ? adminDoc.data() || {} : {};
+      const email = String(decoded.email || "").toLowerCase();
+      const isMainAdmin = email === "hcrskerala@gmail.com" ||
+        (adminData.role === "admin" && !adminData.district) ||
+        adminData.isMainAdmin === true;
+      if (!isMainAdmin) return res.status(403).json({ error: "Only Main Admin can resolve an existing Auth account." });
+      const mobile = String(req.body?.mobile || "").replace(/\\D/g, "").slice(-10);
+      if (!/^\\d{10}$/.test(mobile)) return res.status(400).json({ error: "Valid 10-digit mobile number is required." });
+      const usersSnap = await dbAdmin.collection("users").get();
+      const profileMatches = usersSnap.docs.filter(d => {
+        const x: any = d.data() || {};
+        return String(x.mobile || x.phone || x.phoneNumber || x.mobileNumber || "").replace(/\\D/g, "").slice(-10) === mobile;
+      });
+      if (profileMatches.length) return res.status(409).json({ error: "A member profile already exists for this mobile. Use duplicate investigation; no profile was created." });
+      const authEmail = `${mobile}@hcrs.society`;
+      let authUser: any;
+      try {
+        authUser = await admin.auth().getUserByEmail(authEmail);
+      } catch (e: any) {
+        if (e?.code === "auth/user-not-found") return res.status(404).json({ error: "No existing Firebase Auth account was found for this mobile." });
+        throw e;
+      }
+      const authProfileDoc = await dbAdmin.collection("users").doc(authUser.uid).get();
+      if (authProfileDoc.exists) return res.status(409).json({ error: "The existing Auth UID already has a profile document. Main Admin must inspect it before recovery." });
+      return res.json({ success: true, uid: authUser.uid, mobile, authEmail, resolution: "AUTH_ONLY_NO_MEMBER_PROFILE" });
+    } catch (err: any) {
+      console.error("[Auth-only Member Resolution] Error:", err?.message || err);
+      return res.status(500).json({ error: "Could not resolve the existing Auth account safely." });
     }
   });
 
