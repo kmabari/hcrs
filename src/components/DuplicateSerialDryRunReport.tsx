@@ -630,8 +630,26 @@ export default function DuplicateSerialDryRunReport({ members, claims, canApply 
                       <button type="button" disabled={!mergeKeepUid || mergeBusy || deepInvestigation.records.length < 2} onClick={mergeDuplicateMembers} className="w-full rounded-xl bg-indigo-700 px-4 py-3 font-black text-white disabled:opacity-50">{mergeBusy ? 'Merging & verifying…' : 'MERGE → Keep selected record only'}</button>
                       <p className="font-black text-red-800">Merge creates an audit backup, preserves receipts/latest renewal-expiry data, verifies KEEP, then removes redundant member records.</p>
                     </div>
+                  ) : deepInvestigation && !deepInvestigation.error ? (
+                    <div className="mt-2 space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                      <p className="font-black text-amber-950">Firestore അംഗരേഖയുമായി പൊരുത്തം കണ്ടെത്തിയില്ല — Auth പരിശോധന</p>
+                      <p className="text-slate-800">Firebase Authentication അക്കൗണ്ട്: <strong>{deepInvestigation.authAccount?.found ? 'കണ്ടെത്തി' : 'കണ്ടെത്തിയില്ല'}</strong></p>
+                      {deepInvestigation.authAccount?.found && (
+                        <>
+                          <p className="break-all text-slate-700">Auth UID: {deepInvestigation.authAccount.uid}</p>
+                          <p className="text-slate-700">Auth അക്കൗണ്ട് സൃഷ്ടിച്ചത്: {deepInvestigation.authAccount.createdAt || 'വിവരം ലഭ്യമല്ല'} • അവസാന സൈൻ-ഇൻ: {deepInvestigation.authAccount.lastSignInAt || 'വിവരം ലഭ്യമല്ല'} • Disabled: {deepInvestigation.authAccount.disabled ? 'അതെ' : 'അല്ല'}</p>
+                          <p className="text-slate-800">ഈ UID-യുമായി ബന്ധമുള്ള Firestore profile: <strong>{deepInvestigation.authUidProfile ? 'കണ്ടെത്തി' : 'കണ്ടെത്തിയില്ല'}</strong></p>
+                          {deepInvestigation.authUidProfile && <p className="break-all text-slate-700">Profile UID: {deepInvestigation.authUidProfile.uid} • അംഗ ID: {deepInvestigation.authUidProfile.membershipId || 'ഇല്ല'} • പേര്: {deepInvestigation.authUidProfile.name || 'ഇല്ല'}</p>}
+                        </>
+                      )}
+                      <p className="text-slate-700">Auth email-നോട് പൊരുത്തമുള്ള profile രേഖകൾ: {deepInvestigation.authEmailProfileMatchCount ?? 0} • പരിശോധിച്ച payment രേഖകൾ: {deepInvestigation.paymentsScanned ?? 0}</p>
+                      {deepInvestigation.authEmailProfileMatches?.map((record:any, index:number) => (
+                        <p key={record.uid || index} className="break-all text-slate-700">Email match: {record.name || 'പേര് ഇല്ല'} • അംഗ ID: {record.membershipId || 'ഇല്ല'} • UID: {record.uid}</p>
+                      ))}
+                      <p className="font-black text-red-800">ഇത് Read-Only പരിശോധനയാണ്. ഒരു രേഖയും മാറ്റുകയോ ഇല്ലാതാക്കുകയോ ചെയ്തിട്ടില്ല. Auth അക്കൗണ്ട് കണ്ടെത്തിയാൽ, പുതിയ അംഗരേഖ സൃഷ്ടിക്കുന്നതിന് മുമ്പ് Main Admin കൂടുതൽ പരിശോധന നടത്തണം.</p>
+                    </div>
                   ) : (
-                    <p className="mt-2 font-bold text-slate-700">Investigation result ലഭ്യമല്ല.</p>
+                    <p className="mt-2 font-bold text-slate-700">പരിശോധനാ ഫലം ലഭ്യമല്ല. പിശക് ഉണ്ടെങ്കിൽ അത് മുകളിൽ കാണിക്കും.</p>
                   )}
                 </div>
               )}
