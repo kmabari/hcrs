@@ -2829,12 +2829,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         (adminData.role === "admin" && !adminData.district) ||
         adminData.isMainAdmin === true;
       if (!isMainAdmin) return res.status(403).json({ error: "Only Main Admin can resolve an existing Auth account." });
-      const mobile = String(req.body?.mobile || "").replace(/\\D/g, "").slice(-10);
-      if (!/^\\d{10}$/.test(mobile)) return res.status(400).json({ error: "Valid 10-digit mobile number is required." });
+      const mobile = String(req.body?.mobile || "").replace(/\D/g, "").slice(-10);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: "Valid 10-digit mobile number is required." });
       const usersSnap = await dbAdmin.collection("users").get();
       const profileMatches = usersSnap.docs.filter(d => {
         const x: any = d.data() || {};
-        return String(x.mobile || x.phone || x.phoneNumber || x.mobileNumber || "").replace(/\\D/g, "").slice(-10) === mobile;
+        return String(x.mobile || x.phone || x.phoneNumber || x.mobileNumber || "").replace(/\D/g, "").slice(-10) === mobile;
       });
       if (profileMatches.length) return res.status(409).json({ error: "A member profile already exists for this mobile. Use duplicate investigation; no profile was created." });
       const authEmail = `${mobile}@hcrs.society`;
