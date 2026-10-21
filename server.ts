@@ -2847,7 +2847,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
       const authProfileDoc = await dbAdmin.collection("users").doc(authUser.uid).get();
       if (authProfileDoc.exists) return res.status(409).json({ error: "The existing Auth UID already has a profile document. Main Admin must inspect it before recovery." });
-      return res.json({ success: true, uid: authUser.uid, mobile, authEmail, resolution: "AUTH_ONLY_NO_MEMBER_PROFILE" });
+      const requestedPin = String(req.body?.pin || "");
+      if (requestedPin.length < 6 || requestedPin.length > 128) return res.status(400).json({ error: "Enter a valid new account PIN/password (minimum 6 characters)." });
+      // Admin-authorized recovery is allowed only for an Auth identity with NO member
+      // profile anywhere for the mobile. Existing member accounts are never reset here.
+      await admin.auth().updateUser(authUser.uid, { password: requestedPin, disabled: false });
+      return res.json({ success: true, uid: authUser.uid, mobile, authEmail, resolution: "AUTH_ONLY_RECOVERED", pinUpdated: true });
     } catch (err: any) {
       console.error("[Auth-only Member Resolution] Error:", err?.message || err);
       return res.status(500).json({ error: "Could not resolve the existing Auth account safely." });
