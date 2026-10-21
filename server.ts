@@ -1878,7 +1878,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const profile = sanitizeRegistrationProfile(req.body?.profile || {});
       if (!isCompleteRegistrationProfile(profile)) return res.status(400).json({ error: 'Registration profile is incomplete' });
       const tokenEmail = String(decoded.email || '').trim().toLowerCase();
-      const expectedEmail = profile.email || `${profile.mobile}@hcrs.society`;
+      const expectedEmail = `${profile.mobile}@hcrs.society`; // Firebase Auth identity is always mobile-based; contact email is profile data only.
       if (tokenEmail !== expectedEmail) return res.status(403).json({ error: 'Authenticated account does not match the registration profile' });
       const mobileMatches = await dbAdmin.collection('users').where('mobile', '==', profile.mobile).limit(10).get();
       const existingMember = mobileMatches.docs.find(doc => doc.id !== decoded.uid && String((doc.data() || {}).membershipId || '').trim());
