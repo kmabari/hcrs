@@ -2821,6 +2821,127 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // MAIN-ADMIN ORPHANED REGISTRATION CLEANUP.
+  // Dry-run by default. Only removes interrupted-registration artifacts when no member,
+  // payment, receipt, or claim history is found. Never deletes a real member profile.
+  app.post(["/api/admin/cleanup-orphan-registration", "/admin/cleanup-orphan-registration"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: "Database unavailable." });
+      const authorization = String(req.headers.authorization || "");
+      const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+      if (!token) return res.status(401).json({ error: "Admin authentication is required." });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const adminDoc = await dbAdmin.collection("users").doc(decoded.uid).get();
+      const adminData: any = adminDoc.exists ? adminDoc.data() || {} : {};
+      const email = String(decoded.email || "").toLowerCase();
+      const mainAdmin = isMainAdminAccount(decoded.email || "", adminData) ||
+        email === "hcrskerala@gmail.com" ||
+        (adminData.role === "admin" && !adminData.district) ||
+        adminData.isMainAdmin === true;
+      if (!mainAdmin) return res.status(403).json({ error: "Only Main Admin can use this cleanup tool." });
+
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      const confirmMobile = cleanTenDigitMobile(req.body?.confirmMobile);
+      const executeDelete = req.body?.executeDelete === true;
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: "Enter a valid 10-digit mobile number." });
+      if (executeDelete && confirmMobile !== mobile) {
+        return res.status(400).json({ error: "For deletion, confirmMobile must exactly match the mobile number." });
+      }
+
+      const usersSnap = await dbAdmin.collection("users").get();
+      const profileMatches = usersSnap.docs.filter(d => {
+        const x: any = d.data() || {};
+        return cleanTenDigitMobile(x.mobile || x.phone || x.phoneNumber || x.mobileNumber) === mobile;
+      });
+      const authEmail = `${mobile}@hcrs.society`;
+      let authUser: any = null;
+      try { authUser = await admin.auth().getUserByEmail(authEmail); }
+      catch (e: any) { if (e?.code !== "auth/user-not-found") throw e; }
+
+      const attemptsSnap = await dbAdmin.collection("registration_attempts").get();
+      const attemptMatches = attemptsSnap.docs.filter(d => {
+        const x: any = d.data() || {};
+        const p: any = x.profile || {};
+        return cleanTenDigitMobile(p.mobile || x.mobile || x.phone) === mobile ||
+          (authUser && d.id === authUser.uid);
+      });
+
+      const indexRef = dbAdmin.collection("member_mobile_index").doc(mobile);
+      const indexSnap = await indexRef.get();
+
+      const paymentsSnap = await dbAdmin.collection("payments").limit(10000).get();
+      const paymentMatches = paymentsSnap.docs.filter(d => {
+        const x: any = d.data() || {};
+        return cleanTenDigitMobile(x.mobile || x.phone || x.phoneNumber) === mobile ||
+          Boolean(authUser && String(x.memberId || x.uid || x.userId || "") === authUser.uid);
+      });
+
+      const receiptMatches: any[] = [];
+      for (const userDoc of profileMatches) {
+        const receipts = await userDoc.ref.collection("receipts").get();
+        for (const receipt of receipts.docs) receiptMatches.push({ path: receipt.ref.path, id: receipt.id });
+      }
+      if (authUser && !profileMatches.some(d => d.id === authUser.uid)) {
+        const authReceipts = await dbAdmin.collection("users").doc(authUser.uid).collection("receipts").get();
+        for (const receipt of authReceipts.docs) receiptMatches.push({ path: receipt.ref.path, id: receipt.id });
+      }
+
+      const claimsSnap = await dbAdmin.collection("claims").get().catch(() => null);
+      const claimMatches = (claimsSnap?.docs || []).filter(d => {
+        const x: any = d.data() || {};
+        return cleanTenDigitMobile(x.mobile || x.phone || x.phoneNumber || x.memberMobile) === mobile ||
+          Boolean(authUser && String(x.uid || x.userId || x.memberUid || "") === authUser.uid);
+      });
+
+      const blockers: string[] = [];
+      if (profileMatches.length) blockers.push("A Firestore users profile exists for this mobile; this tool never deletes member profiles.");
+      if (paymentMatches.length) blockers.push("Payment records match this mobile or Auth UID.");
+      if (receiptMatches.length) blockers.push("Receipt history exists under a user profile.");
+      if (claimMatches.length) blockers.push("Claim records match this mobile or Auth UID.");
+      if (authUser && usersSnap.docs.some(d => d.id === authUser.uid) && !profileMatches.some(d => d.id === authUser.uid)) {
+        blockers.push("The Auth UID has a Firestore profile document; manual review is required.");
+      }
+      const safeToClean = blockers.length === 0;
+      const report = {
+        success: true, readOnly: !executeDelete, mobile, safeToClean, blockers,
+        counts: { userProfiles: profileMatches.length, registrationAttempts: attemptMatches.length,
+          paymentMatches: paymentMatches.length, receipts: receiptMatches.length, claimMatches: claimMatches.length,
+          authAccount: authUser ? 1 : 0, mobileIndex: indexSnap.exists ? 1 : 0 },
+        artifacts: { registrationAttempts: attemptMatches.map(d => d.id), mobileIndexExists: indexSnap.exists,
+          authUid: authUser?.uid || "", authEmail: authUser?.email || "" }
+      };
+      if (!executeDelete) return res.json({ ...report, message: safeToClean
+        ? "Dry-run passed. Review this report, then explicitly confirm the same mobile number to remove orphaned registration artifacts."
+        : "Deletion blocked. Resolve the listed history/profile blockers manually; no data was changed." });
+      if (!safeToClean) return res.status(409).json({ ...report, readOnly: true,
+        error: "Deletion refused because linked member or financial history was found. No data was changed." });
+
+      // Re-check key safety conditions immediately before writes.
+      if (attemptMatches.length) {
+        const batch = dbAdmin.batch();
+        for (const d of attemptMatches) batch.delete(d.ref);
+        await batch.commit();
+      }
+      if (indexSnap.exists) {
+        const latestIndex = await indexRef.get();
+        if (latestIndex.exists && String((latestIndex.data() || {}).status || "") === "reserved") {
+          await indexRef.delete();
+        } else if (latestIndex.exists) {
+          return res.status(409).json({ error: "Mobile index is no longer a temporary reservation; it was not deleted." });
+        }
+      }
+      if (authUser) await admin.auth().deleteUser(authUser.uid);
+      return res.json({ success: true, readOnly: false, mobile, deleted: {
+        registrationAttempts: attemptMatches.length,
+        temporaryMobileReservation: indexSnap.exists,
+        orphanAuthAccount: Boolean(authUser)
+      }, message: "Only orphaned registration artifacts were removed. Member profiles, payments, receipts, and claims were not deleted." });
+    } catch (err: any) {
+      console.error("[Orphan Registration Cleanup] Error:", err?.message || err);
+      return res.status(500).json({ error: "Cleanup could not be completed. Review server logs; do not retry blindly." });
+    }
+  });
+
   // ATOMIC MOBILE RESERVATION: creation flows can claim one canonical mobile before creating a member.
   app.post(["/api/member/mobile-reservation", "/member/mobile-reservation"], async (req, res) => {
     try {
