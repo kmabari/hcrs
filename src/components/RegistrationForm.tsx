@@ -910,12 +910,10 @@ export default function RegistrationForm({
                   {/* Move to Step 2 Button */}
                   <Button 
                     type="submit" 
-                    disabled={!agreeAdhoc || (district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])}
+                    disabled={!agreeAdhoc}
                     className="w-full h-[52px] sm:h-14 rounded-2xl text-xs sm:text-sm font-black transition-all shadow-lg shadow-brand-blue/25 hover:shadow-brand-blue/35 uppercase tracking-widest bg-brand-blue hover:bg-[#083D91] text-white disabled:opacity-50 flex items-center justify-center gap-2 hover:translate-y-[-1px] active:translate-y-0 px-4 cursor-pointer"
                   >
-                    {(district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])
-                      ? t('reg_quota_exhausted', 'Quota Exhausted / ക്വാട്ട കഴിഞ്ഞു') 
-                      : t('reg_proceed_to_payment', 'Proceed to Payment / പേയ്മെന്റിലേക്ക് പോവുക (₹200)')}
+                    {t('reg_proceed_to_payment', 'Proceed to Payment / പേയ്മെന്റിലേക്ക് പോവുക (₹200)')}
                     <ArrowRight className="w-5 h-5 text-white shrink-0" />
                   </Button>
                 </form>
