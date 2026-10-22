@@ -332,7 +332,7 @@ export default function DistrictQuotaManager({
               District Quota & Link Management
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1 max-w-xl break-words">
-              Manage registration quotas across all 14 districts in Kerala and generate distinct direct registration links (Distinct URLs) with QR codes.
+              Manage quotas and secure district-admin login links for all 14 Kerala districts.
             </p>
           </div>
 
@@ -773,14 +773,14 @@ export default function DistrictQuotaManager({
               <div className="p-6 bg-white border-2 border-slate-100 rounded-3xl shadow-inner inline-block mx-auto">
                 <img 
                   src={qrDataUrl} 
-                  alt="District Registration QR Code" 
+                  alt="District Admin Login QR Code" 
                   className="w-56 h-56 mx-auto rounded-xl"
                 />
                 <p className="text-[11px] font-black text-brand-blue mt-3">
                   HCRS {qrModalDistrict?.name} ({DISTRICT_DETAILS[qrModalDistrict?.code || '']?.rto})
                 </p>
                 <p className="text-[9px] font-bold text-slate-400">
-                  {DISTRICT_DETAILS[qrModalDistrict?.code || '']?.mlName} District Registration
+                  {DISTRICT_DETAILS[qrModalDistrict?.code || '']?.mlName} District Admin Login
                 </p>
               </div>
 
