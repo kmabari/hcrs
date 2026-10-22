@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DISTRICTS, CONSTITUENCIES } from '../constants';
 import { UserProfile } from '../types';
-import { getDistrictShareUrl, normalizeDistrictCode, getDistrictSlug } from '../lib/districtUtils';
+import { getDistrictAdminUrl, normalizeDistrictCode, getDistrictSlug } from '../lib/districtUtils';
 import { 
   MapPin, 
   Link as LinkIcon, 
@@ -89,7 +89,7 @@ export default function DistrictQuotaManager({
 
   // Generate distinct URL for a district using canonical slug
   const getDistrictUrl = (districtCode: string) => {
-    return getDistrictShareUrl(districtCode, origin);
+    return getDistrictAdminUrl(districtCode, origin);
   };
 
   // Copy district distinct link to clipboard
@@ -108,7 +108,7 @@ export default function DistrictQuotaManager({
         document.body.removeChild(textArea);
       }
       setCopiedCode(canonicalCode);
-      toast.success(`${districtName} Distinct Registration Link Copied!`, {
+      toast.success(`${districtName} District Admin Login Link Copied!`, {
         description: url
       });
       setTimeout(() => setCopiedCode(null), 2500);
@@ -128,12 +128,12 @@ export default function DistrictQuotaManager({
     const used = districtQuotasUsed[canonicalCode] || 0;
     const remains = Math.max(0, total - used);
 
-    const message = `🏛️ *HCRS KERALA - ${districtName.toUpperCase()} DISTRICT REGISTRATION* 🏛️\n` +
+    const message = `🏛️ *HCRS KERALA - ${districtName.toUpperCase()} DISTRICT ADMIN* 🏛️\n` +
       `📌 *ജില്ല:* ${mlName} (${districtName} - ${rto})\n` +
       `📋 *ലഭ്യമായ ക്വാട്ട:* ${remains} / ${total}\n\n` +
-      `ഹൈക്കോടതി റിട്ടയേർഡ് & പെൻഷനേഴ്സ് വെൽഫെയർ സ്കീമിൽ ${mlName} ജില്ലയിലെ ഓൺലൈൻ അംഗത്വ രജിസ്ട്രേഷനായി താഴെ കാണുന്ന ലിങ്കിൽ ക്ലിക്ക് ചെയ്യുക:\n\n` +
-      `🔗 *Distinct District Link:*\n${url}\n\n` +
-      `_ഈ ലിങ്ക് വഴി രജിസ്റ്റർ ചെയ്യുമ്പോൾ ${districtName} ജില്ല സ്വയം സെലക്റ്റ് ആകുന്നതാണ്._`;
+      `ഹൈക്കോടതി റിട്ടയേർഡ് & പെൻഷനേഴ്സ് വെൽഫെയർ സ്കീമിൽ ${mlName} ജില്ലയിലെ ജില്ലാ അഡ്മിൻ പാനലിൽ പ്രവേശിക്കാൻ താഴെ കാണുന്ന ലിങ്ക് ഉപയോഗിക്കുക:\n\n` +
+      `🔗 *District Admin Login Link:*\n${url}\n\n` +
+      `_ഈ ലിങ്ക് ${districtName} ജില്ലാ അഡ്മിന്റെ ലോഗിനിനുള്ളതാണ്._`;
 
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     
@@ -179,7 +179,7 @@ export default function DistrictQuotaManager({
     if (!qrDataUrl || !qrModalDistrict) return;
     const link = document.createElement('a');
     link.href = qrDataUrl;
-    link.download = `HCRS_${qrModalDistrict.name}_${qrModalDistrict.code}_Registration_QR.png`;
+    link.download = `HCRS_${qrModalDistrict.name}_${qrModalDistrict.code}_Admin_Login_QR.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -188,7 +188,7 @@ export default function DistrictQuotaManager({
 
   // Copy all 14 District URLs in bulk
   const handleCopyAllUrls = async () => {
-    let text = `🏛️ *HCRS KERALA - DISTRICT REGISTRATION LINKS (DISTINCT URLs)* 🏛️\n\n`;
+    let text = `🏛️ *HCRS KERALA - DISTRICT ADMIN LOGIN LINKS* 🏛️\n\n`;
     DISTRICTS.forEach((d, idx) => {
       const detail = DISTRICT_DETAILS[d.code];
       const ml = detail?.mlName || d.name;
@@ -326,7 +326,7 @@ export default function DistrictQuotaManager({
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold text-brand-magenta mb-3 border border-white/10 max-w-full">
               <Sliders className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">District Quotas & Distinct Registration Links</span>
+              <span className="truncate">District Quotas & District Admin Login Links</span>
             </div>
             <h2 className="text-xl sm:text-3xl font-black tracking-tight break-words">
               District Quota & Link Management
@@ -673,7 +673,7 @@ export default function DistrictQuotaManager({
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                       <LinkIcon className="w-3 h-3 text-brand-blue" />
-                      Distinct Registration URL:
+                      District Admin Login URL:
                     </span>
                     <span className="text-[8px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-md">
                       Auto-Selects {d.name}
