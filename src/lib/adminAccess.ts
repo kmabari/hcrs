@@ -2,7 +2,7 @@ import { resolveDistrictFromSlugOrCode } from './districtUtils.js';
 
 export const MAIN_ADMIN_EMAILS = [
   'kmabarikiyafoods@gmail.com', 'hcrsindia@gmail.com', 'admin@hcrs.society',
-  '9645934571@hcrs.society', 'mabarikiyafoods@gmail.com', 'hcrskerala@gmail.com'
+  '9645934571@hcrs.society', '9349711410@hcrs.society', 'mabarikiyafoods@gmail.com', 'hcrskerala@gmail.com'
 ];
 
 type AdminProfile = { role?: string; isAdmin?: boolean; district?: string };
