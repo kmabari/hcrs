@@ -224,9 +224,12 @@ export function isDistrictMatch(distA: string | undefined | null, distB: string 
   return normA === normB;
 }
 
-/** District login intent only; permissions come from authenticated identity. */
+/** District login URL always starts at the site root, never at a feature path such as /janamail. */
 export function getDistrictAdminUrl(input: string, origin = 'https://www.hcrs.in'): string {
   const code = resolveDistrictFromSlugOrCode(input);
   if (!code) throw new Error('Unknown district');
-  return `${origin}/?distLogin=${DISTRICT_SLUGS[code]}`;
+  const base = new URL('/', origin).origin;
+  const url = new URL('/', base);
+  url.searchParams.set('distLogin', DISTRICT_SLUGS[code]);
+  return url.toString();
 }
