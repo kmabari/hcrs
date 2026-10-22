@@ -806,6 +806,10 @@ export default function AdminDashboard({
   };
   
   // Custom sidebar active tab and pagination states
+  const [orphanCleanupMobile, setOrphanCleanupMobile] = useState('');
+  const [orphanCleanupConfirmMobile, setOrphanCleanupConfirmMobile] = useState('');
+  const [orphanCleanupReport, setOrphanCleanupReport] = useState<any>(null);
+  const [orphanCleanupBusy, setOrphanCleanupBusy] = useState(false);
   const [activeTab, setActiveTab2] = useState('list');
   const [currentPage, setCurrentPage] = useState(1);
   const [validActivePage, setValidActivePage] = useState(1);
@@ -3546,6 +3550,21 @@ export default function AdminDashboard({
             <span>Life Members</span>
           </button>
 
+          {isSuperAdmin && (
+            <button
+              onClick={() => { setActiveTab2('orphan_cleanup'); setOrphanCleanupReport(null); setOrphanCleanupConfirmMobile(''); }}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                activeTab === 'orphan_cleanup'
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : "text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/70"
+              )}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Orphan Registration Cleanup</span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab2('reports')}
             className={cn(
@@ -4596,6 +4615,100 @@ export default function AdminDashboard({
             )}
 
             {/* 4. OTHER SUB-MANAGERS & TABS */}
+            {activeTab === 'orphan_cleanup' && isSuperAdmin && (
+              <Card className="border border-rose-200 bg-white rounded-2xl shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-rose-800"><ShieldAlert className="w-5 h-5" /> Orphan Registration Cleanup</CardTitle>
+                  <CardDescription>
+                    അപൂർണ്ണമായി നിന്ന രജിസ്ട്രേഷൻ രേഖകൾ പരിശോധിക്കാനുള്ള Main Admin സംവിധാനം. ആദ്യം പരിശോധനാ റിപ്പോർട്ട് മാത്രം ലഭിക്കും; സുരക്ഷാ തടസ്സങ്ങളുണ്ടെങ്കിൽ നീക്കംചെയ്യൽ അനുവദിക്കില്ല.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="max-w-xl space-y-2">
+                    <Label htmlFor="orphan-cleanup-mobile">മൊബൈൽ നമ്പർ</Label>
+                    <Input id="orphan-cleanup-mobile" inputMode="numeric" maxLength={10} value={orphanCleanupMobile}
+                      onChange={(e) => { setOrphanCleanupMobile(e.target.value.replace(/\D/g, '').slice(-10)); setOrphanCleanupReport(null); setOrphanCleanupConfirmMobile(''); }}
+                      placeholder="10 അക്ക മൊബൈൽ നമ്പർ" />
+                    <Button disabled={orphanCleanupBusy || orphanCleanupMobile.replace(/\D/g, '').length !== 10}
+                      onClick={async () => {
+                        setOrphanCleanupBusy(true); setOrphanCleanupReport(null); setOrphanCleanupConfirmMobile('');
+                        try {
+                          const token = await auth.currentUser?.getIdToken();
+                          if (!token) throw new Error('Main Admin login ആവശ്യമാണ്.');
+                          const response = await fetch('/api/admin/cleanup-orphan-registration', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ mobile: orphanCleanupMobile, executeDelete: false })
+                          });
+                          const result = await response.json().catch(() => ({}));
+                          if (!response.ok) throw new Error(result.error || 'പരിശോധന പരാജയപ്പെട്ടു.');
+                          setOrphanCleanupReport(result);
+                          toast.success('പരിശോധനാ റിപ്പോർട്ട് ലഭിച്ചു.');
+                        } catch (error: any) { toast.error(error?.message || 'പരിശോധന പരാജയപ്പെട്ടു.'); }
+                        finally { setOrphanCleanupBusy(false); }
+                      }}>
+                      {orphanCleanupBusy ? 'പരിശോധിക്കുന്നു…' : 'ആദ്യം പരിശോധിക്കുക'}
+                    </Button>
+                  </div>
+                  {orphanCleanupReport && (
+                    <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={orphanCleanupReport.safeToClean ? 'outline' : 'destructive'}>
+                          {orphanCleanupReport.safeToClean ? 'പ്രാഥമിക പരിശോധനയിൽ തടസ്സമില്ല' : 'നീക്കംചെയ്യൽ തടഞ്ഞിരിക്കുന്നു'}
+                        </Badge>
+                        <span className="text-xs text-slate-500">മൊബൈൽ: {orphanCleanupReport.mobile}</span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <div className="rounded-lg bg-slate-50 p-3">അംഗ പ്രൊഫൈലുകൾ: <strong>{orphanCleanupReport.counts?.userProfiles ?? '—'}</strong></div>
+                        <div className="rounded-lg bg-slate-50 p-3">രജിസ്ട്രേഷൻ ശ്രമങ്ങൾ: <strong>{orphanCleanupReport.counts?.registrationAttempts ?? '—'}</strong></div>
+                        <div className="rounded-lg bg-slate-50 p-3">പേയ്‌മെന്റ് രേഖകൾ: <strong>{orphanCleanupReport.counts?.paymentMatches ?? '—'}</strong></div>
+                        <div className="rounded-lg bg-slate-50 p-3">രസീതുകൾ: <strong>{orphanCleanupReport.counts?.receipts ?? '—'}</strong></div>
+                        <div className="rounded-lg bg-slate-50 p-3">ക്ലെയിം രേഖകൾ: <strong>{orphanCleanupReport.counts?.claimMatches ?? '—'}</strong></div>
+                        <div className="rounded-lg bg-slate-50 p-3">Auth അക്കൗണ്ട്: <strong>{orphanCleanupReport.counts?.authAccount ? 'ഉണ്ട്' : 'ഇല്ല'}</strong></div>
+                      </div>
+                      {Array.isArray(orphanCleanupReport.blockers) && orphanCleanupReport.blockers.length > 0 && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                          <strong>തടസ്സങ്ങൾ</strong>
+                          <ul className="list-disc pl-5 mt-1">{orphanCleanupReport.blockers.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
+                        </div>
+                      )}
+                      {orphanCleanupReport.safeToClean && (
+                        <div className="max-w-xl space-y-2 border-t pt-3">
+                          <p className="text-sm text-amber-800">ഇത് യഥാർത്ഥ ഡാറ്റയിൽ മാറ്റം വരുത്തുന്ന നടപടിയാണ്. പരിശോധനാ ഫലം ഉറപ്പാക്കിയ ശേഷം മാത്രം തുടരുക.</p>
+                          <Label htmlFor="orphan-cleanup-confirm">നീക്കംചെയ്യാൻ അതേ മൊബൈൽ നമ്പർ വീണ്ടും നൽകുക</Label>
+                          <Input id="orphan-cleanup-confirm" inputMode="numeric" maxLength={10} value={orphanCleanupConfirmMobile}
+                            onChange={(e) => setOrphanCleanupConfirmMobile(e.target.value.replace(/\D/g, '').slice(-10))}
+                            placeholder="മൊബൈൽ നമ്പർ വീണ്ടും നൽകുക" />
+                          <Button variant="destructive" disabled={orphanCleanupBusy || orphanCleanupConfirmMobile !== orphanCleanupReport.mobile}
+                            onClick={async () => {
+                              if (!window.confirm(`മൊബൈൽ ${orphanCleanupReport.mobile} ന്റെ അപൂർണ്ണ രജിസ്ട്രേഷൻ രേഖകൾ മാത്രം നീക്കംചെയ്യാൻ ഉറപ്പാണോ? അംഗത്വം, പേയ്‌മെന്റ്, രസീത്, ക്ലെയിം രേഖകൾ നീക്കംചെയ്യില്ല.`)) return;
+                              setOrphanCleanupBusy(true);
+                              try {
+                                const token = await auth.currentUser?.getIdToken();
+                                if (!token) throw new Error('Main Admin login ആവശ്യമാണ്.');
+                                const response = await fetch('/api/admin/cleanup-orphan-registration', {
+                                  method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ mobile: orphanCleanupReport.mobile, confirmMobile: orphanCleanupConfirmMobile, executeDelete: true })
+                                });
+                                const result = await response.json().catch(() => ({}));
+                                if (!response.ok) throw new Error(result.error || 'നീക്കംചെയ്യൽ അനുവദിച്ചില്ല.');
+                                setOrphanCleanupReport({ ...result, safeToClean: false, completed: true });
+                                setOrphanCleanupConfirmMobile('');
+                                toast.success('അപൂർണ്ണ രജിസ്ട്രേഷൻ രേഖകൾ നീക്കംചെയ്യൽ പൂർത്തിയായി.');
+                              } catch (error: any) { toast.error(error?.message || 'നീക്കംചെയ്യൽ പരാജയപ്പെട്ടു.'); }
+                              finally { setOrphanCleanupBusy(false); }
+                            }}>
+                            {orphanCleanupBusy ? 'പ്രവർത്തിക്കുന്നു…' : 'പരിശോധിച്ച അപൂർണ്ണ രേഖകൾ നീക്കംചെയ്യുക'}
+                          </Button>
+                        </div>
+                      )}
+                      {orphanCleanupReport.completed && <p className="text-sm text-emerald-700">നീക്കംചെയ്യൽ പ്രവർത്തനം പൂർത്തിയായി. മുകളിലെ ഫലം പരിശോധിക്കുക.</p>}
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">ഈ സംവിധാനം Main Admin-ന് മാത്രം കാണിക്കും. ഇത് ആദ്യം പരിശോധിക്കും; അംഗത്വമോ സാമ്പത്തിക ചരിത്രമോ കണ്ടെത്തിയാൽ നീക്കംചെയ്യൽ തടയും.</p>
+                </CardContent>
+              </Card>
+            )}
+
             {activeTab === 'bulk_import' && (
               <BulkImportManager members={members} adminUser={user} onRefresh={onRefreshMembers} />
             )}
