@@ -135,6 +135,33 @@ export default function RegistrationForm({
     };
   }, [step]);
 
+  // While account check / Razorpay payment / membership saving is running, do not let
+  // the person leave: closing the tab, browser Back or hardware Back mid-way is what
+  // leaves half-finished registrations and "paid but not saved" cases.
+  useEffect(() => {
+    if (!isProcessingRazorpay) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    let lastWarn = 0;
+    const onPopState = () => {
+      window.history.pushState({ hcrsPaymentLock: true }, '', window.location.href);
+      if (Date.now() - lastWarn > 3000) {
+        lastWarn = Date.now();
+        toast.warning('പേയ്‌മെന്റ് പ്രോസസ്സ് ചെയ്യുകയാണ്. പൂർത്തിയാകുന്നതുവരെ ബാക്ക് പോകരുത് / പേജ് അടയ്ക്കരുത്. (Payment in progress – please wait, do not go back.)', { duration: 6000 });
+      }
+    };
+    window.history.pushState({ hcrsPaymentLock: true }, '', window.location.href);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [isProcessingRazorpay]);
+
   const razorpayEnabled = orgSettings?.razorpayEnabled ?? false;
   // Temporarily hard-disabled because the bank-issued merchant QR is inactive.
   // Keep this independent from Firestore settings so a stale remote flag cannot
@@ -272,15 +299,28 @@ export default function RegistrationForm({
           try {
             registrationUser = (await withAuthRetry(() => signInWithEmailAndPassword(auth, authEmail, formVals.pin))).user;
           } catch (existingAccountError: any) {
-            // Do not bypass Firebase Authentication or create a duplicate identity.
-            // Synthetic mobile emails have no inbox for password-reset emails.
             if (existingAccountError?.code === 'auth/invalid-credential' ||
                 existingAccountError?.code === 'auth/wrong-password') {
-              throw new Error(
-                'ഈ മൊബൈൽ നമ്പറിന് Firebase അക്കൗണ്ട് നേരത്തേ ഉണ്ട്, പക്ഷേ നൽകിയ PIN പൊരുത്തപ്പെടുന്നില്ല. മുമ്പ് ഉപയോഗിച്ച PIN ഉപയോഗിക്കുക. PIN ഓർമ്മയില്ലെങ്കിൽ HCRS അഡ്മിനുമായി ബന്ധപ്പെടുക. ഈ ഘട്ടത്തിൽ പേയ്‌മെന്റ് ആരംഭിച്ചിട്ടില്ല.'
-              );
+              // A login can be left behind by an earlier attempt that never reached
+              // payment (no membership exists yet). Let the server re-issue the PIN
+              // typed now for such an unpaid, unfinished account; real members are refused.
+              setPaymentProgress('മുൻപത്തെ പൂർത്തിയാകാത്ത രജിസ്ട്രേഷൻ പരിശോധിക്കുന്നു...');
+              const reclaimResponse = await fetch('/api/registration/reclaim-orphan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mobile: cleanMobile, pin: formVals.pin })
+              });
+              const reclaim: any = await reclaimResponse.json().catch(() => ({}));
+              if (reclaimResponse.status === 409 && reclaim.status === 'member') {
+                throw new Error('ഈ മൊബൈൽ നമ്പർ ഇതിനകം രജിസ്റ്റർ ചെയ്ത അംഗത്തിന്റേതാണ്. ദയവായി ലോഗിൻ ചെയ്യുക. (Already a member – please Login.)');
+              }
+              if (!reclaimResponse.ok || reclaim.status !== 'reset') {
+                throw new Error(reclaim.error || 'ഈ നമ്പറിൽ പൂർത്തിയാകാത്ത ഒരു രജിസ്ട്രേഷൻ ഉണ്ട്. മുമ്പ് ഉപയോഗിച്ച PIN നൽകുക, അല്ലെങ്കിൽ 10 മിനിറ്റ് കഴിഞ്ഞ് ശ്രമിക്കുക. ഈ ഘട്ടത്തിൽ പേയ്‌മെന്റ് ആരംഭിച്ചിട്ടില്ല.');
+              }
+              registrationUser = (await withAuthRetry(() => signInWithEmailAndPassword(auth, authEmail, formVals.pin))).user;
+            } else {
+              throw existingAccountError;
             }
-            throw existingAccountError;
           }
         }
       }
@@ -444,6 +484,18 @@ export default function RegistrationForm({
 
   return (
     <div className="min-h-screen pt-2 pb-12 sm:py-12 md:py-20 px-3 sm:px-6 font-sans relative overflow-x-hidden flex flex-col items-center justify-start sm:justify-center">
+      {isProcessingRazorpay && (
+        <div className="fixed inset-x-0 top-0 z-[9998] bg-amber-500 text-slate-950 px-4 py-3 shadow-lg" role="alert" aria-live="assertive">
+          <div className="max-w-xl mx-auto flex items-start gap-3">
+            <Loader2 className="w-5 h-5 animate-spin shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm font-black leading-snug">
+              <p>പേയ്‌മെന്റ് / രജിസ്ട്രേഷൻ പ്രോസസ്സ് ചെയ്യുകയാണ്. ദയവായി കാത്തിരിക്കുക — ബാക്ക് അമർത്തുകയോ പേജ് അടയ്ക്കുകയോ ചെയ്യരുത്.</p>
+              <p className="font-semibold mt-0.5">Processing – please wait. Do not press Back or close this page until you see the confirmation.</p>
+              {paymentProgress && <p className="mt-1 font-bold">{paymentProgress}</p>}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Dynamic graphic backdrops */}
       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none max-md:hidden" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none max-md:hidden" />

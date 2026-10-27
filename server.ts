@@ -1951,6 +1951,90 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ORPHAN AUTH RECOVERY
+  // Registration creates the mobile-based Firebase Auth login BEFORE payment (the
+  // ID token is needed to prepare a recoverable checkout). If the person leaves or
+  // the payment fails, that login stays behind without any membership profile, and
+  // every later attempt (self-registration with another PIN, or admin Fast Entry
+  // with the default PIN) failed with "already registered". An Auth login that has
+  // no membership attached carries no value, so its PIN may safely be re-issued.
+  const ORPHAN_ATTEMPT_COOLDOWN_MS = 10 * 60 * 1000;
+
+  const resolveOrphanAuthByMobile = async (rawMobile: any, newPin: string, options: { respectCooldown: boolean }) => {
+    if (!dbAdmin) return { status: 'unavailable' as const };
+    const mobile = cleanTenDigitMobile(rawMobile);
+    if (!/^\d{10}$/.test(mobile)) return { status: 'invalid' as const };
+    if (!/^.{6,}$/.test(newPin)) return { status: 'invalid' as const };
+    const email = `${mobile}@hcrs.society`;
+    let authUser: any;
+    try {
+      authUser = await admin.auth().getUserByEmail(email);
+    } catch (e: any) {
+      if (e?.code === 'auth/user-not-found') return { status: 'none' as const };
+      throw e;
+    }
+    // A real member holds a membership ID on any profile with this mobile (or this UID).
+    const [byMobile, byUid] = await Promise.all([
+      dbAdmin.collection('users').where('mobile', '==', mobile).limit(10).get(),
+      dbAdmin.collection('users').doc(authUser.uid).get()
+    ]);
+    const hasMembership = (d: any) => String(((d.data && d.data()) || {}).membershipId || '').trim().length > 0;
+    if (byMobile.docs.some(hasMembership) || (byUid.exists && hasMembership(byUid))) {
+      return { status: 'member' as const, uid: authUser.uid };
+    }
+    if (options.respectCooldown) {
+      const attempt = await dbAdmin.collection('registration_attempts').doc(authUser.uid).get();
+      const updated: any = attempt.exists ? (attempt.data() || {}).updatedAt : null;
+      const updatedMs = updated && typeof updated.toMillis === 'function' ? updated.toMillis() : 0;
+      if (updatedMs && Date.now() - updatedMs < ORPHAN_ATTEMPT_COOLDOWN_MS) {
+        return { status: 'in_progress' as const, uid: authUser.uid };
+      }
+    }
+    await admin.auth().updateUser(authUser.uid, { password: newPin });
+    return { status: 'reset' as const, uid: authUser.uid };
+  };
+
+  // Self-registration: unpaid leftover login for this mobile -> set the PIN the person typed now.
+  app.post(["/api/registration/reclaim-orphan", "/registration/reclaim-orphan"], async (req, res) => {
+    try {
+      const result = await resolveOrphanAuthByMobile(req.body?.mobile, String(req.body?.pin || ''), { respectCooldown: true });
+      if (result.status === 'reset') return res.json({ success: true, status: 'reset' });
+      if (result.status === 'none') return res.json({ success: true, status: 'none' });
+      if (result.status === 'member') return res.status(409).json({ error: 'This mobile number is already a registered member. Please use Login.', status: 'member' });
+      if (result.status === 'in_progress') return res.status(409).json({ error: 'A registration for this mobile was started a few minutes ago. Please wait 10 minutes and try again, or use your previous PIN.', status: 'in_progress' });
+      return res.status(400).json({ error: 'Valid mobile number and a PIN of at least 6 characters are required.' });
+    } catch (err: any) {
+      console.error('[Reclaim Orphan] Error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not recover the unfinished registration.' });
+    }
+  });
+
+  // Admin / operator Fast Entry: unpaid leftover login -> reset to the default PIN so the profile can be completed.
+  app.post(["/api/admin/resolve-orphan-auth", "/admin/resolve-orphan-auth"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const authorization = String(req.headers.authorization || '');
+      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+      if (!token) return res.status(401).json({ error: 'Authentication required' });
+      const decoded = await admin.auth().verifyIdToken(token);
+      const callerSnap = await dbAdmin.collection('users').doc(decoded.uid).get();
+      const caller: any = callerSnap.exists ? callerSnap.data() || {} : {};
+      const callerEmail = String(decoded.email || '').toLowerCase();
+      const allowed = isMainAdminAccount(callerEmail, caller) || !!getDistrictAdminDistrict(callerEmail) ||
+        caller.role === 'admin' || caller.role === 'operator' || caller.isAdmin === true;
+      if (!allowed) return res.status(403).json({ error: 'Admin access required' });
+      const defaultPin = '123456';
+      const result = await resolveOrphanAuthByMobile(req.body?.mobile, defaultPin, { respectCooldown: false });
+      if (result.status === 'reset') return res.json({ success: true, status: 'reset', uid: result.uid });
+      if (result.status === 'none') return res.json({ success: true, status: 'none' });
+      if (result.status === 'member') return res.status(409).json({ error: 'This mobile number already belongs to a registered member.', status: 'member' });
+      return res.status(400).json({ error: 'Valid mobile number is required.' });
+    } catch (err: any) {
+      console.error('[Resolve Orphan Auth] Error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not resolve the unfinished account.' });
+    }
+  });
+
   app.post(["/api/razorpay/create-order", "/razorpay/create-order"], async (req, res) => {
     try {
       const { paymentType, amount: clientAmount, memberId, mobile } = req.body;

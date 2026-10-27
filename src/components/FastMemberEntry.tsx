@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { db, secondaryDb, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import React, { useState, useEffect } from 'react';
+import { db, auth, secondaryDb, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { withAuthRetry, isNetworkAuthError, NETWORK_ERROR_MESSAGE_ML } from '@/src/lib/authRetry';
 import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment, limit } from 'firebase/firestore';
@@ -85,6 +85,14 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
     district: string;
     mandalam: string;
   } | null>(null);
+
+  // Do not let the admin close/refresh the page while a member is being created.
+  useEffect(() => {
+    if (!isSubmitting) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; return ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isSubmitting]);
 
   const [debugError, setDebugError] = useState<{
     submittedData: any;
@@ -232,14 +240,37 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         if (authErr.code === 'auth/email-already-in-use') {
           // Reuse only the real Firebase Auth UID. Never create a disconnected
           // offline UID/profile for an existing mobile identity.
-          try {
-            const existingCredential = await withAuthRetry(() => signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
-            finalUid = existingCredential.user.uid;
+          const signInExisting = async () => {
+            const cred = await withAuthRetry(() => signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
+            finalUid = cred.user.uid;
             await signOut(secondaryAuth).catch(() => {});
             valResult += ` | Existing Auth identity resolved to UID: '${finalUid}'`;
+          };
+          try {
+            await signInExisting();
           } catch (signInErr: any) {
             if (isNetworkAuthError(signInErr)) throw signInErr;
-            throw new Error('ഈ മൊബൈൽ നമ്പറിന് Firebase Auth account നിലവിലുണ്ട്. അതിന്റെ നിലവിലെ PIN അറിയാത്തതിനാൽ പുതിയ duplicate profile സൃഷ്ടിച്ചില്ല. Admin account resolution ആവശ്യമാണ്.');
+            // The login exists but not with the default PIN. This is normally an
+            // unfinished self-registration (login created before payment, never
+            // completed). If no membership is attached to it, the server re-issues
+            // the default PIN so the profile can be created. Real members are refused.
+            valResult += ' | Existing Auth login has a different PIN. Checking for an unfinished registration...';
+            const adminToken = await auth.currentUser?.getIdToken();
+            if (!adminToken) throw new Error('Admin session expired. Please log in again. (അഡ്മിൻ സെഷൻ കഴിഞ്ഞു, വീണ്ടും ലോഗിൻ ചെയ്യുക.)');
+            const resolveResponse = await fetch('/api/admin/resolve-orphan-auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+              body: JSON.stringify({ mobile: cleanMobile })
+            });
+            const resolveJson: any = await resolveResponse.json().catch(() => ({}));
+            if (resolveResponse.status === 409) {
+              throw new Error('ഈ മൊബൈൽ നമ്പർ ഇതിനകം ഒരു അംഗത്തിന്റേതാണ്. (This mobile number already belongs to a registered member.)');
+            }
+            if (!resolveResponse.ok || resolveJson.status !== 'reset') {
+              throw new Error(resolveJson.error || 'അപൂർണ്ണമായ അക്കൗണ്ട് ശരിയാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക. (Could not recover the unfinished account.)');
+            }
+            valResult += ' | Unfinished registration login recovered (PIN reset to default).';
+            await signInExisting();
           }
         } else {
           valResult += ` | Auth registration aborted: ${authErr.message || authErr}`;
@@ -250,6 +281,12 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       if (!finalUid) {
         throw new Error('Authentication mapping failed.');
       }
+
+      // 4.5 Open the member's secondary session BEFORE any serial number / quota is
+      // consumed, so a network or auth failure here cannot burn a serial.
+      valResult += ' | [SecondarySession] Logging in on secondaryAuth before serial allocation...';
+      await withAuthRetry(() => signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
+      valResult += ' | [SecondarySession] Authenticated successfully as newly registered member.';
 
       // 5. TRANSACTION FOR INCREMENTING SERIAl NO & WRITING RECORD
       const metadataRef = doc(db, 'system', 'totals');
@@ -310,11 +347,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         });
         valResult += ' | runTransaction completed successfully in the cloud.';
 
-        // 5.5. Now write the user profile doc using secondaryAuth and secondaryDb (since the user is the owner!)
-        valResult += ' | [SecondarySession] Logging in on secondaryAuth to write user profile as owner...';
-        await withAuthRetry(() => signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
-        valResult += ' | [SecondarySession] Authenticated successfully as newly registered member.';
-        
+        // 5.5. Write the user profile doc using the already-open secondary session (the member is the owner).
         const newProfile: any = {
           uid: finalUid,
           name: name.trim(),
@@ -351,7 +384,18 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
         const secondaryUserRef = doc(secondaryDb, 'users', finalUid);
         valResult += ` | [SecondarySession] Writing user profile document to users/${finalUid}...`;
-        await setDoc(secondaryUserRef, newProfile);
+        let profileWriteError: any = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            await setDoc(secondaryUserRef, newProfile);
+            profileWriteError = null;
+            break;
+          } catch (writeErr: any) {
+            profileWriteError = writeErr;
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+        if (profileWriteError) throw profileWriteError;
         valResult += ' | [SecondarySession] User profile document written successfully as owner!';
         
         // Sign out secondary session securely
@@ -424,6 +468,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       }
       toast.error(finalToastLabel, { id: loadingToast });
     } finally {
+      await signOut(secondaryAuth).catch(() => {});
       setIsSubmitting(false);
     }
   };
