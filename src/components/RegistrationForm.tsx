@@ -43,6 +43,7 @@ import { auth, db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { processRazorpayPayment } from '../lib/razorpay';
+import { withAuthRetry, isNetworkAuthError, NETWORK_ERROR_MESSAGE_ML } from '../lib/authRetry';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
 import { getUpiQrImageUrl, HCRS_OFFICIAL_UPI_ID, HCRS_OFFICIAL_UPI_NAME, HCRS_OFFICIAL_MERCHANT_QR_IMAGE_URL } from '../lib/upi';
 
@@ -106,11 +107,17 @@ export default function RegistrationForm({
     membershipId?: string;
   } | null>(null);
 
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(!!propOrgSettings);
+
   useEffect(() => {
+    // On a slow/weak network the settings document can take a while. Never show
+    // the "payment unavailable" notice until we have really heard back (or 10s passed).
+    const giveUp = window.setTimeout(() => setSettingsLoaded(true), 10000);
     const unsubscribe = subscribeToOrgSettings((settings) => {
       setOrgSettings(settings);
+      setSettingsLoaded(true);
     });
-    return () => unsubscribe();
+    return () => { window.clearTimeout(giveUp); unsubscribe(); };
   }, []);
 
   // The parent view enters with a 700ms animation. Scroll once after mount and
@@ -259,11 +266,11 @@ export default function RegistrationForm({
       if (!registrationUser || registrationUser.email?.toLowerCase() !== authEmail) {
         if (registrationUser) await signOut(auth);
         try {
-          registrationUser = (await createUserWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
+          registrationUser = (await withAuthRetry(() => createUserWithEmailAndPassword(auth, authEmail, formVals.pin))).user;
         } catch (authError: any) {
           if (authError?.code !== 'auth/email-already-in-use') throw authError;
           try {
-            registrationUser = (await signInWithEmailAndPassword(auth, authEmail, formVals.pin)).user;
+            registrationUser = (await withAuthRetry(() => signInWithEmailAndPassword(auth, authEmail, formVals.pin))).user;
           } catch (existingAccountError: any) {
             // Do not bypass Firebase Authentication or create a duplicate identity.
             // Synthetic mobile emails have no inbox for password-reset emails.
@@ -352,7 +359,7 @@ export default function RegistrationForm({
       paymentFailed = true;
       if (!submittedToApp) sessionStorage.removeItem('hcrs_registration_in_progress');
       console.error('Razorpay Registration Error:', err);
-      toast.error(err.message || 'Payment failed or cancelled.', { id: progressToast, duration: 8000 });
+      toast.error(isNetworkAuthError(err) ? NETWORK_ERROR_MESSAGE_ML : (err.message || 'Payment failed or cancelled.'), { id: progressToast, duration: 8000 });
     } finally {
       if (!paymentFailed) toast.dismiss(progressToast);
       setIsProcessingRazorpay(false);
@@ -1188,7 +1195,13 @@ export default function RegistrationForm({
                 )}
 
                 {/* 3. BOTH DISABLED VIEW */}
-                {!razorpayEnabled && !qrCodePaymentEnabled && (
+                {!razorpayEnabled && !qrCodePaymentEnabled && !settingsLoaded && (
+                  <div className="bg-slate-50 border-2 border-slate-200 p-6 rounded-3xl text-center space-y-2">
+                    <p className="text-sm font-black text-slate-700">പേയ്‌മെന്റ് ഓപ്ഷനുകൾ ലോഡ് ചെയ്യുന്നു... (Loading payment options...)</p>
+                    <p className="text-xs text-slate-500">ഇന്റർനെറ്റ് വേഗത കുറവാണെങ്കിൽ കുറച്ച് സെക്കൻഡ് കാത്തിരിക്കുക.</p>
+                  </div>
+                )}
+                {!razorpayEnabled && !qrCodePaymentEnabled && settingsLoaded && (
                   <div className="bg-amber-50 border-2 border-amber-300 p-6 rounded-3xl text-center space-y-3">
                     <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto" />
                     <h4 className="text-base font-black text-amber-900 uppercase">QR Payment Temporarily Unavailable</h4>

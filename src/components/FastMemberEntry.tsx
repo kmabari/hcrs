@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { db, secondaryDb, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { withAuthRetry, isNetworkAuthError, NETWORK_ERROR_MESSAGE_ML } from '@/src/lib/authRetry';
 import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment, limit } from 'firebase/firestore';
 import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
 import { Button } from '@/components/ui/button';
@@ -222,21 +223,22 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       valResult += ` | Initiating secondary auth account mapping for ${cleanMobile}...`;
       const virtualEmail = `${cleanMobile}@hcrs.society`;
       try {
-        const authResult = await createUserWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD);
+        const authResult = await withAuthRetry(() => createUserWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
         finalUid = authResult.user.uid;
         valResult += ` | Secondary auth account created successfully with UID: '${finalUid}'`;
         // Sign out secondary session immediately
-        await signOut(secondaryAuth);
+        await signOut(secondaryAuth).catch(() => {});
       } catch (authErr: any) {
         if (authErr.code === 'auth/email-already-in-use') {
           // Reuse only the real Firebase Auth UID. Never create a disconnected
           // offline UID/profile for an existing mobile identity.
           try {
-            const existingCredential = await signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD);
+            const existingCredential = await withAuthRetry(() => signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
             finalUid = existingCredential.user.uid;
-            await signOut(secondaryAuth);
+            await signOut(secondaryAuth).catch(() => {});
             valResult += ` | Existing Auth identity resolved to UID: '${finalUid}'`;
-          } catch {
+          } catch (signInErr: any) {
+            if (isNetworkAuthError(signInErr)) throw signInErr;
             throw new Error('ഈ മൊബൈൽ നമ്പറിന് Firebase Auth account നിലവിലുണ്ട്. അതിന്റെ നിലവിലെ PIN അറിയാത്തതിനാൽ പുതിയ duplicate profile സൃഷ്ടിച്ചില്ല. Admin account resolution ആവശ്യമാണ്.');
           }
         } else {
@@ -310,7 +312,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
 
         // 5.5. Now write the user profile doc using secondaryAuth and secondaryDb (since the user is the owner!)
         valResult += ' | [SecondarySession] Logging in on secondaryAuth to write user profile as owner...';
-        await signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD);
+        await withAuthRetry(() => signInWithEmailAndPassword(secondaryAuth, virtualEmail, DEFAULT_PASSWORD));
         valResult += ' | [SecondarySession] Authenticated successfully as newly registered member.';
         
         const newProfile: any = {
@@ -353,7 +355,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         valResult += ' | [SecondarySession] User profile document written successfully as owner!';
         
         // Sign out secondary session securely
-        await signOut(secondaryAuth);
+        await signOut(secondaryAuth).catch(() => {});
         valResult += ' | [SecondarySession] Secondary session clean signed out.';
       } catch (error: any) {
         valResult += ` | runTransaction FAILED! Direct exception details: ${error?.message || error}`;
@@ -378,7 +380,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       }
     } catch (err: any) {
       console.error('Fast manual entry error:', err);
-      let errorMsg = err?.message || String(err);
+      let errorMsg = isNetworkAuthError(err) ? NETWORK_ERROR_MESSAGE_ML : (err?.message || String(err));
       
       // Handle potential JSON string from handleFirestoreError
       let userReadableMsg = errorMsg;
