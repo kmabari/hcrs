@@ -1450,9 +1450,11 @@ export default function App() {
           const isOperator = (userData.role === 'operator' || isSecondAdminEmail) && !isAdmin;
           
           const isMustChange = false;
+          // Only members whose required details are actually missing (admin / Fast Entry / imported
+          // records) must complete their profile. A member who filled the full registration form
+          // and paid must never be sent back to it, even if a stale mustCompleteProfile flag exists.
           const isMustComplete = !isAdmin && !isOperator && !isMustChange && userData.profileCompleted !== true && (
-            userData.mustCompleteProfile === true ||
-            (!userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup)
+            !userData.address || !userData.pincode || !userData.gender || !userData.bloodGroup
           );
 
           // Registration creates Auth before the paid member document is saved.
@@ -1500,7 +1502,7 @@ export default function App() {
               const isMustChange = false;
               const isMustComplete = !isAdm && !isOp && !isMustChange && (
                 cachedData.profileCompleted !== true &&
-                (cachedData.mustCompleteProfile === true || (!cachedData.address || !cachedData.gender || !cachedData.bloodGroup))
+                (!cachedData.address || !cachedData.gender || !cachedData.bloodGroup)
               );
 
               if (isAdm) {
@@ -2176,8 +2178,7 @@ export default function App() {
         const isOp = (finalUser.role === 'operator' || isSecondAdmin) && !isAdm;
         const isMustChange = false;
         const isMustComplete = !isAdm && !isOp && !isMustChange && finalUser.profileCompleted !== true && (
-          finalUser.mustCompleteProfile === true ||
-          (!finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup)
+          !finalUser.address || !finalUser.pincode || !finalUser.gender || !finalUser.bloodGroup
         );
 
         if (isAdm) {

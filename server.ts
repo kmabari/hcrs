@@ -121,6 +121,8 @@ const finalizePreparedRegistration = async ({
     transaction.set(userRef, {
       uid, ...profile, membershipId, serialNo,
       status: 'active', isApproved: true, isPaid: true, role: existing.role || 'member',
+      // The full registration form (all required details) was completed before payment.
+      mustCompleteProfile: false, profileCompleted: true,
       photoUrl: existing.photoUrl || '', waStatus: existing.waStatus || 'Pending',
       stateCode: INDIA_STATE_CODES[profile.state] || 'KL', districtCode, constituencyCode,
       membership_type: existing.membership_type || 'ADHOC_MEMBER', isQuotaCounted: existing.isQuotaCounted === true,
