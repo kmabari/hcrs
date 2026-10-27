@@ -174,7 +174,13 @@ service cloud.firestore {
       allow list: if isOperator() || (request.query.limit != null && request.query.limit <= 5);
       
       allow create: if (isSignedIn() && (
-        (isOwner(userId) && request.resource.data.get('isAdmin', false) == false && request.resource.data.get('role', 'member') == 'member') ||
+        (isOwner(userId) && request.resource.data.get('isAdmin', false) == false && request.resource.data.get('role', 'member') == 'member' &&
+         // A member can never create their own ACTIVE / PAID / APPROVED profile from the browser.
+         // Activation after a captured Razorpay payment is done by the server (Admin SDK, bypasses rules)
+         // and activation of QR/UPI applications is done by an admin.
+         request.resource.data.get('status', 'pending') == 'pending' &&
+         request.resource.data.get('isPaid', false) == false &&
+         request.resource.data.get('isApproved', false) == false) ||
         isOperator()
       )) && isValidUser(request.resource.data);
 

@@ -1407,7 +1407,7 @@ export default function App() {
               registrationDate: serverTimestamp(),
               photoUrl: authUser.photoURL || '',
               role: 'member',
-              status: 'active',
+              status: 'pending', // a login alone must never create an active member
               membershipType: 'Annual',
               mustCompleteProfile: true,
               issueDate: serverTimestamp(),
@@ -2451,6 +2451,14 @@ export default function App() {
         let createdMembershipId = '';
         let isFullyVerifiedActive = false;
         const isRazorpayPaid = values.paymentMethod === 'Razorpay' && (values.paymentStatus === 'Active' || values.paymentStatus === 'PAYMENT_VERIFIED') && !!values.paymentId && !!values.orderId;
+        // SECURITY: the browser can never activate or mark a membership as paid. Paid
+        // Razorpay registrations are activated ONLY by the server after it verifies a
+        // captured payment, and that case returned above (profile already active).
+        // Reaching this point with Razorpay values means the server has not confirmed
+        // the payment, so nothing may be written.
+        if (isRazorpayPaid) {
+          throw new Error('പേയ്‌മെന്റ് സെർവറിൽ സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല, അതിനാൽ അംഗത്വം നൽകിയിട്ടില്ല. വീണ്ടും പണമടയ്ക്കരുത് — അഡ്മിനെ ബന്ധപ്പെടുക. (Payment could not be confirmed by the server, so no membership was issued. Do not pay again; contact Admin.)');
+        }
 
         await runTransaction(db, async (transaction) => {
           // Perform all reads first
@@ -2479,7 +2487,9 @@ export default function App() {
           
           // 1. RAZORPAY GATEWAY PAYMENTS: Instant auto-approval! Digital ID card active immediately (Zero Admin workload).
           // 2. QR CODE / MANUAL UPI PAYMENTS: Pending verification. Awaiting Admin verification in Admin Panel.
-          const isInstantAutoApproved = isRazorpayPaid || isAdminEmail;
+          // Never auto-activate from the browser (see SECURITY note above): self-registration
+          // is always 'pending' until a server-verified payment or an admin approval.
+          const isInstantAutoApproved = false;
           const memberStatus = isInstantAutoApproved ? 'active' : 'pending';
           const memberApproved = isInstantAutoApproved;
           isFullyVerifiedActive = isInstantAutoApproved;
@@ -2493,10 +2503,10 @@ export default function App() {
             expiryDate: expiry,
             membershipId,
             status: memberStatus,
-            isPaid: isRazorpayPaid || isAdminEmail,
-            isApproved: memberApproved,
-            isAdmin: isAdminEmail,
-            role: isAdminEmail ? 'admin' : (isOperatorEmail ? 'operator' : 'member'),
+            isPaid: false,
+            isApproved: false,
+            isAdmin: false,
+            role: 'member',
             serialNo: nextSerial,
             waStatus: 'Pending',
             stateCode: 'KL',

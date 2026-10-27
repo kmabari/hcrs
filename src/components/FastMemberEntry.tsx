@@ -382,20 +382,33 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           isQuotaCounted: countsTowardQuota
         };
 
-        const secondaryUserRef = doc(secondaryDb, 'users', finalUid);
-        valResult += ` | [SecondarySession] Writing user profile document to users/${finalUid}...`;
+        valResult += ` | [Server] Saving active member profile for users/${finalUid} through the secure server...`;
         let profileWriteError: any = null;
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
-            await setDoc(secondaryUserRef, newProfile);
+            const adminToken = await auth.currentUser?.getIdToken();
+            if (!adminToken) throw new Error('Admin session expired. Please log in again. (അഡ്മിൻ സെഷൻ കഴിഞ്ഞു, വീണ്ടും ലോഗിൻ ചെയ്യുക.)');
+            const saveResponse = await fetch('/api/admin/fast-entry-profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+              body: JSON.stringify({ uid: finalUid, profile: newProfile })
+            });
+            const saveJson: any = await saveResponse.json().catch(() => ({}));
+            if (!saveResponse.ok || !saveJson.success) {
+              const httpErr: any = new Error(saveJson.error || `Profile save failed (${saveResponse.status})`);
+              httpErr.noRetry = saveResponse.status >= 400 && saveResponse.status < 500;
+              throw httpErr;
+            }
             profileWriteError = null;
             break;
           } catch (writeErr: any) {
             profileWriteError = writeErr;
+            if (writeErr?.noRetry) break;
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           }
         }
         if (profileWriteError) throw profileWriteError;
+        valResult += ' | [Server] User profile document written successfully.';
         valResult += ' | [SecondarySession] User profile document written successfully as owner!';
         
         // Sign out secondary session securely

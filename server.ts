@@ -2012,17 +2012,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // Admin / operator Fast Entry: unpaid leftover login -> reset to the default PIN so the profile can be completed.
   app.post(["/api/admin/resolve-orphan-auth", "/admin/resolve-orphan-auth"], async (req, res) => {
     try {
-      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
-      const authorization = String(req.headers.authorization || '');
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-      if (!token) return res.status(401).json({ error: 'Authentication required' });
-      const decoded = await admin.auth().verifyIdToken(token);
-      const callerSnap = await dbAdmin.collection('users').doc(decoded.uid).get();
-      const caller: any = callerSnap.exists ? callerSnap.data() || {} : {};
-      const callerEmail = String(decoded.email || '').toLowerCase();
-      const allowed = isMainAdminAccount(callerEmail, caller) || !!getDistrictAdminDistrict(callerEmail) ||
-        caller.role === 'admin' || caller.role === 'operator' || caller.isAdmin === true;
-      if (!allowed) return res.status(403).json({ error: 'Admin access required' });
+      const staff = await authorizeStaffRequest(req);
+      if (!staff.ok) return res.status(staff.status).json({ error: staff.error });
       const defaultPin = '123456';
       const result = await resolveOrphanAuthByMobile(req.body?.mobile, defaultPin, { respectCooldown: false });
       if (result.status === 'reset') return res.json({ success: true, status: 'reset', uid: result.uid });
@@ -2032,6 +2023,65 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error('[Resolve Orphan Auth] Error:', err?.message || err);
       return res.status(500).json({ error: 'Could not resolve the unfinished account.' });
+    }
+  });
+
+  // Verified staff (main admin, district admin, admin, operator) from the Bearer token.
+  const authorizeStaffRequest = async (req: any): Promise<{ ok: true; uid: string; email: string; profile: any } | { ok: false; status: number; error: string }> => {
+    if (!dbAdmin) return { ok: false, status: 503, error: 'Database unavailable' };
+    const authorization = String(req.headers.authorization || '');
+    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    if (!token) return { ok: false, status: 401, error: 'Authentication required' };
+    let decoded: any;
+    try { decoded = await admin.auth().verifyIdToken(token); } catch { return { ok: false, status: 401, error: 'Invalid session' }; }
+    const callerSnap = await dbAdmin.collection('users').doc(decoded.uid).get();
+    const profile: any = callerSnap.exists ? callerSnap.data() || {} : {};
+    const email = String(decoded.email || '').toLowerCase();
+    const allowed = isMainAdminAccount(email, profile) || !!getDistrictAdminDistrict(email) ||
+      profile.role === 'admin' || profile.role === 'operator' || profile.isAdmin === true;
+    if (!allowed) return { ok: false, status: 403, error: 'Admin access required' };
+    return { ok: true, uid: decoded.uid, email, profile };
+  };
+
+  // Admin Fast Entry: the server (not the browser) writes the active member profile.
+  // Browsers may no longer create their own active/paid profile (see firestore.rules).
+  app.post(["/api/admin/fast-entry-profile", "/admin/fast-entry-profile"], async (req, res) => {
+    try {
+      const staff = await authorizeStaffRequest(req);
+      if (!staff.ok) return res.status(staff.status).json({ error: staff.error });
+      const uid = String(req.body?.uid || '').trim();
+      const input = req.body?.profile || {};
+      const mobile = cleanTenDigitMobile(input.mobile);
+      if (!uid || !/^\d{10}$/.test(mobile) || String(input.name || '').trim().length < 2) {
+        return res.status(400).json({ error: 'uid, valid mobile and name are required' });
+      }
+      const authUser = await admin.auth().getUser(uid);
+      if (String(authUser.email || '').toLowerCase() !== `${mobile}@hcrs.society`) {
+        return res.status(403).json({ error: 'Authentication account does not match this mobile number' });
+      }
+      const sameMobile = await dbAdmin!.collection('users').where('mobile', '==', mobile).limit(10).get();
+      const conflict = sameMobile.docs.find(d => d.id !== uid && String((d.data() || {}).membershipId || '').trim());
+      if (conflict) return res.status(409).json({ error: 'This mobile is already linked to another membership' });
+      const toTs = (v: any) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? admin.firestore.FieldValue.serverTimestamp() : admin.firestore.Timestamp.fromDate(d); };
+      const text = (v: any) => String(v ?? '').trim();
+      await dbAdmin!.collection('users').doc(uid).set({
+        uid, name: text(input.name), mobile, email: '', address: '', pincode: '', postOffice: '',
+        bloodGroup: '', gender: '', dob: '',
+        state: text(input.state), district: text(input.district), assemblyConstituency: text(input.assemblyConstituency),
+        sponsorName: text(input.sponsorName), sponsorMobile: text(input.sponsorMobile),
+        membershipId: text(input.membershipId), serialNo: Number(input.serialNo) || 0,
+        status: 'active', isPaid: true, isApproved: true, isAdmin: false, role: 'member',
+        registrationDate: toTs(input.registrationDate), expiryDate: toTs(input.expiryDate),
+        registeredBy: staff.uid, registeredByName: text(input.registeredByName) || 'District Admin',
+        waStatus: 'Pending', stateCode: text(input.stateCode) || 'KL',
+        districtCode: text(input.districtCode), constituencyCode: text(input.constituencyCode),
+        isQuotaCounted: input.isQuotaCounted === true,
+        membership_type: 'ADHOC_MEMBER', paymentMethod: 'Admin Fast Entry', paymentStatus: 'ADMIN_ATTESTED'
+      }, { merge: true });
+      return res.json({ success: true, uid });
+    } catch (err: any) {
+      console.error('[Fast Entry Profile] Error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not save the member profile.' });
     }
   });
 
@@ -2214,11 +2264,19 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           } catch (capErr: any) {
             console.warn("Razorpay auto-capture notice:", capErr.message);
           }
+          // Re-read the payment: an authorized-but-uncaptured payment is NOT money received
+          // (the bank releases it back to the payer). Never continue on the stale status.
+          try {
+            payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
+          } catch (refetchErr: any) {
+            console.warn("Razorpay post-capture re-fetch notice:", refetchErr.message);
+          }
         }
 
-        if (payment.status !== 'captured' && payment.status !== 'authorized') {
+        // Membership is issued ONLY for a payment Razorpay reports as captured.
+        if (!payment || payment.status !== 'captured') {
           return res.status(400).json({
-            error: `Payment Verification Failure: Payment status is '${payment.status}'. Payment must be completed/captured.`
+            error: `Payment Verification Failure: Payment status is '${payment?.status || 'unknown'}'. Payment is not captured, so no membership was issued. If money was debited it will be returned by the bank automatically.`
           });
         }
       }
@@ -2302,6 +2360,16 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               }, { merge: true });
               return res.status(503).json({
                 error: 'Payment was captured, but the registration profile checkpoint is missing. Do not pay again; reopen Registration with the same mobile to recover this payment.'
+              });
+            }
+            // The captured payment must belong to THIS registration: its order notes
+            // carry the mobile it was created for.
+            const attemptSnapForPayment = await dbAdmin.collection('registration_attempts').doc(preparedUid).get();
+            const attemptMobileForPayment = cleanTenDigitMobile(((attemptSnapForPayment.data() || {}) as any).profile?.mobile);
+            const paymentNoteMobile = cleanTenDigitMobile(payment?.notes?.mobile);
+            if (!/^\d{10}$/.test(attemptMobileForPayment) || (paymentNoteMobile && paymentNoteMobile !== attemptMobileForPayment)) {
+              return res.status(403).json({
+                error: 'This payment does not match the registration being completed. No membership was issued. Contact Admin before paying again.'
               });
             }
             const paymentCapturedAt = payment?.created_at ? new Date(Number(payment.created_at) * 1000) : new Date();
