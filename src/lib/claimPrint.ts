@@ -2467,3 +2467,104 @@ export {
 
 
 
+
+/**
+ * BULK PDF: every claim on its OWN single A4 page, ready to print in one go.
+ *
+ * - kind 'court' = the claimant's Court / Settlement form, 'admin' = Full Admin record.
+ * - Each claim is rendered with its own member profile (not one shared profile).
+ * - Pages are rendered one by one (low memory) and the output is split into several
+ *   PDF files of `pagesPerFile` pages so very large lists do not crash the browser.
+ */
+export const downloadAllClaimsPdf = async (
+  items: { claim: any; member?: any }[],
+  kind: 'court' | 'admin' = 'court',
+  options: { pagesPerFile?: number; onProgress?: (done: number, total: number) => void } = {}
+): Promise<{ files: number; pages: number }> => {
+  const pagesPerFile = Math.max(10, options.pagesPerFile || 100);
+
+  // De-duplicate claims (same claim must not print twice)
+  const seen = new Set<string>();
+  const list = items.filter(({ claim }) => {
+    if (!claim) return false;
+    const key = String(claim.id || `${claim.userMobile || ''}_${claim.userName || ''}_${claim.highrichId || ''}_${claim.relation || ''}`);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (list.length === 0) throw new Error('No claim records available to generate PDF');
+
+  if (document.fonts) {
+    try { await document.fonts.ready; } catch { /* ignore */ }
+  }
+
+  const container = document.createElement('div');
+  container.id = 'pdf-bulk-render-offscreen-' + Date.now();
+  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#FFFFFF;color:#0f172a;z-index:-999999;opacity:0.01;pointer-events:none;overflow:visible;';
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = `
+    ${getCourtReportBaseStyles()}
+    .pdf-single-page { width: 794px !important; min-height: 1123px !important; max-height: 1123px !important; background: #ffffff !important; padding: 0 !important; margin: 0 !important; box-sizing: border-box !important; overflow: hidden !important; }
+    .page-container { box-shadow: none !important; border: 1.5px solid #003366 !important; margin: 0 !important; width: 100% !important; height: 1123px !important; max-height: 1123px !important; }
+  `;
+  container.appendChild(styleEl);
+  const slot = document.createElement('div');
+  container.appendChild(slot);
+  document.body.appendChild(container);
+
+  const label = kind === 'admin' ? 'Admin_Full_Records' : 'Court_Claim_Forms';
+  const date = new Date().toISOString().slice(0, 10);
+  const totalFiles = Math.ceil(list.length / pagesPerFile);
+  let pdf: jsPDF | null = null;
+  let filesWritten = 0;
+
+  const saveCurrent = (partNo: number) => {
+    if (!pdf) return;
+    const name = totalFiles > 1
+      ? `HCRS_${label}_${date}_Part${partNo}of${totalFiles}.pdf`
+      : `HCRS_${label}_${date}.pdf`;
+    const blob = pdf.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    filesWritten++;
+    pdf = null;
+  };
+
+  try {
+    for (let i = 0; i < list.length; i++) {
+      const { claim, member } = list[i];
+      const html = kind === 'admin'
+        ? renderPersonFullAdminClaimPage(claim, member, 1, 1)
+        : renderPersonCourtClaimPage(claim, member, 1, 1);
+      slot.innerHTML = `<div class="pdf-single-page">${html}</div>`;
+      await new Promise(r => setTimeout(r, 60));
+      const pageEl = slot.querySelector('.pdf-single-page') as HTMLElement;
+      const canvas = await html2canvas(pageEl, {
+        scale: 1.6, useCORS: true, allowTaint: true, backgroundColor: '#FFFFFF', logging: false,
+        scrollX: 0, scrollY: 0, windowWidth: 794, windowHeight: 1123, onclone: html2canvasOklchOnClone
+      });
+      const img = canvas.toDataURL('image/jpeg', 0.88);
+      if (!pdf) pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      else pdf.addPage('a4', 'portrait');
+      pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      canvas.width = 0; canvas.height = 0;
+      options.onProgress?.(i + 1, list.length);
+
+      const endOfPart = (i + 1) % pagesPerFile === 0 || i === list.length - 1;
+      if (endOfPart) {
+        saveCurrent(Math.floor(i / pagesPerFile) + 1);
+        // let the browser start the previous download before the next part
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+  } finally {
+    if (document.body.contains(container)) document.body.removeChild(container);
+  }
+  return { files: filesWritten, pages: list.length };
+};

@@ -28,6 +28,7 @@ import {
   downloadCourtComboPdf,
   downloadFullAdminClaimPdf,
   downloadFullAdminComboPdf,
+  downloadAllClaimsPdf,
   getHardshipList,
   getHardshipDetail,
   getFuturePreferenceDetail
@@ -2553,6 +2554,34 @@ export default function AdminDashboard({
     if (!opened) toast.error('Please allow pop-ups to open the A4 print window.');
   };
 
+  const [isBulkClaimsPdfRunning, setIsBulkClaimsPdfRunning] = useState(false);
+
+  // One A4 page per claim, all claims in one (or a few) PDF files for bulk printing.
+  const downloadAllClaimsAsPdf = async (kind: 'court' | 'admin') => {
+    if (isBulkClaimsPdfRunning) return;
+    if (actualClaims.length === 0) {
+      toast.error('ഡൗൺലോഡ് ചെയ്യാനുള്ള ക്ലെയിമുകൾ ഇല്ല.');
+      return;
+    }
+    setIsBulkClaimsPdfRunning(true);
+    const toastId = toast.loading(`PDF തയ്യാറാക്കുന്നു... 0/${actualClaims.length} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`);
+    try {
+      const items = actualClaims.map((claim: any) => ({
+        claim,
+        member: members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile))
+      }));
+      const result = await downloadAllClaimsPdf(items, kind, {
+        onProgress: (done, total) => toast.loading(`PDF തയ്യാറാക്കുന്നു... ${done}/${total} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`, { id: toastId })
+      });
+      toast.success(`${result.pages} ഫോമുകൾ (ഓരോന്നും ഒരു പേജ്) ${result.files} PDF ഫയലായി ഡൗൺലോഡ് ചെയ്തു.`, { id: toastId, duration: 8000 });
+    } catch (error: any) {
+      console.error('Bulk claims PDF failed:', error);
+      toast.error('PDF ഡൗൺലോഡ് പരാജയപ്പെട്ടു: ' + (error?.message || 'Error'), { id: toastId });
+    } finally {
+      setIsBulkClaimsPdfRunning(false);
+    }
+  };
+
   const exportAllIndividualClaimsToExcel = () => {
     const preferenceLabels: Record<string, string> = {
       settlement: 'Settlement and account closure after balance payment',
@@ -4182,6 +4211,26 @@ export default function AdminDashboard({
                     >
                       <Download className="w-4 h-4 mr-1.5" />
                       <span>Download All Claims Excel ({actualClaims.length})</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => downloadAllClaimsAsPdf('court')}
+                      disabled={actualClaims.length === 0 || isBulkClaimsPdfRunning}
+                      className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase !bg-emerald-700 hover:!bg-emerald-800 !text-white shadow-sm disabled:!bg-slate-200 disabled:!text-slate-500"
+                      title="എല്ലാ ക്ലെയിം ഫോമുകളും ഓരോ A4 പേജായി ഒറ്റ PDF-ൽ (പ്രിന്റിങ്ങിന്)"
+                    >
+                      {isBulkClaimsPdfRunning ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Download className="w-4 h-4 mr-1.5" />}
+                      <span>All Claim Forms PDF ({actualClaims.length})</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => downloadAllClaimsAsPdf('admin')}
+                      disabled={actualClaims.length === 0 || isBulkClaimsPdfRunning}
+                      className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase !bg-brand-magenta hover:opacity-90 !text-white shadow-sm disabled:!bg-slate-200 disabled:!text-slate-500"
+                      title="എല്ലാ ക്ലെയിമുകളുടെയും Full Admin Record ഓരോ A4 പേജായി ഒറ്റ PDF-ൽ"
+                    >
+                      <Download className="w-4 h-4 mr-1.5" />
+                      <span>All Admin Records PDF</span>
                     </Button>
                     <Button
                       variant="outline"
