@@ -113,7 +113,7 @@ import { onSnapshot, collection, query, where, orderBy, serverTimestamp, doc, de
 import { auth, db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
-import { buildRegistrationReceipt, printA4Receipts } from '@/src/lib/receiptUtils';
+import { buildRegistrationReceipt, buildProfileRenewalReceipt, printA4Receipts, downloadReceiptsPdf } from '@/src/lib/receiptUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2552,6 +2552,38 @@ export default function AdminDashboard({
     if (!opened) toast.error('Please allow pop-ups to open the A4 print window.');
   };
 
+  const [isReceiptsPdfRunning, setIsReceiptsPdfRunning] = useState(false);
+
+  // TOTAL RECEIPTS PDF for auditors: registration receipt of every member (+ the renewal
+  // receipt recorded on the member profile), 2 per A4 page, split into 100-page PDF files.
+  const downloadTotalReceiptsPdf = async (membersToExport: UserProfile[], label: string) => {
+    if (isReceiptsPdfRunning) return;
+    if (membersToExport.length === 0) {
+      toast.error('ഡൗൺലോഡ് ചെയ്യാനുള്ള അംഗങ്ങൾ ഇല്ല.');
+      return;
+    }
+    const entries: Array<{ member: UserProfile; receipt: any }> = [];
+    membersToExport.forEach(member => {
+      entries.push({ member, receipt: buildRegistrationReceipt(member) });
+      const renewal = buildProfileRenewalReceipt(member);
+      if (renewal) entries.push({ member, receipt: renewal });
+    });
+    setIsReceiptsPdfRunning(true);
+    const toastId = toast.loading(`രസീത് PDF തയ്യാറാക്കുന്നു... 0/${entries.length} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`);
+    try {
+      const result = await downloadReceiptsPdf(entries, {
+        fileLabel: label,
+        onProgress: (done, total) => toast.loading(`രസീത് PDF തയ്യാറാക്കുന്നു... ${done}/${total} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`, { id: toastId })
+      });
+      toast.success(`${result.receipts} രസീതുകൾ ${result.files} PDF ഫയലായി ഡൗൺലോഡ് ചെയ്തു.`, { id: toastId, duration: 8000 });
+    } catch (error: any) {
+      console.error('Receipts PDF failed:', error);
+      toast.error('രസീത് PDF ഡൗൺലോഡ് പരാജയപ്പെട്ടു: ' + (error?.message || 'Error'), { id: toastId });
+    } finally {
+      setIsReceiptsPdfRunning(false);
+    }
+  };
+
   const [isBulkClaimsPdfRunning, setIsBulkClaimsPdfRunning] = useState(false);
 
   // One A4 page per claim, all claims in one (or a few) PDF files for bulk printing.
@@ -3801,6 +3833,27 @@ export default function AdminDashboard({
                       >
                         <Printer className="w-4 h-4 mr-1" />
                         Print All ({actualMembers.length})
+                      </Button>
+                      <Button
+                        onClick={() => downloadTotalReceiptsPdf(filteredMembers, 'HCRS_Filtered_Receipts')}
+                        disabled={isReceiptsPdfRunning || filteredMembers.length === 0}
+                        variant="outline"
+                        size="sm"
+                        className="h-10 rounded-xl font-bold text-xs w-full sm:w-auto flex-1 sm:flex-none border-emerald-600/40 text-emerald-800"
+                        title="Filtered അംഗങ്ങളുടെ രസീതുകൾ PDF ആയി ഡൗൺലോഡ് ചെയ്യുക (A4-ൽ 2 വീതം)"
+                      >
+                        {isReceiptsPdfRunning ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1 text-emerald-600" />}
+                        Receipts PDF Filtered ({filteredMembers.length})
+                      </Button>
+                      <Button
+                        onClick={() => downloadTotalReceiptsPdf(actualMembers, 'HCRS_Total_Receipts')}
+                        disabled={isReceiptsPdfRunning || actualMembers.length === 0}
+                        size="sm"
+                        className="h-10 rounded-xl font-bold text-xs w-full sm:w-auto flex-1 sm:flex-none !bg-emerald-700 hover:!bg-emerald-800 !text-white"
+                        title="എല്ലാ അംഗങ്ങളുടെയും രസീതുകൾ PDF ആയി ഡൗൺലോഡ് ചെയ്യുക (ഓഡിറ്റർമാർക്ക്)"
+                      >
+                        {isReceiptsPdfRunning ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                        Total Receipts PDF ({actualMembers.length})
                       </Button>
                     </div>
                   </div>

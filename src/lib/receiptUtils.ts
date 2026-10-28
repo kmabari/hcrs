@@ -1,5 +1,8 @@
 import { PaymentReceipt, UserProfile } from '../types';
 import { FALLBACK_LOGO_URL, HCRS_OFFICIAL_DETAILS } from '../constants';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import { html2canvasOklchOnClone } from './imageUtils';
 
 export const formatReceiptDate = (value: any): string => {
   if (!value) return '-';
@@ -97,68 +100,54 @@ const escapeHtml = (value: unknown): string => String(value ?? '-')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
-export const printA4Receipts = (
-  entries: Array<{ member: UserProfile; receipt: PaymentReceipt }>,
-  title = 'HCRS Membership Receipts'
-): boolean => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return false;
-
+const buildReceiptCardHtml = (member: UserProfile, receipt: PaymentReceipt): string => {
   const sealUrl = `${window.location.origin}/hcrs-official-seal.png`;
-
-  const receiptCards = entries.map(({ member, receipt }) => {
-    const transactionId = receipt.transactionId || '-';
-    const paymentId = receipt.paymentId || '-';
-    const orderId = receipt.orderId || '-';
-    const paymentTime = receipt.paymentTime || '-';
-    const category = getReceiptMembershipCategory(member);
-    return `
-      <section class="receipt-half">
-        <div class="receipt-shell">
-          <header>
-            <img class="logo" src="${escapeHtml(FALLBACK_LOGO_URL)}" alt="HCRS Logo" />
-            <h1>HIGHRICH COMMUNITY REVIVAL<br/>SOCIETY</h1>
-            <p class="reg">REG. NO: ${HCRS_OFFICIAL_DETAILS.registrationNumber} &nbsp;|&nbsp; ${HCRS_OFFICIAL_DETAILS.website.toUpperCase()}</p>
-            <p class="address">${HCRS_OFFICIAL_DETAILS.addressLine1}<br/>${HCRS_OFFICIAL_DETAILS.addressLine2}</p>
-          </header>
-          <div class="receipt-title">OFFICIAL PAYMENT RECEIPT<br/><small>(പേയ്‌മെന്റ് രസീത്)</small></div>
-          <div class="grid member-grid">
-            <div><label>Receipt Number</label><strong>${escapeHtml(receipt.receiptNo)}</strong></div>
-            <div><label>Date of Payment / Joining</label><strong>${escapeHtml(receipt.paymentDate)}</strong></div>
-            <div><label>Received From</label><strong>${escapeHtml(member.name || '-')}</strong></div>
-            <div><label>Membership ID</label><strong>${escapeHtml(member.membershipId || '-')}</strong></div>
-            <div><label>Mobile Number</label><strong>${escapeHtml(member.mobile || '-')}</strong></div>
-            <div><label>District / Assembly</label><strong>${escapeHtml(member.district || '-')} / ${escapeHtml(member.assemblyConstituency || '-')}</strong></div>
-            <div><label>Membership Category</label><strong class="category">${category}</strong></div>
-            <div><label>Payment Status</label><strong>${escapeHtml(receipt.status)}</strong></div>
-          </div>
-          <div class="payment-box">
-            <div><label>Purpose of Payment</label><strong>${escapeHtml(receipt.receiptLabel)}</strong></div>
-            <div class="amount"><label>Amount</label><strong>₹${escapeHtml(receipt.amount)}.00</strong></div>
-          </div>
-          <div class="total"><span>TOTAL PAID</span><strong>₹${escapeHtml(receipt.amount)}.00</strong></div>
-          <h2>Transaction Details</h2>
-          <div class="transaction-grid">
-            <div><label>Razorpay Order ID</label><span>${escapeHtml(orderId)}</span></div>
-            <div><label>Razorpay Payment ID</label><span>${escapeHtml(paymentId)}</span></div>
-            <div><label>Transaction ID</label><span>${escapeHtml(transactionId)}</span></div>
-            <div><label>Payment Time</label><span>${escapeHtml(paymentTime)}</span></div>
-          </div>
-          <footer>
-            <div class="verified"><span class="tick">✓</span> APPROVED &amp; VERIFIED</div>
-            <div class="seal-block"><img src="${escapeHtml(sealUrl)}" alt="Official HCRS Seal"/><b>Authorized Signatory</b></div>
-          </footer>
+  const transactionId = receipt.transactionId || '-';
+  const paymentId = receipt.paymentId || '-';
+  const orderId = receipt.orderId || '-';
+  const paymentTime = receipt.paymentTime || '-';
+  const category = getReceiptMembershipCategory(member);
+  return `
+    <section class="receipt-half">
+      <div class="receipt-shell">
+        <header>
+          <img class="logo" src="${escapeHtml(FALLBACK_LOGO_URL)}" alt="HCRS Logo" />
+          <h1>HIGHRICH COMMUNITY REVIVAL<br/>SOCIETY</h1>
+          <p class="reg">REG. NO: ${HCRS_OFFICIAL_DETAILS.registrationNumber} &nbsp;|&nbsp; ${HCRS_OFFICIAL_DETAILS.website.toUpperCase()}</p>
+          <p class="address">${HCRS_OFFICIAL_DETAILS.addressLine1}<br/>${HCRS_OFFICIAL_DETAILS.addressLine2}</p>
+        </header>
+        <div class="receipt-title">OFFICIAL PAYMENT RECEIPT<br/><small>(പേയ്‌മെന്റ് രസീത്)</small></div>
+        <div class="grid member-grid">
+          <div><label>Receipt Number</label><strong>${escapeHtml(receipt.receiptNo)}</strong></div>
+          <div><label>Date of Payment / Joining</label><strong>${escapeHtml(receipt.paymentDate)}</strong></div>
+          <div><label>Received From</label><strong>${escapeHtml(member.name || '-')}</strong></div>
+          <div><label>Membership ID</label><strong>${escapeHtml(member.membershipId || '-')}</strong></div>
+          <div><label>Mobile Number</label><strong>${escapeHtml(member.mobile || '-')}</strong></div>
+          <div><label>District / Assembly</label><strong>${escapeHtml(member.district || '-')} / ${escapeHtml(member.assemblyConstituency || '-')}</strong></div>
+          <div><label>Membership Category</label><strong class="category">${category}</strong></div>
+          <div><label>Payment Status</label><strong>${escapeHtml(receipt.status)}</strong></div>
         </div>
-      </section>`;
-  });
+        <div class="payment-box">
+          <div><label>Purpose of Payment</label><strong>${escapeHtml(receipt.receiptLabel)}</strong></div>
+          <div class="amount"><label>Amount</label><strong>₹${escapeHtml(receipt.amount)}.00</strong></div>
+        </div>
+        <div class="total"><span>TOTAL PAID</span><strong>₹${escapeHtml(receipt.amount)}.00</strong></div>
+        <h2>Transaction Details</h2>
+        <div class="transaction-grid">
+          <div><label>Razorpay Order ID</label><span>${escapeHtml(orderId)}</span></div>
+          <div><label>Razorpay Payment ID</label><span>${escapeHtml(paymentId)}</span></div>
+          <div><label>Transaction ID</label><span>${escapeHtml(transactionId)}</span></div>
+          <div><label>Payment Time</label><span>${escapeHtml(paymentTime)}</span></div>
+        </div>
+        <footer>
+          <div class="verified"><span class="tick">✓</span> APPROVED &amp; VERIFIED</div>
+          <div class="seal-block"><img src="${escapeHtml(sealUrl)}" alt="Official HCRS Seal"/><b>Authorized Signatory</b></div>
+        </footer>
+      </div>
+    </section>`;
+};
 
-  const pages: string[] = [];
-  for (let index = 0; index < receiptCards.length; index += 2) {
-    pages.push(`<section class="receipt-page">${receiptCards.slice(index, index + 2).join('')}</section>`);
-  }
-
-  printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-    <style>
+const RECEIPT_PRINT_CSS = `
       @page { size: A4 portrait; margin: 7mm; }
       * { box-sizing: border-box; }
       body { margin: 0; font-family: Arial, sans-serif; color: #182238; background: white; }
@@ -193,7 +182,101 @@ export const printA4Receipts = (
       .seal-block img { width: 19mm; height: 19mm; object-fit: contain; mix-blend-mode: multiply; margin-bottom: 0; }
       @media screen { body { background: #e2e8f0; } .receipt-page { max-width: 210mm; margin: 12px auto; background: white; } }
       @media print { .receipt-page { background: white; } }
+`;
+
+export const printA4Receipts = (
+  entries: Array<{ member: UserProfile; receipt: PaymentReceipt }>,
+  title = 'HCRS Membership Receipts'
+): boolean => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return false;
+
+  const receiptCards = entries.map(({ member, receipt }) => buildReceiptCardHtml(member, receipt));
+
+  const pages: string[] = [];
+  for (let index = 0; index < receiptCards.length; index += 2) {
+    pages.push(`<section class="receipt-page">${receiptCards.slice(index, index + 2).join('')}</section>`);
+  }
+
+  printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+    <style>
+${RECEIPT_PRINT_CSS}
     </style></head><body>${pages.join('')}<script>window.onload=()=>{window.print();};<\/script></body></html>`);
   printWindow.document.close();
   return true;
+};
+
+/**
+ * TOTAL RECEIPTS PDF (for auditors): every receipt as real PDF files, 2 receipts per A4
+ * page (same layout as the print view). Pages are rendered one at a time and the result
+ * is split into several PDF files of `pagesPerFile` pages so large lists do not crash
+ * the browser. Returns how many files / receipts were produced.
+ */
+export const downloadReceiptsPdf = async (
+  entries: Array<{ member: UserProfile; receipt: PaymentReceipt }>,
+  options: { fileLabel?: string; pagesPerFile?: number; onProgress?: (done: number, total: number) => void } = {}
+): Promise<{ files: number; receipts: number; pages: number }> => {
+  const pagesPerFile = Math.max(10, options.pagesPerFile || 100);
+  const label = (options.fileLabel || 'HCRS_Receipts').replace(/[^A-Za-z0-9_-]/g, '_');
+  if (entries.length === 0) throw new Error('No receipts available to generate PDF');
+
+  if (document.fonts) {
+    try { await document.fonts.ready; } catch { /* ignore */ }
+  }
+
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;top:0;left:0;width:210mm;background:#fff;color:#182238;z-index:-999999;opacity:0.01;pointer-events:none;overflow:visible;';
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = RECEIPT_PRINT_CSS.replace(/@page[^}]*}/, '') + `
+    .receipt-page { width: 210mm !important; max-width: none !important; height: 297mm !important; margin: 0 !important; padding: 7mm !important; page-break-after: auto !important; }
+  `;
+  container.appendChild(styleEl);
+  const slot = document.createElement('div');
+  container.appendChild(slot);
+  document.body.appendChild(container);
+
+  const totalPages = Math.ceil(entries.length / 2);
+  const totalFiles = Math.ceil(totalPages / pagesPerFile);
+  const date = new Date().toISOString().slice(0, 10);
+  let pdf: jsPDF | null = null;
+  let files = 0;
+
+  const saveCurrent = (partNo: number) => {
+    if (!pdf) return;
+    const name = totalFiles > 1 ? `${label}_${date}_Part${partNo}of${totalFiles}.pdf` : `${label}_${date}.pdf`;
+    const url = URL.createObjectURL(pdf.output('blob'));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    files++;
+    pdf = null;
+  };
+
+  try {
+    for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+      const pair = entries.slice(pageIdx * 2, pageIdx * 2 + 2);
+      slot.innerHTML = `<section class="receipt-page">${pair.map(e => buildReceiptCardHtml(e.member, e.receipt)).join('')}</section>`;
+      await new Promise(r => setTimeout(r, 60));
+      const pageEl = slot.querySelector('.receipt-page') as HTMLElement;
+      const canvas = await html2canvas(pageEl, {
+        scale: 1.6, useCORS: true, allowTaint: true, backgroundColor: '#FFFFFF', logging: false,
+        scrollX: 0, scrollY: 0, onclone: html2canvasOklchOnClone
+      });
+      const img = canvas.toDataURL('image/jpeg', 0.88);
+      if (!pdf) pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      else pdf.addPage('a4', 'portrait');
+      pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      canvas.width = 0; canvas.height = 0;
+      options.onProgress?.(Math.min(entries.length, (pageIdx + 1) * 2), entries.length);
+
+      if ((pageIdx + 1) % pagesPerFile === 0 || pageIdx === totalPages - 1) {
+        saveCurrent(Math.floor(pageIdx / pagesPerFile) + 1);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+  } finally {
+    if (document.body.contains(container)) document.body.removeChild(container);
+  }
+  return { files, receipts: entries.length, pages: totalPages };
 };
