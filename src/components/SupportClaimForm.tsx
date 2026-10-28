@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { authenticatedFetch } from '../lib/authenticatedFetch';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone, triggerFileDownload } from '../lib/imageUtils';
@@ -1490,7 +1491,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       // Server database API fallback if client Firestore queries returned empty
       if (docsList.length === 0) {
         try {
-          const apiRes = await fetch(`/api/database/claims?mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
+          const apiRes = await authenticatedFetch(`/api/database/claims?mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
           if (apiRes.ok) {
             const apiJson = await apiRes.json();
             if (apiJson.success && Array.isArray(apiJson.data) && apiJson.data.length > 0) {

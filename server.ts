@@ -858,8 +858,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   });
 
   // API endpoint to serve local extracted old users backup
-  app.get(["/api/local-backup-users", "/local-backup-users"], (req, res) => {
+  app.get(["/api/local-backup-users", "/local-backup-users"], async (req, res) => {
     try {
+      const who = await getRequestIdentity(req);
+      if (!who?.isMain) return res.status(who ? 403 : 401).json({ error: 'Main admin access required' });
       const backupPath = path.join(process.cwd(), 'extracted_old_users.json');
       if (fs.existsSync(backupPath)) {
         const data = fs.readFileSync(backupPath, 'utf8');
@@ -1032,6 +1034,38 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ---- ACCESS CONTROL for member-data endpoints --------------------------------------
+  // Who is calling? Verified from the Firebase ID token (never from a URL/query flag).
+  const getRequestIdentity = async (req: any): Promise<null | {
+    uid: string; email: string; mobile: string; isStaff: boolean; isMain: boolean; district: string | null;
+  }> => {
+    const authorization = String(req.headers.authorization || '');
+    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    if (!token) return null;
+    let decoded: any;
+    try { decoded = await admin.auth().verifyIdToken(token); } catch { return null; }
+    const email = String(decoded.email || '').toLowerCase();
+    let profile: any = {};
+    try {
+      if (dbAdmin) {
+        const snap = await dbAdmin.collection('users').doc(decoded.uid).get();
+        profile = snap.exists ? snap.data() || {} : {};
+      }
+    } catch { /* treat as plain member */ }
+    const isMain = isMainAdminAccount(email, profile);
+    const district = getDistrictAdminDistrict(email);
+    const isStaff = isMain || !!district || profile.role === 'admin' || profile.role === 'operator' || profile.isAdmin === true;
+    const mobile = /^\d{10}@hcrs\.society$/.test(email) ? email.slice(0, 10) : String(profile.mobile || '').replace(/\D/g, '').slice(-10);
+    return { uid: decoded.uid, email, mobile, isStaff, isMain, district };
+  };
+
+  // Restrict a members list to what this staff account may see (same rule the admin UI applies).
+  const scopeMembersForStaff = (list: any[], who: NonNullable<Awaited<ReturnType<typeof getRequestIdentity>>>) => {
+    if (who.isMain) return list;
+    if (who.district) return list.filter(m => isDistrictMatch(m.district, who.district));
+    return list.filter(m => m.registeredBy === who.uid);
+  };
+
   // In-flight request deduplication promises to avoid overlapping massive Firestore scans
   let membersInFlightPromise: Promise<any[]> | null = null;
   let claimsInFlightPromise: Promise<any[]> | null = null;
@@ -1039,17 +1073,21 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // High-performance database members endpoint with in-memory caching and deduplication
   app.get(["/api/database/members", "/database/members"], async (req, res) => {
     try {
+      const who = await getRequestIdentity(req);
+      if (!who) return res.status(401).json({ success: false, error: 'Login required' });
+      if (!who.isStaff) return res.status(403).json({ success: false, error: 'Admin access required' });
       const now = Date.now();
       const forceFresh = req.query.fresh === 'true';
       
       // If cached data is recent (< CACHE_TTL_MS or 0 when fresh), return immediately
       const minCacheAge = forceFresh ? 0 : CACHE_TTL_MS;
       if (membersMemoryCache && (now - membersMemoryCache.timestamp) < minCacheAge) {
+        const scopedCached = scopeMembersForStaff(membersMemoryCache.data, who);
         return res.json({
           success: true,
-          count: membersMemoryCache.data.length,
+          count: scopedCached.length,
           cached: true,
-          data: membersMemoryCache.data
+          data: scopedCached
         });
       }
 
@@ -1074,7 +1112,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         });
       }
 
-      const list = await membersInFlightPromise;
+      const list = scopeMembersForStaff(await membersInFlightPromise, who);
 
       return res.json({
         success: true,
@@ -1085,13 +1123,11 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error("[server] /api/database/members fetch error:", err);
       if (membersMemoryCache) {
-        return res.json({
-          success: true,
-          count: membersMemoryCache.data.length,
-          cached: true,
-          stale: true,
-          data: membersMemoryCache.data
-        });
+        const who = await getRequestIdentity(req);
+        if (who?.isStaff) {
+          const staleList = scopeMembersForStaff(membersMemoryCache.data, who);
+          return res.json({ success: true, count: staleList.length, cached: true, stale: true, data: staleList });
+        }
       }
       return res.status(500).json({ success: false, error: err?.message || "Failed to query members from database" });
     }
@@ -1100,6 +1136,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // Fast Database Claims Retrieval with In-Memory Caching and deduplication
   app.get(["/api/database/claims", "/database/claims"], async (req, res) => {
     try {
+      const who = await getRequestIdentity(req);
+      if (!who) return res.status(401).json({ success: false, error: 'Login required' });
       const now = Date.now();
       const forceFresh = req.query.fresh === 'true';
       const minCacheAge = forceFresh ? 0 : CACHE_TTL_MS;
@@ -1134,6 +1172,18 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         list = await claimsInFlightPromise;
       }
 
+      // A normal member may only ever receive THEIR OWN claims, whatever the query says.
+      if (!who.isStaff) {
+        const ownMobile = who.mobile;
+        const own = list.filter((c: any) => {
+          if (c.uid === who.uid) return true;
+          if (ownMobile && c.uid === `offline_${ownMobile}`) return true;
+          const cMob = String(c.userMobile || '').replace(/\D/g, '').slice(-10);
+          return !!ownMobile && cMob === ownMobile;
+        });
+        return res.json({ success: true, count: own.length, cached: false, data: own });
+      }
+
       const { uid, mobile, membershipId } = req.query;
       if (uid || mobile || membershipId) {
         const cleanMob = mobile ? String(mobile).replace(/\D/g, '').slice(-10) : '';
@@ -1166,7 +1216,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       });
     } catch (err: any) {
       console.error("[server] /api/database/claims fetch error:", err);
-      if (claimsMemoryCache) {
+      const whoOnError = await getRequestIdentity(req);
+      if (claimsMemoryCache && whoOnError?.isStaff) {
         return res.json({
           success: true,
           count: claimsMemoryCache.data.length,
@@ -1182,6 +1233,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // Fast Database Life-Members Retrieval
   app.get(["/api/database/life-members", "/database/life-members"], async (req, res) => {
     try {
+      const who = await getRequestIdentity(req);
+      if (!who) return res.status(401).json({ success: false, error: 'Login required' });
+      if (!who.isStaff) return res.status(403).json({ success: false, error: 'Admin access required' });
       const isLife = (u: any) => {
         if (!u) return false;
         if (u.membership_type === 'LIFE_MEMBER' || u.membershipType === 'LIFE_MEMBER') return true;
@@ -1194,7 +1248,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       };
 
       if (membersMemoryCache && Array.isArray(membersMemoryCache.data) && membersMemoryCache.data.length > 0) {
-        const lifeList = membersMemoryCache.data.filter(isLife);
+        const lifeList = scopeMembersForStaff(membersMemoryCache.data.filter(isLife), who);
         return res.json({
           success: true,
           count: lifeList.length,
@@ -1206,7 +1260,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       // Query firestore directly
       const q = query(collection(clientDb, 'users'), where('membership_type', '==', 'LIFE_MEMBER'));
       const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) }));
+      const list = scopeMembersForStaff(snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) })), who);
 
       return res.json({
         success: true,

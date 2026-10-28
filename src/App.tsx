@@ -366,7 +366,7 @@ export default function App() {
 
     if (activeUser.uid === 'offline_admin') {
       try {
-        const response = await fetch('/api/local-backup-users');
+        const response = await authenticatedFetch('/api/local-backup-users');
         if (!response.ok) throw new Error('Local API failed');
         const data = await response.json();
         setMembers(data);
@@ -407,7 +407,7 @@ export default function App() {
 
       // Tier 1: Fast server-side cached endpoint (returns in ~100ms)
       try {
-        const apiRes = await fetch(`/api/database/members${isManual ? '?fresh=true' : ''}`);
+        const apiRes = await authenticatedFetch(`/api/database/members${isManual ? '?fresh=true' : ''}`);
         if (apiRes.ok) {
           const apiJson = await apiRes.json();
           if (apiJson.success && Array.isArray(apiJson.data) && apiJson.data.length > 0) {
@@ -719,7 +719,7 @@ export default function App() {
         // Robust server database API fallback if client Firestore queries returned empty
         if (list.length === 0) {
           try {
-            const apiRes = await fetch(`/api/database/claims?mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
+            const apiRes = await authenticatedFetch(`/api/database/claims?mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
             if (apiRes.ok) {
               const apiJson = await apiRes.json();
               if (apiJson.success && Array.isArray(apiJson.data) && apiJson.data.length > 0) {
@@ -1655,7 +1655,7 @@ export default function App() {
       setView('loading');
       setLoadingStatus('Connecting Offline Backup...');
       try {
-        const response = await fetch('/api/local-backup-users');
+        const response = await authenticatedFetch('/api/local-backup-users');
         if (!response.ok) {
           throw new Error('Local backup API failed to respond.');
         }
@@ -2315,7 +2315,7 @@ export default function App() {
         setView('loading');
         setLoadingStatus('Connecting Offline Backup...');
         try {
-          const response = await fetch('/api/local-backup-users');
+          const response = await authenticatedFetch('/api/local-backup-users');
           if (!response.ok) throw new Error('Local fallback server API error');
           const data = await response.json();
           setMembers(data);

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { authenticatedFetch } from '../lib/authenticatedFetch';
 import { db, storage } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -114,7 +115,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
     const toastId = isManual ? toast.loading('ഡാറ്റാബേസിൽ നിന്ന് ലൈഫ് മെമ്പർമാരെ സിങ്ക് ചെയ്യുന്നു...') : undefined;
     try {
       // 1. Try dedicated life-members API
-      const res = await fetch(`/api/database/life-members?fresh=true&t=${Date.now()}`);
+      const res = await authenticatedFetch(`/api/database/life-members?fresh=true&t=${Date.now()}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -152,7 +153,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
 
   useEffect(() => {
     // Initial fetch from API
-    fetch('/api/database/life-members')
+    authenticatedFetch('/api/database/life-members')
       .then(res => res.json())
       .then(json => {
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {

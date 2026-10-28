@@ -1390,7 +1390,7 @@ export default function AdminDashboard({
     setIsSyncingClaims(true);
     const toastId = isManual ? toast.loading('ഡാറ്റാബേസിൽ നിന്ന് ക്ലെയിമുകൾ സിങ്ക് ചെയ്യുന്നു...') : undefined;
     try {
-      const res = await fetch(`/api/database/claims?fresh=true&t=${Date.now()}`);
+      const res = await authenticatedFetch(`/api/database/claims?fresh=true&t=${Date.now()}`);
       if (res.ok) {
         const resData = await res.json();
         if (resData.success && Array.isArray(resData.data)) {
