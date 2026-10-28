@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth, secondaryDb } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup, signInWithRedirect, getRedirectResult, updatePassword } from 'firebase/auth';
 import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, EyeOff, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info, Printer, Download, Share2, FileText, MessageCircle, LayoutDashboard } from 'lucide-react';
-import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc, writeBatch, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
+import { Timestamp, setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc, writeBatch, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
@@ -252,13 +252,17 @@ export default function App() {
     return [];
   });
 
+  // True once the local (IndexedDB) copy of the member list has been checked. The admin
+  // dashboard must wait for this before deciding to download all ~8,500 members again.
+  const [membersCacheChecked, setMembersCacheChecked] = useState(false);
+
   // Fast IndexedDB loader for massive offline datasets (~8,000 members)
   useEffect(() => {
     idbGet<UserProfile[]>('hcrs_cached_members_list').then((cached) => {
       if (cached && Array.isArray(cached) && cached.length > 0) {
         setMembers((prev) => (prev.length === 0 ? cached : prev));
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setMembersCacheChecked(true));
   }, []);
 
   const [districtQuotas, setDistrictQuotas] = useState<Record<string, number>>(() => {
@@ -474,6 +478,7 @@ export default function App() {
       // Persist to IndexedDB
       try {
         await idbSet('hcrs_cached_members_list', cleanList);
+        await idbSet('hcrs_members_sync_meta', { lastFullSync: Date.now(), lastDeltaSync: Date.now() });
       } catch (idbErr) {
         console.warn("IndexedDB cache save notice:", idbErr);
       }
@@ -505,14 +510,83 @@ export default function App() {
     }
   }, [user]);
 
-  // Auto-sync members whenever an admin or operator enters the dashboard and members is empty
+  // ---- INCREMENTAL MEMBER SYNC ------------------------------------------------------
+  // Opening the dashboard shows the locally stored list instantly and then downloads ONLY
+  // members who were added/changed since the last sync (a handful of documents) instead of
+  // all ~8,500. A full download happens only the first time, when the local copy is older
+  // than FULL_SYNC_MAX_AGE_MS, or when the admin presses "Sync DB".
+  const FULL_SYNC_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+  const deltaSyncDoneForUidRef = useRef<string | null>(null);
+
+  const timestampToMillis = (v: any): number => {
+    if (!v) return 0;
+    if (typeof v.toMillis === 'function') return v.toMillis();
+    if (typeof v.toDate === 'function') return v.toDate().getTime();
+    const sec = v.seconds ?? v._seconds;
+    if (typeof sec === 'number') return sec * 1000;
+    const t = new Date(v).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  const syncMembersDelta = useCallback(async (activeUser: UserProfile, currentMembers: UserProfile[]) => {
+    const meta = await idbGet<{ lastFullSync?: number; lastDeltaSync?: number }>('hcrs_members_sync_meta').catch(() => null);
+    const now = Date.now();
+    if (!meta?.lastFullSync || now - meta.lastFullSync > FULL_SYNC_MAX_AGE_MS) {
+      // Too old (or never synced): do one full refresh in the background, without blocking the screen.
+      refreshMembersList(activeUser);
+      return;
+    }
+    const since = Math.max(0, (meta.lastDeltaSync || meta.lastFullSync) - 2 * 60 * 1000); // 2 min overlap for safety
+    const newestKnown = currentMembers.reduce((max, m: any) => Math.max(max, timestampToMillis(m.registrationDate)), 0);
+    const sinceRegistration = Math.max(0, Math.min(since, newestKnown ? newestKnown - 60 * 1000 : since));
+    const usersRef = collection(db, 'users');
+    const [newSnap, changedSnap] = await Promise.all([
+      getDocs(query(usersRef, where('registrationDate', '>', Timestamp.fromMillis(sinceRegistration)))),
+      getDocs(query(usersRef, where('updatedAt', '>', Timestamp.fromMillis(since))))
+    ]);
+    const changed = new Map<string, UserProfile>();
+    [...newSnap.docs, ...changedSnap.docs].forEach(d => changed.set(d.id, { ...(d.data() as any), uid: d.id } as UserProfile));
+
+    // Keep the same visibility rules as the full refresh.
+    const email = auth.currentUser?.email;
+    const entryDistrict = resolveDistrictFromSlugOrCode(sessionStorage.getItem('hcrs_district_intent'));
+    const isMaster = isMainAdminAccount(email, activeUser) && !entryDistrict;
+    const scopeDistrict = getDistrictAdminDistrict(email) || (isMainAdminAccount(email) ? entryDistrict : null);
+    const visible = Array.from(changed.values()).filter(u => {
+      if (MAIN_ADMINS.some(e => e.toLowerCase() === (u.email || '').toLowerCase())) return false;
+      if (isMaster) return true;
+      if (scopeDistrict) return normalizeDistrictCode(u.district) === scopeDistrict;
+      return (u as any).registeredBy === activeUser.uid;
+    });
+
+    if (visible.length > 0) {
+      let merged: UserProfile[] = [];
+      setMembers(prev => {
+        const byUid = new Map(prev.map(m => [m.uid, m] as [string, UserProfile]));
+        visible.forEach(u => byUid.set(u.uid, u));
+        merged = Array.from(byUid.values());
+        return merged;
+      });
+      try { await idbSet('hcrs_cached_members_list', merged); } catch {}
+    }
+    try { await idbSet('hcrs_members_sync_meta', { lastFullSync: meta.lastFullSync, lastDeltaSync: now }); } catch {}
+  }, [refreshMembersList]);
+
+  // Auto-sync members when an admin or operator enters the dashboard
   useEffect(() => {
     if ((view === 'admin' || view === 'operator') && user) {
-      if (members.length === 0 && !isSyncingRef.current) {
-        refreshMembersList(user);
+      if (!membersCacheChecked) return; // wait for the local copy before deciding what to download
+      if (members.length === 0) {
+        if (!isSyncingRef.current) refreshMembersList(user);
+      } else if (deltaSyncDoneForUidRef.current !== user.uid && !isSyncingRef.current) {
+        deltaSyncDoneForUidRef.current = user.uid;
+        syncMembersDelta(user, members).catch(err => {
+          console.warn('Incremental members sync notice:', err);
+          deltaSyncDoneForUidRef.current = null;
+        });
       }
     }
-  }, [view, user, members.length, refreshMembersList]);
+  }, [view, user, members.length, membersCacheChecked, refreshMembersList, syncMembersDelta]);
 
   useEffect(() => {
     const handleQuota = () => {

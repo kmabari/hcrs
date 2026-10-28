@@ -735,12 +735,10 @@ export default function AdminDashboard({
   const [sourceFilter, setSourceFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  // Auto-sync members from database if table is empty on mount
-  useEffect(() => {
-    if (members.length === 0 && onRefreshMembers && !isSyncingMembers) {
-      onRefreshMembers();
-    }
-  }, [members.length, onRefreshMembers, isSyncingMembers]);
+  // NOTE: the initial members load is handled once, centrally, in App.tsx (it waits for the
+  // locally stored copy, then downloads only new/changed members). Do not trigger a second,
+  // forced full download from here: it ran before the local copy was read and made every
+  // reopen of the admin panel re-download all members.
 
   const searchDigits = useMemo(() => {
     return searchTerm.replace(/\D/g, '');

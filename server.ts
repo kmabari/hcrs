@@ -133,7 +133,8 @@ const finalizePreparedRegistration = async ({
       paymentStatus: 'PAYMENT_VERIFIED', receiptNumber: receiptNo,
       registrationPaymentId: paymentId, registrationOrderId: orderId,
       registrationReceiptNumber: receiptNo, registrationPaymentTime: safeCapturedAt.toISOString(),
-      registrationPaymentStatus: 'PAYMENT_VERIFIED', paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      registrationPaymentStatus: 'PAYMENT_VERIFIED', paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     transaction.set(paymentRef, {
       paymentId, orderId, amount: 200, currency: 'INR', paymentType: 'registration',
@@ -3568,7 +3569,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             stateCode: 'KL',
             districtCode: distCode,
             constituencyCode: assemblyCode,
-            renewalPending: false
+            renewalPending: false,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
           };
           if (!existingData.registrationDate) {
             updateData.registrationDate = admin.firestore.FieldValue.serverTimestamp();
