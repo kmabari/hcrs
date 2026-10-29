@@ -2479,9 +2479,9 @@ export {
 export const downloadAllClaimsPdf = async (
   items: { claim: any; member?: any }[],
   kind: 'court' | 'admin' = 'court',
-  options: { pagesPerFile?: number; onProgress?: (done: number, total: number) => void } = {}
+  options: { pagesPerFile?: number; fileLabel?: string; onProgress?: (done: number, total: number) => void } = {}
 ): Promise<{ files: number; pages: number }> => {
-  const pagesPerFile = Math.max(10, options.pagesPerFile || 100);
+  const pagesPerFile = Math.max(10, options.pagesPerFile || 50);
 
   // De-duplicate claims (same claim must not print twice)
   const seen = new Set<string>();
@@ -2512,7 +2512,7 @@ export const downloadAllClaimsPdf = async (
   container.appendChild(slot);
   document.body.appendChild(container);
 
-  const label = kind === 'admin' ? 'Admin_Full_Records' : 'Court_Claim_Forms';
+  const label = (options.fileLabel || (kind === 'admin' ? 'Admin_Full_Records' : 'Court_Claim_Forms')).replace(/[^A-Za-z0-9_-]/g, '_');
   const date = new Date().toISOString().slice(0, 10);
   const totalFiles = Math.ceil(list.length / pagesPerFile);
   let pdf: jsPDF | null = null;

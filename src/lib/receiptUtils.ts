@@ -216,7 +216,7 @@ export const downloadReceiptsPdf = async (
   entries: Array<{ member: UserProfile; receipt: PaymentReceipt }>,
   options: { fileLabel?: string; pagesPerFile?: number; onProgress?: (done: number, total: number) => void } = {}
 ): Promise<{ files: number; receipts: number; pages: number }> => {
-  const pagesPerFile = Math.max(10, options.pagesPerFile || 100);
+  const pagesPerFile = Math.max(10, options.pagesPerFile || 50);
   const label = (options.fileLabel || 'HCRS_Receipts').replace(/[^A-Za-z0-9_-]/g, '_');
   if (entries.length === 0) throw new Error('No receipts available to generate PDF');
 

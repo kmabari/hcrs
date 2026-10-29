@@ -133,7 +133,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { normalizeDistrictCode, isDistrictMatch } from '../lib/districtUtils';
+import { normalizeDistrictCode, isDistrictMatch, getDistrictName } from '../lib/districtUtils';
 
 interface AdminDashboardProps {
   user?: UserProfile | null;
@@ -2585,22 +2585,35 @@ export default function AdminDashboard({
   };
 
   const [isBulkClaimsPdfRunning, setIsBulkClaimsPdfRunning] = useState(false);
+  // 'all' or a district code: bulk claim PDFs can be limited to ONE district.
+  const [bulkClaimsDistrict, setBulkClaimsDistrict] = useState<string>('all');
 
-  // One A4 page per claim, all claims in one (or a few) PDF files for bulk printing.
+  const claimsForBulkPdf = useMemo(() => {
+    if (bulkClaimsDistrict === 'all') return actualClaims;
+    return actualClaims.filter((claim: any) => {
+      const member = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
+      const claimDistrict = claim.userDistrict || claim.district || member?.district;
+      return isDistrictMatch(claimDistrict, bulkClaimsDistrict);
+    });
+  }, [actualClaims, members, bulkClaimsDistrict]);
+
+  // One A4 page per claim, 50 pages per PDF file, optionally for a single district.
   const downloadAllClaimsAsPdf = async (kind: 'court' | 'admin') => {
     if (isBulkClaimsPdfRunning) return;
-    if (actualClaims.length === 0) {
+    if (claimsForBulkPdf.length === 0) {
       toast.error('ഡൗൺലോഡ് ചെയ്യാനുള്ള ക്ലെയിമുകൾ ഇല്ല.');
       return;
     }
     setIsBulkClaimsPdfRunning(true);
-    const toastId = toast.loading(`PDF തയ്യാറാക്കുന്നു... 0/${actualClaims.length} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`);
+    const toastId = toast.loading(`PDF തയ്യാറാക്കുന്നു... 0/${claimsForBulkPdf.length} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`);
     try {
-      const items = actualClaims.map((claim: any) => ({
+      const items = claimsForBulkPdf.map((claim: any) => ({
         claim,
         member: members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile))
       }));
+      const districtLabel = bulkClaimsDistrict === 'all' ? 'All_Districts' : getDistrictName(bulkClaimsDistrict);
       const result = await downloadAllClaimsPdf(items, kind, {
+        fileLabel: `HCRS_${kind === 'admin' ? 'Admin_Records' : 'Claim_Forms'}_${districtLabel}`,
         onProgress: (done, total) => toast.loading(`PDF തയ്യാറാക്കുന്നു... ${done}/${total} — ദയവായി ഈ പേജ് അടയ്ക്കരുത്.`, { id: toastId })
       });
       toast.success(`${result.pages} ഫോമുകൾ (ഓരോന്നും ഒരു പേജ്) ${result.files} PDF ഫയലായി ഡൗൺലോഡ് ചെയ്തു.`, { id: toastId, duration: 8000 });
@@ -4263,25 +4276,34 @@ export default function AdminDashboard({
                       <Download className="w-4 h-4 mr-1.5" />
                       <span>Download All Claims Excel ({actualClaims.length})</span>
                     </Button>
+                    <select
+                      value={bulkClaimsDistrict}
+                      onChange={e => setBulkClaimsDistrict(e.target.value)}
+                      className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold w-full sm:w-auto"
+                      title="PDF ഡൗൺലോഡിന് ജില്ല തിരഞ്ഞെടുക്കുക"
+                    >
+                      <option value="all">All Districts (എല്ലാ ജില്ലയും)</option>
+                      {DISTRICTS.map(d => <option key={d.code} value={d.code}>{d.name}</option>)}
+                    </select>
                     <Button
                       size="sm"
                       onClick={() => downloadAllClaimsAsPdf('court')}
-                      disabled={actualClaims.length === 0 || isBulkClaimsPdfRunning}
+                      disabled={claimsForBulkPdf.length === 0 || isBulkClaimsPdfRunning}
                       className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase !bg-emerald-700 hover:!bg-emerald-800 !text-white shadow-sm disabled:!bg-slate-200 disabled:!text-slate-500"
                       title="എല്ലാ ക്ലെയിം ഫോമുകളും ഓരോ A4 പേജായി ഒറ്റ PDF-ൽ (പ്രിന്റിങ്ങിന്)"
                     >
                       {isBulkClaimsPdfRunning ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Download className="w-4 h-4 mr-1.5" />}
-                      <span>All Claim Forms PDF ({actualClaims.length})</span>
+                      <span>Claim Forms PDF ({claimsForBulkPdf.length})</span>
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => downloadAllClaimsAsPdf('admin')}
-                      disabled={actualClaims.length === 0 || isBulkClaimsPdfRunning}
+                      disabled={claimsForBulkPdf.length === 0 || isBulkClaimsPdfRunning}
                       className="w-full sm:w-auto min-h-10 h-auto py-2 px-4 rounded-xl font-black text-xs uppercase !bg-brand-magenta hover:opacity-90 !text-white shadow-sm disabled:!bg-slate-200 disabled:!text-slate-500"
                       title="എല്ലാ ക്ലെയിമുകളുടെയും Full Admin Record ഓരോ A4 പേജായി ഒറ്റ PDF-ൽ"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
-                      <span>All Admin Records PDF</span>
+                      <span>Admin Records PDF ({claimsForBulkPdf.length})</span>
                     </Button>
                     <Button
                       variant="outline"
