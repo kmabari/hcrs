@@ -191,12 +191,8 @@ export default function OperatorDashboard({
     }
   }, [user.district]);
 
-  // Auto-sync members from database if table is empty on mount
-  useEffect(() => {
-    if (members.length === 0 && onRefreshMembers && !isSyncingMembers) {
-      onRefreshMembers();
-    }
-  }, [members.length, onRefreshMembers, isSyncingMembers]);
+  // The initial members load is handled centrally in App.tsx (local copy first, then only new/changed
+  // members). A forced full download from here ran before the local copy was read.
 
   const stats = useMemo(() => ({
     myEntries: members.filter(m => m.status !== 'deleted').length,
@@ -278,7 +274,9 @@ export default function OperatorDashboard({
   }, [members, searchDigits, user.district]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDirectManual, setShowDirectManual] = useState(isDirectManual);
+  // District-admin links (isDirectManual) used to open ONLY the old single-entry form, hiding the member
+  // list / edit options behind a small toggle. Open the full console (entry + member list + edit) instead.
+  const [showDirectManual, setShowDirectManual] = useState(false);
   const [paymentException, setPaymentException] = useState({ mobile: '', paymentId: '', paymentType: 'registration', reason: '' });
   const [paymentExceptionSubmitting, setPaymentExceptionSubmitting] = useState(false);
 
