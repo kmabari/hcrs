@@ -1037,7 +1037,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // ---- ACCESS CONTROL for member-data endpoints --------------------------------------
   // Who is calling? Verified from the Firebase ID token (never from a URL/query flag).
   const getRequestIdentity = async (req: any): Promise<null | {
-    uid: string; email: string; mobile: string; isStaff: boolean; isMain: boolean; district: string | null;
+    uid: string; email: string; mobile: string; isStaff: boolean; isMain: boolean; district: string | null; profileDistrict: string | null;
   }> => {
     const authorization = String(req.headers.authorization || '');
     const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
@@ -1056,7 +1056,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     const district = getDistrictAdminDistrict(email);
     const isStaff = isMain || !!district || profile.role === 'admin' || profile.role === 'operator' || profile.isAdmin === true;
     const mobile = /^\d{10}@hcrs\.society$/.test(email) ? email.slice(0, 10) : String(profile.mobile || '').replace(/\D/g, '').slice(-10);
-    return { uid: decoded.uid, email, mobile, isStaff, isMain, district };
+    const profileDistrict = profile.district ? String(profile.district) : null;
+    return { uid: decoded.uid, email, mobile, isStaff, isMain, district, profileDistrict };
   };
 
   // Restrict a members list to what this staff account may see (same rule the admin UI applies).
@@ -1182,6 +1183,27 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           return !!ownMobile && cMob === ownMobile;
         });
         return res.json({ success: true, count: own.length, cached: false, data: own });
+      }
+
+      // District-level staff only ever receive the claims of THEIR OWN district.
+      if (!who.isMain) {
+        const scopeDistrict = who.district || who.profileDistrict;
+        if (!scopeDistrict) {
+          return res.json({ success: true, count: 0, cached: false, data: [] });
+        }
+        const cachedMembers: any[] = (membersMemoryCache && Array.isArray(membersMemoryCache.data)) ? membersMemoryCache.data : [];
+        const districtByUid = new Map<string, string>();
+        const districtByMobile = new Map<string, string>();
+        for (const m of cachedMembers) {
+          if (m.uid) districtByUid.set(m.uid, m.district);
+          const mm = String(m.mobile || '').replace(/\D/g, '').slice(-10);
+          if (mm) districtByMobile.set(mm, m.district);
+        }
+        list = list.filter((c: any) => {
+          const cMob = String(c.userMobile || '').replace(/\D/g, '').slice(-10);
+          const claimDistrict = c.userDistrict || c.district || districtByUid.get(c.uid) || districtByMobile.get(cMob);
+          return isDistrictMatch(claimDistrict, scopeDistrict);
+        });
       }
 
       const { uid, mobile, membershipId } = req.query;

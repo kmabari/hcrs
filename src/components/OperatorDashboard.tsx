@@ -80,6 +80,7 @@ import { cn } from '@/lib/utils';
 import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import FastMemberEntry from './FastMemberEntry';
+import DistrictDocumentsPanel from './DistrictDocumentsPanel';
 import MembershipCard from './MembershipCard';
 import { normalizeDistrictCode, getDistrictName, isDistrictMatch } from '../lib/districtUtils';
 
@@ -529,6 +530,8 @@ export default function OperatorDashboard({
               </form>
             </CardContent>
           </Card>
+
+          {user.district && <DistrictDocumentsPanel district={user.district} members={members} />}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start font-sans">
             {/* Left/Top: Fast Member Entry Form */}
