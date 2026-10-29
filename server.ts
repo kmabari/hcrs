@@ -2142,6 +2142,138 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ---- FORGOT PASSWORD (email link to the address saved in the member profile) ----------
+  const resetRateBuckets = new Map<string, number[]>();
+  const rateLimited = (key: string, max: number, windowMs: number) => {
+    const now = Date.now();
+    const recent = (resetRateBuckets.get(key) || []).filter(t => now - t < windowMs);
+    if (recent.length >= max) { resetRateBuckets.set(key, recent); return true; }
+    recent.push(now);
+    resetRateBuckets.set(key, recent);
+    return false;
+  };
+  const isRealEmail = (v: any) => {
+    const e = String(v || '').trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) && !e.endsWith('@hcrs.society');
+  };
+  const maskEmail = (e: string) => {
+    const [name, domain] = e.split('@');
+    return `${name.slice(0, 2)}${'*'.repeat(Math.max(2, name.length - 2))}@${domain}`;
+  };
+  const sendTransactionalEmail = async (to: string, subject: string, html: string): Promise<boolean> => {
+    // Brevo (free tier) HTTP API. Needs BREVO_API_KEY and a verified sender (MAIL_FROM_EMAIL).
+    const apiKey = (process.env.BREVO_API_KEY || '').trim();
+    const fromEmail = (process.env.MAIL_FROM_EMAIL || '').trim();
+    if (!apiKey || !fromEmail) return false;
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': apiKey, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        sender: { name: (process.env.MAIL_FROM_NAME || 'HCRS').trim(), email: fromEmail },
+        to: [{ email: to }], subject, htmlContent: html
+      })
+    });
+    if (!response.ok) {
+      console.error('[Mail] Brevo send failed:', response.status, (await response.text().catch(() => '')).slice(0, 300));
+      return false;
+    }
+    return true;
+  };
+
+  app.post(["/api/forgot-password", "/forgot-password"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ success: false, code: 'UNAVAILABLE' });
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ success: false, code: 'INVALID_MOBILE' });
+      const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+      if (rateLimited(`m:${mobile}`, 3, 60 * 60 * 1000) || rateLimited(`ip:${ip}`, 15, 60 * 60 * 1000)) {
+        return res.status(429).json({ success: false, code: 'RATE_LIMITED' });
+      }
+
+      const matches = await dbAdmin.collection('users').where('mobile', '==', mobile).limit(10).get();
+      const candidates = matches.docs.filter(d => (d.data() || {}).status !== 'deleted');
+      const target = candidates.find(d => String((d.data() || {}).membershipId || '').trim()) || candidates[0];
+      if (!target) return res.json({ success: false, code: 'NOT_FOUND' });
+
+      const email = String((target.data() || {}).email || '').trim().toLowerCase();
+      if (!isRealEmail(email)) return res.json({ success: false, code: 'NO_EMAIL' });
+
+      if (!(process.env.BREVO_API_KEY || '').trim() || !(process.env.MAIL_FROM_EMAIL || '').trim()) {
+        console.error('[Forgot Password] BREVO_API_KEY / MAIL_FROM_EMAIL are not configured.');
+        return res.status(503).json({ success: false, code: 'EMAIL_NOT_CONFIGURED' });
+      }
+
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      await dbAdmin.collection('password_resets').doc(tokenHash).set({
+        uid: target.id, mobile, used: false,
+        expiresAt: Date.now() + 30 * 60 * 1000,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      const baseUrl = (process.env.APP_BASE_URL || `https://${req.headers['x-forwarded-host'] || req.headers.host}`).replace(/\/+$/, '');
+      const link = `${baseUrl}/?resetPin=${rawToken}`;
+      const name = String((target.data() || {}).name || 'Member');
+      const sent = await sendTransactionalEmail(
+        email,
+        'HCRS - പാസ്‌വേഡ് റീസെറ്റ് ലിങ്ക് (Password reset)',
+        `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#182238">
+          <h2 style="color:#1e66dc">HIGHRICH COMMUNITY REVIVAL SOCIETY</h2>
+          <p>നമസ്കാരം ${name.replace(/[<>&]/g, '')},</p>
+          <p>താങ്കളുടെ HCRS അക്കൗണ്ടിന് (മൊബൈൽ ${mobile}) പുതിയ പാസ്‌വേഡ് സെറ്റ് ചെയ്യാൻ താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്യുക. ഈ ലിങ്ക് 30 മിനിറ്റ് മാത്രം പ്രവർത്തിക്കും, ഒരു തവണ മാത്രം ഉപയോഗിക്കാം.</p>
+          <p style="text-align:center;margin:28px 0"><a href="${link}" style="background:#1e66dc;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">പുതിയ പാസ്‌വേഡ് സെറ്റ് ചെയ്യുക</a></p>
+          <p style="font-size:12px;color:#64748b">You asked to reset your HCRS password. This link works once for 30 minutes. If you did not request this, ignore this email — your password will not change.</p>
+        </div>`
+      );
+      if (!sent) return res.status(502).json({ success: false, code: 'EMAIL_FAILED' });
+      return res.json({ success: true, maskedEmail: maskEmail(email) });
+    } catch (err: any) {
+      console.error('[Forgot Password] Error:', err?.message || err);
+      return res.status(500).json({ success: false, code: 'ERROR' });
+    }
+  });
+
+  app.post(["/api/reset-pin-with-token", "/reset-pin-with-token"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ success: false, error: 'Service unavailable' });
+      const rawToken = String(req.body?.token || '').trim();
+      const newPin = String(req.body?.newPin || '').trim();
+      if (!/^[a-f0-9]{64}$/.test(rawToken)) return res.status(400).json({ success: false, error: 'ലിങ്ക് ശരിയല്ല. (Invalid link)' });
+      if (!/^\d{6}$/.test(newPin)) return res.status(400).json({ success: false, error: 'പാസ്‌വേഡ് 6 അക്ക സംഖ്യയായിരിക്കണം. (PIN must be 6 digits)' });
+      if (newPin === '123456') return res.status(400).json({ success: false, error: 'ലളിതമായ 123456 ഒഴിവാക്കി മറ്റൊരു 6 അക്ക പാസ്‌വേഡ് തിരഞ്ഞെടുക്കുക.' });
+
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const tokenRef = dbAdmin.collection('password_resets').doc(tokenHash);
+      const outcome = await dbAdmin.runTransaction(async tx => {
+        const snap = await tx.get(tokenRef);
+        const data: any = snap.exists ? snap.data() || {} : null;
+        if (!data || data.used || Number(data.expiresAt || 0) < Date.now()) return null;
+        tx.update(tokenRef, { used: true, usedAt: admin.firestore.FieldValue.serverTimestamp() });
+        return data;
+      });
+      if (!outcome) return res.status(400).json({ success: false, error: 'ലിങ്ക് കാലാവധി കഴിഞ്ഞു അല്ലെങ്കിൽ മുമ്പ് ഉപയോഗിച്ചതാണ്. വീണ്ടും "Forgot password" ചെയ്യുക.' });
+
+      let authUid = String(outcome.uid);
+      try {
+        await admin.auth().updateUser(authUid, { password: newPin });
+      } catch (e: any) {
+        if (e?.code !== 'auth/user-not-found') throw e;
+        const byMobile = await admin.auth().getUserByEmail(`${outcome.mobile}@hcrs.society`);
+        authUid = byMobile.uid;
+        await admin.auth().updateUser(authUid, { password: newPin });
+      }
+      await dbAdmin.collection('users').doc(String(outcome.uid)).set({
+        pin: newPin, mustChangePassword: false, pinResetRequested: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      membersMemoryCache = null;
+      return res.json({ success: true, mobile: outcome.mobile });
+    } catch (err: any) {
+      console.error('[Reset PIN With Token] Error:', err?.message || err);
+      return res.status(500).json({ success: false, error: 'പാസ്‌വേഡ് മാറ്റാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.' });
+    }
+  });
+
   app.post(["/api/razorpay/create-order", "/razorpay/create-order"], async (req, res) => {
     try {
       const { paymentType, amount: clientAmount, memberId, mobile } = req.body;
@@ -3477,6 +3609,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // MEMBER PIN / PASSWORD RESET ENDPOINT
   // Allows registered members or operators/admins to reset PIN to default 123456
   // ============================================================================
+  // TODO(security): replace with /api/forgot-password + /api/reset-pin-with-token once the login screen
+  // and reset page use them and the email service (BREVO_API_KEY, MAIL_FROM_EMAIL) is configured.
   app.post(["/api/reset-member-pin", "/reset-member-pin"], async (req, res) => {
     try {
       const { mobile, email } = req.body || {};
