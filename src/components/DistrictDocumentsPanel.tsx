@@ -27,7 +27,7 @@ export default function DistrictDocumentsPanel({ district, members }: { district
 
   const districtName = getDistrictName(district);
   const districtMembers = useMemo(
-    () => members.filter(m => m.status !== 'deleted' && isDistrictMatch(m.district, district)),
+    () => members.filter(m => m.status !== 'deleted' && m.role !== 'operator' && m.role !== 'admin' && m.membership_type !== 'DISTRICT_ADMIN' && isDistrictMatch(m.district, district)),
     [members, district]
   );
 

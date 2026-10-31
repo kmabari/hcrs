@@ -2563,7 +2563,7 @@ export default function AdminDashboard({
       return;
     }
     const entries: Array<{ member: UserProfile; receipt: any }> = [];
-    membersToExport.forEach(member => {
+    membersToExport.filter(m => m.role !== 'operator' && m.role !== 'admin' && m.membership_type !== 'DISTRICT_ADMIN').forEach(member => {
       entries.push({ member, receipt: buildRegistrationReceipt(member) });
       const renewal = buildProfileRenewalReceipt(member);
       if (renewal) entries.push({ member, receipt: renewal });

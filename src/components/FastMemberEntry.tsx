@@ -77,6 +77,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   }, [adminUser?.district]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'razorpay' | 'qr' | 'old' | ''>('');
+  const [paymentRef, setPaymentRef] = useState('');
   const [createdMember, setCreatedMember] = useState<{
     name: string;
     mobile: string;
@@ -84,6 +86,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
     password: string;
     district: string;
     mandalam: string;
+    pendingApproval?: boolean;
   } | null>(null);
 
   // Do not let the admin close/refresh the page while a member is being created.
@@ -113,6 +116,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
     setSponsorMobile('');
     setDistrict(adminUser?.district || '');
     setMandalam('');
+    setPaymentMode('');
+    setPaymentRef('');
     setCreatedMember(null);
   };
 
@@ -154,6 +159,24 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
     }
     if (!mandalam) {
       toast.error('Please select Mandalam.');
+      return;
+    }
+
+    const payRef = paymentRef.trim();
+    if (!paymentMode) {
+      toast.error('പേയ്‌മെന്റ് രീതി തിരഞ്ഞെടുക്കുക. (Select payment method)');
+      return;
+    }
+    if (paymentMode === 'razorpay' && !/^pay_[A-Za-z0-9]{6,}$/.test(payRef)) {
+      toast.error('Razorpay Payment ID (pay_...) നൽകുക.');
+      return;
+    }
+    if (paymentMode === 'qr' && payRef.length < 6) {
+      toast.error('QR ട്രാൻസ്ഫർ / UTR ID നൽകുക.');
+      return;
+    }
+    if (paymentMode === 'old' && payRef.length < 2) {
+      toast.error('പഴയ മെമ്പർഷിപ്പ് രസീത് നമ്പർ നൽകുക.');
       return;
     }
 
@@ -365,9 +388,9 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           gender: '',
           dob: '',
           membershipId: finalMembershipId,
-          status: 'active', // Approved and Active instantly
-          isPaid: true,
-          isApproved: true,
+          status: paymentMode === 'razorpay' ? 'active' : 'pending', // server decides the final status
+          isPaid: paymentMode === 'razorpay',
+          isApproved: paymentMode === 'razorpay',
           isAdmin: false,
           role: 'member',
           serialNo: nextSerial,
@@ -391,7 +414,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             const saveResponse = await fetch('/api/admin/fast-entry-profile', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-              body: JSON.stringify({ uid: finalUid, profile: newProfile })
+              body: JSON.stringify({ uid: finalUid, profile: newProfile, paymentMode, paymentRef: payRef })
             });
             const saveJson: any = await saveResponse.json().catch(() => ({}));
             if (!saveResponse.ok || !saveJson.success) {
@@ -428,10 +451,11 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
         membershipId: generatedMembershipId,
         password: DEFAULT_PASSWORD,
         district: district,
-        mandalam: mandalam
+        mandalam: mandalam,
+        pendingApproval: paymentMode !== 'razorpay'
       });
 
-      toast.success('Member created successfully! (അംഗത്തെ വിജയകരമായി ചേർത്തു)', { id: loadingToast });
+      toast.success(paymentMode === 'razorpay' ? 'Member created successfully! (അംഗത്തെ വിജയകരമായി ചേർത്തു)' : 'Member saved. മെയിൻ അഡ്മിൻ അപ്രൂവൽ കഴിഞ്ഞാൽ മെമ്പർഷിപ്പ് ആക്ടീവ് ആകും.', { id: loadingToast });
       if (onMemberAdded) {
         onMemberAdded();
       }
@@ -494,8 +518,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             <CheckCircle2 className="w-10 h-10 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Member Registered!</h3>
-            <p className="text-sm font-semibold text-emerald-600 font-bold">അംഗ അക്കൗണ്ട് വിജയകരമായി രജിസ്റ്റർ ചെയ്യുകയും അപ്രൂവ് ചെയ്യുകയുംചെയ്തു (Active & Approved)</p>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">{createdMember.pendingApproval ? 'Submitted for Approval' : 'Member Registered!'}</h3>
+            <p className="text-sm font-semibold text-emerald-600 font-bold">{createdMember.pendingApproval ? 'വിവരങ്ങൾ സേവ് ചെയ്തു. മെയിൻ അഡ്മിൻ അപ്രൂവൽ ലഭിക്കുന്നത് വരെ മെമ്പർഷിപ്പ് ആക്ടീവ് ആകില്ല (Pending main admin approval)' : 'അംഗ അക്കൗണ്ട് വിജയകരമായി രജിസ്റ്റർ ചെയ്യുകയും അപ്രൂവ് ചെയ്യുകയുംചെയ്തു (Active & Approved)'}</p>
           </div>
         </div>
 
@@ -719,12 +743,34 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           </div>
         </div>
 
-        {/* Terms details */}
-        <div className="border-t-2 border-slate-200 pt-6 flex sm:items-center gap-3">
-          <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 self-start sm:self-center" />
-          <p className="text-xs text-slate-800 font-bold leading-relaxed">
-            By submitting, this profile is marked as paid and verified immediately. Expiry date will set to 1 year from today.
-          </p>
+        {/* Payment method */}
+        <div className="border-t-2 border-slate-200 pt-6 space-y-3">
+          <Label className="text-xs font-black uppercase tracking-wider text-slate-700">Payment Method (പേയ്‌മെന്റ് രീതി) *</Label>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {([
+              ['razorpay', 'Razorpay', 'ഓട്ടോ അപ്രൂവൽ'],
+              ['qr', 'QR / UPI', 'മെയിൻ അഡ്മിൻ അപ്രൂവൽ'],
+              ['old', 'Old Membership', 'മെയിൻ അഡ്മിൻ അപ്രൂവൽ']
+            ] as const).map(([value, label, hint]) => (
+              <button key={value} type="button" onClick={() => { setPaymentMode(value); setPaymentRef(''); }}
+                className={`rounded-xl border-2 p-3 text-left text-xs font-black ${paymentMode === value ? 'border-brand-magenta bg-brand-magenta/5' : 'border-slate-200 bg-white'}`}>
+                <span className="block uppercase tracking-wider">{label}</span>
+                <span className="block text-[10px] font-bold text-slate-500 mt-1">{hint}</span>
+              </button>
+            ))}
+          </div>
+          {paymentMode && (
+            <Input value={paymentRef} onChange={e => setPaymentRef(e.target.value.trim())} className="h-11 rounded-xl border-slate-300"
+              placeholder={paymentMode === 'razorpay' ? 'Razorpay Payment ID (pay_...)' : paymentMode === 'qr' ? 'QR ട്രാൻസ്ഫർ / UTR / Transaction ID' : 'പഴയ മെമ്പർഷിപ്പ് രസീത് നമ്പർ (Membership Receipt No)'} />
+          )}
+          <div className="flex gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0" />
+            <p className="text-xs text-slate-800 font-bold leading-relaxed">
+              {paymentMode === 'razorpay' || !paymentMode
+                ? 'Razorpay: പേയ്‌മെന്റ് സെർവർ പരിശോധിച്ച് (₹200, captured) ഓട്ടോ അപ്രൂവ് ചെയ്യും.'
+                : 'ഈ രീതിയിൽ മെയിൻ അഡ്മിൻ അപ്രൂവൽ നൽകുന്നത് വരെ അംഗം PENDING ആയിരിക്കും.'}
+            </p>
+          </div>
         </div>
 
         <Button 
@@ -732,7 +778,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           className="w-full h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-white font-black uppercase text-xs tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-md mt-2 disabled:opacity-60 cursor-pointer"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Creating Member Account...' : 'Instant Create Member Profile'}
+          {isSubmitting ? 'Creating Member Account...' : paymentMode === 'razorpay' ? 'Verify Payment & Create Member' : 'Submit for Main Admin Approval'}
         </Button>
       </form>
 

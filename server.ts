@@ -1,6 +1,6 @@
 import { createMainAdminGuard } from './src/lib/adminRequestGuard.js';
 import { isMainAdminAccount, getDistrictAdminDistrict } from './src/lib/adminAccess.js';
-import { isDistrictMatch } from './src/lib/districtUtils.js';
+import { isDistrictMatch, DISTRICTS, DISTRICT_SLUGS } from './src/lib/districtUtils.js';
 import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -2143,20 +2143,65 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (conflict) return res.status(409).json({ error: 'This mobile is already linked to another membership' });
       const toTs = (v: any) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? admin.firestore.FieldValue.serverTimestamp() : admin.firestore.Timestamp.fromDate(d); };
       const text = (v: any) => String(v ?? '').trim();
+      // Payment mode. Only the main admin may attest a member directly; everyone else must
+      // supply a captured Razorpay payment (auto-approved) or a QR transaction id / old
+      // membership receipt number (stays PENDING until the main admin approves).
+      const isMain = isMainAdminAccount(staff.email, staff.profile);
+      let mode = text(req.body?.paymentMode).toLowerCase();
+      if (!mode) mode = isMain ? 'admin' : '';
+      if (mode === 'admin' && !isMain) return res.status(403).json({ error: 'Payment details are required.' });
+      if (!['admin', 'razorpay', 'qr', 'old'].includes(mode)) return res.status(400).json({ error: 'Choose a payment method.' });
+      const paymentRef = text(req.body?.paymentRef).slice(0, 80);
+      let statusFields: any = { status: 'active', isPaid: true, isApproved: true, paymentMethod: 'Admin Fast Entry', paymentStatus: 'ADMIN_ATTESTED', membership_type: 'ADHOC_MEMBER' };
+      let registrationDate: any = toTs(input.registrationDate);
+      let expiryDate: any = toTs(input.expiryDate);
+      let razorpayPayment: any = null;
+      if (mode === 'razorpay') {
+        if (!/^pay_[A-Za-z0-9]{6,}$/.test(paymentRef)) return res.status(400).json({ error: 'Valid Razorpay Payment ID (pay_...) is required.' });
+        const { keyId, keySecret } = getRazorpayCredentials();
+        if (!keyId || !keySecret) return res.status(503).json({ error: 'Razorpay verification is unavailable' });
+        const rp = new Razorpay({ key_id: keyId, key_secret: keySecret });
+        const payment: any = await rp.payments.fetch(paymentRef);
+        if (!payment || payment.status !== 'captured' || Number(payment.amount) !== 20000) {
+          return res.status(400).json({ error: 'Captured ₹200 Razorpay payment could not be verified.' });
+        }
+        const used = await dbAdmin!.collection('payments').doc(paymentRef).get();
+        if (used.exists) return res.status(409).json({ error: 'This Razorpay payment has already been used.' });
+        const capturedAt = payment.created_at ? new Date(Number(payment.created_at) * 1000) : new Date();
+        const expiry = new Date(capturedAt); expiry.setFullYear(expiry.getFullYear() + 1);
+        registrationDate = admin.firestore.Timestamp.fromDate(capturedAt);
+        expiryDate = admin.firestore.Timestamp.fromDate(expiry);
+        statusFields = { status: 'active', isPaid: true, isApproved: true, paymentMethod: 'Razorpay', paymentStatus: 'PAID', paymentId: paymentRef, transactionId: paymentRef, membership_type: 'ADHOC_MEMBER' };
+        razorpayPayment = { id: paymentRef, amount: Number(payment.amount) / 100, mobile };
+      } else if (mode === 'qr') {
+        if (paymentRef.length < 6) return res.status(400).json({ error: 'QR transaction / UTR ID is required.' });
+        statusFields = { status: 'pending', isPaid: false, isApproved: false, paymentMethod: 'QR / UPI', paymentStatus: 'PENDING_ADMIN_APPROVAL', transactionId: paymentRef, membership_type: 'ADHOC_MEMBER' };
+      } else if (mode === 'old') {
+        if (paymentRef.length < 2) return res.status(400).json({ error: 'Old membership receipt number is required.' });
+        statusFields = { status: 'pending', isPaid: false, isApproved: false, paymentMethod: 'Old Membership', paymentStatus: 'PENDING_ADMIN_APPROVAL', transactionId: `OLD-${paymentRef}`, oldReceiptNo: paymentRef, membership_type: 'OLD_MEMBER' };
+      }
       await dbAdmin!.collection('users').doc(uid).set({
         uid, name: text(input.name), mobile, email: '', address: '', pincode: '', postOffice: '',
         bloodGroup: '', gender: '', dob: '',
         state: text(input.state), district: text(input.district), assemblyConstituency: text(input.assemblyConstituency),
         sponsorName: text(input.sponsorName), sponsorMobile: text(input.sponsorMobile),
         membershipId: text(input.membershipId), serialNo: Number(input.serialNo) || 0,
-        status: 'active', isPaid: true, isApproved: true, isAdmin: false, role: 'member',
-        registrationDate: toTs(input.registrationDate), expiryDate: toTs(input.expiryDate),
+        isAdmin: false, role: 'member',
+        registrationDate, expiryDate,
         registeredBy: staff.uid, registeredByName: text(input.registeredByName) || 'District Admin',
         waStatus: 'Pending', stateCode: text(input.stateCode) || 'KL',
         districtCode: text(input.districtCode), constituencyCode: text(input.constituencyCode),
         isQuotaCounted: input.isQuotaCounted === true,
-        membership_type: 'ADHOC_MEMBER', paymentMethod: 'Admin Fast Entry', paymentStatus: 'ADMIN_ATTESTED'
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...statusFields
       }, { merge: true });
+      if (razorpayPayment) {
+        await dbAdmin!.collection('payments').doc(razorpayPayment.id).set({
+          paymentId: razorpayPayment.id, amount: razorpayPayment.amount, mobile, uid, source: 'district_fast_entry',
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+      membersMemoryCache = null;
       return res.json({ success: true, uid });
     } catch (err: any) {
       console.error('[Fast Entry Profile] Error:', err?.message || err);
@@ -2293,6 +2338,77 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error('[Reset PIN With Token] Error:', err?.message || err);
       return res.status(500).json({ success: false, error: 'പാസ്‌വേഡ് മാറ്റാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.' });
+    }
+  });
+
+  // ---- DISTRICT ADMIN CREDENTIALS (main admin only: /api/admin/* is guarded by createMainAdminGuard) ----
+  // A district admin signs in with their MOBILE NUMBER + password. Behind the scenes the Firebase login is
+  // hcrs<district>@hcrs.society (the identity the rules and the console already recognise); the profile
+  // document carries the mobile number so that mobile login resolves to that account.
+  const districtAdminEmail = (code: string) => `hcrs${DISTRICT_SLUGS[code]}@hcrs.society`;
+
+  app.get(["/api/admin/district-admins", "/admin/district-admins"], async (_req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const result: Record<string, { mobile: string; name: string } | null> = {};
+      await Promise.all(DISTRICTS.map(async d => {
+        try {
+          const authUser = await admin.auth().getUserByEmail(districtAdminEmail(d.code));
+          const snap = await dbAdmin!.collection('users').doc(authUser.uid).get();
+          const data: any = snap.exists ? snap.data() || {} : {};
+          result[d.code] = { mobile: String(data.mobile || ''), name: String(data.name || '') };
+        } catch (e: any) {
+          result[d.code] = null;
+        }
+      }));
+      return res.json({ success: true, admins: result });
+    } catch (err: any) {
+      console.error('[District Admins] list error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not load district admins' });
+    }
+  });
+
+  app.post(["/api/admin/set-district-admin", "/admin/set-district-admin"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const code = String(req.body?.district || '').toUpperCase();
+      const district = DISTRICTS.find(d => d.code === code);
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      const password = String(req.body?.password || '');
+      const adminName = String(req.body?.name || '').trim().slice(0, 80);
+      if (!district) return res.status(400).json({ error: 'ജില്ല ശരിയല്ല. (Invalid district)' });
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: 'ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.' });
+      if (password.length < 6) return res.status(400).json({ error: 'പാസ്‌വേഡ് കുറഞ്ഞത് 6 അക്ഷരം വേണം.' });
+
+      const email = districtAdminEmail(code);
+      let authUser: any = null;
+      try { authUser = await admin.auth().getUserByEmail(email); } catch (e: any) { if (e?.code !== 'auth/user-not-found') throw e; }
+
+      // The mobile must not already belong to a real member or to another district admin.
+      const sameMobile = await dbAdmin.collection('users').where('mobile', '==', mobile).limit(10).get();
+      const clash = sameMobile.docs.find(d => d.id !== authUser?.uid);
+      if (clash) {
+        return res.status(409).json({ error: 'ഈ മൊബൈൽ നമ്പർ മറ്റൊരു അംഗത്തിന്റെ/അഡ്മിന്റെ പേരിൽ ഉണ്ട്. മറ്റൊരു നമ്പർ ഉപയോഗിക്കുക. (Mobile already in use)' });
+      }
+
+      if (authUser) {
+        await admin.auth().updateUser(authUser.uid, { password, displayName: adminName || authUser.displayName || `${district.name} District Admin` });
+      } else {
+        authUser = await admin.auth().createUser({ email, password, displayName: adminName || `${district.name} District Admin` });
+      }
+      await dbAdmin.collection('users').doc(authUser.uid).set({
+        uid: authUser.uid,
+        name: adminName || `${district.name} District Admin`,
+        mobile, email, role: 'operator', district: code, state: 'Kerala',
+        status: 'active', isApproved: true, isPaid: false, isAdmin: false,
+        membership_type: 'DISTRICT_ADMIN', mustCompleteProfile: false, profileCompleted: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      membersMemoryCache = null;
+      return res.json({ success: true, district: code, mobile });
+    } catch (err: any) {
+      console.error('[District Admins] set error:', err?.message || err);
+      return res.status(500).json({ error: 'ജില്ലാ അഡ്മിൻ ലോഗിൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.' });
     }
   });
 
