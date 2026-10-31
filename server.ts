@@ -2350,17 +2350,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   app.get(["/api/admin/district-admins", "/admin/district-admins"], async (_req, res) => {
     try {
       if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const snap = await dbAdmin.collection('districtAdmins').get();
       const result: Record<string, { mobile: string; name: string } | null> = {};
-      await Promise.all(DISTRICTS.map(async d => {
-        try {
-          const authUser = await admin.auth().getUserByEmail(districtAdminEmail(d.code));
-          const snap = await dbAdmin!.collection('users').doc(authUser.uid).get();
-          const data: any = snap.exists ? snap.data() || {} : {};
-          result[d.code] = { mobile: String(data.mobile || ''), name: String(data.name || '') };
-        } catch (e: any) {
-          result[d.code] = null;
-        }
-      }));
+      DISTRICTS.forEach(d => { result[d.code] = null; });
+      snap.docs.forEach(d => { const x: any = d.data() || {}; if (result[d.id] !== undefined) result[d.id] = { mobile: String(x.mobile || ''), name: String(x.name || '') }; });
       return res.json({ success: true, admins: result });
     } catch (err: any) {
       console.error('[District Admins] list error:', err?.message || err);
@@ -2368,6 +2361,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // The assignment lives in districtAdmins/{district}; it is NOT a member record, so the same mobile
+  // may be a member and an admin of several districts without creating a second membership entry.
   app.post(["/api/admin/set-district-admin", "/admin/set-district-admin"], async (req, res) => {
     try {
       if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
@@ -2381,27 +2376,23 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (password.length < 6) return res.status(400).json({ error: 'പാസ്‌വേഡ് കുറഞ്ഞത് 6 അക്ഷരം വേണം.' });
 
       const email = districtAdminEmail(code);
+      const displayName = adminName || `${district.name} District Admin`;
       let authUser: any = null;
       try { authUser = await admin.auth().getUserByEmail(email); } catch (e: any) { if (e?.code !== 'auth/user-not-found') throw e; }
+      if (authUser) await admin.auth().updateUser(authUser.uid, { password, displayName });
+      else authUser = await admin.auth().createUser({ email, password, displayName });
 
-      // The mobile must not already belong to a real member or to another district admin.
-      const sameMobile = await dbAdmin.collection('users').where('mobile', '==', mobile).limit(10).get();
-      const clash = sameMobile.docs.find(d => d.id !== authUser?.uid);
-      if (clash) {
-        return res.status(409).json({ error: 'ഈ മൊബൈൽ നമ്പർ മറ്റൊരു അംഗത്തിന്റെ/അഡ്മിന്റെ പേരിൽ ഉണ്ട്. മറ്റൊരു നമ്പർ ഉപയോഗിക്കുക. (Mobile already in use)' });
-      }
-
-      if (authUser) {
-        await admin.auth().updateUser(authUser.uid, { password, displayName: adminName || authUser.displayName || `${district.name} District Admin` });
-      } else {
-        authUser = await admin.auth().createUser({ email, password, displayName: adminName || `${district.name} District Admin` });
-      }
+      // Console profile for the district login. Deliberately has NO `mobile` field so it never
+      // matches member lookups, duplicate checks or member counts.
       await dbAdmin.collection('users').doc(authUser.uid).set({
-        uid: authUser.uid,
-        name: adminName || `${district.name} District Admin`,
-        mobile, email, role: 'operator', district: code, state: 'Kerala',
+        uid: authUser.uid, name: displayName, email, adminMobile: mobile,
+        role: 'operator', district: code, state: 'Kerala',
         status: 'active', isApproved: true, isPaid: false, isAdmin: false,
         membership_type: 'DISTRICT_ADMIN', mustCompleteProfile: false, profileCompleted: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      await dbAdmin.collection('districtAdmins').doc(code).set({
+        district: code, mobile, name: displayName, email, uid: authUser.uid,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
       membersMemoryCache = null;
@@ -2409,6 +2400,23 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error('[District Admins] set error:', err?.message || err);
       return res.status(500).json({ error: 'ജില്ലാ അഡ്മിൻ ലോഗിൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.' });
+    }
+  });
+
+  // Public: which login account does this mobile use for this district's admin link?
+  // Returns only the synthetic login email; Firebase still validates the password.
+  app.post(["/api/auth/district-admin-login", "/auth/district-admin-login"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.json({ found: false });
+      const code = String(req.body?.district || '').toUpperCase();
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      if (!DISTRICTS.some(d => d.code === code) || !/^\d{10}$/.test(mobile)) return res.json({ found: false });
+      const snap = await dbAdmin.collection('districtAdmins').doc(code).get();
+      const x: any = snap.exists ? snap.data() || {} : {};
+      if (x.mobile === mobile && x.email) return res.json({ found: true, email: String(x.email) });
+      return res.json({ found: false });
+    } catch (err: any) {
+      return res.json({ found: false });
     }
   });
 

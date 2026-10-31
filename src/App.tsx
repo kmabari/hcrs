@@ -1734,7 +1734,21 @@ export default function App() {
     try {
       let targetEmail = '';
       const usersRef = collection(db, 'users');
-      const directAdminAliasEmail = isMobile ? ADMIN_MOBILE_ALIASES[sanitizedMobile] : undefined;
+      let districtAdminLoginEmail = '';
+      const loginIntentDistrict = resolveDistrictFromSlugOrCode(sessionStorage.getItem('hcrs_district_intent'));
+      if (isMobile && loginIntentDistrict) {
+        // District admin link: this mobile may be the assigned admin of this district. It can also be a
+        // normal member elsewhere; nothing is duplicated, only the login account is resolved here.
+        try {
+          const r = await fetch('/api/auth/district-admin-login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ district: loginIntentDistrict, mobile: sanitizedMobile })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (j?.found && j.email) districtAdminLoginEmail = String(j.email);
+        } catch { /* fall back to normal login */ }
+      }
+      const directAdminAliasEmail = (isMobile ? ADMIN_MOBILE_ALIASES[sanitizedMobile] : undefined) || districtAdminLoginEmail || undefined;
       const isDirectAdminAlias = Boolean(directAdminAliasEmail);
 
       const isMainAdminBypass = (
