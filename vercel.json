@@ -2,6 +2,16 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "distLogin"
+        }
+      ],
+      "destination": "/api/district-page"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api"
     },
