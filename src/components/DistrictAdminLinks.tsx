@@ -45,7 +45,7 @@ export default function DistrictAdminLinks() {
     } finally { setSaving(''); }
   };
 
-  return <details className="rounded-2xl border border-slate-200 bg-white p-4 my-4">
+  return <details open className="rounded-2xl border border-slate-200 bg-white p-4 my-4">
     <summary className="font-bold cursor-pointer">District Admin Login — 14 Districts (mobile + password + link)</summary>
     <p className="text-sm text-slate-600 mt-2">ഓരോ ജില്ലയുടെയും അഡ്മിൻ മൊബൈൽ നമ്പറും പാസ്‌വേഡും ഇവിടെ സെറ്റ് ചെയ്യുക. ലിങ്ക് അഡ്മിന് അയച്ചുകൊടുക്കുക; മൊബൈൽ + പാസ്‌വേഡ് ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം.</p>
     <div className="grid gap-3 md:grid-cols-2 mt-3">

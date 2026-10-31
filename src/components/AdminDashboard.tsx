@@ -4840,6 +4840,7 @@ export default function AdminDashboard({
               <DistrictWhatsAppManager />
             )}
 
+            {activeTab === 'district_quota' && <DistrictAdminLinks />}
             {activeTab === 'district_quota' && (
               <DistrictQuotaManager
                 districtQuotas={districtQuotas}
