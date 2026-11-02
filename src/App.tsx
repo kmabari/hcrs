@@ -1811,7 +1811,7 @@ export default function App() {
             ];
 
             try {
-              const querySnap = await fetchDocsServerFirst(query(usersRef, where('mobile', 'in', mobileVariations), limit(10)), 2000);
+              const querySnap = await fetchDocsServerFirst(query(usersRef, where('mobile', 'in', mobileVariations), limit(5)), 2000);
               if (querySnap && !querySnap.empty) {
                 candidateDocs.push(...querySnap.docs);
               }
@@ -1823,7 +1823,7 @@ export default function App() {
             // Fallback to secondaryDb if primary returned empty
             if (candidateDocs.length === 0 && secondaryDb) {
               try {
-                const secSnap = await fetchDocsServerFirst(query(collection(secondaryDb, 'users'), where('mobile', 'in', mobileVariations), limit(10)), 1500);
+                const secSnap = await fetchDocsServerFirst(query(collection(secondaryDb, 'users'), where('mobile', 'in', mobileVariations), limit(5)), 1500);
                 if (secSnap && !secSnap.empty) {
                   candidateDocs.push(...secSnap.docs);
                 }
@@ -1897,21 +1897,21 @@ export default function App() {
             const candidateDocs: any[] = [];
 
             try {
-              let querySnap = await fetchDocsServerFirst(query(usersRef, where('membershipId', '==', originalInput.trim()), limit(10)));
+              let querySnap = await fetchDocsServerFirst(query(usersRef, where('membershipId', '==', originalInput.trim()), limit(5)));
               if (!querySnap.empty) candidateDocs.push(...querySnap.docs);
               
               if (candidateDocs.length === 0) {
-                const snapUpper = await fetchDocsServerFirst(query(usersRef, where('membershipId', '==', originalInput.trim().toUpperCase()), limit(10)));
+                const snapUpper = await fetchDocsServerFirst(query(usersRef, where('membershipId', '==', originalInput.trim().toUpperCase()), limit(5)));
                 if (!snapUpper.empty) candidateDocs.push(...snapUpper.docs);
               }
 
               if (candidateDocs.length === 0) {
-                const snapHr = await fetchDocsServerFirst(query(usersRef, where('highrichId', '==', originalInput.trim().toUpperCase()), limit(10)));
+                const snapHr = await fetchDocsServerFirst(query(usersRef, where('highrichId', '==', originalInput.trim().toUpperCase()), limit(5)));
                 if (!snapHr.empty) candidateDocs.push(...snapHr.docs);
               }
 
               if (candidateDocs.length === 0 && sanitizedMobile.length >= 6) {
-                const snapMobFallback = await fetchDocsServerFirst(query(usersRef, where('mobile', '==', sanitizedMobile), limit(10)));
+                const snapMobFallback = await fetchDocsServerFirst(query(usersRef, where('mobile', '==', sanitizedMobile), limit(5)));
                 if (!snapMobFallback.empty) candidateDocs.push(...snapMobFallback.docs);
               }
             } catch (err: any) {
@@ -1929,7 +1929,7 @@ export default function App() {
             } else if (originalInput.includes('@')) {
               setLoadingStatus('Resolving Email Identity...');
               try {
-                const querySnapEmail = await fetchDocsServerFirst(query(usersRef, where('email', '==', originalInput.toLowerCase().trim()), limit(10)));
+                const querySnapEmail = await fetchDocsServerFirst(query(usersRef, where('email', '==', originalInput.toLowerCase().trim()), limit(5)));
                 if (!querySnapEmail.empty) {
                   const selectedDoc = selectBestUserDocument(querySnapEmail.docs, originalInput);
                   mappedUserData = selectedDoc?.data() || querySnapEmail.docs[0].data();
@@ -1946,7 +1946,7 @@ export default function App() {
               // Standard auto-append fallback
               const fallbackEmail = `${originalInput.toLowerCase().trim()}@hcrs.society`;
               try {
-                const querySnapFallback = await fetchDocsServerFirst(query(usersRef, where('email', '==', fallbackEmail), limit(10)));
+                const querySnapFallback = await fetchDocsServerFirst(query(usersRef, where('email', '==', fallbackEmail), limit(5)));
                 if (!querySnapFallback.empty) {
                   const selectedDoc = selectBestUserDocument(querySnapFallback.docs, originalInput);
                   mappedUserData = selectedDoc?.data() || querySnapFallback.docs[0].data();

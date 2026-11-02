@@ -919,6 +919,32 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         }
       }
 
+      // 2a. Admin SDK lookup (not subject to Firestore rules, so it works on a cold serverless start
+      // where the in-memory cache is empty). This must never be limited by the public list rules.
+      if (candidateDocs.length === 0 && dbAdmin) {
+        try {
+          const col = dbAdmin.collection('users');
+          const take = (snap: any) => snap.docs.forEach((d: any) => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
+          if (isMobile) {
+            take(await col.where('mobile', 'in', [sanitizedMobile, `+91${sanitizedMobile}`, `91${sanitizedMobile}`, `0${sanitizedMobile}`, `+91 ${sanitizedMobile}`]).limit(10).get());
+            if (candidateDocs.length === 0) {
+              for (const dId of [sanitizedMobile, `life_${sanitizedMobile}`, `offline_${sanitizedMobile}`, `hcrs_imp_${sanitizedMobile}`]) {
+                const dSnap = await col.doc(dId).get();
+                if (dSnap.exists) { candidateDocs.push({ id: dSnap.id, uid: dSnap.id, ...(dSnap.data() as any) }); break; }
+              }
+            }
+          } else if (isEmail) {
+            take(await col.where('email', '==', rawInput.toLowerCase()).limit(10).get());
+          } else {
+            take(await col.where('membershipId', '==', rawInput).limit(10).get());
+            if (candidateDocs.length === 0) take(await col.where('membershipId', '==', cleanUpper).limit(10).get());
+            if (candidateDocs.length === 0) take(await col.where('highrichId', '==', cleanUpper).limit(10).get());
+          }
+        } catch (adminLookupErr: any) {
+          console.warn('[lookup-member] Admin SDK lookup failed:', adminLookupErr?.message || adminLookupErr);
+        }
+      }
+
       // 2. Query Firestore if no match in memory cache or cache was empty
       if (candidateDocs.length === 0) {
         const usersRef = collection(clientDb, 'users');
@@ -932,7 +958,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             `+91 ${sanitizedMobile}`
           ];
           try {
-            const snap = await getDocs(query(usersRef, where('mobile', 'in', mobileVariations), limit(10)));
+            const snap = await getDocs(query(usersRef, where('mobile', 'in', mobileVariations), limit(5)));
             if (!snap.empty) {
               snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
             }
@@ -953,7 +979,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
         } else if (isEmail) {
           try {
-            const snap = await getDocs(query(usersRef, where('email', '==', rawInput.toLowerCase()), limit(10)));
+            const snap = await getDocs(query(usersRef, where('email', '==', rawInput.toLowerCase()), limit(5)));
             if (!snap.empty) {
               snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
             }
@@ -961,7 +987,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         } else {
           // Membership ID or custom ID
           try {
-            const snap = await getDocs(query(usersRef, where('membershipId', '==', rawInput), limit(10)));
+            const snap = await getDocs(query(usersRef, where('membershipId', '==', rawInput), limit(5)));
             if (!snap.empty) {
               snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
             }
@@ -969,7 +995,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
           if (candidateDocs.length === 0) {
             try {
-              const snap = await getDocs(query(usersRef, where('membershipId', '==', cleanUpper), limit(10)));
+              const snap = await getDocs(query(usersRef, where('membershipId', '==', cleanUpper), limit(5)));
               if (!snap.empty) {
                 snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
               }
@@ -978,7 +1004,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
           if (candidateDocs.length === 0) {
             try {
-              const snap = await getDocs(query(usersRef, where('highrichId', '==', cleanUpper), limit(10)));
+              const snap = await getDocs(query(usersRef, where('highrichId', '==', cleanUpper), limit(5)));
               if (!snap.empty) {
                 snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
               }
