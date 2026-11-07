@@ -1983,7 +1983,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const profile = sanitizeRegistrationProfile(req.body?.profile || {});
       if (!isCompleteRegistrationProfile(profile)) return res.status(400).json({ error: 'Registration profile is incomplete' });
       const tokenEmail = String(decoded.email || '').trim().toLowerCase();
-      const expectedEmail = profile.email || `${profile.mobile}@hcrs.society`;
+      // The Firebase login identity is always <mobile>@hcrs.society; profile.email is only a contact email.
+      const expectedEmail = `${profile.mobile}@hcrs.society`;
       if (tokenEmail !== expectedEmail) return res.status(403).json({ error: 'Authenticated account does not match the registration profile' });
       const mobileMatches = await dbAdmin.collection('users').where('mobile', '==', profile.mobile).limit(10).get();
       const existingMember = mobileMatches.docs.find(doc => doc.id !== decoded.uid && String((doc.data() || {}).membershipId || '').trim());
