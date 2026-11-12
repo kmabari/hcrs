@@ -194,7 +194,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
           `+91 ${cleanMobile}`
         ];
 
-        const snap = await fetchDocsServer(query(usersRef, where('mobile', 'in', mobileVariations), limit(10)));
+        const snap = await fetchDocsServer(query(usersRef, where('mobile', 'in', mobileVariations), limit(5)));
         if (snap && !snap.empty) docsToUpdate.push(...snap.docs);
 
         if (docsToUpdate.length === 0) {

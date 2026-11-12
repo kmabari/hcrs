@@ -1315,7 +1315,7 @@ export default function App() {
             ) {
               profileHealingInFlightRef.current.add(authUser.uid);
               try {
-                const qMob = query(collection(db, 'users'), where('mobile', '==', cleanMob), limit(10));
+                const qMob = query(collection(db, 'users'), where('mobile', '==', cleanMob), limit(5));
                 const snapMob = await getDocs(qMob);
                 if (!snapMob.empty && snapMob.docs.length > 1) {
                   const bestDoc = selectBestUserDocument(snapMob.docs, cleanMob);
@@ -1424,7 +1424,7 @@ export default function App() {
 
             const foundDocs: any[] = [];
             for (const cand of uniqueCandidates) {
-              const q = query(usersRef, where(cand.field, '==', cand.value), limit(10));
+              const q = query(usersRef, where(cand.field, '==', cand.value), limit(5));
               const snap = await fetchDocsServerFirst(q);
               if (!snap.empty) {
                 foundDocs.push(...snap.docs);

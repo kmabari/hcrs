@@ -269,7 +269,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       const runAutoSearch = async () => {
         setSearching(true);
         try {
-          const qMob = query(collection(db, 'users'), where('mobile', '==', initialMobile), limit(10));
+          const qMob = query(collection(db, 'users'), where('mobile', '==', initialMobile), limit(5));
           const snapMob = await getDocs(qMob);
           const docSnap = snapMob.docs.find(candidate => {
             const data = candidate.data() as UserProfile;
@@ -302,7 +302,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     try {
       // Search by membershipId OR mobile
       const qId = query(collection(db, 'users'), where('membershipId', '==', searchQuery.toUpperCase()), limit(1));
-      const qMob = query(collection(db, 'users'), where('mobile', '==', searchQuery), limit(10));
+      const qMob = query(collection(db, 'users'), where('mobile', '==', searchQuery), limit(5));
       
       const [snapId, snapMob] = await Promise.all([getDocs(qId), getDocs(qMob)]);
       
