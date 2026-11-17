@@ -805,8 +805,16 @@ export default function App() {
     String(user.membership_type || '').toUpperCase().includes('LIFE') ||
     String(user.membershipType || '').toUpperCase().includes('LIFE')
   );
+  // A member whose ACTIVE record has an expiry date in the future is valid, even if a stale
+  // `renewalPending` flag was left behind by an earlier renewal attempt/approval.
+  const hasFutureExpiry = (() => {
+    const e: any = user?.expiryDate;
+    if (!e || user?.status !== 'active') return false;
+    const t = e.toDate ? e.toDate().getTime() : (e.seconds ? e.seconds * 1000 : new Date(e).getTime());
+    return !isNaN(t) && t > Date.now();
+  })();
   const isExpired = user && user.role !== 'admin' && user.role !== 'operator' && !user.isAdmin && user.status !== 'pending' && !isLifeMember && (
-    user.renewalPending ||
+    (user.renewalPending && !hasFutureExpiry) ||
     (() => {
       const exp = user.expiryDate || (() => {
         const reg = user.registrationDate;
