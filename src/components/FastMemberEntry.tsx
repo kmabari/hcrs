@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } f
 import { withAuthRetry, isNetworkAuthError, NETWORK_ERROR_MESSAGE_ML } from '@/src/lib/authRetry';
 import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment, limit } from 'firebase/firestore';
 import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
+import { INDIA_STATES, INDIA_STATE_CODES, getIndiaDistricts, getIndiaAssemblies } from '@/src/data/indiaLocations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,7 +108,10 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   } | null>(null);
 
   // Filter mandalams (constituencies) based on chosen district
-  const mandalamOptions = district ? (CONSTITUENCIES[district] || []) : [];
+  // Kerala uses the 14 HCRS district codes; every other state/UT uses its district NAME (same as the
+  // public registration form). Only the main admin can pick other states; a district admin stays in Kerala.
+  const isKerala = state === 'Kerala';
+  const mandalamOptions = district ? (isKerala ? (CONSTITUENCIES[district] || []) : getIndiaAssemblies(state, district)) : [];
 
   const handleReset = () => {
     setName('');
@@ -365,7 +369,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           }
 
           // Generate Structured Membership ID: HCRS-KL-District-Constituency-Serial (4 digits)
-          finalMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
+          finalMembershipId = generateNewMembershipId(district, mandalam, nextSerial, INDIA_STATE_CODES[state] || 'KL');
           valResult += ` | [Transaction] Formulated legal structured Membership ID: ${finalMembershipId}`;
         });
         valResult += ' | runTransaction completed successfully in the cloud.';
@@ -399,7 +403,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           registeredBy: adminUser?.uid || 'district_admin',
           registeredByName: adminUser?.name || 'District Admin',
           waStatus: 'Pending',
-          stateCode: 'KL',
+          stateCode: INDIA_STATE_CODES[state] || 'KL',
           districtCode: getDistrictCode(district).toUpperCase(),
           constituencyCode: getAssemblyCode(mandalam).toUpperCase(),
           isQuotaCounted: countsTowardQuota
@@ -541,7 +545,7 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           <div className="flex justify-between py-2.5 items-center">
             <span className="text-xs font-black text-slate-600 uppercase tracking-wider">State & District</span>
             <span className="text-sm font-black text-slate-950">
-              Kerala | {DISTRICTS.find(d => d.code === createdMember.district)?.name || createdMember.district}
+              {state} | {DISTRICTS.find(d => d.code === createdMember.district)?.name || createdMember.district}
             </span>
           </div>
           <div className="flex justify-between py-2.5 items-center">
@@ -685,12 +689,14 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
               <Landmark className="w-3.5 h-3.5 text-brand-blue" />
               State <span className="text-red-500">*</span>
             </Label>
-            <Select value={state} onValueChange={setState}>
+            <Select value={state} onValueChange={(val) => { setState(val); if (!adminUser?.district) setDistrict(''); setMandalam(''); }}>
               <SelectTrigger className="h-12 rounded-xl border-2 border-slate-300 focus:ring-brand-blue text-xs font-black bg-white text-slate-950 shadow-xs">
                 <SelectValue placeholder="Select state" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Kerala">Kerala</SelectItem>
+              <SelectContent className="max-h-60">
+                {adminUser?.district
+                  ? <SelectItem value="Kerala">Kerala</SelectItem>
+                  : INDIA_STATES.map(st => <SelectItem key={st.name} value={st.name}>{st.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -713,9 +719,13 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
                 <SelectValue placeholder="Select district" />
               </SelectTrigger>
               <SelectContent className="max-h-60">
-                {DISTRICTS.map(d => (
-                  <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
-                ))}
+                {isKerala
+                  ? DISTRICTS.map(d => (
+                      <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                    ))
+                  : getIndiaDistricts(state).map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
               </SelectContent>
             </Select>
           </div>
