@@ -2989,6 +2989,21 @@ export default function AdminDashboard({
                 <span>District Quotas & URLs</span>
               </div>
             </button>
+
+            <button
+              onClick={() => setActiveTab2('claim_verify')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'claim_verify' 
+                  ? "bg-emerald-700 text-white shadow-md shadow-emerald-700/10" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <FileText className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claim_verify' ? 'text-white' : 'text-emerald-600')} />
+                <span>Claim Verification (വെരിഫൈ തുക)</span>
+              </div>
+            </button>
           </div>
 
           <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
@@ -3280,6 +3295,17 @@ export default function AdminDashboard({
               >
                 <Sliders className="w-4 h-4 text-amber-500" />
                 <span>District Quotas & URLs</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('claim_verify'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'claim_verify' ? 'bg-emerald-100 text-emerald-900 font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <FileText className="w-4 h-4 text-emerald-600" />
+                <span>Claim Verification (വെരിഫൈ തുക)</span>
               </button>
 
               <button 
@@ -4742,7 +4768,6 @@ export default function AdminDashboard({
             {activeTab === 'reports' && (
               <>
               <DistrictAdminLinks />
-              <ClaimVerificationPanel lazy officerName="HCRS Admin" />
               <AdminReportsTab 
                 members={members} 
                 onApprove={onApprove} 
@@ -4843,6 +4868,7 @@ export default function AdminDashboard({
             )}
 
             {activeTab === 'district_quota' && <DistrictAdminLinks />}
+            {activeTab === 'claim_verify' && <ClaimVerificationPanel officerName="HCRS Admin" />}
             {activeTab === 'district_quota' && (
               <DistrictQuotaManager
                 districtQuotas={districtQuotas}
