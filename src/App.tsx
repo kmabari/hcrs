@@ -2974,7 +2974,7 @@ export default function App() {
 
           const memberDistCode = getDistrictCode(values.district || 'MLP').toUpperCase();
           const assemblyCode = getAssemblyCode(values.assemblyConstituency || '').toUpperCase();
-          const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial);
+          const finalId = generateNewMembershipId(values.district || 'MLP', values.assemblyConstituency || '', nextSerial, INDIA_STATE_CODES[values.state || 'Kerala'] || 'KL');
 
           const isMainAdminFinal = MAIN_ADMINS.some(e => e.toLowerCase() === (user?.email || '').toLowerCase());
           // Increment count for Operators and Second Admins if they have a real profile document
@@ -3149,7 +3149,7 @@ export default function App() {
 
           const isUpgraded = existingMember.membershipId && existingMember.membershipId.toUpperCase().startsWith('HCRS-');
           if (isUpgraded) {
-            finalData.membershipId = generateNewMembershipId(rawDistrict || 'MLP', rawAssembly || '', serialSuffixRef);
+            finalData.membershipId = generateNewMembershipId(rawDistrict || 'MLP', rawAssembly || '', serialSuffixRef, INDIA_STATE_CODES[(finalData.state || existingMember.state || 'Kerala')] || 'KL');
           } else {
             finalData.membershipId = `KL/${distCode}/${assemblyCode}/${serialSuffixStr.padStart(3, '0')}`;
           }
@@ -3578,7 +3578,7 @@ export default function App() {
 
         const isUpgraded = user.membershipId && user.membershipId.toUpperCase().startsWith('HCRS-');
         if (isUpgraded) {
-          finalData.membershipId = generateNewMembershipId(rawDistrict || 'MLP', rawAssembly || '', serialSuffixRef);
+          finalData.membershipId = generateNewMembershipId(rawDistrict || 'MLP', rawAssembly || '', serialSuffixRef, INDIA_STATE_CODES[(finalData.state || user.state || 'Kerala')] || 'KL');
         } else {
           finalData.membershipId = `KL/${distCode}/${assemblyCode}/${serialSuffixStr.padStart(3, '0')}`;
         }

@@ -447,7 +447,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
       }
 
       // 6. SUCCESS
-      const generatedMembershipId = generateNewMembershipId(district, mandalam, nextSerial);
+      // Use the exact ID that was saved on the profile (includes the correct state code).
+      const generatedMembershipId = finalMembershipId || generateNewMembershipId(district, mandalam, nextSerial, INDIA_STATE_CODES[state] || 'KL');
 
       setCreatedMember({
         name: name.trim(),
