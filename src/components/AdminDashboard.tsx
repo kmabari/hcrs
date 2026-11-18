@@ -1,5 +1,6 @@
 import DistrictAdminLinks from './DistrictAdminLinks';
 import ClaimVerificationPanel from './ClaimVerificationPanel';
+import ClaimVerifyDialog from './ClaimVerifyDialog';
 import { isMainAdminAccount } from '../lib/adminAccess';
 import { authenticatedFetch } from '../lib/authenticatedFetch';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -825,6 +826,7 @@ export default function AdminDashboard({
   const [selectedReceiptsMember, setSelectedReceiptsMember] = useState<UserProfile | null>(null);
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
   const [editingClaim, setEditingClaim] = useState<any>(null);
+  const [verifyingClaim, setVerifyingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
   const [claimsViewMode, setClaimsViewMode] = useState<'individual' | 'combo'>('individual');
   const [comboSubView, setComboSubView] = useState<'groups' | 'all_persons'>('groups');
@@ -4495,6 +4497,16 @@ export default function AdminDashboard({
                                     </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                        {/* Company Verification */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setVerifyingClaim(c)}
+                                          className={cn("h-7 px-2 text-[8.5px] font-black uppercase rounded-lg", c.companyVerification ? "text-emerald-800 border-emerald-600 bg-emerald-50" : "text-blue-700 border-blue-600/40 hover:bg-blue-50")}
+                                          title="Company verification: type the verified amounts"
+                                        >
+                                          {c.companyVerification ? `✔ Verified ₹${Number(c.companyVerification.finalNetBalance || 0).toLocaleString('en-IN')}` : 'Verification'}
+                                        </Button>
                                         {/* Court Print */}
                                         <Button
                                           variant="outline"
@@ -4690,6 +4702,9 @@ export default function AdminDashboard({
                                         <span className="text-slate-600">₹{(clm.totalPaid || 0).toLocaleString('en-IN')}</span>
                                         <span className="text-brand-magenta">₹{(clm.totalPending || 0).toLocaleString('en-IN')}</span>
                                         <div className="flex items-center gap-1 shrink-0">
+                                          <Button variant="outline" size="sm" onClick={() => setVerifyingClaim(clm)} className={cn("h-6 px-1.5 text-[8px] font-black uppercase", clm.companyVerification ? "text-emerald-800 border-emerald-600 bg-emerald-50" : "text-blue-700 border-blue-600/40")}>
+                                            {clm.companyVerification ? '✔ Verified' : 'Verification'}
+                                          </Button>
                                           <Button variant="ghost" size="sm" onClick={() => setSelectedClaim(clm)} className="h-6 w-6 p-0">
                                             <Eye className="w-3 h-3 text-slate-500" />
                                           </Button>
@@ -5727,6 +5742,14 @@ export default function AdminDashboard({
         </Dialog>
 
         {/* Edit Support Claim Dialog */}
+        {verifyingClaim && (
+          <ClaimVerifyDialog
+            claim={verifyingClaim}
+            officerName="HCRS Admin"
+            onClose={() => setVerifyingClaim(null)}
+            onSaved={(claimId, v) => setClaims(prev => prev.map(x => x.id === claimId ? { ...x, companyVerification: v } : x))}
+          />
+        )}
         <Dialog open={!!editingClaim} onOpenChange={(open) => !open && !savingClaim && setEditingClaim(null)}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
