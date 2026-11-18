@@ -782,6 +782,11 @@ export const renderPersonCourtClaimPage = (
   const paidVal = Number(claim.totalPaid) || 0;
   const receivedVal = Number(claim.totalReceived) || 0;
   const pendingBalance = paidVal - receivedVal;
+  // Company-verified figures (entered by HCRS claim verification staff). Blank lines are printed until then.
+  const cv: any = claim.companyVerification || null;
+  const cvMoney = (n: any) => (cv && Number.isFinite(Number(n))) ? `₹ ${Number(n).toLocaleString('en-IN')}` : '₹ _____________';
+  const cvEsc = (t: any) => String(t ?? '').replace(/[<>&"]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' } as any)[ch]);
+  const cvDate = cv?.auditDate ? cv.auditDate.split('-').reverse().join(' / ') : '';
 
   const joiningDateRaw = claim.joiningDate || (isSelf ? (userProf?.joiningDate || claim.registrationDate || userProf?.registrationDate) : '');
   const joiningDateStr = joiningDateRaw ? formatClaimDateOnly(joiningDateRaw) : '................................';
@@ -920,15 +925,15 @@ export const renderPersonCourtClaimPage = (
           <table class="audit-table">
             <tr>
               <td class="audit-cell-label">1. ADVANCE AMOUNT:</td>
-              <td class="audit-cell-val">₹ _____________</td>
+              <td class="audit-cell-val">${cvMoney(cv?.advanceAmount)}</td>
               <td class="audit-cell-label">3. FINAL NET BALANCE PAYABLE:</td>
-              <td class="audit-cell-val font-bold" style="color: #003366;">₹ ______________</td>
+              <td class="audit-cell-val font-bold" style="color: #003366;">${cvMoney(cv?.finalNetBalance)}</td>
             </tr>
             <tr>
               <td class="audit-cell-label">2. VERIFIED CUMULATIVE RETURN RECEIVED:</td>
-              <td class="audit-cell-val">₹ _____________</td>
+              <td class="audit-cell-val">${cvMoney(cv?.returnReceived)}</td>
               <td class="audit-cell-label">4. BANK LEDGER FOLIO / UTR VERIFICATION REF:</td>
-              <td class="audit-cell-val">_______________</td>
+              <td class="audit-cell-val">${cv && cv.bankRef ? cvEsc(cv.bankRef) : '_______________'}</td>
             </tr>
           </table>
 
@@ -944,9 +949,9 @@ export const renderPersonCourtClaimPage = (
           <div class="audit-sig-grid">
             <div class="audit-sig-col">
               <div class="audit-sig-role">AUDITED & RECONCILED BY</div>
-              <div class="audit-field-line">Verification Officer: __________________________</div>
+              <div class="audit-field-line">Verification Officer: ${cv && cv.officerName ? cvEsc(cv.officerName) : '__________________________'}</div>
               <div class="audit-field-line">Signature: __________________________________</div>
-              <div class="audit-field-line">Audit Date: ______ / ______ / 202____</div>
+              <div class="audit-field-line">Audit Date: ${cvDate || '______ / ______ / 202____'}</div>
             </div>
             <div class="audit-sig-col" style="text-align: center; justify-content: space-between;">
               <div class="audit-sig-role" style="text-align: left;">FOR HIGHRICH ONLINE SHOPPE PVT. LTD.</div>

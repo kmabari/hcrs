@@ -280,18 +280,19 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       ));
-      allow create: if claimId.matches('^janamail_.*') || (isSignedIn() && (
+      // Company-verified figures can only ever be written by the server (Admin SDK) or an admin.
+      allow create: if !('companyVerification' in request.resource.data) && (claimId.matches('^janamail_.*') || (isSignedIn() && (
         request.resource.data.uid == request.auth.uid ||
         isOperator() ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          request.resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
-      ));
-      allow update: if claimId.matches('^janamail_.*') || (isSignedIn() && (
+      )));
+      allow update: if (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyVerification'])) && (claimId.matches('^janamail_.*') || (isSignedIn() && (
         resource.data.uid == request.auth.uid || 
         isOperator() ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
-      ));
+      )));
       allow delete: if isAdmin();
     }
 

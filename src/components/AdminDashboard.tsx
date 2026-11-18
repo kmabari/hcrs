@@ -1,4 +1,5 @@
 import DistrictAdminLinks from './DistrictAdminLinks';
+import ClaimVerificationPanel from './ClaimVerificationPanel';
 import { isMainAdminAccount } from '../lib/adminAccess';
 import { authenticatedFetch } from '../lib/authenticatedFetch';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -4741,6 +4742,7 @@ export default function AdminDashboard({
             {activeTab === 'reports' && (
               <>
               <DistrictAdminLinks />
+              <ClaimVerificationPanel lazy officerName="HCRS Admin" />
               <AdminReportsTab 
                 members={members} 
                 onApprove={onApprove} 

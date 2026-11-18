@@ -2368,6 +2368,91 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ---- COMPANY CLAIM VERIFICATION (main admin + designated "claim verifier" staff members) ----
+  // The company-verified figures are stored on the claim as `companyVerification` and are printed in
+  // section 4 of the member's claim form, so the member downloads a form with the verified amounts.
+  const getClaimStaff = async (req: any) => {
+    const who = await getRequestIdentity(req);
+    if (!who || !dbAdmin) return null;
+    if (who.isMain) return who;
+    try {
+      const snap = await dbAdmin.collection('users').doc(who.uid).get();
+      if (snap.exists && (snap.data() as any)?.isClaimVerifier === true) return who;
+    } catch { /* not staff */ }
+    return null;
+  };
+  const cleanMoney = (v: any) => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; };
+
+  app.get(["/api/claim-verification/list", "/claim-verification/list"], async (req, res) => {
+    try {
+      const who = await getClaimStaff(req);
+      if (!who) return res.status(403).json({ error: 'Claim verification access required' });
+      const snap = await dbAdmin!.collection('claims').get();
+      const data = snap.docs.map((d: any) => {
+        const c: any = d.data() || {};
+        return {
+          id: d.id, name: c.userName || c.claimantName || c.name || '', relation: c.relation || 'Self',
+          mobile: String(c.userMobile || '').replace(/\D/g, '').slice(-10), membershipId: c.membershipId || '',
+          district: c.userDistrict || c.district || '', highrichId: c.highrichId || '',
+          totalPaid: Number(c.totalPaid) || 0, totalReceived: Number(c.totalReceived) || 0,
+          companyVerification: c.companyVerification || null
+        };
+      });
+      return res.json({ success: true, isMain: who.isMain, data });
+    } catch (err: any) {
+      console.error('[Claim Verification] list error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not load claims' });
+    }
+  });
+
+  app.post(["/api/claim-verification/save", "/claim-verification/save"], async (req, res) => {
+    try {
+      const who = await getClaimStaff(req);
+      if (!who) return res.status(403).json({ error: 'Claim verification access required' });
+      const claimId = String(req.body?.claimId || '').trim();
+      if (!claimId) return res.status(400).json({ error: 'Claim is required' });
+      const advance = cleanMoney(req.body?.advanceAmount);
+      const received = cleanMoney(req.body?.returnReceived);
+      if (advance === null || received === null || advance < 0 || received < 0) {
+        return res.status(400).json({ error: 'Verified advance and return amounts are required.' });
+      }
+      const ref = dbAdmin!.collection('claims').doc(claimId);
+      const snap = await ref.get();
+      if (!snap.exists) return res.status(404).json({ error: 'Claim not found' });
+      const verification = {
+        advanceAmount: advance, returnReceived: received, finalNetBalance: Math.round((advance - received) * 100) / 100,
+        bankRef: String(req.body?.bankRef || '').trim().slice(0, 80),
+        officerName: String(req.body?.officerName || '').trim().slice(0, 80),
+        auditDate: String(req.body?.auditDate || new Date().toISOString().slice(0, 10)).slice(0, 10),
+        verifiedBy: who.uid, verifiedAt: new Date().toISOString()
+      };
+      await ref.set({ companyVerification: verification }, { merge: true });
+      claimsMemoryCache = null;
+      return res.json({ success: true, companyVerification: verification });
+    } catch (err: any) {
+      console.error('[Claim Verification] save error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not save verification' });
+    }
+  });
+
+  // Main admin only (guarded by /api/admin/): designate / remove a member as claim verifier staff.
+  app.post(["/api/admin/set-claim-verifier", "/admin/set-claim-verifier"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      const enabled = req.body?.enabled !== false;
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: 'ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.' });
+      const snap = await dbAdmin.collection('users').where('mobile', '==', mobile).limit(5).get();
+      if (snap.empty) return res.status(404).json({ error: 'ഈ മൊബൈൽ നമ്പറിൽ അംഗത്തെ കണ്ടെത്തിയില്ല.' });
+      await Promise.all(snap.docs.map((d: any) => d.ref.set({ isClaimVerifier: enabled }, { merge: true })));
+      membersMemoryCache = null;
+      return res.json({ success: true, mobile, enabled, name: (snap.docs[0].data() as any).name || '' });
+    } catch (err: any) {
+      console.error('[Claim Verifier] set error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not update claim verifier' });
+    }
+  });
+
   // ---- DISTRICT ADMIN CREDENTIALS (main admin only: /api/admin/* is guarded by createMainAdminGuard) ----
   // A district admin signs in with their MOBILE NUMBER + password. Behind the scenes the Firebase login is
   // hcrs<district>@hcrs.society (the identity the rules and the console already recognise); the profile
