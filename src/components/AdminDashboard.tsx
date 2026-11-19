@@ -2444,11 +2444,13 @@ export default function AdminDashboard({
       timestampOf((m as any).issueDate),
       timestampOf((m as any).registrationDate)
     );
-    const approvalTimeOf = (m: UserProfile): number => Math.max(
-      timestampOf((m as any).renewalApprovedAt),
-      (m as any).renewalPending === false ? timestampOf((m as any).renewalDate) : 0,
-      (m as any).renewalPending === false ? timestampOf((m as any).issueDate) : 0
-    );
+    // Only an explicit approval timestamp counts. Renewal/issue dates on a duplicate
+    // record must never hide a genuinely pending renewal from the approval list.
+    const approvalTimeOf = (m: UserProfile): number => timestampOf((m as any).renewalApprovedAt);
+    const requestTimeOf = (m: UserProfile): number => {
+      const explicit = Math.max(timestampOf((m as any).renewalDate), timestampOf((m as any).renewalPaymentDate));
+      return explicit || renewalTimeOf(m);
+    };
     const identityOf = (m: UserProfile): string => {
       const mobile = getClean10DigitMobile(m.mobile);
       // Never group solely by membershipId because legacy duplicate IDs exist.
@@ -2466,7 +2468,7 @@ export default function AdminDashboard({
 
     const visiblePending = members.filter(m => {
       if (approvedSet.has(m.uid) || !(m as any).renewalPending) return false;
-      const pendingAt = renewalTimeOf(m);
+      const pendingAt = requestTimeOf(m);
       const approvedAt = latestApprovalByIdentity.get(identityOf(m)) || 0;
       if (approvedAt > 0 && approvedAt >= pendingAt) return false;
 
