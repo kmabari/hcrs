@@ -2368,6 +2368,49 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ---- MEMBER PROFILE RESOLVE (fixes "Renewal Required" when the login document is stale) ----
+  // A member can have more than one users document for the same mobile (legacy/imported/offline copies).
+  // Renewals are applied to the document the renewal lookup found, which may not be the login (uid) document.
+  // This finds the best document for the caller's mobile via the Admin SDK and copies ONLY the
+  // membership-validity fields onto the login document when the best one is valid and the login one is not.
+  app.post(["/api/profile/resolve", "/profile/resolve"], async (req, res) => {
+    try {
+      const who = await getRequestIdentity(req);
+      if (!who || !dbAdmin) return res.status(401).json({ error: 'Login required' });
+      const ownRef = dbAdmin.collection('users').doc(who.uid);
+      const ownSnap = await ownRef.get();
+      if (!ownSnap.exists) return res.json({ success: true, changed: false });
+      const own: any = ownSnap.data() || {};
+      const mobile = String(own.mobile || who.mobile || '').replace(/\D/g, '').slice(-10);
+      if (!/^\d{10}$/.test(mobile)) return res.json({ success: true, changed: false });
+      const toMs = (v: any) => { if (!v) return 0; const t = v.toDate ? v.toDate().getTime() : (v._seconds ? v._seconds * 1000 : (v.seconds ? v.seconds * 1000 : new Date(v).getTime())); return Number.isNaN(t) ? 0 : t; };
+      const valid = (d: any) => d && d.status === 'active' && d.status !== 'deleted' && toMs(d.expiryDate) > Date.now();
+      if (valid(own) && own.renewalPending !== true) return res.json({ success: true, changed: false });
+      const snap = await dbAdmin.collection('users').where('mobile', 'in', [mobile, `+91${mobile}`, `91${mobile}`, `0${mobile}`]).limit(20).get();
+      const candidates = snap.docs.filter((d: any) => d.id !== who.uid).map((d: any) => ({ id: d.id, d: d.data() as any })).filter(c => valid(c.d) && c.d.role !== 'admin' && c.d.role !== 'operator');
+      if (!candidates.length) {
+        if (valid(own) && own.renewalPending === true) {
+          await ownRef.set({ renewalPending: false }, { merge: true });
+          return res.json({ success: true, changed: true, source: 'own-flag-cleared' });
+        }
+        return res.json({ success: true, changed: false, docs: snap.docs.length });
+      }
+      candidates.sort((a, b) => toMs(b.d.expiryDate) - toMs(a.d.expiryDate));
+      const best = candidates[0].d;
+      const sync: any = {};
+      ['expiryDate', 'renewalDate', 'renewalApprovedAt', 'lastRenewalId', 'lastRenewalPaymentId', 'renewalReceiptNo', 'status', 'isPaid', 'isApproved', 'paymentStatus'].forEach(k => { if (best[k] !== undefined) sync[k] = best[k]; });
+      sync.renewalPending = false;
+      sync.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+      await ownRef.set(sync, { merge: true });
+      membersMemoryCache = null;
+      console.log(`[Profile Resolve] Synced renewal from ${candidates[0].id} to ${who.uid}`);
+      return res.json({ success: true, changed: true, source: candidates[0].id });
+    } catch (err: any) {
+      console.error('[Profile Resolve] error:', err?.message || err);
+      return res.status(500).json({ error: 'Could not resolve profile' });
+    }
+  });
+
   // ---- COMPANY CLAIM VERIFICATION (main admin + designated "claim verifier" staff members) ----
   // The company-verified figures are stored on the claim as `companyVerification` and are printed in
   // section 4 of the member's claim form, so the member downloads a form with the verified amounts.

@@ -1324,6 +1324,15 @@ export default function App() {
             ) {
               profileHealingInFlightRef.current.add(authUser.uid);
               try {
+                // Server-side resolve: copies a valid renewal from a duplicate/legacy document onto this
+                // login document (Admin SDK, not limited by the public query rules). The snapshot then updates.
+                if (isPendingOrExpired) {
+                  try {
+                    const rr = await authenticatedFetch('/api/profile/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+                    const rj = await rr.json().catch(() => ({}));
+                    if (rj?.changed) { healedProfileUidsRef.current.add(authUser.uid); }
+                  } catch { /* fall through to client-side fallback */ }
+                }
                 const qMob = query(collection(db, 'users'), where('mobile', '==', cleanMob), limit(5));
                 const snapMob = await getDocs(qMob);
                 if (!snapMob.empty && snapMob.docs.length > 1) {
