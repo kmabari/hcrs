@@ -3035,6 +3035,29 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                   source: 'payment-verification'
                 }, { merge: true });
               }
+
+              // Keep every duplicate record of the same mobile in step, so the member's
+              // login record never stays "pending/expired" after a verified renewal.
+              try {
+                const m10 = String(userData?.mobile || '').replace(/\D/g, '').slice(-10);
+                if (m10.length === 10) {
+                  const dupSnap = await dbAdmin.collection('users').where('mobile', 'in', [m10, `+91${m10}`, `91${m10}`]).get();
+                  for (const d of dupSnap.docs) {
+                    const dd: any = d.data() || {};
+                    if (d.id === resolvedMemberId || dd.isAdmin === true || dd.role === 'admin' || dd.role === 'operator' || dd.role === 'DISTRICT_ADMIN') continue;
+                    await d.ref.set({
+                      status: 'active', isApproved: true, isPaid: true, renewalPending: false,
+                      renewalTransactionId: razorpay_payment_id,
+                      renewalDate: admin.firestore.Timestamp.fromDate(now),
+                      renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
+                      expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+                      paymentStatus: 'RENEWAL_AUTO_APPROVED'
+                    }, { merge: true });
+                  }
+                }
+              } catch (syncErr: any) {
+                console.warn('[Renewal duplicate sync] skipped:', syncErr?.message || syncErr);
+              }
             }
           }
         } catch (dbAdminErr: any) {
