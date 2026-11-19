@@ -1277,15 +1277,18 @@ export default function App() {
           if (freshData.status === 'deleted' && !isAdminEmail) {
             // A deleted duplicate login record must not lock out a person who still has a genuine record
             // under the same mobile: ask the server to restore it from that record first.
+            let resolveNote = '';
             try {
               const rr = await authenticatedFetch('/api/profile/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
               const rj = await rr.json().catch(() => ({}));
               if (rj?.restored) return; // the snapshot fires again with the restored profile
-            } catch { /* fall through to sign-out */ }
+              resolveNote = ` [${rr.status}${rj?.reason ? ' ' + rj.reason : ''}${rj?.error ? ' ' + rj.error : ''}]`;
+              console.warn('Profile resolve did not restore:', rr.status, rj);
+            } catch (e: any) { resolveNote = ` [resolve-error ${e?.message || ''}]`; }
             console.log("Deactivated/Deleted user logged in. Signing out...");
             signOut(auth).then(() => {
               setView('landing');
-              toast.error('താങ്കളുടെ അക്കൗണ്ട് അഡ്മിൻ ഡി-ആക്റ്റീവ് ചെയ്തിരിക്കുന്നു! ദയവായി അഡ്മിനുമായി ബന്ധപ്പെടുക. (Your account is deactivated. Please contact Admin.)');
+              toast.error('താങ്കളുടെ അക്കൗണ്ട് അഡ്മിൻ ഡി-ആക്റ്റീവ് ചെയ്തിരിക്കുന്നു! ദയവായി അഡ്മിനുമായി ബന്ധപ്പെടുക. (Your account is deactivated. Please contact Admin.)' + resolveNote);
             });
             return;
           }

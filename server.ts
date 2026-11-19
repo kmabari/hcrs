@@ -2390,9 +2390,19 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       // The login document was deleted (e.g. an admin removed the duplicate), but the same person still
       // has a genuine, non-deleted record under this mobile: restore the login document from it.
       if (own.status === 'deleted' || own.deletedAt) {
-        const genuine = snap.docs.filter((d: any) => d.id !== who.uid).map((d: any) => ({ id: d.id, d: d.data() as any }))
-          .filter(c => c.d.status !== 'deleted' && !c.d.deletedAt && c.d.role !== 'admin' && c.d.role !== 'operator' && c.d.isAdmin !== true
-            && String(c.d.membershipId || '').trim() && String(c.d.name || '').trim().toLowerCase() !== 'member');
+        const found = new Map<string, any>();
+        snap.docs.forEach((d: any) => found.set(d.id, d.data()));
+        try {
+          const num = await dbAdmin.collection('users').where('mobile', '==', Number(mobile)).limit(10).get();
+          num.docs.forEach((d: any) => found.set(d.id, d.data()));
+          const em = await dbAdmin.collection('users').where('email', '==', `${mobile}@hcrs.society`).limit(10).get();
+          em.docs.forEach((d: any) => found.set(d.id, d.data()));
+        } catch { /* optional extra lookups */ }
+        found.delete(who.uid);
+        const all = Array.from(found.entries()).map(([id, d]) => ({ id, d: d as any }));
+        const genuine = all.filter(c => c.d.status !== 'deleted' && !c.d.deletedAt && c.d.role !== 'admin' && c.d.role !== 'operator' && c.d.isAdmin !== true
+          && (String(c.d.membershipId || c.d.memberId || '').trim() || c.d.status === 'active')
+          && String(c.d.name || c.d.fullName || '').trim().toLowerCase() !== 'member');
         if (genuine.length) {
           genuine.sort((a, b) => (valid(b.d) ? 1 : 0) - (valid(a.d) ? 1 : 0) || toMs(b.d.expiryDate) - toMs(a.d.expiryDate));
           const src = genuine[0].d;
@@ -2400,14 +2410,18 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           const skip = new Set(['uid', 'pin', 'role', 'isAdmin', 'deletedAt', 'deletedBy', 'deleted', 'id']);
           Object.keys(src).forEach(k => { if (!skip.has(k) && src[k] !== undefined) copy[k] = src[k]; });
           copy.mobile = mobile;
+          copy.status = src.status === 'deleted' ? 'active' : (src.status || 'active');
           copy.renewalPending = src.renewalPending === true;
           copy.deletedAt = admin.firestore.FieldValue.delete();
+          copy.deletedBy = admin.firestore.FieldValue.delete();
           copy.updatedAt = admin.firestore.FieldValue.serverTimestamp();
           await ownRef.set(copy, { merge: true });
           membersMemoryCache = null;
           console.log(`[Profile Resolve] Restored deleted login doc ${who.uid} from ${genuine[0].id}`);
           return res.json({ success: true, changed: true, restored: true, source: genuine[0].id });
         }
+        console.warn(`[Profile Resolve] deleted login doc ${who.uid}: no genuine duplicate (found ${all.length}: ${all.map(c => `${c.id}:${c.d.status}`).join(',')})`);
+        return res.json({ success: true, changed: false, restored: false, reason: `no-genuine-duplicate:${all.length}` });
       }
       const candidates = snap.docs.filter((d: any) => d.id !== who.uid).map((d: any) => ({ id: d.id, d: d.data() as any })).filter(c => valid(c.d) && c.d.role !== 'admin' && c.d.role !== 'operator');
       if (!candidates.length) {
