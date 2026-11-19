@@ -1,6 +1,7 @@
 import DistrictAdminLinks from './DistrictAdminLinks';
 import ClaimVerificationPanel from './ClaimVerificationPanel';
 import ClaimVerifyDialog from './ClaimVerifyDialog';
+import RecordsAuditPanel from './RecordsAuditPanel';
 import { isMainAdminAccount } from '../lib/adminAccess';
 import { authenticatedFetch } from '../lib/authenticatedFetch';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -2993,6 +2994,21 @@ export default function AdminDashboard({
             </button>
 
             <button
+              onClick={() => setActiveTab2('records_audit')}
+              className={cn(
+                "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                activeTab === 'records_audit' 
+                  ? "bg-slate-800 text-white shadow-md" 
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Users className={cn("w-4 h-4", activeTab === 'records_audit' ? 'text-white' : 'text-slate-500')} />
+                <span>Records Audit (ഡ്യൂപ്ലിക്കേറ്റ്)</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => setActiveTab2('claim_verify')}
               className={cn(
                 "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
@@ -3308,6 +3324,17 @@ export default function AdminDashboard({
               >
                 <FileText className="w-4 h-4 text-emerald-600" />
                 <span>Claim Verification (വെരിഫൈ തുക)</span>
+              </button>
+
+              <button 
+                onClick={() => { setActiveTab2('records_audit'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'records_audit' ? 'bg-slate-200 text-slate-900 font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Users className="w-4 h-4 text-slate-500" />
+                <span>Records Audit (ഡ്യൂപ്ലിക്കേറ്റ്)</span>
               </button>
 
               <button 
@@ -4884,6 +4911,7 @@ export default function AdminDashboard({
 
             {activeTab === 'district_quota' && <DistrictAdminLinks />}
             {activeTab === 'claim_verify' && <ClaimVerificationPanel officerName="HCRS Admin" />}
+            {activeTab === 'records_audit' && <RecordsAuditPanel members={members} adminEmails={[...MAIN_ADMINS, ...SECOND_ADMINS]} getStatus={getEffectiveMemberStatus} />}
             {activeTab === 'district_quota' && (
               <DistrictQuotaManager
                 districtQuotas={districtQuotas}
