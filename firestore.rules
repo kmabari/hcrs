@@ -175,6 +175,9 @@ service cloud.firestore {
       
       allow create: if (isSignedIn() && (
         (isOwner(userId) && request.resource.data.get('isAdmin', false) == false && request.resource.data.get('role', 'member') == 'member' &&
+         // The profile must carry the mobile of the login (<mobile>@hcrs.society). This blocks blank
+         // "Member" placeholder profiles and profiles claiming someone else's mobile number.
+         request.auth.token.email != null && request.resource.data.get('mobile', '') == request.auth.token.email.split('@')[0] &&
          // A member can never create their own ACTIVE / PAID / APPROVED profile from the browser.
          // Activation after a captured Razorpay payment is done by the server (Admin SDK, bypasses rules)
          // and activation of QR/UPI applications is done by an admin.

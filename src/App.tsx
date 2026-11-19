@@ -1504,13 +1504,9 @@ export default function App() {
               mustCompleteProfile: true,
               issueDate: serverTimestamp(),
             };
-            try {
-              await setDoc(doc(db, 'users', authUser.uid), newUserDoc, { merge: true });
-              userData = newUserDoc;
-            } catch (createErr) {
-              console.error("Failed to auto-create Google member profile:", createErr);
-              userData = newUserDoc;
-            }
+            // Never persist a placeholder profile from the browser: it created blank "Member" records and
+            // duplicates. A real profile is only ever created by registration/payment or by an admin.
+            userData = newUserDoc;
           }
         }
 
