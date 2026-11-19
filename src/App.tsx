@@ -1275,6 +1275,13 @@ export default function App() {
           let freshData = { ...docSnap.data(), uid: authUser.uid } as UserProfile;
           
           if (freshData.status === 'deleted' && !isAdminEmail) {
+            // A deleted duplicate login record must not lock out a person who still has a genuine record
+            // under the same mobile: ask the server to restore it from that record first.
+            try {
+              const rr = await authenticatedFetch('/api/profile/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+              const rj = await rr.json().catch(() => ({}));
+              if (rj?.restored) return; // the snapshot fires again with the restored profile
+            } catch { /* fall through to sign-out */ }
             console.log("Deactivated/Deleted user logged in. Signing out...");
             signOut(auth).then(() => {
               setView('landing');
