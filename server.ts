@@ -2379,10 +2379,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (!who || !dbAdmin) return res.status(401).json({ error: 'Login required' });
       const ownRef = dbAdmin.collection('users').doc(who.uid);
       const ownSnap = await ownRef.get();
-      if (!ownSnap.exists) return res.json({ success: true, changed: false });
+      if (!ownSnap.exists) return res.json({ success: true, changed: false, reason: 'own-doc-missing' });
       const own: any = ownSnap.data() || {};
-      const mobile = String(own.mobile || who.mobile || '').replace(/\D/g, '').slice(-10);
-      if (!/^\d{10}$/.test(mobile)) return res.json({ success: true, changed: false });
+      const emailMobile = String(who.mobile || '').replace(/\D/g, '').slice(-10);
+      const ownMobile = String(own.mobile || '').replace(/\D/g, '').slice(-10);
+      const mobile = /^\d{10}$/.test(emailMobile) ? emailMobile : ownMobile;
+      if (!/^\d{10}$/.test(mobile)) return res.json({ success: true, changed: false, reason: `bad-mobile:${String(who.email || '').slice(0, 20)}|${String(own.mobile || '').slice(0, 15)}` });
       const toMs = (v: any) => { if (!v) return 0; const t = v.toDate ? v.toDate().getTime() : (v._seconds ? v._seconds * 1000 : (v.seconds ? v.seconds * 1000 : new Date(v).getTime())); return Number.isNaN(t) ? 0 : t; };
       const valid = (d: any) => d && d.status === 'active' && d.status !== 'deleted' && toMs(d.expiryDate) > Date.now();
       if (valid(own) && own.renewalPending !== true) return res.json({ success: true, changed: false });
