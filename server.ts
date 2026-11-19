@@ -2384,6 +2384,28 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const emailMobile = String(who.mobile || '').replace(/\D/g, '').slice(-10);
       const ownMobile = String(own.mobile || '').replace(/\D/g, '').slice(-10);
       const mobile = /^\d{10}$/.test(emailMobile) ? emailMobile : ownMobile;
+      if (!/^\d{10}$/.test(mobile) && (own.status === 'deleted' || own.deletedAt) && who.email) {
+        // Google/e-mail login with no mobile on the record: match a genuine member by the same e-mail.
+        try {
+          const hits = new Map<string, any>();
+          for (const f of ['email', 'contactEmail']) {
+            const q = await dbAdmin.collection('users').where(f, '==', who.email).limit(10).get();
+            q.docs.forEach((d: any) => { if (d.id !== who.uid) hits.set(d.id, d.data()); });
+          }
+          const good = Array.from(hits.entries()).map(([id, d]) => ({ id, d: d as any }))
+            .filter(c => c.d.status !== 'deleted' && !c.d.deletedAt && c.d.role !== 'admin' && c.d.isAdmin !== true && String(c.d.membershipId || '').trim());
+          if (good.length === 1) {
+            const src = good[0].d; const copy: any = {};
+            const skip = new Set(['uid', 'pin', 'role', 'isAdmin', 'deletedAt', 'deletedBy', 'deleted', 'id']);
+            Object.keys(src).forEach(k => { if (!skip.has(k) && src[k] !== undefined) copy[k] = src[k]; });
+            copy.deletedAt = admin.firestore.FieldValue.delete(); copy.deletedBy = admin.firestore.FieldValue.delete();
+            copy.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+            await ownRef.set(copy, { merge: true });
+            membersMemoryCache = null;
+            return res.json({ success: true, changed: true, restored: true, source: good[0].id });
+          }
+        } catch { /* fall through */ }
+      }
       if (!/^\d{10}$/.test(mobile)) return res.json({ success: true, changed: false, reason: `bad-mobile:${String(who.email || '').slice(0, 20)}|${String(own.mobile || '').slice(0, 15)}` });
       const toMs = (v: any) => { if (!v) return 0; const t = v.toDate ? v.toDate().getTime() : (v._seconds ? v._seconds * 1000 : (v.seconds ? v.seconds * 1000 : new Date(v).getTime())); return Number.isNaN(t) ? 0 : t; };
       const valid = (d: any) => d && d.status === 'active' && d.status !== 'deleted' && toMs(d.expiryDate) > Date.now();
