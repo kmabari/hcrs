@@ -1464,6 +1464,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         );
       }
 
+      // 1b. The login (Auth) uid can differ from the profile record that was selected for display.
+      const authUid = auth.currentUser?.uid || '';
+      if (authUid && authUid !== activeUid) {
+        queryPromises.push(
+          getDocs(query(collection(db, 'claims'), where('uid', '==', authUid))).catch(() => null)
+        );
+      }
+
       // 2. Query by offline UID
       if (offlineUid) {
         queryPromises.push(
@@ -1539,7 +1547,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         const claimMobile = normalizeMobile(claim.userMobile || claim.memberMobile || claim.primaryMobile || '');
         const claimMembershipId = String(claim.membershipId || claim.memberId || claim.hcrsId || '').trim();
 
-        const uidMatch = !!activeUid && claimUid === activeUid;
+        const uidMatch = (!!activeUid && claimUid === activeUid) || (!!auth.currentUser?.uid && claimUid === auth.currentUser.uid);
         const offlineUidMatch = !!offlineUid && claimUid === offlineUid;
         const membershipMatch = !!currentMembershipId && !!claimMembershipId && claimMembershipId === currentMembershipId;
         const mobileMatch = !!cleanMobile && claimMobile === cleanMobile;

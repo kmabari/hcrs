@@ -632,7 +632,7 @@ export default function App() {
         return false;
       }
 
-      const uidMatch = !!activeUid && claimUid === activeUid;
+      const uidMatch = (!!activeUid && claimUid === activeUid) || (!!auth.currentUser?.uid && claimUid === auth.currentUser.uid);
       const offlineUidMatch = !!offlineUid && claimUid === offlineUid;
       const membershipMatch = !!currentMembershipId && claimMembershipId === currentMembershipId;
       const ownerMobile = normalizeMobile(claim.userMobile);
@@ -654,6 +654,9 @@ export default function App() {
                 return null;
               })
           );
+        }
+        if (auth.currentUser?.uid && auth.currentUser.uid !== activeUid) {
+          queryPromises.push(getDocs(query(collection(db, 'claims'), where('uid', '==', auth.currentUser.uid))).catch(() => null));
         }
         if (offlineUid) {
           queryPromises.push(
