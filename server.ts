@@ -2480,7 +2480,14 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     if (who.isMain) return who;
     try {
       const snap = await dbAdmin.collection('users').doc(who.uid).get();
-      if (snap.exists && (snap.data() as any)?.isClaimVerifier === true) return who;
+      const mine: any = snap.exists ? snap.data() || {} : {};
+      if (mine.isClaimVerifier === true || mine.isAdmin === true || mine.role === 'admin') return who;
+      // The designation is stored on every record of the verifier's mobile; the login record may be a different duplicate.
+      const m10 = /^\d{10}$/.test(who.mobile || '') ? who.mobile : String(mine.mobile || '').replace(/\D/g, '').slice(-10);
+      if (/^\d{10}$/.test(m10)) {
+        const dup = await dbAdmin.collection('users').where('mobile', 'in', [m10, `+91${m10}`, `91${m10}`]).limit(20).get();
+        if (dup.docs.some((d: any) => (d.data() as any)?.isClaimVerifier === true)) return who;
+      }
     } catch { /* not staff */ }
     return null;
   };
@@ -2529,7 +2536,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         auditDate: String(req.body?.auditDate || new Date().toISOString().slice(0, 10)).slice(0, 10),
         verifiedBy: who.uid, verifiedAt: new Date().toISOString()
       };
-      await ref.set({ companyVerification: verification }, { merge: true });
+      await ref.set({ companyVerification: verification, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
       claimsMemoryCache = null;
       return res.json({ success: true, companyVerification: verification });
     } catch (err: any) {
