@@ -1216,7 +1216,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           if (c.uid && c.uid !== who.uid && !String(c.uid).startsWith('offline_') && dbAdmin) {
             try {
               const ou = await dbAdmin.collection('users').doc(String(c.uid)).get();
-              ownerGone = !ou.exists || (ou.data() as any)?.status === 'deleted';
+              const od: any = ou.exists ? ou.data() || {} : null;
+              const last10 = (v: any) => String(v ?? '').replace(/\D/g, '').slice(-10);
+              // Owner missing/deleted, or the owner is just another record of this same mobile (duplicate).
+              ownerGone = !od || od.status === 'deleted' || (last10(od.mobile).length === 10 && last10(od.mobile) === last10(who.mobile || c.userMobile));
             } catch { /* leave false */ }
           }
           flagged.push(ownerGone ? { ...c, ownerGone: true } : c);

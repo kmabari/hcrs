@@ -1543,6 +1543,9 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         const membershipMatch = !!currentMembershipId && !!claimMembershipId && claimMembershipId === currentMembershipId;
         const mobileMatch = !!cleanMobile && claimMobile === cleanMobile;
 
+        // Server-verified same-person claim (owner record deleted, or a duplicate record of this same mobile).
+        if ((claim as any).ownerGone === true && mobileMatch) return true;
+
         // A Self claim carries the account holder's own identity. Reject an explicit
         // Self-mobile contradiction before trusting a historically contaminated UID.
         // Family claims are intentionally excluded because their individual mobile can
