@@ -2583,6 +2583,36 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // Main admin only (/api/admin/ is guarded): read-only look at every claim and member record for one mobile.
+  app.get(["/api/admin/claim-diagnose", "/admin/claim-diagnose"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const m = cleanTenDigitMobile(req.query.mobile);
+      if (!/^\d{10}$/.test(m)) return res.status(400).json({ error: 'Enter a 10 digit mobile' });
+      const forms = [m, `+91${m}`, `91${m}`, `0${m}`];
+      const [u1, c1, c2] = await Promise.all([
+        dbAdmin.collection('users').where('mobile', 'in', forms).limit(20).get(),
+        dbAdmin.collection('claims').where('userMobile', 'in', forms).limit(50).get(),
+        dbAdmin.collection('claims').where('userMobile', '==', Number(m)).limit(50).get().catch(() => ({ docs: [] } as any))
+      ]);
+      const members = u1.docs.map((d: any) => { const x: any = d.data() || {}; return { uid: d.id, name: x.name || '', mobile: x.mobile ?? '', membershipId: x.membershipId || '', status: x.status || '', deleted: x.status === 'deleted' || !!x.deletedAt, expiry: x.expiryDate?.toDate ? x.expiryDate.toDate().toISOString().slice(0, 10) : '' }; });
+      const memberUids = new Set(members.map((x: any) => x.uid));
+      const seen = new Map<string, any>();
+      [...c1.docs, ...c2.docs].forEach((d: any) => seen.set(d.id, d));
+      for (const uid of memberUids) {
+        const cs = await dbAdmin.collection('claims').where('uid', '==', uid).limit(20).get();
+        cs.docs.forEach((d: any) => seen.set(d.id, d));
+      }
+      const claims = Array.from(seen.values()).map((d: any) => { const x: any = d.data() || {}; return {
+        id: d.id, relation: x.relation || '', uid: x.uid || '', ownerIsKnownMember: memberUids.has(x.uid), userMobile: x.userMobile ?? '',
+        individualMobile: x.individualMobile ?? '', membershipId: x.membershipId || '', totalPaid: x.totalPaid ?? '', totalReceived: x.totalReceived ?? '',
+        verified: !!x.companyVerification, created: x.createdAt?.toDate ? x.createdAt.toDate().toISOString().slice(0, 16) : '' }; });
+      return res.json({ success: true, members, claims });
+    } catch (err: any) {
+      return res.status(500).json({ error: String(err?.message || 'diagnose failed').slice(0, 200) });
+    }
+  });
+
   // ---- DEDICATED CLAIM VERIFIER LOGINS (main admin creates: mobile + password; they only see the verification page) ----
   // Login identity is cv<mobile>@hcrs.society. There is NO users document and NO member record for it, so it can never
   // create duplicates, appear in member lists, or reach any other part of the console.
