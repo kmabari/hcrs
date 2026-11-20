@@ -8,7 +8,6 @@ import LoginForm from './components/LoginForm';
 import GalleryPage from './components/GalleryPage';
 import MembershipCard from './components/MembershipCard';
 import ProfileEditForm from './components/ProfileEditForm';
-import ClaimVerificationPanel from './components/ClaimVerificationPanel';
 import ChangePasswordForm from './components/ChangePasswordForm';
 import PaymentReceipts from './components/PaymentReceipts';
 import { SupportClaimForm } from './components/SupportClaimForm';
@@ -4170,10 +4169,6 @@ export default function App() {
                 </div>
               </div>
             </div>
-          )}
-
-          {!isScreenshotMode && !isEditingProfile && (user as any).isClaimVerifier === true && (
-            <div className="w-full max-w-5xl"><ClaimVerificationPanel officerName={user.name} /></div>
           )}
 
           {isEditingProfile ? (

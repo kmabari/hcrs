@@ -3404,6 +3404,15 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               <span className="font-mono font-black text-[#003366]">
                 ₹{submittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
               </span>
+              {submittedClaims.some((c: any) => c.companyVerification) && (
+                <>
+                  <span className="hidden sm:inline text-slate-300">|</span>
+                  <span>കമ്പനി പരിശോധിച്ച ബാലൻസ്:</span>
+                  <span className="font-mono font-black text-emerald-700">
+                    ₹{submittedClaims.reduce((s, c: any) => s + (Number(c.companyVerification?.finalNetBalance) || 0), 0).toLocaleString('en-IN')}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
