@@ -44,7 +44,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs, doc, serverTimestamp, updateDoc, runTransaction, setDoc, limit, writeBatch, onSnapshot } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from '../lib/claimPrint';
@@ -1443,7 +1443,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
     try {
       setLoading(true);
       
-      const rawMobile = String(user.mobile || '').replace(/\D/g, '');
+      const loginEmailMobile = ((String(auth.currentUser?.email || (user as any).email || '').match(/^(\d{10})@hcrs\.society$/)) || [])[1] || '';
+      const rawMobile = String(user.mobile || loginEmailMobile || '').replace(/\D/g, '');
       const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
       const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
       const activeUid = user.uid || '';

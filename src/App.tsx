@@ -604,7 +604,9 @@ export default function App() {
       return;
     }
 
-    const rawMobile = String(user.mobile || '').replace(/\D/g, '');
+    // The profile may lack a mobile (duplicate cleanup / Google login): fall back to the login e-mail <mobile>@hcrs.society.
+    const loginEmailMobile = ((String(auth.currentUser?.email || (user as any).email || '').match(/^(\d{10})@hcrs\.society$/)) || [])[1] || '';
+    const rawMobile = String(user.mobile || loginEmailMobile || '').replace(/\D/g, '');
     const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
     const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
     const activeUid = user.uid || '';
