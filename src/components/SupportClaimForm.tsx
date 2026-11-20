@@ -653,6 +653,25 @@ const CompanyPaymentSection = ({
   );
 };
 
+/** Read-only company verification result, shown next to the member's own claimed figures (members cannot edit it). */
+function CompanyVerifiedBlock({ claim }: { claim: any }) {
+  const cv = claim?.companyVerification;
+  if (!cv) return null;
+  const money = (n: any) => `₹${(Number(n) || 0).toLocaleString('en-IN')}`;
+  return (
+    <div className="mt-2 rounded-xl border-2 border-emerald-600 bg-emerald-50 p-3 text-xs">
+      <p className="font-black uppercase text-emerald-800 mb-1.5">✔ Company Verified (കമ്പനി പരിശോധിച്ച തുക)</p>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+        <div><span className="text-[10px] text-slate-500 font-bold block">Verified Advance</span><span className="font-black">{money(cv.advanceAmount)}</span></div>
+        <div><span className="text-[10px] text-slate-500 font-bold block">Verified Return</span><span className="font-black">{money(cv.returnReceived)}</span></div>
+        <div><span className="text-[10px] text-slate-500 font-bold block">Verified Balance</span><span className="font-black text-emerald-800">{money(cv.finalNetBalance)}</span></div>
+        <div><span className="text-[10px] text-slate-500 font-bold block">Bank Ref / Date</span><span className="font-mono font-bold break-all">{cv.bankRef || '—'} {cv.auditDate ? `• ${cv.auditDate}` : ''}</span></div>
+      </div>
+      <p className="mt-1.5 text-[10px] text-slate-600">ഈ തുക അച്ചടിച്ച ക്ലെയിം ഫോമിന്റെ Section 4-ൽ ഉണ്ട്. Print / Download ചെയ്യുമ്പോൾ ലഭിക്കും.</p>
+    </div>
+  );
+}
+
 export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmitSuccess }: SupportClaimFormProps) {
   const handleExitToDashboard = () => {
     if (onBack) {
@@ -3935,6 +3954,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <span className="font-black text-emerald-700">₹{(selfClaim?.totalPending || selfTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
+            <CompanyVerifiedBlock claim={selfClaim} />
           </div>
         )}
 
@@ -4526,6 +4546,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <span className="font-black text-emerald-700">₹{(spouseClaim?.totalPending || spouseTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
+            <CompanyVerifiedBlock claim={spouseClaim} />
           </div>
         )}
 
@@ -5155,6 +5176,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <span className="font-black text-emerald-700">₹{(parentClaim?.totalPending || parentTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
+            <CompanyVerifiedBlock claim={parentClaim} />
           </div>
         )}
 
@@ -5784,6 +5806,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <span className="font-black text-emerald-700">₹{(childClaim?.totalPending || childTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
+            <CompanyVerifiedBlock claim={childClaim} />
           </div>
         )}
 
