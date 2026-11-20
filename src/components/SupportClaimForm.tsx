@@ -653,6 +653,10 @@ const CompanyPaymentSection = ({
   );
 };
 
+/** When several claim records exist for one relation, prefer the company-verified one, then the one with real amounts. */
+const pickBestClaim = (list: any[]) => list.length <= 1 ? list[0] : [...list].sort((a, b) =>
+  (b?.companyVerification ? 1 : 0) - (a?.companyVerification ? 1 : 0) || (Number(b?.totalPaid) || 0) - (Number(a?.totalPaid) || 0))[0];
+
 /** Read-only company verification result, shown next to the member's own claimed figures (members cannot edit it). */
 function CompanyVerifiedBlock({ claim }: { claim: any }) {
   const cv = claim?.companyVerification;
@@ -1144,10 +1148,10 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   const hasSpouse = useMemo(() => submittedClaims.some(c => ['Wife', 'Husband'].includes(c.relation)), [submittedClaims]);
 
   // Exact claim document lookups
-  const selfClaim = useMemo(() => submittedClaims.find(c => c.relation === 'Self'), [submittedClaims]);
-  const spouseClaim = useMemo(() => submittedClaims.find(c => ['Wife', 'Husband'].includes(c.relation)), [submittedClaims]);
-  const parentClaim = useMemo(() => submittedClaims.find(c => ['Mother', 'Father'].includes(c.relation)), [submittedClaims]);
-  const childClaim = useMemo(() => submittedClaims.find(c => ['Son', 'Daughter'].includes(c.relation)), [submittedClaims]);
+  const selfClaim = useMemo(() => pickBestClaim(submittedClaims.filter(c => c.relation === 'Self')), [submittedClaims]);
+  const spouseClaim = useMemo(() => pickBestClaim(submittedClaims.filter(c => ['Wife', 'Husband'].includes(c.relation))), [submittedClaims]);
+  const parentClaim = useMemo(() => pickBestClaim(submittedClaims.filter(c => ['Mother', 'Father'].includes(c.relation))), [submittedClaims]);
+  const childClaim = useMemo(() => pickBestClaim(submittedClaims.filter(c => ['Son', 'Daughter'].includes(c.relation))), [submittedClaims]);
 
   // Active continuous auto-sync from Main Applicant to secondary forms (Spouse, Parent, Child)
   useEffect(() => {
@@ -1565,24 +1569,29 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         // records are accepted only when they do not explicitly belong elsewhere.
         if (uidMatch || offlineUidMatch || membershipMatch) return true;
         if (!mobileMatch) return false;
+        if ((claim as any).ownerGone === true) return true;
         if (claimUid && claimUid !== activeUid && claimUid !== offlineUid) return false;
         if (claimMembershipId && currentMembershipId && claimMembershipId !== currentMembershipId) return false;
         return true;
       });
 
       // Company-verified amounts are written by the server. Always take them from the server's fresh copy so a
-      // cached/stale browser read or a rules-limited query can never show the member a form without them.
-      if (docsList.length > 0) {
-        try {
-          const vRes = await authenticatedFetch(`/api/database/claims?fresh=true&mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
-          if (vRes.ok) {
-            const vJson = await vRes.json();
-            const verified = new Map<string, any>();
-            (Array.isArray(vJson?.data) ? vJson.data : []).forEach((c: any) => { if (c?.id && c.companyVerification) verified.set(c.id, c.companyVerification); });
-            if (verified.size) docsList = docsList.map((c: any) => verified.has(c.id) ? { ...c, companyVerification: verified.get(c.id) } : c);
-          }
-        } catch { /* verification overlay is best-effort */ }
-      }
+      // cached/stale browser read or a rules-limited query can never show the member a form without them. Claims
+      // whose old owner record was deleted (duplicate cleanup) but that carry this member's mobile are added too.
+      try {
+        const vRes = await authenticatedFetch(`/api/database/claims?fresh=true&mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
+        if (vRes.ok) {
+          const vJson = await vRes.json();
+          const serverList: any[] = Array.isArray(vJson?.data) ? vJson.data : [];
+          const byId = new Map<string, any>(serverList.filter((c: any) => c?.id).map((c: any) => [c.id, c]));
+          docsList = docsList.map((c: any) => byId.get(c.id)?.companyVerification ? { ...c, companyVerification: byId.get(c.id).companyVerification } : c);
+          const have = new Set(docsList.map((c: any) => c.id));
+          serverList.forEach((c: any) => {
+            const cm = normalizeMobile(c.userMobile || '');
+            if (c.ownerGone === true && !have.has(c.id) && cm === cleanMobile) docsList.push(c);
+          });
+        }
+      } catch { /* server overlay is best-effort */ }
 
       if (docsList.length > 0) {
         setSubmittedClaims(docsList);

@@ -1208,7 +1208,20 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           const cMob = String(c.userMobile || '').replace(/\D/g, '').slice(-10);
           return !!ownMobile && cMob === ownMobile;
         });
-        return res.json({ success: true, count: own.length, cached: false, data: own });
+        // Flag claims whose recorded owner record no longer exists / was deleted (e.g. an admin removed a duplicate
+        // member): the same mobile still owns them, so the member's own view may safely show them.
+        const flagged: any[] = [];
+        for (const c of own) {
+          let ownerGone = false;
+          if (c.uid && c.uid !== who.uid && !String(c.uid).startsWith('offline_') && dbAdmin) {
+            try {
+              const ou = await dbAdmin.collection('users').doc(String(c.uid)).get();
+              ownerGone = !ou.exists || (ou.data() as any)?.status === 'deleted';
+            } catch { /* leave false */ }
+          }
+          flagged.push(ownerGone ? { ...c, ownerGone: true } : c);
+        }
+        return res.json({ success: true, count: flagged.length, cached: false, data: flagged });
       }
 
       // District-level staff only ever receive the claims of THEIR OWN district.
