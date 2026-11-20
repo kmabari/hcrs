@@ -1551,6 +1551,20 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         return true;
       });
 
+      // Company-verified amounts are written by the server. Always take them from the server's fresh copy so a
+      // cached/stale browser read or a rules-limited query can never show the member a form without them.
+      if (docsList.length > 0) {
+        try {
+          const vRes = await authenticatedFetch(`/api/database/claims?fresh=true&mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
+          if (vRes.ok) {
+            const vJson = await vRes.json();
+            const verified = new Map<string, any>();
+            (Array.isArray(vJson?.data) ? vJson.data : []).forEach((c: any) => { if (c?.id && c.companyVerification) verified.set(c.id, c.companyVerification); });
+            if (verified.size) docsList = docsList.map((c: any) => verified.has(c.id) ? { ...c, companyVerification: verified.get(c.id) } : c);
+          }
+        } catch { /* verification overlay is best-effort */ }
+      }
+
       if (docsList.length > 0) {
         setSubmittedClaims(docsList);
         
