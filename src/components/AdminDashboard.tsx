@@ -1,4 +1,5 @@
 import DistrictAdminLinks from './DistrictAdminLinks';
+import ClaimVerifierAccounts from './ClaimVerifierAccounts';
 import ClaimVerificationPanel from './ClaimVerificationPanel';
 import ClaimVerifyDialog from './ClaimVerifyDialog';
 import RecordsAuditPanel from './RecordsAuditPanel';
@@ -4912,7 +4913,7 @@ export default function AdminDashboard({
             )}
 
             {activeTab === 'district_quota' && <DistrictAdminLinks />}
-            {activeTab === 'claim_verify' && <ClaimVerificationPanel officerName="HCRS Admin" />}
+            {activeTab === 'claim_verify' && <><ClaimVerifierAccounts /><ClaimVerificationPanel officerName="HCRS Admin" /></>}
             {activeTab === 'records_audit' && <RecordsAuditPanel members={members} adminEmails={[...MAIN_ADMINS, ...SECOND_ADMINS]} getStatus={getEffectiveMemberStatus} />}
             {activeTab === 'district_quota' && (
               <DistrictQuotaManager

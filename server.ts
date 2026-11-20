@@ -2478,6 +2478,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     const who = await getRequestIdentity(req);
     if (!who || !dbAdmin) return null;
     if (who.isMain) return who;
+    if (/^cv\d{10}@hcrs\.society$/.test(who.email || '')) {
+      try {
+        const cv = await dbAdmin.collection('claimVerifiers').doc(who.email.slice(2, 12)).get();
+        if (cv.exists && (cv.data() as any)?.uid === who.uid && (cv.data() as any)?.enabled !== false) return who;
+      } catch { /* not staff */ }
+      return null;
+    }
     try {
       const snap = await dbAdmin.collection('users').doc(who.uid).get();
       const mine: any = snap.exists ? snap.data() || {} : {};
@@ -2560,6 +2567,55 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error('[Claim Verifier] set error:', err?.message || err);
       return res.status(500).json({ error: 'Could not update claim verifier' });
+    }
+  });
+
+  // ---- DEDICATED CLAIM VERIFIER LOGINS (main admin creates: mobile + password; they only see the verification page) ----
+  // Login identity is cv<mobile>@hcrs.society. There is NO users document and NO member record for it, so it can never
+  // create duplicates, appear in member lists, or reach any other part of the console.
+  app.get(["/api/admin/claim-verifier-accounts", "/admin/claim-verifier-accounts"], async (_req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const snap = await dbAdmin.collection('claimVerifiers').get();
+      return res.json({ success: true, accounts: snap.docs.map((d: any) => { const x: any = d.data() || {}; return { mobile: d.id, name: String(x.name || ''), enabled: x.enabled !== false }; }) });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Could not load verifier logins' });
+    }
+  });
+
+  app.post(["/api/admin/set-claim-verifier-account", "/admin/set-claim-verifier-account"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      const password = String(req.body?.password || '');
+      const name = String(req.body?.name || '').trim().slice(0, 80);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: 'ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.' });
+      if (password.length < 6) return res.status(400).json({ error: 'പാസ്‌വേഡ് കുറഞ്ഞത് 6 അക്ഷരം വേണം.' });
+      const email = `cv${mobile}@hcrs.society`;
+      let authUser: any = null;
+      try { authUser = await admin.auth().getUserByEmail(email); } catch (e: any) { if (e?.code !== 'auth/user-not-found') throw e; }
+      if (authUser) await admin.auth().updateUser(authUser.uid, { password, displayName: name || 'Claim Verifier', disabled: false });
+      else authUser = await admin.auth().createUser({ email, password, displayName: name || 'Claim Verifier' });
+      await dbAdmin.collection('claimVerifiers').doc(mobile).set({
+        mobile, name, email, uid: authUser.uid, enabled: true, updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return res.json({ success: true, mobile });
+    } catch (err: any) {
+      console.error('[Claim Verifier Account] set error:', err?.message || err);
+      return res.status(500).json({ error: 'വെരിഫയർ ലോഗിൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.' });
+    }
+  });
+
+  app.post(["/api/admin/remove-claim-verifier-account", "/admin/remove-claim-verifier-account"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      if (!/^\d{10}$/.test(mobile)) return res.status(400).json({ error: 'Invalid mobile' });
+      try { const u = await admin.auth().getUserByEmail(`cv${mobile}@hcrs.society`); await admin.auth().deleteUser(u.uid); } catch (e: any) { if (e?.code !== 'auth/user-not-found') throw e; }
+      await dbAdmin.collection('claimVerifiers').doc(mobile).delete();
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Could not remove verifier login' });
     }
   });
 
