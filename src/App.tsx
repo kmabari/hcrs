@@ -288,6 +288,7 @@ export default function App() {
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
+  const [claimDebug, setClaimDebug] = useState('');
   const [submittedClaimsCount, setSubmittedClaimsCount] = useState(0);
   const [userSubmittedClaims, setUserSubmittedClaims] = useState<any[]>([]);
   const [selectedCardClaimTab, setSelectedCardClaimTab] = useState<number>(-1);
@@ -719,7 +720,9 @@ export default function App() {
           }
         });
 
+        const rawFromFirestore = claimsMap.size;
         let list = filterOwnedClaims(Array.from(claimsMap.values()));
+        let serverCount = -1;
         
         // Robust server database API fallback if client Firestore queries returned empty
         if (list.length === 0) {
@@ -728,7 +731,9 @@ export default function App() {
             if (apiRes.ok) {
               const apiJson = await apiRes.json();
               if (apiJson.success && Array.isArray(apiJson.data) && apiJson.data.length > 0) {
+                serverCount = apiJson.data.length;
                 list = filterOwnedClaims(apiJson.data);
+                if (list.length === 0) console.warn('claims from server all filtered out', apiJson.data.map((c: any) => ({ uid: c.uid, mob: c.userMobile, mid: c.membershipId || c.memberId })));
               }
             }
           } catch (apiErr) {
@@ -736,6 +741,7 @@ export default function App() {
           }
         }
 
+        setClaimDebug(`profileUid=${activeUid.slice(0, 8)} authUid=${(auth.currentUser?.uid || '').slice(0, 8)} authEmail=${(auth.currentUser?.email || '').slice(0, 22)} mobile=${cleanMobile || '-'} memberId=${user.membershipId || '-'} firestore=${rawFromFirestore} server=${serverCount} shown=${list.length}`);
         setUserSubmittedClaims(list);
         setSubmittedClaimsCount(list.length);
         setHasSubmittedClaim(list.length > 0);
@@ -4329,6 +4335,9 @@ export default function App() {
                     </InfinityBorderCard>
                   ) : (
                     <>
+                      {claimDebug && /[?&]claimdebug/.test(window.location.search) && (
+                        <p className="mb-2 break-all rounded bg-yellow-100 p-2 font-mono text-[10px] text-black">{claimDebug}</p>
+                      )}
                       {/* Dynamic Progress Color Banner: Main FINANCIAL VERIFICATION FORM Button */}
                       {(() => {
                         const count = submittedClaimsCount; // 0 to 4
@@ -4337,6 +4346,7 @@ export default function App() {
                         const isGreen = count >= 4; // 4/4 -> Green / completed
 
                         const statusBadge = `${Math.min(count, 4)}/4 Complete`;
+                        // (debug line rendered below when ?claimdebug is in the URL)
 
                         // Button colors:
                         const btnBg = isGreen
