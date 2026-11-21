@@ -1063,7 +1063,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // ---- ACCESS CONTROL for member-data endpoints --------------------------------------
   // Who is calling? Verified from the Firebase ID token (never from a URL/query flag).
   const getRequestIdentity = async (req: any): Promise<null | {
-    uid: string; email: string; mobile: string; isStaff: boolean; isMain: boolean; district: string | null; profileDistrict: string | null;
+    uid: string; email: string; mobile: string; aliasMobile: string; isStaff: boolean; isMain: boolean; district: string | null; profileDistrict: string | null;
   }> => {
     const authorization = String(req.headers.authorization || '');
     const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
@@ -1089,7 +1089,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     const mobile = /^\d{10}@hcrs\.society$/.test(email) ? email.slice(0, 10)
       : (String(profile.mobile || '').replace(/\D/g, '').slice(-10) || aliasMobile);
     const profileDistrict = profile.district ? String(profile.district) : null;
-    return { uid: decoded.uid, email, mobile, isStaff, isMain, district, profileDistrict };
+    const aliasMobileRaw = (email.match(/^(\d{10})_(?:auth_[a-z0-9]+|v\d|p\d+)@hcrs\.society$/) || [])[1] || '';
+    return { uid: decoded.uid, email, mobile, aliasMobile: aliasMobileRaw, isStaff, isMain, district, profileDistrict };
   };
 
   // Restrict a members list to what this staff account may see (same rule the admin UI applies).
@@ -1207,7 +1208,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       // A normal member may only ever receive THEIR OWN claims, whatever the query says.
       if (!who.isStaff) {
-        const ownMobile = who.mobile;
+        // Members whose login is a fallback alias (<mobile>_auth_x / _v2 / _pNNNNNN) have no profile on that uid.
+        const ownMobile = who.mobile || who.aliasMobile;
         const own = list.filter((c: any) => {
           if (c.uid === who.uid) return true;
           if (ownMobile && c.uid === `offline_${ownMobile}`) return true;
