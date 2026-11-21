@@ -288,7 +288,6 @@ export default function App() {
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
-  const [claimDebug, setClaimDebug] = useState('');
   const [submittedClaimsCount, setSubmittedClaimsCount] = useState(0);
   const [userSubmittedClaims, setUserSubmittedClaims] = useState<any[]>([]);
   const [selectedCardClaimTab, setSelectedCardClaimTab] = useState<number>(-1);
@@ -741,7 +740,6 @@ export default function App() {
           }
         }
 
-        setClaimDebug(`profileUid=${activeUid.slice(0, 8)} authUid=${(auth.currentUser?.uid || '').slice(0, 8)} authEmail=${(auth.currentUser?.email || '').slice(0, 22)} mobile=${cleanMobile || '-'} memberId=${user.membershipId || '-'} firestore=${rawFromFirestore} server=${serverCount} shown=${list.length}`);
         setUserSubmittedClaims(list);
         setSubmittedClaimsCount(list.length);
         setHasSubmittedClaim(list.length > 0);
@@ -2144,71 +2142,20 @@ export default function App() {
           console.log("Entered PIN matches registered database profile PIN. Resolving auth session...");
           const mobilePart = isMobile ? sanitizedMobile : (mappedUserData?.mobile || originalInput.replace(/\D/g, '') || 'user');
 
-          // Channel 1: Attempt to create primary targetEmail if never created before
-          if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/wrong-password') {
-            try {
-              authResult = await createUserWithEmailAndPassword(auth, targetEmail, trimmedPin);
-              console.log("Dynamically created primary Auth account:", authResult.user.uid);
-            } catch (signUpError: any) {
-              if (signUpError.code !== 'auth/email-already-in-use') {
-                console.warn("Primary auto-healing registration note:", signUpError.code);
-              }
+          // One permanent login identity per mobile: the server verifies the PIN against the member record and
+          // (re)sets the PASSWORD of the single primary account <mobile>@hcrs.society. No extra accounts are created.
+          try {
+            const healRes = await fetch('/api/auth/member-login-heal', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mobile: mobilePart, pin: trimmedPin })
+            });
+            if (healRes.ok) {
+              const primaryEmail = `${String(mobilePart).replace(/\D/g, '').slice(-10)}@hcrs.society`;
+              authResult = await signInWithEmailAndPassword(auth, primaryEmail, trimmedPin);
+              console.log("Signed in on the single primary account after server heal:", authResult.user.uid);
             }
-          }
-
-          // Channel 2: Deterministic PIN-dedicated channel (e.g. 9847123456_p123456@hcrs.society)
-          // Since the email incorporates the exact PIN, creating or logging into it is 100% collision-free
-          if (!authResult && mobilePart) {
-            const pinEmail = `${mobilePart}_p${trimmedPin}@hcrs.society`;
-            try {
-              authResult = await signInWithEmailAndPassword(auth, pinEmail, trimmedPin);
-              console.log("Sign-in successful via pin-dedicated channel:", authResult.user.uid);
-            } catch (pinSecErr: any) {
-              if (pinSecErr.code === 'auth/user-not-found' || pinSecErr.code === 'auth/invalid-credential' || pinSecErr.code === 'auth/wrong-password') {
-                try {
-                  authResult = await createUserWithEmailAndPassword(auth, pinEmail, trimmedPin);
-                  console.log("Created fresh pin-dedicated Auth account:", authResult.user.uid);
-                } catch (createPinErr: any) {
-                  if (createPinErr.code === 'auth/email-already-in-use') {
-                    try {
-                      authResult = await signInWithEmailAndPassword(auth, pinEmail, trimmedPin);
-                    } catch (retryErr) {
-                      console.warn("Pin-dedicated secondary sign-in retry failed:", retryErr);
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          // Channel 3: Versioned & dynamic fallback channels (v2, v3, timestamped)
-          if (!authResult && mobilePart) {
-            const fallbackChannels = [
-              `${mobilePart}_v2@hcrs.society`,
-              `${mobilePart}_v3@hcrs.society`,
-              `${mobilePart}_auth_${Date.now().toString(36)}@hcrs.society`
-            ];
-
-            for (const fbEmail of fallbackChannels) {
-              if (authResult) break;
-              try {
-                authResult = await signInWithEmailAndPassword(auth, fbEmail, trimmedPin);
-                console.log("Sign-in successful via fallback channel:", fbEmail);
-                break;
-              } catch (fbErr: any) {
-                if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password') {
-                  try {
-                    authResult = await createUserWithEmailAndPassword(auth, fbEmail, trimmedPin);
-                    console.log("Created fresh auth account on fallback channel:", fbEmail);
-                    break;
-                  } catch (createFbErr: any) {
-                    if (createFbErr.code === 'auth/email-already-in-use') {
-                      continue; // Try next fallback channel
-                    }
-                  }
-                }
-              }
-            }
+          } catch (healErr) {
+            console.warn("Primary account heal/sign-in note:", healErr);
           }
         }
 
@@ -4335,9 +4282,6 @@ export default function App() {
                     </InfinityBorderCard>
                   ) : (
                     <>
-                      {claimDebug && (/[?&]claimdebug/.test(window.location.search) || String(user?.mobile || '').endsWith('9037373037') || (auth.currentUser?.email || '').startsWith('9037373037')) && (
-                        <p className="mb-2 break-all rounded bg-yellow-100 p-2 font-mono text-[10px] text-black">{claimDebug}</p>
-                      )}
                       {/* Dynamic Progress Color Banner: Main FINANCIAL VERIFICATION FORM Button */}
                       {(() => {
                         const count = submittedClaimsCount; // 0 to 4

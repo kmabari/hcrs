@@ -2621,6 +2621,84 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // ---- ONE PERMANENT LOGIN PER MOBILE ----
+  // Public: verifies the PIN against the member record, then makes sure the single primary Auth account
+  // <mobile>@hcrs.society exists with that PIN as password. The client then signs in with it (no extra accounts).
+  const healAttempts = new Map<string, { n: number; reset: number }>();
+  app.post(["/api/auth/member-login-heal", "/auth/member-login-heal"], async (req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const mobile = cleanTenDigitMobile(req.body?.mobile);
+      const pin = String(req.body?.pin || '').trim();
+      if (!/^\d{10}$/.test(mobile) || pin.length < 6) return res.status(400).json({ error: 'Invalid request' });
+      const nowMs = Date.now();
+      const rec = healAttempts.get(mobile);
+      if (rec && rec.reset > nowMs && rec.n >= 10) return res.status(429).json({ error: 'Too many attempts. Try later.' });
+      if (!rec || rec.reset <= nowMs) healAttempts.set(mobile, { n: 1, reset: nowMs + 10 * 60 * 1000 });
+      else rec.n += 1;
+      const snap = await dbAdmin.collection('users').where('mobile', 'in', [mobile, `+91${mobile}`, `91${mobile}`]).limit(20).get();
+      const ok = snap.docs.some((d: any) => { const x: any = d.data() || {}; return x.status !== 'deleted' && !x.deletedAt && String(x.pin ?? '').trim() === pin; });
+      if (!ok) return res.status(401).json({ error: 'PIN mismatch' });
+      const email = `${mobile}@hcrs.society`;
+      try {
+        const u = await admin.auth().getUserByEmail(email);
+        await admin.auth().updateUser(u.uid, { password: pin });
+      } catch (e: any) {
+        if (e?.code === 'auth/user-not-found') await admin.auth().createUser({ email, password: pin });
+        else throw e;
+      }
+      healAttempts.delete(mobile);
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[member-login-heal] error:', err?.message || err);
+      return res.status(500).json({ error: 'Login heal failed' });
+    }
+  });
+
+  const EXTRA_LOGIN_RE = /^(\d{10})_(?:auth_[a-z0-9]+|v\d|p\d+)@hcrs\.society$/;
+  const listExtraLogins = async () => {
+    const out: any[] = [];
+    let token: string | undefined;
+    do {
+      const page = await admin.auth().listUsers(1000, token);
+      page.users.forEach((u: any) => {
+        const m = String(u.email || '').toLowerCase().match(EXTRA_LOGIN_RE);
+        if (m) out.push({ uid: u.uid, email: u.email, mobile: m[1], created: u.metadata?.creationTime || '', lastSignIn: u.metadata?.lastSignInTime || '' });
+      });
+      token = page.pageToken;
+    } while (token);
+    return out;
+  };
+  app.get(["/api/admin/extra-logins", "/admin/extra-logins"], async (_req, res) => {
+    try { const list = await listExtraLogins(); return res.json({ success: true, count: list.length, accounts: list.slice(0, 300) }); }
+    catch (err: any) { return res.status(500).json({ error: String(err?.message || 'scan failed').slice(0, 200) }); }
+  });
+  // Deletes ONLY the extra Auth logins (never the member records). Placeholder profile docs on those uids are removed too.
+  app.post(["/api/admin/delete-extra-logins", "/admin/delete-extra-logins"], async (_req, res) => {
+    try {
+      if (!dbAdmin) return res.status(503).json({ error: 'Database unavailable' });
+      const list = await listExtraLogins();
+      let authDeleted = 0, docsDeleted = 0;
+      for (let i = 0; i < list.length; i += 100) {
+        const chunk = list.slice(i, i + 100);
+        const r = await admin.auth().deleteUsers(chunk.map((a: any) => a.uid));
+        authDeleted += r.successCount;
+        for (const a of chunk) {
+          try {
+            const ref = dbAdmin.collection('users').doc(a.uid);
+            const d = await ref.get();
+            const x: any = d.exists ? d.data() || {} : null;
+            if (x && !String(x.membershipId || '').trim() && x.isPaid !== true && x.status !== 'active') { await ref.delete(); docsDeleted++; }
+          } catch { /* keep doc */ }
+        }
+      }
+      membersMemoryCache = null;
+      return res.json({ success: true, authDeleted, docsDeleted });
+    } catch (err: any) {
+      return res.status(500).json({ error: String(err?.message || 'delete failed').slice(0, 200) });
+    }
+  });
+
   // ---- DEDICATED CLAIM VERIFIER LOGINS (main admin creates: mobile + password; they only see the verification page) ----
   // Login identity is cv<mobile>@hcrs.society. There is NO users document and NO member record for it, so it can never
   // create duplicates, appear in member lists, or reach any other part of the console.

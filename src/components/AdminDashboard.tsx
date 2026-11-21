@@ -4,6 +4,7 @@ import ClaimDiagnose from './ClaimDiagnose';
 import ClaimVerificationPanel from './ClaimVerificationPanel';
 import ClaimVerifyDialog from './ClaimVerifyDialog';
 import RecordsAuditPanel from './RecordsAuditPanel';
+import ExtraLoginsPanel from './ExtraLoginsPanel';
 import { isMainAdminAccount } from '../lib/adminAccess';
 import { authenticatedFetch } from '../lib/authenticatedFetch';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -4915,7 +4916,7 @@ export default function AdminDashboard({
 
             {activeTab === 'district_quota' && <DistrictAdminLinks />}
             {activeTab === 'claim_verify' && <><ClaimDiagnose /><ClaimVerifierAccounts /><ClaimVerificationPanel officerName="HCRS Admin" /></>}
-            {activeTab === 'records_audit' && <RecordsAuditPanel members={members} adminEmails={[...MAIN_ADMINS, ...SECOND_ADMINS]} getStatus={getEffectiveMemberStatus} />}
+            {activeTab === 'records_audit' && <><ExtraLoginsPanel /><RecordsAuditPanel members={members} adminEmails={[...MAIN_ADMINS, ...SECOND_ADMINS]} getStatus={getEffectiveMemberStatus} /></>}
             {activeTab === 'district_quota' && (
               <DistrictQuotaManager
                 districtQuotas={districtQuotas}
