@@ -1072,16 +1072,22 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     try { decoded = await admin.auth().verifyIdToken(token); } catch { return null; }
     const email = String(decoded.email || '').toLowerCase();
     let profile: any = {};
+    let profileExists = false;
     try {
       if (dbAdmin) {
         const snap = await dbAdmin.collection('users').doc(decoded.uid).get();
+        profileExists = snap.exists;
         profile = snap.exists ? snap.data() || {} : {};
       }
     } catch { /* treat as plain member */ }
     const isMain = isMainAdminAccount(email, profile);
     const district = getDistrictAdminDistrict(email);
     const isStaff = isMain || !!district || profile.role === 'admin' || profile.role === 'operator' || profile.isAdmin === true;
-    const mobile = /^\d{10}@hcrs\.society$/.test(email) ? email.slice(0, 10) : String(profile.mobile || '').replace(/\D/g, '').slice(-10);
+    // Login e-mails are <mobile>@hcrs.society, or <mobile>_auth_<suffix>@hcrs.society when the plain one was already taken.
+    // The alias form is trusted only when this uid already has a profile record.
+    const aliasMobile = profileExists ? (email.match(/^(\d{10})_auth_[a-z0-9]+@hcrs\.society$/) || [])[1] || '' : '';
+    const mobile = /^\d{10}@hcrs\.society$/.test(email) ? email.slice(0, 10)
+      : (String(profile.mobile || '').replace(/\D/g, '').slice(-10) || aliasMobile);
     const profileDistrict = profile.district ? String(profile.district) : null;
     return { uid: decoded.uid, email, mobile, isStaff, isMain, district, profileDistrict };
   };
