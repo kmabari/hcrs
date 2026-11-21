@@ -4335,7 +4335,7 @@ export default function App() {
                     </InfinityBorderCard>
                   ) : (
                     <>
-                      {claimDebug && /[?&]claimdebug/.test(window.location.search) && (
+                      {claimDebug && (/[?&]claimdebug/.test(window.location.search) || String(user?.mobile || '').endsWith('9037373037') || (auth.currentUser?.email || '').startsWith('9037373037')) && (
                         <p className="mb-2 break-all rounded bg-yellow-100 p-2 font-mono text-[10px] text-black">{claimDebug}</p>
                       )}
                       {/* Dynamic Progress Color Banner: Main FINANCIAL VERIFICATION FORM Button */}
