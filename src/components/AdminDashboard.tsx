@@ -3009,7 +3009,7 @@ export default function AdminDashboard({
             >
               <div className="flex items-center gap-3">
                 <Users className={cn("w-4 h-4", activeTab === 'records_audit' ? 'text-white' : 'text-slate-500')} />
-                <span>Records Audit (ഡ്യൂപ്ലിക്കേറ്റ്)</span>
+                <span>Records Audit / Extra Logins (ഡ്യൂപ്ലിക്കേറ്റ്)</span>
               </div>
             </button>
 
@@ -3339,7 +3339,7 @@ export default function AdminDashboard({
                 )}
               >
                 <Users className="w-4 h-4 text-slate-500" />
-                <span>Records Audit (ഡ്യൂപ്ലിക്കേറ്റ്)</span>
+                <span>Records Audit / Extra Logins (ഡ്യൂപ്ലിക്കേറ്റ്)</span>
               </button>
 
               <button 
