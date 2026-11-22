@@ -715,6 +715,83 @@ export const getCourtReportBaseStyles = (): string => `
       padding: 0 !important;
     }
   }
+
+  /* ===== Redesigned Customer Financial Statement & Verification Form (shared: member print, admin print, PDF) ===== */
+  .fx-page { justify-content: flex-start; padding: 3mm 4mm; }
+  .fx-frame { border: 2px solid #0b3a66; border-radius: 3px; padding: 0 5mm 3mm 5mm; position: relative; background: #fff; font-family: 'Inter', 'Noto Sans Malayalam', 'Segoe UI', Arial, sans-serif; color: #0f172a; }
+  .fx-topbar { display: flex; height: 6px; margin: 0 -5mm 6px -5mm; }
+  .fx-topbar b { flex: 1; }
+  .fx-topbar b:nth-child(1) { background: #0b6bb0; flex: 2.6; }
+  .fx-topbar b:nth-child(2) { background: #00969b; flex: 2.4; }
+  .fx-topbar b:nth-child(3) { background: #1fa7c4; flex: 1.7; }
+  .fx-topbar b:nth-child(4) { background: #f0952b; flex: 3.3; }
+  .fx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .fx-org { font-size: 20px; font-weight: 900; color: #0b3a66; letter-spacing: 0.4px; line-height: 1.15; }
+  .fx-meta { font-size: 8px; color: #1e293b; line-height: 1.5; margin-top: 3px; }
+  .fx-meta b { font-weight: 800; }
+  .fx-title { display: inline-block; margin-top: 5px; background: #0b3a66; color: #fff; font-weight: 800; font-size: 12px; letter-spacing: 0.3px; padding: 5px 14px; border-radius: 6px; }
+  .fx-head-date { width: 200px; flex: none; }
+  .fx-label { font-size: 9px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; }
+  .fx-datebox { margin-top: 3px; border: 1.4px solid #94a3b8; border-radius: 3px; padding: 7px 9px; font-size: 11px; color: #475569; }
+  .fx-page-no { margin-top: 3px; font-size: 8px; color: #64748b; font-weight: 700; text-align: right; }
+  .fx-to { margin: 6px 0 6px; padding-bottom: 3px; border-bottom: 1.4px solid #cbd5e1; font-size: 10.5px; font-weight: 800; color: #0b3a66; }
+  .fx-sec { display: inline-block; color: #fff; font-weight: 800; font-size: 12px; letter-spacing: 0.2px; padding: 3px 14px; border-radius: 6px 6px 0 0; line-height: 1.35; }
+  .fx-sec span { font-size: 10px; }
+  .fx-sec-blue { background: #0070b3; }
+  .fx-sec-teal { background: #00969b; border-radius: 6px; }
+  .fx-sec-navy { background: #0b2f57; }
+  .fx-card { border: 1.6px solid #0b6bb0; border-radius: 0 0 8px 8px; background: #fafcfe; position: relative; }
+  .fx-card-cyan { border-top: 4px solid #1fa7c4; border-radius: 0 0 8px 8px; }
+  .fx-card-teal { border-color: #0b6bb0; border-top: 4px solid #00969b; }
+  .fx-card-navy { border-color: #0b2f57; border-radius: 0 0 8px 8px; }
+  .fx-info { display: flex; }
+  .fx-info-left { flex: 1.35; padding: 5px 12px 4px; border-right: 2.5px solid #00969b; margin: 6px 0; }
+  .fx-info-right { flex: 1; padding: 4px 12px; }
+  .fx-info .fx-label { display: block; margin-top: 5px; }
+  .fx-info .fx-label:first-child { margin-top: 2px; }
+  .fx-lines { font-size: 12px; font-weight: 700; color: #0b3a66; line-height: 21px; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 20px, #94a3b8 20px, #94a3b8 21px); min-height: 21px; word-break: break-word; }
+  .fx-lines-1 { min-height: 21px; } .fx-lines-2 { min-height: 42px; } .fx-lines-3 { min-height: 63px; }
+  .fx-boxes { display: inline-flex; gap: 2.5px; margin: 3px 0 2px; }
+  .fx-box { display: inline-flex; align-items: center; justify-content: center; border: 1.2px solid #7ea0b8; background: #fff; font-style: normal; font-weight: 800; color: #0b3a66; font-family: 'Inter', monospace; }
+  .fx-md .fx-box { width: 16px; height: 19px; font-size: 11px; }
+  .fx-sm .fx-box { width: 14px; height: 18px; font-size: 10px; }
+  .fx-lg .fx-box { width: 23px; height: 26px; font-size: 15px; }
+  .fx-gap { margin-right: 6px; }
+  .fx-hint { font-size: 8px; color: #64748b; margin-top: 1px; }
+  .fx-orange-rule { height: 4px; width: 33%; background: #f0952b; border-radius: 2px; margin: 3px 0 6px; }
+  .fx-amount { display: flex; align-items: center; gap: 10px; border: 1.5px solid #94a3b8; border-radius: 8px; padding: 7px 12px; margin-bottom: 5px; }
+  .fx-amount-label { flex: 1; font-size: 12px; font-weight: 900; }
+  .fx-rs { font-size: 18px; font-weight: 900; color: #0b3a66; }
+  .fx-amount-blue { background: #eef5fc; } .fx-amount-blue .fx-amount-label { color: #0070b3; }
+  .fx-amount-teal { background: #eff8f6; } .fx-amount-teal .fx-amount-label { color: #00969b; }
+  .fx-amount-orange { background: #fff7ec; } .fx-amount-orange .fx-amount-label { color: #c2761a; }
+  .fx-decl { padding: 8px 12px 8px; }
+  .fx-decl p { margin: 0; font-size: 8.5px; line-height: 1.45; color: #0f172a; text-align: justify; font-weight: 500; }
+  .fx-decl-foot { display: flex; justify-content: space-between; gap: 14px; margin-top: 8px; padding-top: 7px; border-top: 1px solid #cbd5e1; }
+  .fx-decl-left { flex: 1; }
+  .fx-confirm { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 800; color: #0f8f6a; }
+  .fx-datepl { margin-top: 8px; font-size: 10px; }
+  .fx-underline { display: inline-block; min-width: 120px; border-bottom: 1px solid #94a3b8; font-weight: 700; color: #0b3a66; }
+  .fx-decl-sig { flex: 1; }
+  .fx-sigline { margin-top: 16px; border-bottom: 1px solid #94a3b8; font-size: 10.5px; font-weight: 800; color: #0b3a66; text-align: right; padding-bottom: 2px; }
+  .fx-check { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.6px solid #0f8f6a; background: #fff; font-style: normal; font-size: 12px; font-weight: 900; color: #0f8f6a; line-height: 1; flex: none; }
+  .fx-verify { padding: 0 10px 8px; }
+  .fx-orange-bar { height: 4px; background: #f0952b; margin: 0 -10px 8px; }
+  .fx-vgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+  .fx-vrow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .fx-vrow .fx-label { flex: 1; font-size: 8.6px; }
+  .fx-checks { display: flex; justify-content: space-between; gap: 6px; margin: 6px 0 6px; padding: 5px 10px; border: 1.2px solid #94a3b8; border-radius: 6px; background: #fff; font-size: 9px; font-weight: 800; color: #475569; }
+  .fx-checks span { display: inline-flex; align-items: center; gap: 6px; }
+  .fx-sigs { display: flex; gap: 12px; }
+  .fx-sigbox { flex: 1; border: 1.4px solid #0b6bb0; border-radius: 8px; padding: 6px 10px; background: #fff; min-height: 76px; }
+  .fx-sigbox-teal { border-color: #00969b; text-align: center; display: flex; flex-direction: column; justify-content: space-between; }
+  .fx-sig-title { font-size: 10px; font-weight: 900; color: #0b3a66; text-align: left; border-bottom: 1px solid #94a3b8; padding-bottom: 5px; }
+  .fx-sig-line { display: flex; gap: 6px; margin-top: 6px; font-size: 9px; font-weight: 700; color: #475569; }
+  .fx-sig-k { white-space: nowrap; } .fx-sig-v { flex: 1; border-bottom: 1px solid #94a3b8; color: #0b3a66; font-weight: 800; }
+  .fx-sig-date { margin-top: 8px; font-size: 8.4px; color: #475569; }
+  .fx-seal { font-size: 8.6px; font-weight: 800; color: #475569; margin: 10px 0 2px; }
+  .fx-auth { border-top: 1.4px solid #0b3a66; padding-top: 3px; font-size: 9.4px; font-weight: 900; color: #0b3a66; }
+
 `;
 
 /**
@@ -791,174 +868,134 @@ export const renderPersonCourtClaimPage = (
   const joiningDateRaw = claim.joiningDate || (isSelf ? (userProf?.joiningDate || claim.registrationDate || userProf?.registrationDate) : '');
   const joiningDateStr = joiningDateRaw ? formatClaimDateOnly(joiningDateRaw) : '................................';
 
+  // ---- Redesigned form (shared by customer print, admin print and PDF) ----
+  const fxEsc = (t: any) => String(t ?? '').replace(/[<>&"]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' } as any)[ch]);
+  const fxDateParts = (ts: any): [string, string, string] => {
+    try {
+      let d: Date | null = null;
+      if (!ts) return ['', '', ''];
+      if (typeof ts?.toDate === 'function') d = ts.toDate();
+      else if (typeof ts?.seconds === 'number') d = new Date(ts.seconds * 1000);
+      else if (typeof ts?._seconds === 'number') d = new Date(ts._seconds * 1000);
+      else d = new Date(ts);
+      if (!d || isNaN(d.getTime())) return ['', '', ''];
+      return [String(d.getDate()).padStart(2, '0'), String(d.getMonth() + 1).padStart(2, '0'), String(d.getFullYear())];
+    } catch { return ['', '', '']; }
+  };
+  // A row of individual character boxes. `align: 'right'` right-aligns the value (used for amounts).
+  const fxBoxes = (value: string, count: number, opts: { align?: 'left' | 'right'; size?: 'sm' | 'md' | 'lg'; gapAfter?: number[] } = {}): string => {
+    const v = String(value ?? '').toUpperCase().replace(/[<>&"]/g, '');
+    const chars = (opts.align === 'right' ? v.padStart(count, ' ') : v.padEnd(count, ' ')).slice(opts.align === 'right' ? -count : 0, opts.align === 'right' ? undefined : count).split('');
+    return `<span class="fx-boxes fx-${opts.size || 'md'}">${chars.map((c, i) => `<i class="fx-box${(opts.gapAfter || []).includes(i) ? ' fx-gap' : ''}">${c.trim() ? c : ''}</i>`).join('')}</span>`;
+  };
+  const fxAmount = (n: any) => {
+    const num = Math.round(Number(n));
+    return Number.isFinite(num) && num >= 0 ? String(num) : '';
+  };
+  const stmtParts = fxDateParts(claim.createdAt);
+  const joinParts = fxDateParts(joiningDateRaw);
+  const stmtDateText = stmtParts[0] ? `${stmtParts[0]} / ${stmtParts[1]} / ${stmtParts[2]}` : 'DD / MM / YYYY';
+  const mobileDigits = String(individualMobile || primaryMobile || '').replace(/\D/g, '').slice(-10);
+  const hrId = String(claim.highrichId || '').trim();
+  const hrBoxCount = Math.min(Math.max(12, hrId.length), 18);
+  const panChars = String(panStr || '').replace(/\s/g, '').toUpperCase().slice(0, 10);
+  const nameText = fxEsc(memberName === 'N/A' ? '' : memberName);
+  const distText = fxEsc(`${districtName}${asslyName && asslyName !== 'N/A' ? ' • ' + asslyName : ''}`);
+  const addrText = fxEsc(addressStr ? fullAddress : '');
+  const placeText = fxEsc(claim.place || claim.declarationPlace || userProf?.place || '');
+  const cvOn = !!cv;
+  const cvNum = (n: any) => (cv && Number.isFinite(Number(n))) ? String(Math.round(Number(n))) : '';
+  const cvTick = (on: boolean) => `<i class="fx-check${on ? ' on' : ''}">${on ? '✓' : ''}</i>`;
+  const auditParts = cv?.auditDate ? String(cv.auditDate).split('-') : [];
+  const auditText = auditParts.length === 3 ? `${auditParts[2]} / ${auditParts[1]} / ${auditParts[0]}` : 'DD / MM / YYYY';
+
   return `
-    <div class="page-container">
-      <div>
-        <!-- Header Table -->
-        <table class="header-table">
-          <tr>
-            <td style="vertical-align: top;">
-              <div class="org-title">HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
-              <div class="org-sub-meta">
-                <span>CIN: U51909KL2019PTC060087</span> • 
-                <span style="font-weight: 800; color: #003366;">COMPANY PAN: AABCH77066C</span> • 
-                <span>Reg. Office: TC9/3702/014, 2nd Floor, Kanimangalam Tower, Valapad, Thrissur - 680567, Kerala, India</span>
-              </div>
-              <div class="doc-tag" style="margin-top: 4px;">CUSTOMER FINANCIAL STATEMENT & VERIFICATION FORM</div>
-            </td>
-            <td style="vertical-align: top; text-align: right; width: 205px;">
-              <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">STATEMENT DATE</div>
-              <div style="font-size: 11px; font-weight: 900; color: #003366; line-height: 1.3; margin-top: 2px;">${dateStr}</div>
-              <div style="margin-top: 4px; display: inline-block; background: #003366; color: #ffffff; font-size: 9px; font-weight: 900; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.35px;">
-                PAGE ${pageNum}/${totalPages}
-              </div>
-            </td>
-          </tr>
-        </table>
-
-        <!-- Target Authority / Management Line -->
-        <div style="font-size: 9px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f8fafc; border-left: 2px solid #003366; border-radius: 3px; line-height: 1.4;">
-          TO: THE MANAGEMENT OF HIGHRICH ONLINE SHOPPE PVT. LTD.
-        </div>
-
-        <!-- 1. CUSTOMER INFORMATION -->
-        <div class="section-heading">1. CUSTOMER INFORMATION</div>
-        <div class="meta-box" style="padding: 0; overflow: hidden;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-            <tr>
-              <td style="width: 52%; vertical-align: top; padding: 7px 12px; border-right: 1.2px solid #cbd5e1;">
-                <div style="margin-bottom: 6.5px;">
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">CUSTOMER / DECLARANT NAME:</div>
-                  <div style="font-size: 12px; font-weight: 900; color: #003366; margin-top: 1px;">${memberName}</div>
-                </div>
-                <div style="margin-bottom: 6.5px;">
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">CUSTOMER ID (PROVIDED BY THE COMPANY):</div>
-                  <div style="font-size: 12px; font-weight: 900; color: #003366; font-family: monospace; margin-top: 1px;">${claim.highrichId || '................................'}</div>
-                </div>
-                <div style="margin-bottom: 6.5px;">
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">DISTRICT & ASSEMBLY CONSTITUENCY:</div>
-                  <div style="font-size: 11px; font-weight: 800; color: #0f172a; margin-top: 1px;">${districtName} • ${asslyName}</div>
-                </div>
-                <div>
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">FULL RESIDENTIAL ADDRESS:</div>
-                  <div style="font-size: 10.5px; font-weight: 700; color: #0f172a; line-height: 1.4; margin-top: 1px;">${fullAddress}</div>
-                </div>
-              </td>
-              <td style="width: 48%; vertical-align: top; padding: 7px 12px;">
-                <div style="margin-bottom: 8px;">
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">REGISTERED MOBILE NUMBER</div>
-                  <div style="font-size: 12px; font-weight: 900; color: #0f172a; font-family: monospace; margin-top: 1px;">${mobileStr}</div>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">CUSTOMER PAN CARD NUMBER</div>
-                  <div style="font-size: 12px; font-weight: 900; color: #003366; font-family: monospace; margin-top: 1px;">${panStr || '................................'}</div>
-                </div>
-                <div>
-                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">JOINING DATE</div>
-                  <div style="font-size: 11.5px; font-weight: 900; color: #003366; font-family: monospace; margin-top: 1px;">${joiningDateStr}</div>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
-
-        <!-- 2. FINANCIAL STATEMENT – AMOUNT RECEIVED IN THE COURSE OF BUSINESS FOR SUPPLY OF GOODS & PROVISION OF SERVICES -->
-        <div class="section-heading" style="line-height: 1.35;">2. FINANCIAL STATEMENT – AMOUNT RECEIVED IN THE COURSE OF BUSINESS FOR SUPPLY OF<br/>GOODS & PROVISION OF SERVICES</div>
-        <table class="claim-table">
-          <thead>
-            <tr>
-              <th style="width: 38%;">PARTICULARS / ACCOUNT HEAD</th>
-              <th style="text-align: right; width: 20%;">ADVANCE PAID (₹)</th>
-              <th style="text-align: right; width: 20%;">AMOUNT RECEIVED (₹)</th>
-              <th style="text-align: right; width: 22%;">PENDING BALANCE (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="font-weight: 800; font-size: 11.5px;">ADVANCE ACCOUNT (നൽകിയ തുക)</td>
-              <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 12px;">₹ ${paidVal.toLocaleString('en-IN')}</td>
-              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
-              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
-            </tr>
-            <tr>
-              <td style="font-weight: 800; font-size: 11.5px;">PAYMENT RECEIVED FROM COMPANY (ലഭിച്ച തുക)</td>
-              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
-              <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 12px;">₹ ${receivedVal.toLocaleString('en-IN')}</td>
-              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
-            </tr>
-            <tr style="background: #f8fafc;">
-              <td style="font-weight: 900; font-size: 12px; color: #003366;">BALANCE PAYABLE BY THE COMPANY (മിച്ച തുക)</td>
-              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
-              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
-              <td style="text-align: right; font-family: monospace; font-weight: 900; color: #003366; font-size: 13.5px;">₹ ${pendingBalance.toLocaleString('en-IN')}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- 3. CUSTOMER DECLARATION & CONFIRMATION -->
-        <div class="section-heading">3. CUSTOMER DECLARATION & CONFIRMATION</div>
-        <div class="declaration-box">
-          <div style="font-size: 9px; line-height: 1.5; color: #0f172a; font-weight: 600; text-align: justify;">
-            I acknowledge that data pertaining to the advance paid by me to HIGHRICH ONLINE SHOPPE PVT. LTD are not readily available with the company as on date due to the pending litigation. In order to ascertain the true facts and figures, I am furnishing the data available with me. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records maintained by me. The Advance paid, cumulative returns received, and the final net balance which is claimed herein are subject to verification and final reconciliation with the official corporate books of accounts and bank reconciliation exercise of HIGHRICH ONLINE SHOPPE PVT. LTD. In the event of ongoing legal proceedings, due to the ongoing litigation, this statement and verification claim is submitted to facilitate disbursement of funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my free will and consent. I understand that the action arising out of the verification form is subject to verification and pending litigation in various Forums & Courts of Law.
+    <div class="page-container fx-page">
+      <div class="fx-frame">
+        <div class="fx-topbar"><b></b><b></b><b></b><b></b></div>
+        <div class="fx-head">
+          <div class="fx-head-main">
+            <div class="fx-org">HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
+            <div class="fx-meta"><b>CIN: U51909KL2019PTC060087 &nbsp;•&nbsp; COMPANY PAN: AABCH7706C &nbsp;•&nbsp; Reg. Office: TC9/3702/014, 2nd Floor,</b><br/>Kanimangalam Tower, Valapad, Thrissur - 680567, Kerala, India</div>
+            <div class="fx-title">CUSTOMER FINANCIAL STATEMENT &amp; VERIFICATION FORM</div>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; padding-top: 7px; border-top: 1.2px dashed #cbd5e1;">
-            <div>
-              <span style="font-size: 8.5px; color: #059669; font-weight: 900; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3.5px 8px; border-radius: 4px; display: inline-block;">
-                [√] CONDITIONS CONFIRMED & VERIFIED
-              </span>
-              <div style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-top: 3px;">
-                Date: ${dateStr} • Place: ${claim.place || claim.declarationPlace || userProf?.place || '____________________'}
-              </div>
+          <div class="fx-head-date">
+            <div class="fx-label">STATEMENT DATE</div>
+            <div class="fx-datebox">${stmtDateText}</div>
+            <div class="fx-page-no">PAGE ${pageNum}/${totalPages}${tokenDisplay !== 'N/A' ? ' &nbsp;•&nbsp; TOKEN ' + fxEsc(tokenDisplay) : ''}</div>
+          </div>
+        </div>
+        <div class="fx-to">TO: THE MANAGEMENT OF HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
+
+        <div class="fx-sec fx-sec-blue">1. CUSTOMER INFORMATION</div>
+        <div class="fx-card fx-card-cyan fx-info">
+          <div class="fx-info-left">
+            <div class="fx-label">CUSTOMER / DECLARANT NAME:</div>
+            <div class="fx-lines fx-lines-2">${nameText}</div>
+            <div class="fx-label">DISTRICT &amp; ASSEMBLY CONSTITUENCY:</div>
+            <div class="fx-lines fx-lines-1">${distText}</div>
+            <div class="fx-label">FULL RESIDENTIAL ADDRESS:</div>
+            <div class="fx-lines fx-lines-3">${addrText}</div>
+          </div>
+          <div class="fx-info-right">
+            <div class="fx-label">REGISTERED MOBILE NUMBER</div>
+            ${fxBoxes(mobileDigits, 10)}
+            <div class="fx-label">CUSTOMER PAN CARD NUMBER</div>
+            ${fxBoxes(panChars, 10)}
+            <div class="fx-label">CUSTOMER ID / HR ID / MEMBER ID</div>
+            ${fxBoxes(hrId, hrBoxCount)}
+            <div class="fx-label">JOINING DATE</div>
+            ${fxBoxes(joinParts.join(''), 8, { gapAfter: [1, 3] })}
+            <div class="fx-hint">DD &nbsp;&nbsp;MM &nbsp;&nbsp;&nbsp;YYYY</div>
+          </div>
+        </div>
+
+        <div class="fx-sec fx-sec-teal">2. FINANCIAL STATEMENT – AMOUNT RECEIVED IN THE COURSE OF BUSINESS<br/><span>FOR SUPPLY OF GOODS &amp; PROVISION OF SERVICES</span></div>
+        <div class="fx-orange-rule"></div>
+        <div class="fx-amount fx-amount-blue"><div class="fx-amount-label">ADVANCE PAYMENT AMOUNT (₹)</div><div class="fx-rs">₹</div>${fxBoxes(fxAmount(paidVal), 10, { align: 'right', size: 'lg' })}</div>
+        <div class="fx-amount fx-amount-teal"><div class="fx-amount-label">AMOUNT RECEIVED (₹)</div><div class="fx-rs">₹</div>${fxBoxes(fxAmount(receivedVal), 10, { align: 'right', size: 'lg' })}</div>
+        <div class="fx-amount fx-amount-orange"><div class="fx-amount-label">BALANCE AMOUNT (₹)</div><div class="fx-rs">₹</div>${fxBoxes(fxAmount(pendingBalance), 10, { align: 'right', size: 'lg' })}</div>
+
+        <div class="fx-sec fx-sec-blue" style="margin-top: 8px;">3. CUSTOMER DECLARATION &amp; CONFIRMATION</div>
+        <div class="fx-card fx-card-teal fx-decl">
+          <p>I acknowledge that data pertaining to the advance paid by me to HIGHRICH ONLINE SHOPPE PVT. LTD are not readily available with the company as on date due to the pending litigation. In order to ascertain the true facts and figures, I am furnishing the data available with me. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records maintained by me. The Advance paid, cumulative returns received, and the final net balance which is claimed herein are subject to verification and final reconciliation with the official corporate books of accounts and bank reconciliation exercise of HIGHRICH ONLINE SHOPPE PVT. LTD. In the event of ongoing legal proceedings, due to the ongoing litigation, this statement and verification claim is submitted to facilitate disbursement of funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my free will and consent. I understand that the action arising out of the verification form is subject to verification and pending litigation in various Forums & Courts of Law.</p>
+          <div class="fx-decl-foot">
+            <div class="fx-decl-left">
+              <div class="fx-confirm">${cvTick(true)} <span>CONDITIONS CONFIRMED &amp; VERIFIED</span></div>
+              <div class="fx-datepl"><span class="fx-label">DATE:</span> <b>${stmtParts[0] ? stmtDateText : 'DD &nbsp;/&nbsp; MM &nbsp;/&nbsp; YYYY'}</b> <span class="fx-label" style="margin-left: 18px;">PLACE:</span> <span class="fx-underline">${placeText}</span></div>
             </div>
-            <div style="text-align: right; min-width: 220px;">
-              <div style="font-size: 10.5px; font-weight: 900; color: #003366; line-height: 1.35;">${memberName}</div>
-              <div style="border-top: 1.2px dotted #003366; margin-top: 22px; padding-top: 3px; font-size: 8px; color: #475569; font-weight: 700;">(Signature of the Customer / Declarant)</div>
+            <div class="fx-decl-sig">
+              <div class="fx-label">CUSTOMER / DECLARANT SIGNATURE</div>
+              <div class="fx-sigline"><span>${nameText}</span></div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 4. HIGHRICH ONLINE SHOPPE PVT. LTD. — OFFICIAL ACCOUNTS VERIFICATION RECORD -->
-      <div>
-        <div class="section-heading">4. HIGHRICH ONLINE SHOPPE PVT. LTD. — OFFICIAL ACCOUNTS VERIFICATION RECORD</div>
-        <div class="company-audit-box">
-          <table class="audit-table">
-            <tr>
-              <td class="audit-cell-label">1. ADVANCE AMOUNT:</td>
-              <td class="audit-cell-val">${cvMoney(cv?.advanceAmount)}</td>
-              <td class="audit-cell-label">3. FINAL NET BALANCE PAYABLE:</td>
-              <td class="audit-cell-val font-bold" style="color: #003366;">${cvMoney(cv?.finalNetBalance)}</td>
-            </tr>
-            <tr>
-              <td class="audit-cell-label">2. VERIFIED CUMULATIVE RETURN RECEIVED:</td>
-              <td class="audit-cell-val">${cvMoney(cv?.returnReceived)}</td>
-              <td class="audit-cell-label">4. BANK LEDGER FOLIO / UTR VERIFICATION REF:</td>
-              <td class="audit-cell-val">${cv && cv.bankRef ? cvEsc(cv.bankRef) : '_______________'}</td>
-            </tr>
-          </table>
-
-          <div class="audit-status-row">
-            <span class="audit-tag">[√] RECORDS VERIFIED</span>
-            <span class="audit-tag">[√] ACCOUNTS RECONCILED</span>
-            <span class="audit-tag">[√] PASSED FOR SETTLEMENT</span>
-            <span style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-left: auto;">
-              Head Office Reconciliation • Thrissur, Kerala
-            </span>
+        <div class="fx-sec fx-sec-navy" style="margin-top: 8px;">4. HIGHRICH ONLINE SHOPPE PVT. LTD. — OFFICIAL ACCOUNTS VERIFICATION RECORD</div>
+        <div class="fx-card fx-card-navy fx-verify">
+          <div class="fx-orange-bar"></div>
+          <div class="fx-vgrid">
+            <div class="fx-vrow"><span class="fx-label">1. ADVANCE AMOUNT:</span>${fxBoxes(cvNum(cv?.advanceAmount), 10, { align: 'right', size: 'sm' })}</div>
+            <div class="fx-vrow"><span class="fx-label">3. FINAL NET BALANCE PAYABLE:</span>${fxBoxes(cvNum(cv?.finalNetBalance), 10, { align: 'right', size: 'sm' })}</div>
+            <div class="fx-vrow"><span class="fx-label">2. VERIFIED CUMULATIVE RETURN RECEIVED:</span>${fxBoxes(cvNum(cv?.returnReceived), 10, { align: 'right', size: 'sm' })}</div>
+            <div class="fx-vrow"><span class="fx-label">4. BANK LEDGER FOLIO / UTR:</span>${fxBoxes(cv && cv.bankRef ? String(cv.bankRef) : '', 12, { size: 'sm' })}</div>
           </div>
-
-          <div class="audit-sig-grid">
-            <div class="audit-sig-col">
-              <div class="audit-sig-role">AUDITED & RECONCILED BY</div>
-              <div class="audit-field-line">Verification Officer: ${cv && cv.officerName ? cvEsc(cv.officerName) : '__________________________'}</div>
-              <div class="audit-field-line">Signature: __________________________________</div>
-              <div class="audit-field-line">Audit Date: ${cvDate || '______ / ______ / 202____'}</div>
+          <div class="fx-checks">
+            <span>${cvTick(cvOn)} RECORDS VERIFIED</span>
+            <span>${cvTick(cvOn)} ACCOUNTS RECONCILED</span>
+            <span>${cvTick(cvOn)} PASSED FOR SETTLEMENT</span>
+          </div>
+          <div class="fx-sigs">
+            <div class="fx-sigbox fx-sigbox-blue">
+              <div class="fx-sig-title">AUDITED &amp; RECONCILED BY</div>
+              <div class="fx-sig-line"><span class="fx-sig-k">Verification Officer:</span><span class="fx-sig-v">${cv && cv.officerName ? cvEsc(cv.officerName) : ''}</span></div>
+              <div class="fx-sig-line"><span class="fx-sig-k">Signature:</span><span class="fx-sig-v"></span></div>
+              <div class="fx-sig-date">Audit Date: &nbsp;${auditText}</div>
             </div>
-            <div class="audit-sig-col" style="text-align: center; justify-content: space-between;">
-              <div class="audit-sig-role" style="text-align: left;">FOR HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
-              <div style="font-size: 8.5px; font-weight: 800; color: #475569; letter-spacing: 0.3px; margin: 10px 0;">
-                OFFICIAL CORPORATE SEAL & SIGNATURE
-              </div>
-              <div class="audit-sig-line">AUTHORIZED SIGNATORY</div>
+            <div class="fx-sigbox fx-sigbox-teal">
+              <div class="fx-sig-title">FOR HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
+              <div class="fx-seal">OFFICIAL CORPORATE SEAL &amp; SIGNATURE</div>
+              <div class="fx-auth">AUTHORIZED SIGNATORY</div>
             </div>
           </div>
         </div>
