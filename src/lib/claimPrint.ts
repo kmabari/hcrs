@@ -751,12 +751,13 @@ export const getCourtReportBaseStyles = (): string => `
   .fx-info .fx-label:first-child { margin-top: 2px; }
   .fx-lines { font-size: 12px; font-weight: 700; color: #0b3a66; line-height: 21px; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 20px, #94a3b8 20px, #94a3b8 21px); min-height: 21px; word-break: break-word; }
   .fx-lines-1 { min-height: 21px; } .fx-lines-2 { min-height: 42px; } .fx-lines-3 { min-height: 63px; }
-  .fx-boxes { display: inline-flex; gap: 2.5px; margin: 3px 0 2px; }
-  .fx-box { display: inline-flex; align-items: center; justify-content: center; border: 1.2px solid #7ea0b8; background: #fff; font-style: normal; font-weight: 800; color: #0b3a66; font-family: 'Inter', monospace; }
-  .fx-md .fx-box { width: 16px; height: 19px; font-size: 11px; }
-  .fx-sm .fx-box { width: 14px; height: 18px; font-size: 10px; }
-  .fx-lg .fx-box { width: 23px; height: 26px; font-size: 15px; }
-  .fx-gap { margin-right: 6px; }
+  .fx-boxes { display: inline-block; white-space: nowrap; font-size: 0; margin: 3px 0 2px; vertical-align: top; }
+  .fx-box { display: inline-block; box-sizing: border-box; margin-right: 2.5px; padding: 0; text-align: center; overflow: hidden; vertical-align: top; border: 1.2px solid #7ea0b8; background: #fff; font-style: normal; font-weight: 800; color: #0b3a66; font-family: 'Inter', Arial, sans-serif; }
+  .fx-box:last-child { margin-right: 0; }
+  .fx-md .fx-box { width: 16px; height: 19px; line-height: 16px; font-size: 11px; }
+  .fx-sm .fx-box { width: 14px; height: 18px; line-height: 15px; font-size: 10px; }
+  .fx-lg .fx-box { width: 23px; height: 26px; line-height: 23px; font-size: 15px; }
+  .fx-box.fx-gap { margin-right: 8px; }
   .fx-hint { font-size: 8px; color: #64748b; margin-top: 1px; }
   .fx-orange-rule { height: 4px; width: 33%; background: #f0952b; border-radius: 2px; margin: 3px 0 6px; }
   .fx-amount { display: flex; align-items: center; gap: 10px; border: 1.5px solid #94a3b8; border-radius: 8px; padding: 7px 12px; margin-bottom: 5px; }
@@ -774,7 +775,7 @@ export const getCourtReportBaseStyles = (): string => `
   .fx-underline { display: inline-block; min-width: 120px; border-bottom: 1px solid #94a3b8; font-weight: 700; color: #0b3a66; }
   .fx-decl-sig { flex: 1; }
   .fx-sigline { margin-top: 16px; border-bottom: 1px solid #94a3b8; font-size: 10.5px; font-weight: 800; color: #0b3a66; text-align: right; padding-bottom: 2px; }
-  .fx-check { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.6px solid #0f8f6a; background: #fff; font-style: normal; font-size: 12px; font-weight: 900; color: #0f8f6a; line-height: 1; flex: none; }
+  .fx-check { display: inline-block; box-sizing: border-box; text-align: center; vertical-align: middle; width: 15px; height: 15px; border: 1.6px solid #0f8f6a; background: #fff; font-style: normal; font-size: 11px; font-weight: 900; color: #0f8f6a; line-height: 12px; flex: none; }
   .fx-verify { padding: 0 10px 8px; }
   .fx-orange-bar { height: 4px; background: #f0952b; margin: 0 -10px 8px; }
   .fx-vgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
